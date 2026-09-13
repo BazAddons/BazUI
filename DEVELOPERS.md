@@ -65,6 +65,10 @@ Development happens on Classic Era 1.15 because Forever is built by the Classic 
 
 Not universal: Retail is served by the existing Baz Suite addons. Do not add Retail branches here.
 
+### Templates: check the TOC, not the source tree
+
+The `wow-ui-source` checkout contains every flavour's files, but a Classic client only loads what its `*_Vanilla.toc` (or the XML manifest it includes) lists. `TabSystemTemplate` is the cautionary example: present in `Blizzard_SharedXML/Shared/TabSystem`, never loaded on Era, and `CreateFrame` throws "Couldn't find inherited node". Before using a Blizzard template, confirm it is loaded; `Core/TabStrip.lua` exists because the TabSystem is not. Same rule for atlases (`BazUI.SetAtlasOrTexture`) and for `C_*` API members (check `Blizzard_APIDocumentationGenerated` in the Classic checkout).
+
 ## Porting the next modules
 
 Recipe used for Drawers, apply the same to Chat, Bags and Bars:
