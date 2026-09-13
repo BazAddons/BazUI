@@ -406,14 +406,14 @@ BazUI:RegisterUserGuide("BazUI", {
                 { type = "table",
                   columns = { "Command", "Effect" },
                   rows = {
-                      { "/bazui",                 "Open the BazUI options window" },
+                      { "/bazui",                 "Open BazUI in Options > AddOns" },
                       { "/bazui profile <name>",  "Switch to a profile" },
                       { "/bazui profiles",        "List profiles" },
                       { "/bazui default <name>",  "Set the profile new characters start on" },
                       { "/bui",                   "Short alias for /bazui" },
                   },
                 },
-                { type = "note", style = "tip", text = "Every module has its own tab along the bottom of the options window, and its own page in this guide." },
+                { type = "note", style = "tip", text = "BazUI lives in the standard Options > AddOns list. Each module is an entry under BazUI, and a module's pages are tabs across the top of its panel." },
             },
         },
         {

@@ -1,60 +1,43 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BazUI Options: Registration & Window
+-- BazUI Options: Registration & Blizzard Settings integration
 --
--- Provides the BazUI options window - a large standalone frame with:
---   * Bottom tabs, one per top-level Baz addon
---   * Left sidebar, one item per sub-category of the active addon
---   * Content area on the right
+-- Options live in the standard Options > AddOns panel:
+--   * "BazUI" is the addon's category. Its canvas shows BazUI's own pages
+--     (General Settings, Profiles, User Manual) as tabs across the top.
+--   * Every module is a subcategory under BazUI. Its canvas shows the
+--     module's pages the same way. Blizzard's panel nests two levels
+--     deep, so module pages become tabs rather than a third level.
 --
--- Addons register via BazUI:RegisterOptionsTable() and
--- BazUI:AddToSettings(). All options are displayed inside BazUI's
--- window - no longer registered with Blizzard's Settings panel.
+-- Modules register exactly as before:
+--   BazUI:RegisterOptionsTable(key, tableOrFunc)
+--   BazUI:AddToSettings(key, label, parentKey)
+-- A key with no parentKey is a module (its own subcategory); a key with a
+-- parentKey is a page (a tab) inside that module's canvas. Pages render
+-- through the same widget factories as always; the panel only supplies
+-- the frame they render into.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
 local optionsTables = BazUI._optionsTables or {}
 BazUI._optionsTables = optionsTables
 
-local window            -- the standalone window (created on demand)
-local activeAddon       -- name of the currently active bottom tab
-local activeSubcategory -- name of the currently active left sidebar item
-local bottomTabs = {}   -- [addonName] = tab frame
-local sidebarRows = {}  -- [entryKey] = row frame
+local ROOT_KEY         = "BazUI"
+local TAB_STRIP_HEIGHT = 30
+local TAB_GAP          = 2
 
-local WINDOW_WIDTH   = 1618
-local WINDOW_HEIGHT  = 883
-local TAB_HEIGHT     = 32
-local SIDEBAR_WIDTH  = 200
-local SIDEBAR_ROW_H  = 28
+local rootCategory      -- Blizzard category object for BazUI
+local categories = {}   -- [moduleKey] = Blizzard category (root or subcategory)
+local canvases   = {}   -- [moduleKey] = canvas frame registered with the panel
 
 ---------------------------------------------------------------------------
--- Layout helpers
+-- Page ordering
 ---------------------------------------------------------------------------
 
--- Returns a sorted array of addon entries that are top-level (no parent).
--- These get bottom tabs in the window.
-local function GetTopLevelEntries()
-    local entries = {}
-    for name, entry in pairs(optionsTables) do
-        if not entry.parent and entry.displayName then
-            entries[#entries + 1] = { name = name, entry = entry }
-        end
-    end
-    -- BazUI always first, User Manual always last, rest alphabetical
-    table.sort(entries, function(a, b)
-        if a.name == "BazUI" then return true end
-        if b.name == "BazUI" then return false end
-        if a.name == "UserManual" then return false end
-        if b.name == "UserManual" then return true end
-        return a.name < b.name
-    end)
-    return entries
-end
-
--- Returns a sorted array of sub-category entries for a given parent.
--- Includes the parent itself as the first entry (landing page).
-local function GetSubcategoriesFor(parentName)
+-- Returns the ordered pages of one module's canvas. Includes the module's
+-- own root entry only when it has no pages or explicitly asks for it via
+-- showRoot, so a module normally opens straight onto its first page.
+local function GetPagesFor(parentName)
     local parentEntry = optionsTables[parentName]
     local children = {}
     for name, entry in pairs(optionsTables) do
@@ -110,7 +93,7 @@ local function GetSubcategoriesFor(parentName)
 end
 
 ---------------------------------------------------------------------------
--- Content rendering (reused from list/detail pattern)
+-- Content rendering (shared with the list/detail pattern)
 ---------------------------------------------------------------------------
 
 local function CreateTwoPanelLayout(container, optionsTable)
@@ -368,434 +351,222 @@ end
 BazUI._RenderIntoCanvas = RenderIntoCanvas
 
 ---------------------------------------------------------------------------
--- Window construction
+-- Canvases: one frame per module, pages as tabs across the top
 ---------------------------------------------------------------------------
 
-local function SelectSubcategory(key)
-    activeSubcategory = key
-    if not window then return end
-    -- Tag the moment of selection so the persistent memory log shows
-    -- which sub-page the user navigated to. Helpful for finding
-    -- "User Manual click was the spike trigger" type insights.
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("subcat_select", key)
-        BazUI:MarkMemoryEvent("phase", "subcat:" .. tostring(key) .. ":start")
-    end
-
-    -- Update sidebar highlights. Uses the same gold-gradient
-    -- highlight + white-on-selected text the sub-lists use, so the
-    -- main left sidebar visually matches the right-panel list. The
-    -- old solid-blue LIST_SELECTED fill stuck out as the only place
-    -- in the suite that didn't follow the gold-gradient pattern.
-    for entryKey, row in pairs(sidebarRows) do
-        local isSel = (entryKey == key)
-        O.ShowHighlightGroup(row.hlGroup, isSel)
-        if isSel then
-            row.text:SetTextColor(1, 1, 1)         -- white when selected
-            row.text:SetAlpha(1.0)
-        else
-            row.text:SetTextColor(unpack(O.GOLD))  -- gold otherwise
-            row.text:SetAlpha(0.75)
-        end
-    end
-
-    -- Render the selected entry into content area
+local function RenderPage(canvas, key)
+    if not key then return end
     local entry = optionsTables[key]
     if not entry then return end
-    O.ClearChildren(window.content)
+    canvas.activeKey = key
 
-    -- A customRender function takes full control of the content panel.
-    -- Used by the User Manual to render its own tree-based layout.
-    if type(entry.customRender) == "function" then
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":before-customRender")
-        end
-        entry.customRender(window.content)
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":after-customRender")
-        end
-        return
-    end
-
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":before-funcEval")
-    end
-    local tbl = entry.func
-    if type(tbl) == "function" then tbl = tbl() end
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":after-funcEval")
-    end
-    if tbl then
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":before-RenderIntoCanvas")
-        end
-        RenderIntoCanvas(window.content, tbl)
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("phase", "subcat:" .. key .. ":after-RenderIntoCanvas")
-        end
-    end
-end
-
-local function RenderSidebar()
-    if not window then return end
-    O.ClearChildren(window.sidebar)
-    sidebarRows = {}
-
-    local subs = GetSubcategoriesFor(activeAddon)
-    local y = -8
-    for _, sub in ipairs(subs) do
-        local row = CreateFrame("Button", nil, window.sidebar)
-        row:SetSize(SIDEBAR_WIDTH - 8, SIDEBAR_ROW_H)
-        row:SetPoint("TOPLEFT", 4, y)
-
-        -- Hover background (subtle white tint, only when not selected).
-        local hover = row:CreateTexture(nil, "BACKGROUND")
-        hover:SetAllPoints()
-        hover:SetColorTexture(1, 1, 1, 0.05)
-        hover:Hide()
-        row.hover = hover
-
-        -- Gold-gradient selection highlight - same one the sub-lists
-        -- and the User Manual tree use, so all three lists match.
-        row.hlGroup = O.BuildSelectionHighlight(row, SIDEBAR_ROW_H)
-        O.ShowHighlightGroup(row.hlGroup, false)
-
-        local text = row:CreateFontString(nil, "OVERLAY", O.LIST_FONT)
-        text:SetPoint("LEFT", 10, 0)
-        text:SetText(sub.label)
-        text:SetTextColor(unpack(O.GOLD))
-        text:SetAlpha(0.75)
-        row.text = text
-
-        local capturedKey = sub.key
-        row:SetScript("OnClick", function() SelectSubcategory(capturedKey) end)
-        row:SetScript("OnEnter", function(self)
-            if activeSubcategory ~= capturedKey then
-                self.hover:Show()
-                self.text:SetAlpha(1.0)
-            end
-        end)
-        row:SetScript("OnLeave", function(self)
-            if activeSubcategory ~= capturedKey then
-                self.hover:Hide()
-                self.text:SetAlpha(0.75)
-            end
-        end)
-
-        sidebarRows[sub.key] = row
-        y = y - SIDEBAR_ROW_H
-    end
-
-    -- Default to the root (landing page) entry
-    local firstKey = subs[1] and subs[1].key or activeAddon
-    SelectSubcategory(firstKey)
-end
-
-local function SelectAddon(name)
-    activeAddon = name
-    if not window then return end
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("addon_select", name)
-    end
-
-    -- Update bottom tab visuals
-    for tabName, tab in pairs(bottomTabs) do
-        if tabName == name then
+    for pageKey, tab in pairs(canvas.tabs) do
+        if pageKey == key then
             PanelTemplates_SelectTab(tab)
         else
             PanelTemplates_DeselectTab(tab)
         end
     end
 
-    RenderSidebar()
-end
+    O.ClearChildren(canvas.content)
 
-local function RenderBottomTabs()
-    if not window then return end
-    -- Hide all existing tabs
-    for _, tab in pairs(bottomTabs) do
-        tab:Hide()
+    -- A customRender takes the whole content area (the User Manual's
+    -- tree layout does this).
+    if type(entry.customRender) == "function" then
+        entry.customRender(canvas.content)
+        return
     end
-    bottomTabs = {}
 
-    local entries = GetTopLevelEntries()
-    local x = 12
-    for i, item in ipairs(entries) do
-        local tab = CreateFrame("Button", "BazUIOptionsTab" .. i, window, "PanelTabButtonTemplate")
-        tab:SetID(i)
-        tab:SetText(item.entry.displayName or item.name)
-        tab:SetPoint("TOPLEFT", window, "BOTTOMLEFT", x, 2)
-        PanelTemplates_TabResize(tab, 0)
-
-        local capturedName = item.name
-        tab:SetScript("OnClick", function(self)
-            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
-            SelectAddon(capturedName)
-        end)
-
-        bottomTabs[item.name] = tab
-        x = x + tab:GetWidth() + 3  -- small gap between tabs
+    local tbl = entry.func
+    if type(tbl) == "function" then tbl = tbl() end
+    if tbl then
+        RenderIntoCanvas(canvas.content, tbl)
     end
 end
 
-local function EnsureWindow()
-    if window then return window end
+local function RebuildTabs(canvas)
+    local pages = GetPagesFor(canvas.moduleKey)
+    for _, tab in pairs(canvas.tabs) do tab:Hide() end
+    canvas.tabs = {}
 
-    -- PortraitFrameTemplate = same chrome as PlayerSpellsFrame (Talents/Spec window)
-    local f = CreateFrame("Frame", "BazUIOptionsWindow", UIParent, "PortraitFrameTemplate")
-    f:SetSize(WINDOW_WIDTH, WINDOW_HEIGHT)
-    f:SetPoint("CENTER")
-    f:SetFrameStrata("HIGH")
-    f:EnableMouse(true)
-    f:SetMovable(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    f:SetClampedToScreen(true)
-    f:SetToplevel(true)
-    f:Hide()
-
-    -- Set custom portrait icon (BazUI logo)
-    -- The portrait lives at f.PortraitContainer.portrait (named via $parentPortrait)
-    local portrait = (f.PortraitContainer and f.PortraitContainer.portrait) or f.portrait
-    if portrait then
-        portrait:SetTexture("Interface\\AddOns\\BazUI\\Media\\IconRound.png")
+    local strip = canvas.tabStrip
+    if #pages <= 1 then
+        -- Nothing to switch between: give the page the whole canvas.
+        strip:Hide()
+        canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, 0)
+    else
+        strip:Show()
+        canvas.content:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -6)
+        local x = 4
+        for i, page in ipairs(pages) do
+            local tab = canvas.tabPool[i]
+            if not tab then
+                tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
+                canvas.tabPool[i] = tab
+            end
+            tab:SetID(i)
+            tab:SetText(page.label)
+            tab:ClearAllPoints()
+            tab:SetPoint("BOTTOMLEFT", strip, "BOTTOMLEFT", x, 0)
+            PanelTemplates_TabResize(tab, 0)
+            local pageKey = page.key
+            tab:SetScript("OnClick", function()
+                PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+                RenderPage(canvas, pageKey)
+            end)
+            tab:Show()
+            canvas.tabs[pageKey] = tab
+            x = x + (tab:GetWidth() or 0) + TAB_GAP
+        end
     end
 
-    -- Set the title (PortraitFrameTemplate provides SetTitle helper)
-    if f.SetTitle then f:SetTitle("BazUI Options") end
+    -- Keep a valid active page; default to the first.
+    local valid = false
+    for _, page in ipairs(pages) do
+        if page.key == canvas.activeKey then valid = true end
+    end
+    if not valid then
+        canvas.activeKey = pages[1] and pages[1].key or canvas.moduleKey
+    end
+    return pages
+end
 
-    -- Overlay the spec-background atlas on top of the default rocky Bg
-    -- to match the Specialization window's darker look
-    local specBg = f:CreateTexture(nil, "BACKGROUND", nil, -3)
-    specBg:SetAtlas("spec-background")
-    specBg:SetPoint("TOPLEFT", 4, -22)
-    specBg:SetPoint("BOTTOMRIGHT", -4, 4)
+local function CreateCanvas(moduleKey)
+    -- The panel parents and anchors this frame itself when the category is
+    -- selected, and un-parents it when another category takes over.
+    local canvas = CreateFrame("Frame")
+    canvas:Hide()
+    canvas.moduleKey = moduleKey
+    canvas.tabs      = {}
+    canvas.tabPool   = {}
 
-    -- Content area: fills the main body of the window, leaving space
-    -- below for the bottom tab strip
-    local content = CreateFrame("Frame", nil, f)
-    content:SetPoint("TOPLEFT", 10, -64)
-    content:SetPoint("BOTTOMRIGHT", -10, 12)
-    f.contentWrapper = content
+    local strip = CreateFrame("Frame", nil, canvas)
+    strip:SetPoint("TOPLEFT", 0, 0)
+    strip:SetPoint("TOPRIGHT", 0, 0)
+    strip:SetHeight(TAB_STRIP_HEIGHT)
+    canvas.tabStrip = strip
 
-    -- Sidebar (left side of content) - subtle border only so the
-    -- PortraitFrameTemplate rocky background shows through
-    local sidebar = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    sidebar:SetPoint("TOPLEFT", 0, 0)
-    sidebar:SetPoint("BOTTOMLEFT", 0, 0)
-    sidebar:SetWidth(SIDEBAR_WIDTH)
-    sidebar:SetBackdrop({
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 8,
-    })
-    sidebar:SetBackdropBorderColor(unpack(O.PANEL_BORDER))
-    f.sidebar = sidebar
+    local content = CreateFrame("Frame", nil, canvas)
+    content:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -6)
+    content:SetPoint("BOTTOMRIGHT", 0, 0)
+    canvas.content = content
 
-    -- Vertical divider line between sidebar and content (gold accent)
-    local divider = content:CreateTexture(nil, "OVERLAY")
-    divider:SetWidth(1)
-    divider:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 5, 0)
-    divider:SetPoint("BOTTOMLEFT", sidebar, "BOTTOMRIGHT", 5, 0)
-    divider:SetColorTexture(0.35, 0.3, 0.18, 0.6)
-
-    -- Content panel (right of sidebar) - also transparent
-    local contentPanel = CreateFrame("Frame", nil, content)
-    contentPanel:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 12, 0)
-    contentPanel:SetPoint("BOTTOMRIGHT", 0, 0)
-    f.content = contentPanel
-
-    -- Bottom tab container (hangs below the window, like PlayerSpellsFrame)
-    local tabContainer = CreateFrame("Frame", nil, f)
-    tabContainer:SetPoint("TOPLEFT", f, "BOTTOMLEFT", 0, 0)
-    tabContainer:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, 0)
-    tabContainer:SetHeight(TAB_HEIGHT)
-    f.tabContainer = tabContainer
-
-    tinsert(UISpecialFrames, "BazUIOptionsWindow")
-
-    -- Auto-mark window show/hide in the persistent memory log so the
-    -- user can pinpoint exactly which UI action caused a memory spike
-    -- without having to /bazmem mark by hand each time.
-    f:HookScript("OnShow", function()
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("panel_show", activeAddon or "")
-        end
+    canvas:SetScript("OnShow", function(self)
+        RebuildTabs(self)
+        RenderPage(self, self.pendingKey or self.activeKey)
+        self.pendingKey = nil
     end)
-    f:HookScript("OnHide", function()
-        if BazUI.MarkMemoryEvent then
-            BazUI:MarkMemoryEvent("panel_hide")
-        end
+    canvas:SetScript("OnHide", function(self)
+        O.ClearChildren(self.content)
     end)
 
-    window = f
-    return f
+    -- Hooks the Settings panel calls on canvas frames. Our settings apply
+    -- as they change, so Okay / Defaults have nothing to do; a refresh
+    -- re-renders the visible page so it shows current values.
+    function canvas:OnRefresh()
+        if self:IsShown() and self.activeKey then
+            RenderPage(self, self.activeKey)
+        end
+    end
+    function canvas:OnCommit() end
+    function canvas:OnDefault() end
+
+    return canvas
+end
+
+local function EnsureRoot()
+    if rootCategory then return rootCategory end
+    if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then
+        return nil
+    end
+    local canvas = CreateCanvas(ROOT_KEY)
+    canvases[ROOT_KEY] = canvas
+    rootCategory = Settings.RegisterCanvasLayoutCategory(canvas, "BazUI")
+    categories[ROOT_KEY] = rootCategory
+    Settings.RegisterAddOnCategory(rootCategory)
+    return rootCategory
+end
+
+local function EnsureModule(moduleKey)
+    if moduleKey == ROOT_KEY then return EnsureRoot() end
+    if categories[moduleKey] then return categories[moduleKey] end
+    local root = EnsureRoot()
+    if not root or not Settings.RegisterCanvasLayoutSubcategory then return nil end
+    local entry = optionsTables[moduleKey]
+    local label = (entry and entry.displayName) or moduleKey
+    local canvas = CreateCanvas(moduleKey)
+    canvases[moduleKey] = canvas
+    local sub = Settings.RegisterCanvasLayoutSubcategory(root, canvas, label)
+    categories[moduleKey] = sub
+    return sub
 end
 
 ---------------------------------------------------------------------------
 -- Public API
 ---------------------------------------------------------------------------
 
-function BazUI:RegisterOptionsTable(addonName, optionsTableOrFunc)
-    optionsTables[addonName] = optionsTables[addonName] or {}
-    optionsTables[addonName].func = optionsTableOrFunc
+function BazUI:RegisterOptionsTable(key, optionsTableOrFunc)
+    optionsTables[key] = optionsTables[key] or {}
+    optionsTables[key].func = optionsTableOrFunc
 end
 
--- Build a stub canvas for Blizzard's Settings panel. Shows the addon
--- title, version, and a big "Open Options" button that launches our
--- standalone window with the correct tab active.
-local function CreateBlizzardStub(addonName, displayName)
-    local canvas = CreateFrame("Frame")
-
-    local title = canvas:CreateFontString(nil, "OVERLAY", "GameFontHighlightHuge")
-    title:SetPoint("CENTER", 0, 80)
-    title:SetText(displayName or addonName)
-    title:SetTextColor(1, 0.82, 0)
-
-    -- Version
-    local version
-    if C_AddOns and C_AddOns.GetAddOnMetadata then
-        version = C_AddOns.GetAddOnMetadata(addonName, "Version")
-    end
-    if version then
-        local vtext = canvas:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        vtext:SetPoint("CENTER", 0, 40)
-        vtext:SetText("Version: " .. version)
-        vtext:SetTextColor(0.7, 0.7, 0.7)
-    end
-
-    local desc = canvas:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    desc:SetPoint("CENTER", 0, 0)
-    desc:SetText("BazUI options have moved to their own window.")
-    desc:SetTextColor(0.9, 0.9, 0.9)
-
-    local btn = CreateFrame("Button", nil, canvas, "UIPanelButtonTemplate")
-    btn:SetSize(220, 36)
-    btn:SetPoint("CENTER", 0, -50)
-    btn:SetText("Open Options")
-    local fs = btn:GetFontString()
-    if fs then fs:SetFontObject("GameFontNormalLarge") end
-    btn:SetScript("OnClick", function()
-        -- Defer to next frame to escape Blizzard's secure code path,
-        -- then hide their panel and open ours. SettingsPanel:Close() is
-        -- a secure call that taints if invoked from inside an addon click.
-        C_Timer.After(0, function()
-            if SettingsPanel and SettingsPanel:IsShown() then
-                SettingsPanel:Hide()
-            end
-            BazUI:OpenOptionsPanel(addonName)
-        end)
-    end)
-
-    return canvas
-end
-
--- AddToSettings: register an addon or sub-category with the BazUI options window.
---   addonName   = unique key (used with RegisterOptionsTable)
---   displayName = label shown on the tab / sidebar
---   parentName  = optional; if given, this is a sub-category of that parent addon
-function BazUI:AddToSettings(addonName, displayName, parentName)
-    local entry = optionsTables[addonName]
+-- AddToSettings(key, displayName, parentKey)
+--   key         = unique key (used with RegisterOptionsTable)
+--   displayName = subcategory name (modules) or tab label (pages)
+--   parentKey   = optional; when given, key is a page of that module
+function BazUI:AddToSettings(key, displayName, parentKey)
+    local entry = optionsTables[key]
     if not entry then return end
-    entry.displayName = displayName or addonName
-    entry.parent = parentName
+    entry.displayName = displayName or key
+    entry.parent = parentKey
 
-    -- Only BazUI registers with Blizzard's Settings panel as a stub.
-    -- Other Baz addons are accessed via the BazUI options window's
-    -- bottom tabs - no need to clutter Blizzard's AddOn list with all of them.
-    if addonName == "BazUI" and not parentName and not entry.blizzardCategory
-        and Settings and Settings.RegisterCanvasLayoutCategory then
-        local stub = CreateBlizzardStub(addonName, entry.displayName)
-        local category = Settings.RegisterCanvasLayoutCategory(stub, entry.displayName)
-        Settings.RegisterAddOnCategory(category)
-        entry.blizzardCategory = category
-        entry.blizzardCanvas = stub
-    end
+    local moduleKey = parentKey or key
+    EnsureModule(moduleKey)
 
-    -- If the window already exists, refresh tabs/sidebar so this entry shows up
-    if window and window:IsShown() then
-        RenderBottomTabs()
-        if activeAddon and not parentName and addonName == activeAddon then
-            RenderSidebar()
-        elseif activeAddon == parentName then
-            RenderSidebar()
-        end
+    local canvas = canvases[moduleKey]
+    if canvas and canvas:IsShown() then
+        RebuildTabs(canvas)
+        RenderPage(canvas, canvas.activeKey)
     end
 end
 
--- Helper: bracket a function call with memory-log phase markers so a
--- /bazmem watch dump shows the exact KB allocated by each construction
--- step (EnsureWindow, RenderBottomTabs, SelectAddon, ...). The markers
--- only fire when MemoryLog is loaded, so they're safe to leave in
--- production (they're cheap and useful for users reporting hitches).
-local function PhaseMark(label)
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("phase", label)
+-- Open the Settings panel on a module, or on one page of a module.
+function BazUI:OpenOptionsPanel(key)
+    key = key or ROOT_KEY
+    local entry = optionsTables[key]
+    local moduleKey = (entry and entry.parent) or key
+    local category = categories[moduleKey] or EnsureModule(moduleKey) or rootCategory
+    if not category or not Settings.OpenToCategory then return end
+
+    local canvas = canvases[moduleKey]
+    local wantsPage = entry and entry.parent and canvas
+    if wantsPage then canvas.pendingKey = key end
+
+    Settings.OpenToCategory(category:GetID())
+
+    -- Already showing this canvas: OnShow won't fire, switch the tab now.
+    if wantsPage and canvas:IsShown() then
+        canvas.pendingKey = nil
+        RenderPage(canvas, key)
     end
 end
 
-function BazUI:OpenOptionsPanel(addonName)
-    PhaseMark("open:start")
-
-    PhaseMark("open:before-EnsureWindow")
-    EnsureWindow()
-    PhaseMark("open:after-EnsureWindow")
-
-    PhaseMark("open:before-RenderBottomTabs")
-    RenderBottomTabs()
-    PhaseMark("open:after-RenderBottomTabs")
-
-    -- Figure out which top-level addon to activate.
-    -- If addonName is a sub-category, switch to its parent first, then select the sub-category.
-    local entry = optionsTables[addonName]
-    local topLevel = addonName
-    local subcategory = nil
-    if entry and entry.parent then
-        topLevel = entry.parent
-        subcategory = addonName
-    end
-
-    -- If the requested addon isn't registered, fall back to the first top-level
-    if not optionsTables[topLevel] or not optionsTables[topLevel].displayName then
-        local entries = GetTopLevelEntries()
-        if #entries > 0 then
-            topLevel = entries[1].name
-        end
-    end
-
-    PhaseMark("open:before-SelectAddon=" .. tostring(topLevel))
-    SelectAddon(topLevel)
-    PhaseMark("open:after-SelectAddon")
-
-    if subcategory then
-        PhaseMark("open:before-SelectSubcategory=" .. tostring(subcategory))
-        SelectSubcategory(subcategory)
-        PhaseMark("open:after-SelectSubcategory")
-    end
-
-    PhaseMark("open:before-Show")
-    window:Show()
-    window:Raise()
-    PhaseMark("open:after-Show")
-
-    PhaseMark("open:end")
+function BazUI:OpenSettings(key)
+    return self:OpenOptionsPanel(key)
 end
 
-function BazUI:RefreshOptions(addonName)
-    if not window or not window:IsShown() then return end
-    -- Only re-render if the refreshed addon/sub-category is currently showing
-    if activeSubcategory == addonName then
-        local entry = optionsTables[addonName]
-        if not entry then return end
-        O.ClearChildren(window.content)
-        if type(entry.customRender) == "function" then
-            entry.customRender(window.content)
-            return
-        end
-        local tbl = entry.func
-        if type(tbl) == "function" then tbl = tbl() end
-        if tbl then
-            RenderIntoCanvas(window.content, tbl)
-        end
+-- Re-render a page if it is the one currently on screen.
+function BazUI:RefreshOptions(key)
+    local entry = optionsTables[key]
+    if not entry then return end
+    local canvas = canvases[entry.parent or key]
+    if canvas and canvas:IsShown() and canvas.activeKey == key then
+        RenderPage(canvas, key)
     end
+end
+
+-- The Blizzard category for a module, for callers that want to open the
+-- panel themselves.
+function BazUI:GetOptionsCategory(moduleKey)
+    return categories[moduleKey or ROOT_KEY]
 end

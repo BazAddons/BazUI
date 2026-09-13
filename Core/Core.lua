@@ -212,6 +212,18 @@ function BazUI:GetModule(name)
 end
 BazUI.GetAddon = BazUI.GetModule
 
+-- Static setting access by module name, for shared helpers (MakeDraggable
+-- and friends) that don't hold a module object.
+function BazUI:GetSetting(moduleName, key)
+    local mod = self.addonObjects[moduleName]
+    return mod and mod:GetSetting(key)
+end
+
+function BazUI:SetSetting(moduleName, key, value)
+    local mod = self.addonObjects[moduleName]
+    if mod then mod:SetSetting(key, value) end
+end
+
 ---------------------------------------------------------------------------
 -- Stack introspection
 ---------------------------------------------------------------------------
@@ -392,28 +404,11 @@ BazUI:QueueForLogin(function()
     -- Labelled "BazUISelfPages" so the memory-log phase markers
     -- attribute any allocation that happens here cleanly.
 
-    -- Landing page
+    -- Root entry. BazUI's own pages (General Settings, Profiles, User
+    -- Manual) are tabs on the BazUI category's canvas; the root itself
+    -- never renders because it has pages.
     BazUI:RegisterOptionsTable("BazUI", function()
-        local landing = BazUI:CreateLandingPage("BazUI", {
-            subtitle = "One addon, whole UI",
-            description = "BazUI gathers the Baz Suite into a single addon built for " ..
-                "World of Warcraft: Forever - slide-out drawers holding the minimap, " ..
-                "minimap buttons, quest tracker and info bar, with chat and bags to follow. " ..
-                "Each module has its own tab along the bottom of this window.",
-            features = "Drawers with dockable, floatable widgets. " ..
-                "Unified profiles with per-character, class and spec assignment. " ..
-                "Edit Mode integration for every floating piece. " ..
-                "One skin shared by every module.",
-        })
-        local lines = {}
-        for modName, config in pairs(BazUI.addons) do
-            if modName ~= "BazUI" then lines[#lines + 1] = config.title or modName end
-        end
-        table.sort(lines)
-        landing.args.modulesHeader = { order = 30, type = "header", name = "Modules" }
-        landing.args.modulesList = { order = 31, type = "description",
-            name = "|cff3399ffBazUI|r v" .. BazUI.VERSION .. "\n" .. table.concat(lines, "\n") }
-        return landing
+        return { name = "BazUI", type = "group", args = {} }
     end)
     BazUI:AddToSettings("BazUI", "BazUI")
 
