@@ -1,0 +1,71 @@
+## Interface: 11509
+## Title: BazUI
+## Notes: The Baz Suite as one addon for World of Warcraft: Forever - drawers, minimap, quest tracker, chat and bags
+## Author: Baz4k
+## Version: 001
+## X-License: GPL v2
+## Category: BazUI
+## X-Category: Interface Enhancements
+## SavedVariables: BazUIDB
+## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
+
+# Interface is Classic Era (1.15.x) while development happens there. Switch
+# to the World of Warcraft: Forever client number once the beta ships.
+
+# Core - forked from BazCore. Module registry, profiles, options window,
+# Edit Mode, popups and UI helpers.
+Core\Core.lua
+Core\Events.lua
+Core\Profiles.lua
+Core\Commands.lua
+Core\UI.lua
+Core\Timers.lua
+Core\ObjectPool.lua
+Core\Format.lua
+Core\Locale.lua
+Core\Menu.lua
+Core\Animations.lua
+Core\MinimapButton.lua
+Core\ButtonGlow.lua
+Core\Keybinds.lua
+Core\EditMode.lua
+Core\Serialization.lua
+Core\Widgets.lua
+Core\Options\Constants.lua
+Core\Options\WidgetFactories.lua
+Core\Options\LayoutEngine.lua
+Core\Options\ListDetail.lua
+Core\Options\PageBuilders.lua
+Core\Options\ContentFactories.lua
+Core\Options\Registration.lua
+Core\Options\SettingsSpec.lua
+Core\Options\UserGuide.lua
+Core\OptionsPanel.lua
+Core\CopyDialog.lua
+Core\Popup.lua
+Core\SecureActionPopup.lua
+Core\AddonListButton.lua
+Core\IconPicker.lua
+
+# Skin - textures and colours shared by every module.
+Skin\Skin.lua
+
+# Modules
+Modules\Drawers\Core.lua
+Modules\Drawers\Compat.lua
+Modules\Drawers\Drawer.lua
+Modules\Drawers\WidgetHost.lua
+Modules\Drawers\Settings.lua
+Modules\Drawers\Widgets\MinimapButtons.lua
+Modules\Drawers\Widgets\Minimap.lua
+Modules\Drawers\Widgets\MinimapInfoBar.lua
+Modules\Drawers\Widgets\ZoneText.lua
+Modules\Drawers\Widgets\QuestTracker\Constants.lua
+Modules\Drawers\Widgets\QuestTracker\State.lua
+Modules\Drawers\Widgets\QuestTracker\Collapse.lua
+Modules\Drawers\Widgets\QuestTracker\Data.lua
+Modules\Drawers\Widgets\QuestTracker\Headers.lua
+Modules\Drawers\Widgets\QuestTracker\Blocks.lua
+Modules\Drawers\Widgets\QuestTracker\Options.lua
+Modules\Drawers\Widgets\QuestTracker\Init.lua
+Modules\Drawers\UserGuide.lua

@@ -1,0 +1,30 @@
+name: Package and Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # -g classic builds the Classic Era flavour while development happens
+      # there. World of Warcraft: Forever has no packager or CurseForge game
+      # version yet; revisit when the beta client and CurseForge catch up.
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -g classic
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

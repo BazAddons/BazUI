@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI: OptionsPanel
+-- Thin loader - the actual implementation lives in Options/*.lua
+-- This file exists for backward compatibility (any addon that might
+-- reference OptionsPanel.lua directly).
+---------------------------------------------------------------------------
+
+-- All Options modules are loaded via the TOC before this file.
+-- BazUI._Options, BazUI._optionsTables, and all public API
+-- (RegisterOptionsTable, AddToSettings, OpenOptionsPanel, RefreshOptions,
+-- CreateLandingPage, CreateModulesPage, CreateGlobalOptionsPage) are
+-- already available on the BazUI table.
