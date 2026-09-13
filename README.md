@@ -14,7 +14,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Drawers | BazWidgetDrawers | Ported (Minimap, Minimap Buttons, Info Bar, Zone Text, Quest Tracker) |
 | Chat | BazChat | Ported (tabbed chat replacement: channels per tab, timestamps, history, copy, combat log) |
 | Bags | BazBags | Ported (Classic bags plus keyring; categories, pinning, search) |
-| Bars | BazBars (selected parts) | Planned |
+| Bars | BazBars | Ported (bars, spells, items, macros, mounts, equipment sets, keybinds; no toys, pets or flyouts) |
 
 ## Commands
 
@@ -22,6 +22,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 - `/bazui profile <name>`, `/bazui profiles`, `/bazui default <name>` manage profiles.
 - `/bwd toggle|show|hide|open <name>|list` drives the drawer.
 - `/bbg` (or `/bazbags`) toggles the bag panel; `/bbg sort`, `/bbg categorize`.
+- `/bb` (or `/bazbars`) for bars: `create`, `delete`, `duplicate`, `export`, `import`, `scale`, `padding`, `reset`.
 - `/bazchat` (or `/bc`) for chat: `copy`, `clear`, `lock`, `unlock`, `restoredefaults`; `/cc` clears the active tab.
 
 ## License

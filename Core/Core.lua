@@ -611,7 +611,7 @@ end)
 ---------------------------------------------------------------------------
 BazUI:QueueForLogin(function()
     local clash = {}
-    for _, name in ipairs({ "BazCore", "BazWidgetDrawers", "LibBazWidget", "BazWidgets", "BazChat", "BazBags" }) do
+    for _, name in ipairs({ "BazCore", "BazWidgetDrawers", "LibBazWidget", "BazWidgets", "BazChat", "BazBags", "BazBars" }) do
         if C_AddOns.IsAddOnLoaded(name) then clash[#clash + 1] = name end
     end
     if #clash > 0 then

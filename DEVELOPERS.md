@@ -20,7 +20,7 @@ BazUI/
     Drawers/           from BazWidgetDrawers (Era file set)
     Chat/              from BazChat; BazUI.Chat is its private namespace, BazUI.Chat.API the old BazChat global
     Bags/              from BazBags; Classic slot template, keyring section, no currency strip
-    Bars/              planned, selected parts of BazBars
+    Bars/              from BazBars; BazUI.Bars is its namespace; toys, pets, flyouts dropped
 ```
 
 ## The module system

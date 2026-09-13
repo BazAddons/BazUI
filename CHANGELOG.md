@@ -3,6 +3,7 @@
 First development build of BazUI. Nothing is released yet.
 
 - Drawers: slide-out drawer with the Minimap, Minimap Buttons, Info Bar, Zone Text and Quest Tracker widgets.
+- Bars: custom action bars with spells, items, macros, mounts and equipment sets, quick keybinds, Edit Mode integration and import/export.
 - Chat: tabbed chat replacement with per-tab channels, timestamps, persistent history, copy chat and the combat log on its own tab.
 - Bags: one panel for every bag and the keyring, with per-bag or category grouping, pinning, search and gold display.
 - BazUI minimap ring and unified minimap button frames.
