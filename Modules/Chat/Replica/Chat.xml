@@ -1,0 +1,149 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\..\..\..\Blizzard_SharedXML\UI.xsd">
+
+    <!-- =================================================================
+         BazUIChat tab template - inherits ChatTabArtTemplate so we get the
+         exact same tab visuals as Blizzard's chat tabs (background +
+         active + highlight states), but with NO scripts attached. Tab
+         click logic lives in Lua. We add ButtonText layout so the tab
+         can display its label ("General", etc.).
+         ================================================================= -->
+    <!-- TabSystem container for chat tabs. Inherits Blizzard's
+         TabSystemTemplate and overrides the KeyValues so the right
+         tab template + width clamps are baked in before OnLoad runs.
+         This is the same pattern HousingDashboard / FriendsFrame /
+         PlayerSpellsFrame use - sets tabTemplate via XML KeyValue
+         (not Lua) so the OnLoad reads the correct value first time. -->
+    <Frame name="BazUIChatTabSystemTemplate" inherits="TabSystemTemplate" virtual="true">
+        <KeyValues>
+            <KeyValue key="tabTemplate"  value="TabSystemTopButtonTemplate" type="string"/>
+            <KeyValue key="minTabWidth"  value="80" type="number"/>
+            <KeyValue key="maxTabWidth"  value="140" type="number"/>
+            <KeyValue key="tabSelectSound" value="SOUNDKIT.IG_CHARACTER_INFO_TAB" type="global"/>
+        </KeyValues>
+    </Frame>
+
+    <!-- =================================================================
+         BazUIChat window template - the full chat chrome.
+           Visuals: inherits FloatingBorderedFrame (background + 4 corner
+                    + 4 edge textures, identical to Blizzard's chat).
+           Children:
+             ScrollBar          - MinimalScrollBar on the right edge.
+             clickAnywhereButton - full-frame button that focuses the
+                                   edit box on click (matches default).
+             ResizeButton       - bottom-right corner grabber.
+             ScrollToBottomButton - bottom indicator that jumps to newest.
+             editBox            - Blizzard's ChatFrameEditBoxTemplate at
+                                  the bottom (channel selector + history
+                                  + autocomplete all included).
+         Inherits Blizzard's ChatFrameTemplate so the frame gets the
+         ChatFrameMixin AND a Blizzard-attributed OnEvent script. That
+         attribution is what lets MessageEventHandler run untainted:
+         Midnight's chat code compares secret values and indexes a
+         forbidden HistoryKeeper table, both of which throw when the
+         dispatch is 'tainted by BazUIChat' (any SetScript from Lua does
+         that, securecallfunction or not). ChatFrameTemplate's OnLoad
+         runs at CreateFrame time; Window.lua overrides its defaults.
+         ================================================================= -->
+    <ScrollingMessageFrame name="BazUIChatFrameTemplate"
+        movable="true" enableMouse="false" resizable="true"
+        inherits="ChatFrameTemplate,FloatingBorderedFrame"
+        frameStrata="MEDIUM" toplevel="false"
+        parent="UIParent" clampedToScreen="false" frameLevel="5" virtual="true">
+
+        <Size x="430" y="120"/>
+        <Anchors>
+            <Anchor point="BOTTOMLEFT" x="32" y="70"/>
+        </Anchors>
+
+        <ResizeBounds>
+            <minResize><AbsDimension x="250" y="120"/></minResize>
+            <maxResize><AbsDimension x="800" y="800"/></maxResize>
+        </ResizeBounds>
+
+        <Frames>
+            <!-- Scroll bar (right edge, parentKey="ScrollBar") is inherited
+                 from ChatFrameTemplate with these same anchors; declaring a
+                 second one here would leave an orphan scrollbar behind. -->
+
+            <!-- Click-anywhere button: clicking anywhere in the chat
+                 frame focuses the edit box. Hidden by default; Lua
+                 enables it after the editBox is wired up. -->
+            <Button name="$parentClickAnywhereButton" parentKey="clickAnywhereButton" setAllPoints="true" hidden="true">
+                <Scripts>
+                    <OnClick>
+                        local edit = self:GetParent().editBox
+                        if edit then ChatEdit_ActivateChat(edit) end
+                    </OnClick>
+                </Scripts>
+            </Button>
+
+            <!-- Resize grabber, bottom-right corner. -->
+            <Button name="$parentResizeButton" parentKey="ResizeButton">
+                <Size x="16" y="16"/>
+                <Anchors>
+                    <Anchor point="BOTTOMRIGHT" relativeTo="$parentBackground" x="0" y="0"/>
+                </Anchors>
+                <Scripts>
+                    <OnMouseDown>
+                        self:SetButtonState("PUSHED", true)
+                        self:GetHighlightTexture():Hide()
+                        self:GetParent():StartSizing("BOTTOMRIGHT")
+                    </OnMouseDown>
+                    <OnMouseUp>
+                        self:SetButtonState("NORMAL", false)
+                        self:GetHighlightTexture():Show()
+                        self:GetParent():StopMovingOrSizing()
+                    </OnMouseUp>
+                </Scripts>
+                <NormalTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up"/>
+                <HighlightTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight"/>
+                <PushedTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down"/>
+            </Button>
+
+            <!-- Scroll-to-bottom indicator above the resize button. -->
+            <Button parentKey="ScrollToBottomButton" alpha="0">
+                <Size x="17" y="15"/>
+                <Anchors>
+                    <Anchor point="BOTTOMRIGHT" relativeKey="$parent.ResizeButton" relativePoint="TOPRIGHT" x="-2" y="-2"/>
+                </Anchors>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <Texture parentKey="Flash" atlas="minimal-scrollbar-arrow-returntobottom" useAtlasSize="true" alphaMode="ADD" hidden="true"/>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        PlaySound(SOUNDKIT.IG_CHAT_BOTTOM)
+                        self:GetParent():ScrollToBottom()
+                    </OnClick>
+                </Scripts>
+                <NormalTexture atlas="minimal-scrollbar-arrow-returntobottom" useAtlasSize="true"/>
+                <PushedTexture atlas="minimal-scrollbar-arrow-returntobottom-down" useAtlasSize="true"/>
+                <HighlightTexture atlas="minimal-scrollbar-arrow-returntobottom-over" useAtlasSize="true"/>
+                <DisabledTexture atlas="minimal-scrollbar-arrow-returntobottom" useAtlasSize="true"/>
+            </Button>
+
+            <!-- Edit box - inherits Blizzard's full chat input including
+                 channel selector, language dropdown, autocomplete, and
+                 history. Anchored to match the chat frame's full width
+                 (BOTTOMLEFT to BOTTOMLEFT and BOTTOMRIGHT to BOTTOMRIGHT)
+                 so the input lines up cleanly with the chat box edges.
+                 ChatFrameEditBoxTemplate is hidden by default - it
+                 only shows when ChatEdit_ActivateChat focuses it. -->
+            <EditBox name="$parentEditBox" inherits="ChatFrameEditBoxTemplate" parentKey="editBox">
+                <Size x="5" y="32"/>
+                <Anchors>
+                    <Anchor point="TOPLEFT"  relativeTo="$parent" relativePoint="BOTTOMLEFT"  x="0" y="-4"/>
+                    <Anchor point="TOPRIGHT" relativeTo="$parent" relativePoint="BOTTOMRIGHT" x="0" y="-4"/>
+                </Anchors>
+                <Scripts>
+                    <OnLoad inherit="append">
+                        self.chatFrame = self:GetParent()
+                    </OnLoad>
+                </Scripts>
+            </EditBox>
+        </Frames>
+    </ScrollingMessageFrame>
+</Ui>
