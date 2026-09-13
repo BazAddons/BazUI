@@ -3,28 +3,6 @@
 ..\..\..\..\Blizzard_SharedXML\UI.xsd">
 
     <!-- =================================================================
-         BazUIChat tab template - inherits ChatTabArtTemplate so we get the
-         exact same tab visuals as Blizzard's chat tabs (background +
-         active + highlight states), but with NO scripts attached. Tab
-         click logic lives in Lua. We add ButtonText layout so the tab
-         can display its label ("General", etc.).
-         ================================================================= -->
-    <!-- TabSystem container for chat tabs. Inherits Blizzard's
-         TabSystemTemplate and overrides the KeyValues so the right
-         tab template + width clamps are baked in before OnLoad runs.
-         This is the same pattern HousingDashboard / FriendsFrame /
-         PlayerSpellsFrame use - sets tabTemplate via XML KeyValue
-         (not Lua) so the OnLoad reads the correct value first time. -->
-    <Frame name="BazUIChatTabSystemTemplate" inherits="TabSystemTemplate" virtual="true">
-        <KeyValues>
-            <KeyValue key="tabTemplate"  value="TabSystemTopButtonTemplate" type="string"/>
-            <KeyValue key="minTabWidth"  value="80" type="number"/>
-            <KeyValue key="maxTabWidth"  value="140" type="number"/>
-            <KeyValue key="tabSelectSound" value="SOUNDKIT.IG_CHARACTER_INFO_TAB" type="global"/>
-        </KeyValues>
-    </Frame>
-
-    <!-- =================================================================
          BazUIChat window template - the full chat chrome.
            Visuals: inherits FloatingBorderedFrame (background + 4 corner
                     + 4 edge textures, identical to Blizzard's chat).

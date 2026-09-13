@@ -581,21 +581,31 @@ function Tabs:EnsureFor(dockInstance)
     local safeID = (id or "dock"):gsub("[^%w_]", "_")
     local stripName = (id == "dock") and "BazUIChatTabSystem"
                                      or  ("BazUIChatTabSystem_" .. safeID)
-    local ts = CreateFrame("Frame", stripName, UIParent, "TabSystemTemplate")
+    -- Blizzard's TabSystem exists in every client's source tree but
+    -- Classic-family clients don't load it. BazUI.CreateTabStrip speaks
+    -- the same API, so everything below works against either.
+    local ts
+    if BazUI.HasBlizzardTabSystem and BazUI.HasBlizzardTabSystem() then
+        ts = CreateFrame("Frame", stripName, UIParent, "TabSystemTemplate")
+        ts.tabTemplate = "TabSystemTopButtonTemplate"
+        -- Tighter clamp than the housing dashboard's defaults; chat tab
+        -- labels are short and we want a compact look against ~440px chats.
+        ts.minTabWidth = 60
+        ts.maxTabWidth = 120
+        if TabSystemMixin and TabSystemMixin.OnLoad then
+            TabSystemMixin.OnLoad(ts)
+        end
+    else
+        ts = BazUI.CreateTabStrip(stripName, UIParent, {
+            minTabWidth = 60, maxTabWidth = 120,
+            tabSelectSound = SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB,
+        })
+    end
     if not ts then
         if addon.core then
-            addon.core:Print("|cffff4444TabSystemTemplate not found - skipping tabs|r")
+            addon.core:Print("|cffff4444Could not build the chat tab strip|r")
         end
         return nil
-    end
-
-    ts.tabTemplate = "TabSystemTopButtonTemplate"
-    -- Tighter clamp than the housing dashboard's defaults; chat tab
-    -- labels are short and we want a compact look against ~440px chats.
-    ts.minTabWidth = 60
-    ts.maxTabWidth = 120
-    if TabSystemMixin and TabSystemMixin.OnLoad then
-        TabSystemMixin.OnLoad(ts)
     end
 
     -- Anchor only - no SetSize. TabSystemTemplate inherits

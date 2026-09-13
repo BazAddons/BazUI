@@ -31,6 +31,7 @@ Core\Keybinds.lua
 Core\EditMode.lua
 Core\Serialization.lua
 Core\Widgets.lua
+Core\TabStrip.lua
 Core\Options\Constants.lua
 Core\Options\WidgetFactories.lua
 Core\Options\LayoutEngine.lua
