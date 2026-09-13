@@ -69,9 +69,42 @@ function TabMixin:SetTabSelected(selected)
         elseif self.OnSelected then
             self:OnSelected(selected)
         end
+        UpdateBackdrop(self, selected)
     else
         if selected then PanelTemplates_SelectTab(self) else PanelTemplates_DeselectTab(self) end
     end
+end
+
+-- MinimalTab's own art is a faint translucent shape that all but
+-- vanishes over the game world, so each tab gets a solid dark panel
+-- behind it with a gold accent along the top of the selected tab.
+local BG_SELECTED   = { 0.10, 0.09, 0.07, 0.95 }
+local BG_UNSELECTED = { 0.04, 0.04, 0.05, 0.85 }
+local EDGE_SELECTED   = { 1.00, 0.82, 0.00, 0.95 }
+local EDGE_UNSELECTED = { 0.55, 0.45, 0.15, 0.60 }
+
+local function AddBackdrop(tab)
+    local bg = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    if tab.Left and tab.Right then
+        bg:SetPoint("TOPLEFT",     tab.Left,  "TOPLEFT",     1, 0)
+        bg:SetPoint("BOTTOMRIGHT", tab.Right, "BOTTOMRIGHT", -1, 0)
+    else
+        bg:SetPoint("TOPLEFT", 1, -6)
+        bg:SetPoint("BOTTOMRIGHT", -1, 0)
+    end
+    local edge = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
+    edge:SetPoint("TOPLEFT",  bg, "TOPLEFT",  0, 0)
+    edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)
+    edge:SetHeight(2)
+    tab._bazBg, tab._bazEdge = bg, edge
+end
+
+local function UpdateBackdrop(tab, selected)
+    if not tab._bazBg then return end
+    local bg   = selected and BG_SELECTED   or BG_UNSELECTED
+    local edge = selected and EDGE_SELECTED or EDGE_UNSELECTED
+    tab._bazBg:SetColorTexture(bg[1], bg[2], bg[3], bg[4])
+    tab._bazEdge:SetColorTexture(edge[1], edge[2], edge[3], edge[4])
 end
 
 local function CreateTab(strip)
@@ -79,11 +112,16 @@ local function CreateTab(strip)
     if HasTemplate("MinimalTabTemplate") then
         tab = CreateFrame("Button", nil, strip, "MinimalTabTemplate")
         tab._bazMinimal = true
+        AddBackdrop(tab)
     else
         tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
     end
     Mixin(tab, TabMixin)
-    tab:SetScript("OnClick", function(self)
+    -- Left click selects. Right click is left to OnMouseUp hooks (Chat
+    -- opens its tab menu there), so it must not change the selection.
+    tab:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    tab:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then return end
         local s = self:GetParent()
         if s and s.SetTab then s:SetTab(self.tabID, true) end
     end)

@@ -33,7 +33,7 @@ addon.Tabs = Tabs
 -- entries (Channels / Clear / Delete) sit alongside any other addon
 -- that wants to extend tab behaviour (BazTooltipEditor's Inspect,
 -- a future log-archiver, etc.). Tabs.lua's OnMouseUp hook below
--- opens the menu on shift+right-click.
+-- opens the menu on right-click.
 ---------------------------------------------------------------------------
 
 local function GetBazChatSection(ctx)
@@ -781,15 +781,13 @@ function Tabs:AddFor(window, index, label)
             StopMonitor(self)
         end)
     end
-    -- Shift+right-click on a tab opens BazUI's shared context menu
-    -- (scope "chat-tab"). BazChat contributes Channels / Clear / Delete
-    -- to that menu via RegisterContextMenuSection further down; other
-    -- addons can append their own entries against the same scope.
-    -- Plain right-click is intentionally left alone now that the
-    -- channel popup lives inside the menu.
+    -- Right-click on a tab (shift or not) opens BazUI's shared context
+    -- menu (scope "chat-tab"): Rename / Channels / Clear / Lock / Move to
+    -- / Delete, contributed via RegisterContextMenuSection above. Other
+    -- modules can append their own entries against the same scope.
     if tab then
         tab:HookScript("OnMouseUp", function(self, button)
-            if button == "RightButton" and IsShiftKeyDown() and BazUI.OpenContextMenu then
+            if button == "RightButton" and BazUI.OpenContextMenu then
                 BazUI:OpenContextMenu("chat-tab", self, {
                     tab   = self,
                     index = index,

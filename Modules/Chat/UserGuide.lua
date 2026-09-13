@@ -26,7 +26,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "What you get" },
                 { type = "list", items = {
-                    "|cffffd700Tabs|r — create, rename, delete, and drag-to-reorder; right-click to pick which channels each tab shows.",
+                    "|cffffd700Tabs|r — create, rename, delete, and drag-to-reorder; right-click a tab for its menu (rename, channels, move, delete).",
                     "|cffffd700Combat Log|r as a real tab — Blizzard's filter buttons (My Actions, What Happened to Me, Additional Filters) live inside BazUI Chat instead of floating off-screen.",
                     "|cffffd700Channel filtering|r per-tab for Say, Guild, Whispers, Trade, custom channels, and so on.",
                     "|cffffd700Timestamps|r in a left-side gutter so wrapped lines stay aligned with the message body.",
@@ -65,13 +65,13 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "h2", text = "Creating + renaming" },
                 { type = "list", items = {
                     "Click the |cffffd700+|r button at the right end of the tab strip to create a new tab.",
-                    "Right-click any tab to open its channel popup; the |cffffd700Name|r field at the top renames it (Enter saves, Esc cancels).",
+                    "Right-click any tab for its menu: |cffffd700Rename...|r, |cffffd700Channels...|r (a popup whose Name field also renames the tab), Clear, Lock, Move to and Delete.",
                     "|cffffd700BazUI > Chat > Tabs|r in Options > AddOns shows every tab as a list with the same name field plus an Edit Channels button.",
                 }},
 
                 { type = "h2", text = "Deleting + reordering" },
                 { type = "list", items = {
-                    "Right-click a tab → |cffffd700Delete Tab|r removes it. No /reload needed.",
+                    "Right-click a tab → |cffffd700Delete tab|r removes it. No /reload needed.",
                     "The |cffffd700General|r tab can't be deleted — it owns the default chat target that drives Enter-to-chat and addon /print messages.",
                     "Click and HOLD a tab for ~2 seconds to start dragging. Drop it left or right of another tab to reorder.",
                 }},
@@ -107,7 +107,7 @@ BazUI:RegisterUserGuide("Chat", {
             title = "Channels",
             blocks = {
                 { type = "lead",
-                  text = "Every tab has its own channel subscription. Right-click any tab to open a 2-column popup that controls exactly what flows in." },
+                  text = "Every tab has its own channel subscription. Right-click any tab and pick |cffffd700Channels...|r for a 2-column popup that controls exactly what flows in." },
 
                 { type = "h2", text = "Categories vs. named channels" },
                 { type = "paragraph",
@@ -146,7 +146,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Removing the Log tab" },
                 { type = "paragraph",
-                  text = "Right-click → Delete Tab works on the Log tab too. Deleted canonical tabs stay deleted across /reload. Add a new tab and it'll show up as a blank tab; you can re-create the Log tab via |cffffd700BazUI Chat → Tabs → Reset Tabs to Defaults|r." },
+                  text = "Right-click → Delete tab works on the Log tab too. Deleted canonical tabs stay deleted across /reload. Add a new tab and it'll show up as a blank tab; you can re-create the Log tab via |cffffd700BazUI Chat → Tabs → Reset Tabs to Defaults|r." },
             },
         },
 

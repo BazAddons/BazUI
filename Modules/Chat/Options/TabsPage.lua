@@ -108,7 +108,7 @@ local function BuildTabDetail(item)
         { type = "header", name = "Channels" },
 
         { type = "note", style = "info",
-          text = "Click Edit Channels to pick which chat events this tab receives. The same popup also opens when you right-click the tab itself.",
+          text = "Click Edit Channels to pick which chat events this tab receives. The same popup opens from the tab's right-click menu under Channels...",
         },
 
         { type = "execute",
