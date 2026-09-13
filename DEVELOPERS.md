@@ -19,7 +19,7 @@ BazUI/
   Modules/
     Drawers/           from BazWidgetDrawers (Era file set)
     Chat/              planned, from BazChat
-    Bags/              planned, from BazBags
+    Bags/              from BazBags; Classic slot template, keyring section, no currency strip
     Bars/              planned, selected parts of BazBars
 ```
 

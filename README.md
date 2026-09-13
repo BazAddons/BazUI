@@ -13,7 +13,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Core | BazCore | Ported |
 | Drawers | BazWidgetDrawers | Ported (Minimap, Minimap Buttons, Info Bar, Zone Text, Quest Tracker) |
 | Chat | BazChat | Planned |
-| Bags | BazBags | Planned |
+| Bags | BazBags | Ported (Classic bags plus keyring; categories, pinning, search) |
 | Bars | BazBars (selected parts) | Planned |
 
 ## Commands
@@ -21,6 +21,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 - `/bazui` (or `/bui`) opens the options window.
 - `/bazui profile <name>`, `/bazui profiles`, `/bazui default <name>` manage profiles.
 - `/bwd toggle|show|hide|open <name>|list` drives the drawer.
+- `/bbg` (or `/bazbags`) toggles the bag panel; `/bbg sort`, `/bbg categorize`.
 
 ## License
 

@@ -69,3 +69,10 @@ Modules\Drawers\Widgets\QuestTracker\Blocks.lua
 Modules\Drawers\Widgets\QuestTracker\Options.lua
 Modules\Drawers\Widgets\QuestTracker\Init.lua
 Modules\Drawers\UserGuide.lua
+
+Modules\Bags\Core.lua
+Modules\Bags\Categories.lua
+Modules\Bags\Layouts.lua
+Modules\Bags\Bag.lua
+Modules\Bags\CategoriesPage.lua
+Modules\Bags\UserGuide.lua

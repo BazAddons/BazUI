@@ -567,9 +567,9 @@ function BazUI:CreateItemButton(parent, opts)
 
     -- Empty-slot artwork - drawn under the icon, so when no item is
     -- assigned the slot art shows through.
-    if opts.slotAtlas then
+    if opts.slotAtlas or opts.slotTexture then
         btn.SlotBackground = btn:CreateTexture(nil, "BACKGROUND")
-        btn.SlotBackground:SetAtlas(opts.slotAtlas)
+        BazUI.SetAtlasOrTexture(btn.SlotBackground, opts.slotAtlas, opts.slotTexture)
         btn.SlotBackground:SetAllPoints()
     end
 

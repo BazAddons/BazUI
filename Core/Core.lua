@@ -543,7 +543,7 @@ end)
 
 ---------------------------------------------------------------------------
 -- BazUI's own slash commands
--- /bazui (or /bc) opens the options window. Sub-commands cover the most
+-- /bazui (or /bui) opens BazUI in the Options > AddOns panel. Sub-commands cover the most
 -- common day-to-day actions: profile switching and default-profile setup.
 ---------------------------------------------------------------------------
 
