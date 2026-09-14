@@ -555,6 +555,24 @@ function UnitBars:CreateMover(bar)
     tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
     mover.tint = tint
 
+    -- Two pixels of border, opaque, so the state reads whatever colour
+    -- the bar underneath happens to be.
+    mover.edges = {}
+    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+        local edge = mover:CreateTexture(nil, "OVERLAY")
+        edge:SetColorTexture(0.35, 0.65, 1, 0.9)
+        if side == "TOP" or side == "BOTTOM" then
+            edge:SetPoint(side .. "LEFT")
+            edge:SetPoint(side .. "RIGHT")
+            edge:SetHeight(2)
+        else
+            edge:SetPoint("TOP" .. side)
+            edge:SetPoint("BOTTOM" .. side)
+            edge:SetWidth(2)
+        end
+        mover.edges[#mover.edges + 1] = edge
+    end
+
     local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("CENTER")
     label:SetText(def.name or ("Bar " .. def.id))
@@ -565,17 +583,65 @@ function UnitBars:CreateMover(bar)
     end)
     mover:SetScript("OnDragStop", function() UnitBars:SavePosition(bar) end)
 
-    -- While dragging, say whether letting go would dock it.
+    -- While it is being dragged, say whether letting go would dock it,
+    -- and to what.
+    --
+    -- Edit Mode drags through an overlay of its own and marks the frame
+    -- isDragging, so that is the flag to watch; isMoving covers a drag
+    -- by the mover's own handle. Watching the wrong one is why this
+    -- never fired.
+    --
+    -- The signal is the border and the words, not the fill: the fill is
+    -- translucent and sits over the bar itself, so a green wash over a
+    -- green health bar says nothing at all.
     mover:SetScript("OnUpdate", function(self)
-        if not self.isMoving then return end
-        local snap = NearestDock(self, bar.frame)
-        self.tint:SetColorTexture(snap and 0.2 or 0.15, snap and 0.75 or 0.5,
-            snap and 0.3 or 0.8, 0.45)
+        if not (self.isDragging or self.isMoving) then
+            if self._snapShown then self:ShowSnap(nil) end
+            return
+        end
+
+        -- The bar follows the handle while it is being dragged rather
+        -- than jumping to it on release. Edit Mode moves the mover, so
+        -- for the drag the anchoring runs that way round; it is put back
+        -- the other way when the drag ends. Moving a secure frame is
+        -- protected, so none of this happens in combat.
+        if not InCombatLockdown() then
+            bar.frame:ClearAllPoints()
+            bar.frame:SetPoint("CENTER", self, "CENTER", 0, 0)
+            BazUI.Dock:Relayout(bar.frame)
+        end
+
+        self:ShowSnap(NearestDock(self, bar.frame))
     end)
+
+    function mover:ShowSnap(snap)
+        self._snapShown = snap and true or false
+        if snap then
+            local hostLabel
+            for _, host in ipairs(BazUI.Dock:GetHosts()) do
+                if host.id == snap.host then hostLabel = host.label break end
+            end
+            for _, edge in ipairs(self.edges) do
+                edge:SetColorTexture(0.35, 0.95, 0.40, 1)
+            end
+            self.tint:SetColorTexture(0.20, 0.70, 0.30, 0.35)
+            self.label:SetText((snap.edge == "BOTTOM" and "Below " or "Above ")
+                .. (hostLabel or "that"))
+            self.label:SetTextColor(0.5, 1, 0.55)
+        else
+            for _, edge in ipairs(self.edges) do
+                edge:SetColorTexture(0.35, 0.65, 1, 0.9)
+            end
+            self.tint:SetColorTexture(0.15, 0.50, 0.80, 0.35)
+            self.label:SetText(bar.def.name or ("Bar " .. bar.def.id))
+            self.label:SetTextColor(1, 1, 1)
+        end
+    end
+
     mover:HookScript("OnDragStart", function(self) self.isMoving = true end)
     mover:HookScript("OnDragStop", function(self)
         self.isMoving = false
-        self.tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
+        self:ShowSnap(nil)
     end)
 
     bar.mover = mover
@@ -584,7 +650,10 @@ function UnitBars:CreateMover(bar)
         label = def.name or ("Bar " .. def.id),
         addonName = "UnitFrames",
         positionKey = false,
-        onPositionChanged = function() UnitBars:SavePosition(bar) end,
+        onPositionChanged = function()
+            if mover.ShowSnap then mover:ShowSnap(nil) end
+            UnitBars:SavePosition(bar)
+        end,
         onEnter = function() UnitBars:ShowMover(bar) end,
         onExit  = function() UnitBars:ShowMover(bar) end,
     })
