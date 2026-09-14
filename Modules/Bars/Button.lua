@@ -299,12 +299,14 @@ function Button:UpdateFlyoutArrow(btn)
     if not arrow then
         arrow = btn:CreateTexture(nil, "OVERLAY")
         arrow:SetTexture(FLYOUT_ARROW)
-        arrow:SetVertexColor(unpack(BazUI.Skin.Theme.colors.goldSoft))
         btn.bbFlyoutArrow = arrow
     end
-    -- Sized on every update rather than at creation, so changing the
-    -- constant takes effect without rebuilding the bars.
+    -- Size and colour are set on every update rather than at creation,
+    -- so changing either takes effect without rebuilding the bars.
     arrow:SetSize(FLYOUT_ARROW_SIZE, FLYOUT_ARROW_SIZE)
+    -- The full accent gold, not the soft one: this is a marker that has
+    -- to catch the eye against a bright spell icon.
+    arrow:SetVertexColor(unpack(BazUI.Skin.Theme.colors.gold))
     arrow:SetRotation(look.rotation)
     arrow:ClearAllPoints()
     arrow:SetPoint(look.point, btn, look.point, look.x, look.y)
