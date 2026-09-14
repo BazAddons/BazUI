@@ -267,23 +267,35 @@ end
 -- matches the one players know from the spellbook.
 ---------------------------------------------------------------------------
 
--- Blizzard's flyout arrow is a wide, short strip, and rotating one of
--- those a quarter turn stretches it: the rotation is applied in the
--- texture's own space, so it only comes out true on a square. This art
--- is square and points right, which means all four directions are the
--- same texture at four rotations, with nothing distorted.
-local FLYOUT_ARROW = "Interface\\ChatFrame\\ChatFrameExpandArrow"
+-- Blizzard's own flyout arrow, which is bright gold art. That matters:
+-- a texture's colour multiplies its vertex colour, so grey art can only
+-- ever be made into dark gold, however bright a colour you ask for.
+local FLYOUT_ARROW = "Interface\\Buttons\\ActionBarFlyoutButton"
+
+-- The arrow's corner of the sheet, pointing up.
+local AL, AR = 0.625, 0.984375
+local AT, AB = 0.7421875, 0.828125
+
+-- Turning it is done by handing SetTexCoord the four corners rather
+-- than by SetRotation. Rotation happens in the texture's own space and
+-- only comes out true on a square, which is what stretched the sideways
+-- arrows; naming the corners maps the art onto the frame directly, so a
+-- quarter turn keeps its proportions. The sideways pair swap width and
+-- height to match.
+--
+-- Corner order is upper-left, lower-left, upper-right, lower-right.
+local LONG, SHORT = 26, 13
 
 local FLYOUT_ARROW_LOOK = {
-    RIGHT = { point = "RIGHT",  x =  7, y =  0, rotation = 0 },
-    UP    = { point = "TOP",    x =  0, y =  7, rotation = math.pi / 2 },
-    LEFT  = { point = "LEFT",   x = -7, y =  0, rotation = math.pi },
-    DOWN  = { point = "BOTTOM", x =  0, y = -7, rotation = -math.pi / 2 },
+    UP    = { point = "TOP",    x =  0, y =  5, w = LONG,  h = SHORT,
+              coords = { AL, AT, AL, AB, AR, AT, AR, AB } },
+    DOWN  = { point = "BOTTOM", x =  0, y = -5, w = LONG,  h = SHORT,
+              coords = { AL, AB, AL, AT, AR, AB, AR, AT } },
+    LEFT  = { point = "LEFT",   x = -5, y =  0, w = SHORT, h = LONG,
+              coords = { AR, AT, AL, AT, AR, AB, AL, AB } },
+    RIGHT = { point = "RIGHT",  x =  5, y =  0, w = SHORT, h = LONG,
+              coords = { AL, AB, AR, AB, AL, AT, AR, AT } },
 }
-
--- The offset above keeps pace with the size: the arrow sits just off
--- the button's edge rather than growing further over the icon.
-local FLYOUT_ARROW_SIZE = 20
 
 function Button:UpdateFlyoutArrow(btn)
     local isFlyout = btn.action and btn.action.type == "flyout"
@@ -301,13 +313,13 @@ function Button:UpdateFlyoutArrow(btn)
         arrow:SetTexture(FLYOUT_ARROW)
         btn.bbFlyoutArrow = arrow
     end
-    -- Size and colour are set on every update rather than at creation,
-    -- so changing either takes effect without rebuilding the bars.
-    arrow:SetSize(FLYOUT_ARROW_SIZE, FLYOUT_ARROW_SIZE)
-    -- The full accent gold, not the soft one: this is a marker that has
-    -- to catch the eye against a bright spell icon.
-    arrow:SetVertexColor(unpack(BazUI.Skin.Theme.colors.gold))
-    arrow:SetRotation(look.rotation)
+    -- Set on every update rather than at creation, so changing any of
+    -- this takes effect without rebuilding the bars.
+    arrow:SetSize(look.w, look.h)
+    arrow:SetTexCoord(unpack(look.coords))
+    -- The art is already the colour it should be; tinting it only ever
+    -- made it darker.
+    arrow:SetVertexColor(1, 1, 1)
     arrow:ClearAllPoints()
     arrow:SetPoint(look.point, btn, look.point, look.x, look.y)
     arrow:Show()
