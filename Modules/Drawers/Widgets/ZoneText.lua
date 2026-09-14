@@ -14,9 +14,7 @@ if not addon then return end
 
 local WIDGET_ID     = "bazdrawer_zonetext"
 local DESIGN_WIDTH  = 220
-local DESIGN_HEIGHT = 16   -- fallback min content height; the widget
-                           -- auto-sizes to the text's real string height
-local PAD           = 4    -- vertical padding above and below the text
+local DESIGN_HEIGHT = 28   -- includes the gold frame around the text
 
 local ZoneWidget = {}
 addon.ZoneWidget = ZoneWidget
@@ -51,16 +49,8 @@ end
 function ZoneWidget:Refresh()
     local f = self.frame; if not f then return end
     local zone = GetMinimapZoneText() or GetZoneText() or ""
-    f.text:SetText(zone)
+    f.updateNameplate(zone, f:GetWidth())
     f.text:SetTextColor(GetZoneColor())
-
-    -- Auto-size to the text's actual rendered height plus minimal
-    -- symmetric padding. The text is anchored CENTER so it stays
-    -- vertically balanced regardless of the string height.
-    local textH = f.text:GetStringHeight() or DESIGN_HEIGHT
-    if textH < DESIGN_HEIGHT then textH = DESIGN_HEIGHT end
-    self._desiredHeight = textH + PAD * 2
-    f:SetHeight(self._desiredHeight)
 
     if addon.WidgetHost and addon.WidgetHost.UpdateWidgetStatus then
         addon.WidgetHost:UpdateWidgetStatus(WIDGET_ID)
@@ -72,7 +62,7 @@ end
 ---------------------------------------------------------------------------
 
 function ZoneWidget:GetDesiredHeight()
-    return self._desiredHeight or (DESIGN_HEIGHT + PAD * 2)
+    return self._desiredHeight or DESIGN_HEIGHT
 end
 
 function ZoneWidget:GetStatusText()
@@ -103,22 +93,23 @@ end
 function ZoneWidget:Build()
     if self.frame then return self.frame end
     local f = CreateFrame("Frame", "BazUIDrawerZoneTextWidget", UIParent)
-    f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT + PAD * 2)
+    f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT)
     self.frame = f
 
-    -- Centered zone text FontString. Uses GameFontNormalMed3 for a
-    -- slightly larger read than the default GameFontNormal. Anchored
-    -- CENTER to the widget so the text is vertically balanced instead
-    -- of TOP-anchored with dead space below it.
-    f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
-    f.text:SetPoint("LEFT",  f, "LEFT",  PAD, 0)
-    f.text:SetPoint("RIGHT", f, "RIGHT", -PAD, 0)
-    f.text:SetJustifyH("CENTER")
-    f.text:SetJustifyV("MIDDLE")
-    f.text:SetWordWrap(false)   -- keep zone name to one line; falls back to truncation
-    f.text:SetTextColor(1.00, 0.82, 0.00)
+    local layout = {
+        namePlate = { x = 0, y = 0, w = 110, h = DESIGN_HEIGHT },
+        name = { x = 0, y = 4, w = 110, h = 20 },
+    }
+    f.text, f.updateNameplate = BazUI.Skin.Theme.CreateNameplate(f, f, layout, 1, 14, .84)
+    -- Docking and drawer resizing can change the available width without a zone event.
+    f:HookScript("OnSizeChanged", function(_, width)
+        if f.lastWidth ~= width then
+            f.lastWidth = width
+            f.updateNameplate(GetMinimapZoneText() or GetZoneText() or "", width)
+        end
+    end)
 
-    self._desiredHeight = DESIGN_HEIGHT + PAD * 2
+    self._desiredHeight = DESIGN_HEIGHT
     return f
 end
 
@@ -129,7 +120,7 @@ function ZoneWidget:Init()
         id           = WIDGET_ID,
         label        = "Zone",
         designWidth  = DESIGN_WIDTH,
-        designHeight = DESIGN_HEIGHT + PAD * 2,
+        designHeight = DESIGN_HEIGHT,
         frame        = f,
         GetDesiredHeight = function() return ZoneWidget:GetDesiredHeight() end,
         GetStatusText    = function() return ZoneWidget:GetStatusText() end,
