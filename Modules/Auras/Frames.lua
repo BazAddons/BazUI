@@ -267,8 +267,15 @@ local function ConfigureHeader(h, side, below)
         h:SetAttribute("filter", mine and "HARMFUL|PLAYER" or "HARMFUL")
     end
     -- Buttons the header creates during combat still get the right size:
-    -- this snippet runs in the header's secure environment.
-    h:SetAttribute("initialConfigFunction", ("self:SetWidth(%d); self:SetHeight(%d)"):format(size, size))
+    -- this snippet runs in the header's secure environment. The
+    -- template's right-click is "cancelaura", which always cancels the
+    -- PLAYER's aura at the button's index, so buttons for any other unit
+    -- lose it: right-clicking a target's buff must not drop one of yours.
+    local snippet = ("self:SetWidth(%d); self:SetHeight(%d)"):format(size, size)
+    if not isPlayer then
+        snippet = snippet .. '; self:SetAttribute("type2", nil)'
+    end
+    h:SetAttribute("initialConfigFunction", snippet)
     return point
 end
 
@@ -561,6 +568,10 @@ function addon:ApplySettings()
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
+        -- Buttons that already exist get the same treatment as new ones.
+        if ButtonUnit(btn) ~= "player" and btn:GetAttribute("type2") then
+            btn:SetAttribute("type2", nil)
+        end
     end
     headers.HELPFUL:SetShown(enabled)
     headers.HARMFUL:SetShown(enabled)
