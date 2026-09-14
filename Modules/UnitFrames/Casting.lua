@@ -173,9 +173,13 @@ function C:Create(parent, name)
     self.label:SetAllPoints(name)
     self.label:SetFont(BazUI.Skin.Theme.FontFile(), 10, "OUTLINE")
     self.label:SetTextColor(1, .84, .5); self.label:SetWordWrap(false)
+    -- The count sits in the middle of the portrait, over the liquid, and
+    -- is sized from the portrait itself so it holds its proportions at
+    -- any frame scale rather than shrinking into the artwork.
     self.timer = f:CreateFontString(nil, "OVERLAY")
-    self.timer:SetPoint("TOP", name, "BOTTOM", 0, -1)
-    self.timer:SetFont(BazUI.Skin.Theme.FontFile(), 10, "OUTLINE")
+    self.timer:SetPoint("CENTER", f, "CENTER", 0, 0)
+    self.timer:SetFont(BazUI.Skin.Theme.FontFile(),
+        math.max(13, math.floor(self.side * 0.30)), "OUTLINE")
     f:Hide()
     -- A dedicated event receiver avoids replacing UnitFrames' existing
     -- PLAYER_DEAD / PLAYER_ENTERING_WORLD handlers in BazUI's event registry.
