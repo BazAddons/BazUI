@@ -17,7 +17,6 @@ local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
 local ROW_H  = 22
-local HEAD_H = 50
 
 Codex.customTabs = Codex.customTabs or {}
 
@@ -78,6 +77,7 @@ end
 
 local page, pool = nil, {}
 local message
+local headerNote, headerWarn
 
 local function AcquireRow(parent)
     local row = table.remove(pool)
@@ -159,32 +159,39 @@ local function ReleaseRows()
     page.rows = {}
 end
 
-local function Build(parent)
-    if page then
-        page:SetParent(parent)
-        return page
+---------------------------------------------------------------------------
+-- The header
+--
+-- The box stays above the scroll so you can drop links into it however
+-- far down the list you have scrolled.
+---------------------------------------------------------------------------
+
+local header
+
+local function BuildHeader(host)
+    if header then
+        header:SetParent(host)
+        return header
     end
 
-    page = CreateFrame("Frame", nil, parent)
-    page:SetPoint("TOPLEFT")
-    page.rows = {}
+    header = CreateFrame("Frame", nil, host)
+    header:SetPoint("TOPLEFT")
 
-    page.box = Theme.CreateSearchBox(page, "Drop an item link here to want it")
-    page.box:SetPoint("TOPLEFT", 0, 0)
-    page.box:SetPoint("TOPRIGHT", 0, 0)
+    header.box = Theme.CreateSearchBox(header, "Drop an item link here to want it")
+    header.box:SetPoint("TOPLEFT", 0, 0)
+    header.box:SetPoint("TOPRIGHT", 0, 0)
     -- The box adds rather than filters, so Enter is the commit and the
     -- field empties itself ready for the next one.
-    page.box:SetScript("OnEnterPressed", function(self)
+    header.box:SetScript("OnEnterPressed", function(self)
         local ok, err = Add(self:GetText())
-        message = err
-        if ok then message = nil end
+        message = ok and nil or err
         self:SetText("")
         self:ClearFocus()
         Codex.Panel:QueueRefresh()
     end)
     -- Shift-clicking an item writes its link into the focused box; catch
     -- that and take the item straight away.
-    page.box:SetScript("OnTextChanged", function(self)
+    header.box:SetScript("OnTextChanged", function(self)
         local text = self:GetText() or ""
         self.placeholder:SetShown(text == "")
         if text:find("item:%d+") then
@@ -195,16 +202,50 @@ local function Build(parent)
         end
     end)
 
-    page.note = Theme.FontString(page, "OVERLAY", "GameFontHighlightSmall")
-    page.note:SetPoint("TOPLEFT", page.box, "BOTTOMLEFT", 2, -6)
-    page.note:SetPoint("TOPRIGHT", page.box, "BOTTOMRIGHT", -2, -6)
-    page.note:SetJustifyH("LEFT")
-    page.note:SetTextColor(unpack(Theme.colors.textMuted))
+    header.note = Theme.FontString(header, "OVERLAY", "GameFontHighlightSmall")
+    header.note:SetPoint("TOPLEFT", header.box, "BOTTOMLEFT", 2, -7)
+    header.note:SetPoint("RIGHT", header, "RIGHT", -2, 0)
+    header.note:SetJustifyH("LEFT")
+    header.note:SetJustifyV("TOP")
+    header.note:SetHeight(26)
+    header.note:SetWordWrap(true)
+    header.note:SetTextColor(unpack(Theme.colors.textMuted))
+
+    return header
+end
+
+local function RenderHeader(host, width)
+    local h = BuildHeader(host)
+    h:ClearAllPoints()
+    h:SetPoint("TOPLEFT")
+    h:SetWidth(width)
+    h:Show()
+    h.note:SetText(headerNote or "")
+    h.note:SetTextColor(unpack(headerWarn and Theme.colors.warn or Theme.colors.textMuted))
+
+    local height = 22 + 7 + 26 + 8
+    h:SetHeight(height)
+    return height
+end
+
+---------------------------------------------------------------------------
+-- The list
+---------------------------------------------------------------------------
+
+local function Build(parent)
+    if page then
+        page:SetParent(parent)
+        return page
+    end
+
+    page = CreateFrame("Frame", nil, parent)
+    page:SetPoint("TOPLEFT")
+    page.rows = {}
 
     -- The list sits in the same card the rest of the codex draws.
     page.card = CreateFrame("Frame", nil, page)
-    page.card:SetPoint("TOPLEFT", 0, -HEAD_H)
-    page.card:SetPoint("TOPRIGHT", 0, -HEAD_H)
+    page.card:SetPoint("TOPLEFT")
+    page.card:SetPoint("TOPRIGHT")
     Theme.ApplyFlatPanel(page.card, Theme.colors.bgRaised, Theme.colors.edge)
 
     return page
@@ -233,14 +274,18 @@ local function Render(content, width)
     end)
 
     if message then
-        p.note:SetText(message)
-        p.note:SetTextColor(unpack(Theme.colors.warn))
+        headerNote, headerWarn = message, true
     elseif #entries == 0 then
-        p.note:SetText("Nothing on the list yet. Shift-click an item into the box above, or paste its link.")
-        p.note:SetTextColor(unpack(Theme.colors.textMuted))
+        headerNote = "Nothing on the list yet. Shift-click an item into the box above, or paste its link."
+        headerWarn = false
     else
-        p.note:SetText(#entries == 1 and "1 thing you are after" or (#entries .. " things you are after"))
-        p.note:SetTextColor(unpack(Theme.colors.textMuted))
+        headerNote = #entries == 1 and "1 thing you are after"
+            or (#entries .. " things you are after")
+        headerWarn = false
+    end
+    if header and header:IsShown() then
+        header.note:SetText(headerNote)
+        header.note:SetTextColor(unpack(headerWarn and Theme.colors.warn or Theme.colors.textMuted))
     end
 
     local y = 6
@@ -289,16 +334,20 @@ local function Render(content, width)
     p.card:SetHeight(cardHeight)
     p.card:SetShown(#entries > 0)
 
-    local total = HEAD_H + (#entries > 0 and cardHeight or 0)
-    p:SetHeight(math.max(total, 1))
-    Codex.customTabs.wishlist.height = total
+    local used = (#entries > 0) and cardHeight or 1
+    p:SetHeight(used)
+    Codex.customTabs.wishlist.height = used
 end
 
 Codex.customTabs.wishlist = {
-    label  = "Wishlist",
-    order  = 40,
-    Render = Render,
-    Hide   = function() if page then page:Hide() end end,
+    label        = "Wishlist",
+    order        = 40,
+    RenderHeader = RenderHeader,
+    Render       = Render,
+    Hide         = function()
+        if page then page:Hide() end
+        if header then header:Hide() end
+    end,
     height = 1,
     GetHighlights = function()
         local wanted, got = 0, 0

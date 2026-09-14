@@ -40,9 +40,14 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         -- bank, loot, vendors, links in chat. It ships empty and grows.
         indexItems   = true,
         itemIndex    = {},       -- [itemID] = itemName
+        itemCategory = "all",    -- a category key from Bags, or "all"
         wishlist     = {},       -- [itemID] = { note = string, added = time }
     },
-    minimap = { label = "Codex", icon = "Interface\\Icons\\INV_Misc_Book_09" },
+    minimap = {
+        label = "Codex",
+        icon  = "Interface\\Icons\\INV_Misc_Book_09",
+        onClick = function() Codex:Toggle() end,
+    },
     slash = { "/bazcodex", "/codex" },
     defaultHandler = function() Codex:Toggle() end,
     commands = {

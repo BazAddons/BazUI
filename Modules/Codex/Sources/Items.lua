@@ -22,9 +22,8 @@ local Codex = BazUI.Codex
 local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
-local MAX_RESULTS = 60
+local MAX_RESULTS = 200   -- drawn at once; the filter narrows past this
 local ROW_H       = 20
-local HEAD_H      = 50
 
 Codex.customTabs = Codex.customTabs or {}
 
@@ -113,14 +112,68 @@ end
 
 local pendingID
 
--- A number or a link resolves exactly. Anything else is a name search
--- over the index. The second return is a line to show instead of rows.
+local function Sorted(ids, index)
+    table.sort(ids, function(a, b) return (index[a] or "") < (index[b] or "") end)
+    return ids
+end
+
+-- Everything the character has met, by name. This is what the page
+-- shows before you type anything: the box narrows a list that is
+-- already there rather than summoning one out of nothing.
+local function Everything()
+    local index = Index()
+    local ids = {}
+    for itemID in pairs(index) do ids[#ids + 1] = itemID end
+    return Sorted(ids, index)
+end
+
+---------------------------------------------------------------------------
+-- Categories
+--
+-- Bags already owns a category model and the classifier that places an
+-- item in one, and those categories are the player's own: renamed,
+-- reordered, added to. The codex asks Bags rather than growing a second
+-- set of names that would drift away from the first.
+---------------------------------------------------------------------------
+
+local classified = {}   -- [itemID] = categoryKey, for this session
+
+local function BagsCategories()
+    local bags = BazUI:GetModule("Bags")
+    return bags and bags.Categories or nil
+end
+
+local function BagCategories()
+    local cats = BagsCategories()
+    if not (cats and cats.GetAll) then return {} end
+    local ok, list = pcall(cats.GetAll)
+    return (ok and list) or {}
+end
+
+local function CategoryOf(itemID)
+    if classified[itemID] then return classified[itemID] end
+    local cats = BagsCategories()
+    if not (cats and cats.Classify) then return nil end
+    local ok, key = pcall(cats.Classify, itemID)
+    if not ok or not key then return nil end
+    classified[itemID] = key
+    return key
+end
+
+local function InCategory(ids, key)
+    local out = {}
+    for _, itemID in ipairs(ids) do
+        if CategoryOf(itemID) == key then out[#out + 1] = itemID end
+    end
+    return out
+end
+
+-- A number or a link resolves exactly, anywhere in the game. Anything
+-- else narrows the list. The second return is a line to show above it.
 local function Resolve(query)
     query = (query or ""):trim()
     if query == "" then
-        return {}, string.format(
-            "Search by name across the %d items this character has met, or paste an item link or an item number for anything else.",
-            IndexSize())
+        return Everything(), nil
     end
 
     local id = tonumber(query:match("item:(%d+)") or query)
@@ -149,8 +202,7 @@ local function Resolve(query)
             "Nothing matching in the %d items this character has met. Paste a link or an item number to look up anything else.",
             IndexSize())
     end
-    table.sort(hits, function(a, b) return (index[a] or "") < (index[b] or "") end)
-    return hits
+    return Sorted(hits, index)
 end
 
 ---------------------------------------------------------------------------
@@ -162,6 +214,7 @@ end
 
 local page, pool = nil, {}
 local query = ""
+local headerNote
 
 local function AcquireRow(parent)
     local row = table.remove(pool)
@@ -229,6 +282,118 @@ local function ReleaseRows()
     page.rows = {}
 end
 
+---------------------------------------------------------------------------
+-- The header
+--
+-- The box and the category row sit above the scroll so they stay put
+-- while the list moves under them.
+---------------------------------------------------------------------------
+
+local header
+
+local function BuildHeader(host)
+    if header then
+        header:SetParent(host)
+        return header
+    end
+
+    header = CreateFrame("Frame", nil, host)
+    header:SetPoint("TOPLEFT")
+    header:SetPoint("TOPRIGHT")
+
+    header.box = Theme.CreateSearchBox(header, "Filter by name, or paste a link or an item number", function(text)
+        query = text
+        pendingID = nil
+        Codex.Panel:QueueRefresh()
+    end)
+    header.box:SetPoint("TOPLEFT", 0, 0)
+    header.box:SetPoint("TOPRIGHT", 0, 0)
+
+    -- The categories are the ones from your bags, including any you
+    -- made yourself: one classifier, one set of names, one place to
+    -- change them.
+    local strip = BazUI.CreateTabStrip(nil, header, {
+        style = "panel", tabHeight = 20, spacing = 3,
+        minTabWidth = 44, maxTabWidth = 110,
+    })
+    strip:SetPoint("TOPLEFT", header.box, "BOTTOMLEFT", 0, -6)
+    header.strip = strip
+    header.stripKeys = {}
+
+    header.note = Theme.FontString(header, "OVERLAY", "GameFontHighlightSmall")
+    header.note:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 2, -7)
+    header.note:SetPoint("RIGHT", header, "RIGHT", -2, 0)
+    header.note:SetJustifyH("LEFT")
+    header.note:SetJustifyV("TOP")
+    header.note:SetHeight(26)
+    header.note:SetWordWrap(true)
+    header.note:SetTextColor(unpack(Theme.colors.textMuted))
+
+    return header
+end
+
+local function RebuildCategories()
+    local strip = header.strip
+    strip:ClearTabs()
+    header.stripKeys = {}
+
+    local active = addon:GetSetting("itemCategory") or "all"
+    local activeID
+
+    local function Add(key, label)
+        local id = strip:AddTab(label)
+        header.stripKeys[id] = key
+        if key == active then activeID = id end
+    end
+
+    Add("all", "All")
+    for _, cat in ipairs(BagCategories() or {}) do
+        Add(cat.key, cat.name or cat.key)
+    end
+
+    strip:SetTabSelectedCallback(function(tabID, isUserAction)
+        local key = header.stripKeys[tabID]
+        if not key then return end
+        addon:SetSetting("itemCategory", key)
+        if isUserAction then Codex.Panel:QueueRefresh() end
+    end)
+    strip:Layout()
+    if activeID then
+        strip:SetTabVisuallySelected(activeID)
+        strip.selectedTabID = activeID
+    end
+end
+
+local function RenderHeader(host, width)
+    local h = BuildHeader(host)
+    h:ClearAllPoints()
+    h:SetPoint("TOPLEFT")
+    h:SetWidth(width)
+    h:Show()
+
+    if not h._categoriesBuilt then
+        h._categoriesBuilt = true
+        RebuildCategories()
+    end
+
+    local hasCategories = #(BagCategories() or {}) > 0
+    h.strip:SetShown(hasCategories)
+    h.note:ClearAllPoints()
+    h.note:SetPoint("TOPLEFT", hasCategories and h.strip or h.box, "BOTTOMLEFT", 2, -7)
+    h.note:SetPoint("RIGHT", h, "RIGHT", -2, 0)
+    h.note:SetText(headerNote or "")
+
+    -- The note keeps a fixed two lines whatever it says, so the list
+    -- below does not jump every time the wording changes length.
+    local height = 22 + 6 + (hasCategories and 27 or 0) + 26 + 8
+    h:SetHeight(height)
+    return height
+end
+
+---------------------------------------------------------------------------
+-- The list
+---------------------------------------------------------------------------
+
 local function Build(parent)
     if page then
         page:SetParent(parent)
@@ -239,25 +404,11 @@ local function Build(parent)
     page:SetPoint("TOPLEFT")
     page.rows = {}
 
-    page.box = Theme.CreateSearchBox(page, "Item name, link or number", function(text)
-        query = text
-        pendingID = nil
-        Codex.Panel:QueueRefresh()
-    end)
-    page.box:SetPoint("TOPLEFT", 0, 0)
-    page.box:SetPoint("TOPRIGHT", 0, 0)
-
-    page.note = Theme.FontString(page, "OVERLAY", "GameFontHighlightSmall")
-    page.note:SetPoint("TOPLEFT", page.box, "BOTTOMLEFT", 2, -6)
-    page.note:SetPoint("TOPRIGHT", page.box, "BOTTOMRIGHT", -2, -6)
-    page.note:SetJustifyH("LEFT")
-    page.note:SetTextColor(unpack(Theme.colors.textMuted))
-
     -- Results live in the same card the rest of the codex draws, so a
     -- lookup and a lockout read as pages of one book.
     page.card = CreateFrame("Frame", nil, page)
-    page.card:SetPoint("TOPLEFT", 0, -HEAD_H)
-    page.card:SetPoint("TOPRIGHT", 0, -HEAD_H)
+    page.card:SetPoint("TOPLEFT")
+    page.card:SetPoint("TOPRIGHT")
     Theme.ApplyFlatPanel(page.card, Theme.colors.bgRaised, Theme.colors.edge)
 
     return page
@@ -274,13 +425,29 @@ local function Render(content, width)
     local hits, note = Resolve(query)
     local y = 6
 
+    local category = addon:GetSetting("itemCategory") or "all"
+    local total = #hits
+    if category ~= "all" then
+        hits = InCategory(hits, category)
+    end
+
     if note then
-        p.note:SetText(note)
+        headerNote = note
+    elseif #hits == 0 then
+        headerNote = (IndexSize() == 0)
+            and "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
+            or "Nothing in this category matches."
     else
         local shown = math.min(#hits, MAX_RESULTS)
-        p.note:SetText(shown < #hits
-            and string.format("%d found, showing the first %d", #hits, shown)
-            or string.format("%d found", #hits))
+        local head = (#hits == total)
+            and string.format("%d items met", #hits)
+            or string.format("%d of %d", #hits, IndexSize())
+        headerNote = shown < #hits
+            and string.format("%s, showing the first %d. Keep typing to narrow it.", head, shown)
+            or head
+    end
+    if header and header:IsShown() then
+        header.note:SetText(headerNote)
     end
 
     for i = 1, math.min(#hits, MAX_RESULTS) do
@@ -320,21 +487,38 @@ local function Render(content, width)
     p.card:SetHeight(cardHeight)
     p.card:SetShown(#hits > 0)
 
-    local total = HEAD_H + (#hits > 0 and cardHeight or 0)
-    p:SetHeight(math.max(total, 1))
-    Codex.customTabs.items.height = total
+    local used = (#hits > 0) and cardHeight or 1
+    p:SetHeight(used)
+    Codex.customTabs.items.height = used
 end
 
 Codex.customTabs.items = {
-    label  = "Items",
-    order  = 30,
-    Render = Render,
-    Hide   = function() if page then page:Hide() end end,
+    label        = "Items",
+    order        = 30,
+    RenderHeader = RenderHeader,
+    Render       = Render,
+    Hide         = function()
+        if page then page:Hide() end
+        if header then header:Hide() end
+    end,
     height = 1,
     GetHighlights = function()
-        return {
+        local highlights = {
             { value = IndexSize(), label = "items this character has met" },
         }
+        local key = addon:GetSetting("itemCategory")
+        if key and key ~= "all" then
+            for _, cat in ipairs(BagCategories()) do
+                if cat.key == key then
+                    highlights[#highlights + 1] = {
+                        value = #InCategory(Everything(), key),
+                        label = "in " .. (cat.name or key),
+                    }
+                    break
+                end
+            end
+        end
+        return highlights
     end,
 }
 

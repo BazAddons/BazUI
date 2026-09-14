@@ -1,15 +1,28 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
 -- BazUI: MinimapButton Module
--- Single shared minimap button for all Baz addons
+--
+-- One button on the minimap for the whole suite. Left-click opens the
+-- codex, right-click opens the settings, and that is the whole of it.
+-- Modules still register an entry to say they want the button to exist;
+-- the button wears the icon of whichever module owns the left click.
 ---------------------------------------------------------------------------
 
 local BUTTON_SIZE = 31
 local BUTTON_RADIUS_OFFSET = 10  -- extra pixels beyond minimap edge
 local DEFAULT_ANGLE = 225
 
+-- The module the button opens, and so the module whose icon it wears.
+local PRIMARY = "Codex"
+local FALLBACK_ICON = "Interface\\Icons\\INV_Gizmo_GoblingTonkController"
+
 local minimapEntries = {} -- { addonName = { label, icon, onClick } }
 local button = nil
+
+local function ButtonIcon()
+    local primary = minimapEntries[PRIMARY]
+    return (primary and primary.icon) or FALLBACK_ICON
+end
 
 ---------------------------------------------------------------------------
 -- Position Math
@@ -27,38 +40,6 @@ local function UpdateButtonPosition(angle)
     local y = math.sin(rad) * radius
     button:ClearAllPoints()
     button:SetPoint("CENTER", Minimap, "CENTER", x, y)
-end
-
----------------------------------------------------------------------------
--- Context Menu (Dragonflight+ MenuUtil)
----------------------------------------------------------------------------
-
-local function ShowMenu()
-    MenuUtil.CreateContextMenu(button, function(_, rootDescription)
-        rootDescription:CreateTitle("Baz Addons")
-
-        -- Sort entries alphabetically
-        local sorted = {}
-        for addonName, entry in pairs(minimapEntries) do
-            table.insert(sorted, { name = addonName, entry = entry })
-        end
-        table.sort(sorted, function(a, b) return a.name < b.name end)
-
-        for _, item in ipairs(sorted) do
-            local entry = item.entry
-            local label = entry.label or item.name
-            if entry.icon then
-                label = "|T" .. entry.icon .. ":18:18:0:0|t " .. label
-            end
-            rootDescription:CreateButton(label, function()
-                if entry.onClick then
-                    entry.onClick("LeftButton")
-                else
-                    BazUI:OpenOptionsPanel(item.name)
-                end
-            end)
-        end
-    end)
 end
 
 ---------------------------------------------------------------------------
@@ -89,7 +70,7 @@ local function CreateButton()
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetSize(20, 20)
     icon:SetPoint("CENTER")
-    icon:SetTexture("Interface\\Icons\\INV_Gizmo_GoblingTonkController")
+    icon:SetTexture(ButtonIcon())
     icon:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
     btn.icon = icon
 
@@ -106,11 +87,17 @@ local function CreateButton()
     highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     highlight:SetBlendMode("ADD")
 
-    -- Click handler
+    -- Two clicks, both of them useful: the codex on the left, the
+    -- settings on the right. There used to be a menu listing every
+    -- module here, but most of its entries only opened an options page,
+    -- and all of those pages sit a click apart in the one settings
+    -- window that right-click already opens.
     btn:SetScript("OnClick", function(_, mouseButton)
-        if mouseButton == "LeftButton" then
-            ShowMenu()
-        elseif mouseButton == "RightButton" then
+        if mouseButton == "RightButton" then
+            BazUI:OpenOptionsPanel("BazUI")
+        elseif BazUI.Codex and BazUI.Codex.Toggle then
+            BazUI.Codex:Toggle()
+        else
             BazUI:OpenOptionsPanel("BazUI")
         end
     end)
@@ -119,14 +106,11 @@ local function CreateButton()
     -- Tooltip
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Baz Addons", 0.2, 0.6, 1.0)
-        GameTooltip:AddLine("BazUI v" .. BazUI.VERSION, 0.8, 0.8, 0.8)
-        for addonName, entry in pairs(minimapEntries) do
-            GameTooltip:AddLine(entry.label or addonName, 0.8, 0.8, 0.8)
-        end
+        GameTooltip:SetText("BazUI", 0.2, 0.6, 1.0)
+        GameTooltip:AddLine("Version " .. BazUI.VERSION, 0.8, 0.8, 0.8)
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Left-click to open menu", 0.5, 0.5, 0.5)
-        GameTooltip:AddLine("Right-click for BazUI settings", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine("Left-click for the codex", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine("Right-click for settings", 0.5, 0.5, 0.5)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function()
@@ -174,6 +158,10 @@ end
 
 function BazUI:RegisterMinimapEntry(addonName, minimapConfig)
     minimapEntries[addonName] = minimapConfig
+
+    -- The button wears the icon of whatever it opens, so a module that
+    -- registers after the button exists still lands on the art.
+    if button and button.icon then button.icon:SetTexture(ButtonIcon()) end
 
     -- Create button on first registration, defer to PLAYER_LOGIN
     if not button then

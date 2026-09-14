@@ -39,7 +39,7 @@ local CARD_PAD      = 8
 local CARD_GAP      = 10
 local TILE_H        = 46
 
-local frame, scroll, content, hero, rail
+local frame, scroll, content, hero, rail, headerHost
 local rowPool, cardPool, tilePool = {}, {}, {}
 local liveCards, liveTiles = {}, {}
 local refreshQueued = false
@@ -395,6 +395,12 @@ function Panel:Refresh()
     end
 
     local custom = Codex.customTabs and Codex.customTabs[tab]
+    local headerHeight = 1
+    if custom and custom.RenderHeader then
+        headerHeight = math.max(custom.RenderHeader(headerHost, width) or 1, 1)
+    end
+    headerHost:SetHeight(headerHeight)
+
     if custom then
         custom.Render(content, width)
         content:SetHeight(math.max(custom.height or 1, 1))
@@ -608,8 +614,15 @@ local function Build()
     rail.empty:SetTextColor(unpack(Theme.colors.textMuted))
     rail.empty:Hide()
 
+    -- A page that takes typing puts its box and its filters up here,
+    -- outside the scroll, so they stay put while the list moves.
+    headerHost = CreateFrame("Frame", nil, frame)
+    headerHost:SetPoint("TOPLEFT", rail, "TOPRIGHT", GAP, 0)
+    headerHost:SetPoint("RIGHT", frame, "RIGHT", -(PAD + SCROLLBAR_W), 0)
+    headerHost:SetHeight(1)
+
     scroll = CreateFrame("ScrollFrame", nil, frame)
-    scroll:SetPoint("TOPLEFT", rail, "TOPRIGHT", GAP, 0)
+    scroll:SetPoint("TOPLEFT", headerHost, "BOTTOMLEFT", 0, 0)
     scroll:SetPoint("BOTTOMRIGHT", -(PAD + SCROLLBAR_W), PAD)
     scroll:EnableMouseWheel(true)
 
