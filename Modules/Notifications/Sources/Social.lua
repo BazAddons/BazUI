@@ -39,6 +39,7 @@ local function OnWhisperReceived(event, msg, sender)
     end
 
     BNC:Push({
+        event = "whispers",
         module = MODULE_ID,
         title = displayName,
         message = displayMsg,
@@ -69,6 +70,7 @@ local function OnBNetWhisperReceived(event, msg, _, _, _, _, _, _, _, _, _, _, _
     end
 
     BNC:Push({
+        event = "whispers",
         module = MODULE_ID,
         title = displayName,
         message = displayMsg,
@@ -114,6 +116,7 @@ local function CheckFriendChanges()
                 if isOnline and showOnline then
                     local msg = charName and (charName .. " has come online") or "Has come online"
                     BNC:Push({
+                        event = "friends",
                         module = MODULE_ID,
                         title = name,
                         message = msg,
@@ -124,6 +127,7 @@ local function CheckFriendChanges()
                     })
                 elseif not isOnline and showOffline then
                     BNC:Push({
+                        event = "friends",
                         module = MODULE_ID,
                         title = name,
                         message = "Has gone offline",
@@ -149,6 +153,7 @@ local function OnSystemMessage(event, msg)
     if playerLink and status then
         if status == "come online" and GetSetting("showGuildOnline") ~= false then
             BNC:Push({
+                event = "guildOnline",
                 module = MODULE_ID,
                 title = playerLink,
                 message = "Has come online (Guild)",
@@ -159,6 +164,7 @@ local function OnSystemMessage(event, msg)
             })
         elseif status == "gone offline" and GetSetting("showGuildOffline") ~= false then
             BNC:Push({
+                event = "guildOffline",
                 module = MODULE_ID,
                 title = playerLink,
                 message = "Has gone offline (Guild)",
@@ -175,6 +181,7 @@ local function OnReadyCheck(event, initiator)
     if GetSetting("showReadyCheck") == false then return end
 
     BNC:Push({
+        event = "guildOffline",
         module = MODULE_ID,
         title = "Ready Check",
         message = (initiator or "Leader") .. " started a ready check!",
@@ -189,6 +196,7 @@ local function OnGroupInvite(event, sender)
     if GetSetting("showInvites") == false then return end
 
     BNC:Push({
+        event = "requests",
         module = MODULE_ID,
         title = "Group Invite",
         message = (sender or "Someone") .. " has invited you to a group",
@@ -206,6 +214,7 @@ local function OnSummonConfirm(event)
     local area = C_SummonInfo.GetSummonConfirmAreaName()
 
     BNC:Push({
+        event = "requests",
         module = MODULE_ID,
         title = "Summon Request",
         message = (summoner or "Someone") .. " is summoning you" .. (area and (" to " .. area) or ""),
@@ -220,6 +229,7 @@ local function OnDuelRequest(event, sender)
     if GetSetting("showDuels") == false then return end
 
     BNC:Push({
+        event = "requests",
         module = MODULE_ID,
         title = "Duel Request",
         message = (sender or "Someone") .. " has challenged you to a duel",

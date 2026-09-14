@@ -84,6 +84,7 @@ local function CheckObjectiveProgress(questID)
             if justCompleted then
                 if GetSetting("showObjectiveComplete") ~= false then
                     BNC:Push({
+                        event = "progress",
                         module = MODULE_ID,
                         title = questTitle,
                         message = obj.text .. " (Complete!)",
@@ -95,6 +96,7 @@ local function CheckObjectiveProgress(questID)
                 end
             elseif progressChanged and obj.numRequired and obj.numRequired > 0 then
                 BNC:Push({
+                    event = "progress",
                     module = MODULE_ID,
                     title = questTitle,
                     message = obj.text,
@@ -130,6 +132,7 @@ local function OnQuestAccepted(event, questID)
     CacheQuestObjectives(questID)
 
     BNC:Push({
+        event = "accepted",
         module = MODULE_ID,
         title = "Quest Accepted",
         message = questTitle,
@@ -154,6 +157,7 @@ local function OnQuestTurnedIn(event, questID)
     end
 
     BNC:Push({
+        event = "completed",
         module = MODULE_ID,
         title = "Quest Completed",
         message = questTitle,

@@ -34,6 +34,7 @@ local repAccumulator = BNC:CreateAccumulator(1.5, function(data)
         if GetSetting("showGains") ~= false then
             local sign = amount > 0 and "+" or ""
             BNC:Push({
+                event = "changes",
                 module = MODULE_ID,
                 title = factionName,
                 message = sign .. amount .. " reputation",
@@ -99,6 +100,7 @@ local function CheckStandingMilestones()
                     local standingName = STANDING_LABELS[standingID] or ("Standing " .. standingID)
 
                     BNC:Push({
+                        event = "milestones",
                         module = MODULE_ID,
                         title = name,
                         message = "Now " .. standingName .. "!",

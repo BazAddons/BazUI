@@ -39,6 +39,7 @@ local function CheckInstanceChange()
             end
 
             BNC:Push({
+                event = "entered",
                 module = MODULE_ID,
                 title = title,
                 message = instanceName,
@@ -53,6 +54,7 @@ local function CheckInstanceChange()
     elseif not inInstance and currentInstance then
         if GetSetting("showLeft") ~= false then
             BNC:Push({
+                event = "left",
                 module = MODULE_ID,
                 title = "Left Instance",
                 message = currentInstance,
@@ -71,6 +73,7 @@ local function OnEncounterStart(event, encounterID, encounterName, difficultyID,
     encounterStartTime = GetTime()
 
     BNC:Push({
+        event = "encounters",
         module = MODULE_ID,
         title = "Encounter Started",
         message = encounterName or "Boss",
@@ -95,6 +98,7 @@ local function OnEncounterEnd(event, encounterID, encounterName, difficultyID, g
 
     if success == 1 then
         BNC:Push({
+            event = "encounters",
             module = MODULE_ID,
             title = "Boss Defeated!",
             message = (encounterName or "Boss") .. elapsed,
@@ -105,6 +109,7 @@ local function OnEncounterEnd(event, encounterID, encounterName, difficultyID, g
         })
     else
         BNC:Push({
+            event = "encounters",
             module = MODULE_ID,
             title = "Encounter Failed",
             message = (encounterName or "Boss") .. elapsed,
@@ -120,6 +125,7 @@ local function OnLFGProposalShow()
     if GetSetting("showQueuePop") == false then return end
 
     BNC:Push({
+        event = "queue",
         module = MODULE_ID,
         title = "Queue Ready!",
         message = "Your group has been found",

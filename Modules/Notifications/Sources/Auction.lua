@@ -25,6 +25,7 @@ local function OnSystemMessage(event, msg)
         local itemName = BNC.SafeMatch(msg, "auction of (.+)") or "an item"
 
         BNC:Push({
+            event = "sold",
             module = MODULE_ID,
             title = "Auction Sold!",
             message = itemName,
@@ -42,6 +43,7 @@ local function OnSystemMessage(event, msg)
         local itemName = BNC.SafeMatch(msg, "auction of (.+) has expired") or "an item"
 
         BNC:Push({
+            event = "expired",
             module = MODULE_ID,
             title = "Auction Expired",
             message = itemName,
@@ -59,6 +61,7 @@ local function OnSystemMessage(event, msg)
         local itemName = BNC.SafeMatch(msg, "outbid on (.+)") or "an item"
 
         BNC:Push({
+            event = "outbid",
             module = MODULE_ID,
             title = "Outbid!",
             message = itemName,
@@ -76,6 +79,7 @@ local function OnSystemMessage(event, msg)
         local itemName = BNC.SafeMatch(msg, "auction for (.+)") or "an item"
 
         BNC:Push({
+            event = "won",
             module = MODULE_ID,
             title = "Auction Won!",
             message = itemName,

@@ -45,6 +45,31 @@ local function DedupeRemember(key, notif)
     end
 end
 
+
+---------------------------------------------------------------------------
+-- The chat box as a destination
+--
+-- Printed the way the game prints its own lines, so a notification sent
+-- here reads as part of the stream rather than as an addon shouting in
+-- it: the source's name in gold, then the title, then the detail.
+---------------------------------------------------------------------------
+
+function BNC.PrintToChat(notification)
+    local frame = DEFAULT_CHAT_FRAME
+    if not frame then return end
+
+    local moduleName = notification.module
+    local moduleDef = addon.modules and addon.modules[notification.module]
+    if moduleDef and moduleDef.name then moduleName = moduleDef.name end
+
+    local line = ("|cffffd700%s:|r %s"):format(moduleName or "BazUI",
+        notification.title or "")
+    if notification.message and notification.message ~= "" then
+        line = line .. " |cffd9c7a0" .. notification.message .. "|r"
+    end
+    frame:AddMessage(line)
+end
+
 function BNC:Push(data)
     if not data or not data.module then return end
 
@@ -105,6 +130,35 @@ function BNC:Push(data)
         itemLink = data.itemLink,
         dupeCount = 1,
     }
+
+    -- Where this one goes. A source names the event it came from, and
+    -- the three destination switches for that event decide the rest. A
+    -- source that names nothing keeps the old behaviour: the panel, and
+    -- a toast unless it asked to be silent.
+    local def = data.event and BNC:GetEventDef(data.module, data.event) or nil
+    local toPanel = true
+    local toChat  = false
+    if def then
+        toPanel = BNC:GetEventDestination(data.module, def, "panel")
+        toChat  = BNC:GetEventDestination(data.module, def, "chat")
+        if not BNC:GetEventDestination(data.module, def, "toast") then
+            notification.silent = true
+        end
+    end
+
+    if toChat then BNC.PrintToChat(notification) end
+
+    if not toPanel then
+        -- Not kept, but it may still have a toast or a sound to raise,
+        -- so the rest of this runs.
+        if not notification.silent then
+            local enabled = not addon.db or addon.db.toastsEnabled ~= false
+            if enabled and not (addon.IsDND and addon.IsDND()) then
+                addon.Events:Trigger("TOAST_REQUESTED", notification)
+            end
+        end
+        return notification
+    end
 
     -- Insert at beginning (newest first)
     table.insert(addon.notifications, 1, notification)

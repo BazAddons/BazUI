@@ -1,9 +1,9 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 local BNC = BazUI.Notifications.API
 -- ==========================================================================
--- BNC-Loot: Item loot, gold gains, currency, and loot alert suppression.
+-- BNC-Loot: Item loot, gold gains, and loot alert suppression.
 -- Events: PLAYER_ENTERING_WORLD, PLAYER_MONEY, CHAT_MSG_LOOT,
---         CURRENCY_DISPLAY_UPDATE, LOOT_OPENED
+--         LOOT_OPENED
 -- ==========================================================================
 
 local MODULE_ID = "loot"
@@ -42,6 +42,7 @@ local function OnPlayerMoney()
 
     if diff > 0 then
         BNC:Push({
+            event = "gold",
             module = MODULE_ID,
             title = "Gold Received",
             message = BazUI:FormatMoney(diff),
@@ -119,6 +120,7 @@ local function OnLootReceived(event, msg, playerName, languageName, channelName,
     end
 
     BNC:Push({
+        event = "items",
         module = MODULE_ID,
         title = title,
         message = message,
@@ -127,26 +129,6 @@ local function OnLootReceived(event, msg, playerName, languageName, channelName,
         duration = GetSetting("toastDuration") or 4,
         silent = GetSetting("itemToasts") == false,
         itemLink = itemLink,
-    })
-end
-
-local function OnCurrencyChanged(event, currencyType, quantity, quantityChange)
-    if GetSetting("showCurrency") == false then return end
-
-    if not currencyType then return end
-    if not quantityChange or quantityChange <= 0 then return end
-
-    local info = C_CurrencyInfo.GetCurrencyInfo(currencyType)
-    if not info then return end
-
-    BNC:Push({
-        module = MODULE_ID,
-        title = info.name or "Currency",
-        message = "+" .. quantityChange,
-        icon = info.iconFileID and tostring(info.iconFileID) or MODULE_ICON,
-        priority = "low",
-        duration = GetSetting("toastDuration") or 3,
-        silent = GetSetting("currencyToasts") == false,
     })
 end
 
@@ -212,7 +194,6 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("PLAYER_MONEY")
 eventFrame:RegisterEvent("CHAT_MSG_LOOT")
-eventFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 eventFrame:RegisterEvent("LOOT_OPENED")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
@@ -226,8 +207,6 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         OnPlayerMoney()
     elseif event == "CHAT_MSG_LOOT" then
         OnLootReceived(event, ...)
-    elseif event == "CURRENCY_DISPLAY_UPDATE" then
-        OnCurrencyChanged(event, ...)
     end
 end)
 

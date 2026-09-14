@@ -52,6 +52,7 @@ local function CheckSkillUps()
                 local cached = lastSkillLevels[skillLine]
                 if cached and skillLevel > cached.level then
                     BNC:Push({
+                        event = "skillUps",
                         module = MODULE_ID,
                         title = name .. " Skill Up!",
                         message = cached.level .. " -> " .. skillLevel .. " / " .. maxLevel,
@@ -77,6 +78,7 @@ local function OnChatMsgLoot(event, msg)
     local _, _, _, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(itemLink)
 
     BNC:Push({
+        event = "crafts",
         module = MODULE_ID,
         title = "Crafted",
         message = itemName,

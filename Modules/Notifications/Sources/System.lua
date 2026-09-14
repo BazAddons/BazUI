@@ -97,6 +97,7 @@ local function SetupHook()
             -- first press had already been captured.
             if not msgDedup:IsDuplicate(msg) then
                 BNC:Push({
+                    event = "info",
                     module = MODULE_ID,
                     title = msg,
                     message = "",
@@ -181,6 +182,7 @@ local function SetupHook()
 
             if not msgDedup:IsDuplicate(title .. message) then
                 BNC:Push({
+                    event = "banners",
                     module = MODULE_ID,
                     title = title,
                     message = message,
@@ -228,6 +230,7 @@ local function OnRaidBossEmote(event, msg, ...)
     if msgDedup:IsDuplicate(cleanMsg) then return end
 
     BNC:Push({
+        event = "emotes",
         module = MODULE_ID,
         title = cleanMsg,
         message = "",

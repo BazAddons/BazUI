@@ -22,6 +22,7 @@ local function CheckPendingInvites()
     local numInvites = C_Calendar.GetNumPendingInvites()
     if numInvites and numInvites > 0 then
         BNC:Push({
+            event = "invites",
             module = MODULE_ID,
             title = "Calendar Invites",
             message = numInvites .. " pending invite" .. (numInvites ~= 1 and "s" or ""),
@@ -59,6 +60,7 @@ local function CheckTodayEvents()
         end
 
         BNC:Push({
+            event = "events",
             module = MODULE_ID,
             title = "Today's Events",
             message = message,
@@ -85,6 +87,7 @@ local function CheckHolidays()
             local title = event.title
             if title and title ~= "" then
                 BNC:Push({
+                    event = "holidays",
                     module = MODULE_ID,
                     title = "Holiday Active",
                     message = title,
@@ -116,6 +119,7 @@ local function ShowResetInfo()
     end
 
     BNC:Push({
+        event = "reset",
         module = MODULE_ID,
         title = "Weekly Reset",
         message = message,
@@ -130,6 +134,7 @@ local function OnCalendarInviteAdded()
     if GetSetting("showInvites") == false then return end
 
     BNC:Push({
+        event = "invites",
         module = MODULE_ID,
         title = "New Calendar Invite",
         message = "You have a new calendar invitation",

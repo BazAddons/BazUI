@@ -30,6 +30,7 @@ local function OnZoneChanged()
         local message = (subZone and subZone ~= "") and subZone or ""
 
         BNC:Push({
+            event = "zones",
             module = MODULE_ID,
             title = zone,
             message = message,
@@ -49,6 +50,7 @@ local function OnSubZoneChanged()
         lastSubZone = subZone
 
         BNC:Push({
+            event = "subzones",
             module = MODULE_ID,
             title = subZone,
             message = GetZoneText() or "",

@@ -392,6 +392,73 @@ end
 
 ---------------------------------------------------------------------------
 -- Registry
+
+---------------------------------------------------------------------------
+-- Flags: one row, several small labelled checkboxes
+--
+-- For a setting that is not one yes-or-no but a handful of independent
+-- ones that belong together, where splitting them into a row each would
+-- bury the thing they describe. Notifications uses it to say where an
+-- event goes: the panel, a toast, the chat box, any combination.
+--
+--   opt.flags = { { label = "Toast", get = fn, set = fn }, ... }
+---------------------------------------------------------------------------
+
+local FLAG_GAP = 10
+
+local function CreateFlagsWidget(parent, opt, contentWidth)
+    local flags = opt.flags or {}
+
+    -- Measure the labels so the row reserves what it actually needs.
+    local probe = parent:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+    local widths, total = {}, 0
+    for i, flag in ipairs(flags) do
+        probe:SetText(flag.label or "")
+        local w = math.ceil(probe:GetStringWidth() or 0)
+        widths[i] = w
+        total = total + w + O.CHECK_W + 2 + FLAG_GAP
+    end
+    probe:Hide()
+    total = math.max(total - FLAG_GAP, O.CHECK_W)
+
+    local frame, h = BuildRow(parent, opt, contentWidth, total)
+    frame.checks = {}
+
+    local x = -O.ROW_PAD
+    for i = #flags, 1, -1 do
+        local flag = flags[i]
+
+        local cb = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        cb:SetSize(O.CHECK_W, O.CHECK_W)
+        cb:SetPoint("TOPRIGHT", frame, "TOPRIGHT", x, -((O.ROW_H - O.CHECK_W) / 2))
+        cb:SetScript("OnClick", function(self)
+            if flag.set then flag.set(nil, self:GetChecked() and true or false) end
+        end)
+
+        local text = frame:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+        text:SetPoint("RIGHT", cb, "LEFT", -2, 0)
+        text:SetText(flag.label or "")
+        Color(text, O.TEXT_DESC)
+
+        cb._label = text
+        cb._flag  = flag
+        frame.checks[#frame.checks + 1] = cb
+
+        x = x - (O.CHECK_W + 2 + widths[i] + FLAG_GAP)
+    end
+
+    frame:SetScript("OnShow", function(self)
+        local disabled = O.IsDisabled(opt)
+        for _, cb in ipairs(self.checks) do
+            cb:SetEnabled(not disabled)
+            cb:SetChecked(cb._flag.get and cb._flag.get() or false)
+            Color(cb._label, disabled and O.TEXT_DISABLED or O.TEXT_DESC)
+        end
+        self:SetRowDisabled(disabled)
+    end)
+    return frame, h
+end
+
 ---------------------------------------------------------------------------
 
 O.widgetFactories = {
@@ -403,4 +470,5 @@ O.widgetFactories = {
     input       = CreateInputWidget,
     execute     = CreateExecuteWidget,
     select      = CreateSelectWidget,
+    flags       = CreateFlagsWidget,
 }

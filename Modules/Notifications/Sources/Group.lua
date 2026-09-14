@@ -51,6 +51,7 @@ local function CheckGroupChanges()
     for name in pairs(current) do
         if not groupMembers[name] and name ~= UnitName("player") then
             BNC:Push({
+                event = "members",
                 module = MODULE_ID,
                 title = name,
                 message = "joined the group",
@@ -65,6 +66,7 @@ local function CheckGroupChanges()
     for name in pairs(groupMembers) do
         if not current[name] and name ~= UnitName("player") then
             BNC:Push({
+                event = "members",
                 module = MODULE_ID,
                 title = name,
                 message = "left the group",
@@ -83,6 +85,7 @@ local function OnLFGProposal()
     if GetSetting("showQueuePop") == false then return end
 
     BNC:Push({
+        event = "queue",
         module = MODULE_ID,
         title = "Queue Ready!",
         message = "A group has been found",
@@ -97,6 +100,7 @@ local function OnRoleCheck()
     if GetSetting("showRoleCheck") == false then return end
 
     BNC:Push({
+        event = "roleCheck",
         module = MODULE_ID,
         title = "Role Check",
         message = "Confirm your role",
@@ -111,6 +115,7 @@ local function OnCountdown(event, initiatedBy, timeRemaining)
     if GetSetting("showCountdown") == false then return end
 
     BNC:Push({
+        event = "countdown",
         module = MODULE_ID,
         title = "Pull Timer",
         message = (initiatedBy or "Someone") .. " started a " .. (timeRemaining or "?") .. "s countdown",

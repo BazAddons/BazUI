@@ -34,6 +34,7 @@ local function FlushXPGain()
     local pct = maxXP > 0 and math.floor((currentXP / maxXP) * 100) or 0
 
     BNC:Push({
+        event = "gains",
         module = MODULE_ID,
         title = "+" .. xpAccumulator .. " XP",
         message = currentXP .. " / " .. maxXP .. " (" .. pct .. "%)",
@@ -66,6 +67,7 @@ local function OnLevelUp(event, level, ...)
     if GetSetting("showLevelUp") == false then return end
 
     BNC:Push({
+        event = "levelUp",
         module = MODULE_ID,
         title = "Level Up!",
         message = "You reached level " .. level .. "!",
@@ -87,6 +89,7 @@ local function CheckRestedXP()
     if restedXP > 0 then
         local pct = maxXP > 0 and math.floor((restedXP / maxXP) * 100) or 0
         BNC:Push({
+            event = "rested",
             module = MODULE_ID,
             title = "Rested XP Available",
             message = restedXP .. " bonus XP (" .. pct .. "% of level)",

@@ -135,31 +135,87 @@ function BNC:SetModuleSetting(moduleId, key, value)
     addon.Events:Trigger("MODULE_SETTING_CHANGED", moduleId, key, value)
 end
 
--- One event's state as the page shows it: "off", "history" or "toast".
--- Unset keys read as the definition's default.
-function BNC:GetEventChoice(moduleId, def)
-    local choice = def.default or "toast"
-    local shown = false
-    for _, k in ipairs(BNC.EventShowKeys(def)) do
-        local v = BNC:GetModuleSetting(moduleId, k)
-        if v == nil then v = choice ~= "off" end
-        if v ~= false then shown = true end
-    end
-    if not shown then return "off" end
-    if def.toast then
-        local t = BNC:GetModuleSetting(moduleId, def.toast)
-        if t == nil then t = choice == "toast" end
-        if t == false then return "history" end
-    end
-    return "toast"
+
+---------------------------------------------------------------------------
+-- Where an event goes
+--
+-- Three independent destinations, because they answer different
+-- questions. The panel is the record you can go back to; a toast is
+-- something you want to see happen; the chat box is for the things you
+-- read in a stream with everything else.
+--
+--   panel   kept in the notification list and the history
+--   toast   pops on screen
+--   chat    printed into the chat frame
+--
+-- The panel switch doubles as the master: a source checks its show keys
+-- before raising anything at all, so turning every destination off stops
+-- the work as well as the noise. Turning the panel off on its own leaves
+-- the event raised, and only the destinations you left on receive it.
+---------------------------------------------------------------------------
+
+function BNC.EventChatKey(def)
+    return def.chat or (def.key .. "Chat")
 end
 
-function BNC:SetEventChoice(moduleId, def, choice)
-    for _, k in ipairs(BNC.EventShowKeys(def)) do
-        BNC:SetModuleSetting(moduleId, k, choice ~= "off")
+function BNC.EventPanelKey(def)
+    return def.panel or (def.key .. "Panel")
+end
+
+function BNC:GetEventDestination(moduleId, def, which)
+    if which == "toast" then
+        if not def.toast then return false end
+        local v = BNC:GetModuleSetting(moduleId, def.toast)
+        if v == nil then return (def.default or "toast") == "toast" end
+        return v ~= false
     end
-    if def.toast then
-        BNC:SetModuleSetting(moduleId, def.toast, choice == "toast")
+
+    if which == "chat" then
+        return BNC:GetModuleSetting(moduleId, BNC.EventChatKey(def)) == true
+    end
+
+    -- panel: on unless it was explicitly turned off, and only while the
+    -- event is raised at all.
+    if not BNC:IsEventRaised(moduleId, def) then return false end
+    return BNC:GetModuleSetting(moduleId, BNC.EventPanelKey(def)) ~= false
+end
+
+-- Whether the source should raise this event at all: true when any
+-- destination wants it.
+function BNC:IsEventRaised(moduleId, def)
+    for _, k in ipairs(BNC.EventShowKeys(def)) do
+        local v = BNC:GetModuleSetting(moduleId, k)
+        if v == nil then v = (def.default or "toast") ~= "off" end
+        if v ~= false then return true end
+    end
+    return false
+end
+
+function BNC:SetEventDestination(moduleId, def, which, on)
+    if which == "toast" then
+        if def.toast then BNC:SetModuleSetting(moduleId, def.toast, on) end
+    elseif which == "chat" then
+        BNC:SetModuleSetting(moduleId, BNC.EventChatKey(def), on)
+    else
+        BNC:SetModuleSetting(moduleId, BNC.EventPanelKey(def), on)
+    end
+
+    -- The show keys are the master switch the sources themselves read,
+    -- so they follow whether anything at all still wants this event.
+    local wanted = (which == "panel" and on)
+        or (which ~= "panel" and BNC:GetModuleSetting(moduleId, BNC.EventPanelKey(def)) ~= false)
+        or BNC:GetEventDestination(moduleId, def, "toast")
+        or BNC:GetEventDestination(moduleId, def, "chat")
+        or on
+    for _, k in ipairs(BNC.EventShowKeys(def)) do
+        BNC:SetModuleSetting(moduleId, k, wanted and true or false)
+    end
+end
+
+-- The definition behind one of a module's declared events.
+function BNC:GetEventDef(moduleId, eventKey)
+    for _, def in ipairs(addon.moduleOptionDefs[moduleId] or {}) do
+        if def.type == "event" and def.key == eventKey then return def end
     end
 end
 

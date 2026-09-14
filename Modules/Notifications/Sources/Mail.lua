@@ -25,6 +25,7 @@ local function OnNewMail()
     hasNotifiedNewMail = true
 
     BNC:Push({
+        event = "newMail",
         module = MODULE_ID,
         title = "New Mail",
         message = "You've got mail!",
@@ -76,6 +77,7 @@ local function OnMailboxOpened()
             end
 
             BNC:Push({
+                event = "details",
                 module = MODULE_ID,
                 title = title,
                 message = message,
@@ -90,6 +92,7 @@ local function OnMailboxOpened()
     -- Overflow notice for remaining unseen messages
     if newCount > maxToShow then
         BNC:Push({
+            event = "details",
             module = MODULE_ID,
             title = "Mail",
             message = "+" .. (newCount - maxToShow) .. " more messages",

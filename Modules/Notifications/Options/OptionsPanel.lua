@@ -199,9 +199,6 @@ end
 -- Sources
 ---------------------------------------------------------------------------
 
-local CHOICES      = { toast = "Toast", history = "History only", off = "Off" }
-local CHOICE_ORDER = { "toast", "history", "off" }
-
 -- Sections of a source's form, in display order.
 local SECTION_EVENTS, SECTION_OPTIONS, SECTION_TOASTS, SECTION_BLIZZARD = 1, 2, 3, 4
 local SECTION_NAMES = { "Events", "Options", "Toasts", "Blizzard UI" }
@@ -223,15 +220,28 @@ local function BuildOption(moduleId, def, disabled)
     end
 
     if def.type == "event" then
+        -- Three places a notification can land, each its own switch. A
+        -- source with no toast of its own only offers the two it has.
+        opt.type = "flags"
+        opt.flags = {
+            {
+                label = "Default",
+                get = function() return BNC:GetEventDestination(moduleId, def, "panel") end,
+                set = function(_, val) BNC:SetEventDestination(moduleId, def, "panel", val) end,
+            },
+        }
         if def.toast then
-            opt.type, opt.values, opt.sorting = "select", CHOICES, CHOICE_ORDER
-            opt.get = function() return BNC:GetEventChoice(moduleId, def) end
-            opt.set = function(_, val) BNC:SetEventChoice(moduleId, def, val) end
-        else
-            opt.type = "toggle"
-            opt.get = function() return BNC:GetEventChoice(moduleId, def) ~= "off" end
-            opt.set = function(_, val) BNC:SetEventChoice(moduleId, def, val and "toast" or "off") end
+            opt.flags[#opt.flags + 1] = {
+                label = "Toast",
+                get = function() return BNC:GetEventDestination(moduleId, def, "toast") end,
+                set = function(_, val) BNC:SetEventDestination(moduleId, def, "toast", val) end,
+            }
         end
+        opt.flags[#opt.flags + 1] = {
+            label = "Chat",
+            get = function() return BNC:GetEventDestination(moduleId, def, "chat") end,
+            set = function(_, val) BNC:SetEventDestination(moduleId, def, "chat", val) end,
+        }
     elseif def.type == "toggle" then
         opt.type = "toggle"
         opt.get = function() return Current(def.default ~= false) ~= false end

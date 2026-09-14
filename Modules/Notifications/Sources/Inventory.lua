@@ -58,6 +58,7 @@ local function CheckBagSpace()
     if lastFreeSlots and lastFreeSlots > threshold and free <= threshold and free >= 0 then
         local message = free == 0 and "Your bags are full!" or (free .. " slots remaining")
         BNC:Push({
+            event = "bagsFull",
             module = MODULE_ID,
             title = "Bags Almost Full",
             message = message,
@@ -80,6 +81,7 @@ local function CheckDurability()
     if lowest <= threshold and not lastDurabilityWarned then
         lastDurabilityWarned = true
         BNC:Push({
+            event = "durability",
             module = MODULE_ID,
             title = "Low Durability",
             message = "Lowest item at " .. lowest .. "%",
@@ -99,6 +101,7 @@ local function OnRepairAll()
     lastDurabilityWarned = false
 
     BNC:Push({
+        event = "repaired",
         module = MODULE_ID,
         title = "Equipment Repaired",
         message = "All items restored to full durability",
