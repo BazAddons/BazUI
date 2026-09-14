@@ -53,21 +53,21 @@ function Reset:Build()
     f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT)
 
     -- Daily column (left half)
-    f.dailyLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.dailyLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.dailyLabel:SetPoint("TOPLEFT", PAD, -PAD)
     f.dailyLabel:SetText("Daily Reset")
     f.dailyLabel:SetTextColor(0.85, 0.85, 0.85)
 
-    f.dailyTime = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.dailyTime = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.dailyTime:SetPoint("TOPLEFT", f.dailyLabel, "BOTTOMLEFT", 0, -2)
 
     -- Weekly column (right half)
-    f.weeklyLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.weeklyLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.weeklyLabel:SetPoint("TOPRIGHT", -PAD, -PAD)
     f.weeklyLabel:SetText("Weekly Reset")
     f.weeklyLabel:SetTextColor(0.85, 0.85, 0.85)
 
-    f.weeklyTime = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.weeklyTime = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.weeklyTime:SetPoint("TOPRIGHT", f.weeklyLabel, "BOTTOMRIGHT", 0, -2)
 
     -- Bottom separator

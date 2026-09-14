@@ -88,7 +88,7 @@ function Trinket:Build()
     f.slot2:SetPoint("LEFT", f.slot1, "RIGHT", ICON_GAP, 0)
 
     -- Status text to the right of the icons (shorter-CD remaining)
-    f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.status = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.status:SetPoint("LEFT", f.slot2, "RIGHT", 10, 0)
     f.status:SetTextColor(0.85, 0.85, 0.85)
 

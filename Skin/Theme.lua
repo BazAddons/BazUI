@@ -130,6 +130,15 @@ function Theme.FontObject(blizzardName)
     return obj
 end
 
+-- CreateFontString names a Blizzard font object to inherit from, which
+-- can't be a mirror; this makes the string and points it at one.
+function Theme.FontString(parent, layer, blizzardName, sublevel)
+    local fs = parent:CreateFontString(nil, layer, nil, sublevel)
+    local obj = Theme.FontObject(blizzardName)
+    if obj then fs:SetFontObject(obj) end
+    return fs
+end
+
 -- Re-point every mirrored object at the face now in force.
 function Theme.RefreshFontObjects()
     for name in pairs(fontObjects) do Theme.FontObject(name) end

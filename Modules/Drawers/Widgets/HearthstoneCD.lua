@@ -66,13 +66,13 @@ function Hearth:Build()
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- "Hearthstone" label
-    f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.label = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlight")
     f.label:SetPoint("TOPLEFT", f.icon, "TOPRIGHT", 8, -2)
     f.label:SetText("Hearthstone")
     f.label:SetTextColor(unpack(CLR_LABEL))
 
     -- Time remaining (large, gold)
-    f.time = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.time = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.time:SetPoint("BOTTOMLEFT", f.icon, "BOTTOMRIGHT", 8, 0)
     f.time:SetTextColor(unpack(CLR_TIME))
 

@@ -85,7 +85,7 @@ function TodoWidget:Update()
             row.check:SetSize(18, 18)
             row.check:SetPoint("LEFT", -2, 0)
 
-            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.text = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontHighlight")
             row.text:SetPoint("LEFT", row.check, "RIGHT", 2, 0)
             row.text:SetPoint("RIGHT", -16, 0)
             row.text:SetJustifyH("LEFT")

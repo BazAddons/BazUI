@@ -359,7 +359,7 @@ function addon:Initialize()
     mover:RegisterForDrag("LeftButton")
     local tint = mover:CreateTexture(nil, "BACKGROUND")
     tint:SetAllPoints(mover); tint:SetColorTexture(0.1, 0.45, 0.8, 0.22)
-    local label = mover:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormal")
     label:SetPoint("CENTER"); label:SetText("Player Frames - drag to move")
     mover:SetScript("OnDragStart", function(self)
         if not InCombatLockdown() then self:SetMovable(true); self:StartMoving() end

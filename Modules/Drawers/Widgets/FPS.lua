@@ -73,17 +73,17 @@ function FPS:Build()
     f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT)
 
     -- Big number, "FPS" label sitting to its right at top alignment.
-    f.fps = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    f.fps = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalHuge")
     f.fps:SetPoint("TOPLEFT", PAD, -4)
     f.fps:SetJustifyH("LEFT")
 
-    f.unit = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.unit = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.unit:SetPoint("BOTTOMLEFT", f.fps, "BOTTOMRIGHT", 4, 2)
     f.unit:SetText("FPS")
     f.unit:SetTextColor(0.75, 0.75, 0.75)
 
     -- Rolling min/max under the main number.
-    f.minmax = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.minmax = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.minmax:SetPoint("BOTTOMLEFT", PAD, 4)
     f.minmax:SetTextColor(0.6, 0.6, 0.6)
 

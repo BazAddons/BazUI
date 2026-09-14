@@ -60,11 +60,11 @@ function ItemLevel:Build()
     f.icon:SetTexture("Interface\\Icons\\inv_chest_plate10")
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    f.equipped = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.equipped = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.equipped:SetPoint("LEFT", f.icon, "RIGHT", 8, 6)
     f.equipped:SetJustifyH("LEFT")
 
-    f.sub = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.sub = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.sub:SetPoint("LEFT", f.icon, "RIGHT", 8, -8)
     f.sub:SetJustifyH("LEFT")
     f.sub:SetTextColor(0.85, 0.85, 0.85)

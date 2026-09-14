@@ -124,7 +124,7 @@ local function BuildFrame(name, dataobj)
     icon:SetPoint("LEFT", PAD, 0)
     frame.icon = icon
 
-    local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local label = BazUI.Skin.Theme.FontString(frame, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("LEFT", icon, "RIGHT", PAD, 0)
     label:SetJustifyH("LEFT")
     label:SetTextColor(0.85, 0.85, 0.85)
@@ -132,7 +132,7 @@ local function BuildFrame(name, dataobj)
     label:SetNonSpaceWrap(false)
     frame.label = label
 
-    local value = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local value = BazUI.Skin.Theme.FontString(frame, "OVERLAY", "GameFontNormalSmall")
     value:SetPoint("RIGHT", -PAD, 0)
     value:SetJustifyH("RIGHT")
     value:SetTextColor(1, 0.82, 0)

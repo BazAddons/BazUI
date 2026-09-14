@@ -104,7 +104,7 @@ local function EnsureAutoCompletePopup()
     popup.badgeBorder:SetPoint("TOPLEFT", popup.iconBg, "TOPLEFT", 8, -8)
 
     -- "Click to complete quest" header
-    popup.topText = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    popup.topText = BazUI.Skin.Theme.FontString(popup, "OVERLAY", "GameFontNormalSmall")
     popup.topText:SetPoint("TOPLEFT", popup.iconBg, "TOPRIGHT", -6, -6)
     popup.topText:SetPoint("RIGHT", popup, "RIGHT", -12, 0)
     popup.topText:SetText(_G.QUEST_WATCH_POPUP_CLICK_TO_COMPLETE or "Click to complete quest")

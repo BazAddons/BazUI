@@ -51,7 +51,7 @@ function NoteWidget:Build()
 
     f.editBox = CreateFrame("EditBox", nil, f.scroll)
     f.editBox:SetMultiLine(true)
-    f.editBox:SetFontObject("GameFontHighlight")
+    f.editBox:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlight"))
     f.editBox:SetWidth(f.scroll:GetWidth() - 8)
     f.editBox:SetAutoFocus(false)
     f.editBox:SetMaxLetters(2000)

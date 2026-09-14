@@ -83,12 +83,12 @@ function GoldWidget:Build()
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- Current gold (large, top right of icon)
-    f.current = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.current = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.current:SetPoint("LEFT", f.icon, "RIGHT", 6, 6)
     f.current:SetJustifyH("LEFT")
 
     -- Session change (smaller, below current)
-    f.change = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.change = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.change:SetPoint("LEFT", f.icon, "RIGHT", 6, -8)
     f.change:SetJustifyH("LEFT")
 

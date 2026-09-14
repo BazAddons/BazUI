@@ -145,7 +145,7 @@ function addon:CreateAnchor()
     marker:SetAllPoints(anchorFrame)
     Theme.ApplyPanel(marker)
     marker:EnableMouse(false)
-    local label = marker:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local label = BazUI.Skin.Theme.FontString(marker, "OVERLAY", "GameFontNormal")
     label:SetPoint("CENTER")
     label:SetText("Tooltip anchor\nDrag | Right-click to lock")
     anchorFrame.marker = marker

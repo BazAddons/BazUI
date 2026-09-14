@@ -46,14 +46,14 @@ function StopwatchWidget:Build()
     f.startBtn:SetPoint("BOTTOMLEFT", PAD, PAD)
     f.startBtn:SetText("Start")
     f.startBtn:SetScript("OnClick", function() StopwatchWidget:ToggleRunning() end)
-    local fs1 = f.startBtn:GetFontString(); if fs1 then fs1:SetFontObject("GameFontHighlightSmall") end
+    local fs1 = f.startBtn:GetFontString(); if fs1 then fs1:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall")) end
 
     f.lapBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.lapBtn:SetSize(btnW, 22)
     f.lapBtn:SetPoint("LEFT", f.startBtn, "RIGHT", 4, 0)
     f.lapBtn:SetText("Reset")
     f.lapBtn:SetScript("OnClick", function() StopwatchWidget:Reset() end)
-    local fs2 = f.lapBtn:GetFontString(); if fs2 then fs2:SetFontObject("GameFontHighlightSmall") end
+    local fs2 = f.lapBtn:GetFontString(); if fs2 then fs2:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall")) end
 
     f.closeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.closeBtn:SetSize(btnW, 22)
@@ -63,7 +63,7 @@ function StopwatchWidget:Build()
         elapsed = math.max(0, elapsed - 60)
         if not running then f.time:SetText(FormatTime(elapsed)) end
     end)
-    local fs3 = f.closeBtn:GetFontString(); if fs3 then fs3:SetFontObject("GameFontHighlightSmall") end
+    local fs3 = f.closeBtn:GetFontString(); if fs3 then fs3:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall")) end
 
     f:SetScript("OnUpdate", function(_, dt)
         if running then

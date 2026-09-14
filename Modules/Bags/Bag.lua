@@ -427,13 +427,13 @@ local function BuildSection(def)
     toggle:SetPoint("LEFT", 4, 0)
     section.toggle = toggle
 
-    local title = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local title = BazUI.Skin.Theme.FontString(header, "OVERLAY", "GameFontNormal")
     title:SetPoint("LEFT", toggle, "RIGHT", 6, 0)
     title:SetText(def.title)
     title:SetTextColor(1.00, 0.82, 0.00)  -- suite gold to read as a "Baz section"
     section.title = title
 
-    local count = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    local count = BazUI.Skin.Theme.FontString(header, "OVERLAY", "GameFontDisableSmall")
     count:SetPoint("RIGHT", -8, 0)
     section.count = count
 
@@ -781,7 +781,7 @@ local function BuildBagChangePopup()
     -- otherwise) - see the comment block on PositionBagPopup.
 
     -- Header label
-    p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    p.title = BazUI.Skin.Theme.FontString(p, "OVERLAY", "GameFontNormalSmall")
     p.title:SetPoint("TOPLEFT", PAD, -PAD)
     p.title:SetText("Bag Slots")
     p.title:SetTextColor(1.00, 0.82, 0.00)

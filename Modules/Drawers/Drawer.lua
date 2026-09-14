@@ -122,7 +122,7 @@ function Drawer:Build()
     chrome:SetHeight(30)
     display.chromeGroup = chrome
 
-    display.label = chrome:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    display.label = BazUI.Skin.Theme.FontString(chrome, "ARTWORK", "GameFontNormalSmall")
     display.label:SetPoint("LEFT", 4, 0)
     display.label:SetText("BAZWIDGETDRAWERS")
 

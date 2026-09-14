@@ -145,14 +145,14 @@ function DFWidget:Build()
     frame = f
 
     -- Title: "Dungeon Finder" / "Group Found!"
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormal")
     f.title:SetPoint("TOP", f, "TOP", 0, -PAD)
     f.title:SetJustifyH("CENTER")
     f.title:SetTextColor(unpack(CLR_TITLE))
     f.title:SetText("Dungeon Finder")
 
     -- Dungeon name subtitle
-    f.dungeon = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.dungeon = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.dungeon:SetPoint("TOP", f.title, "BOTTOM", 0, -2)
     f.dungeon:SetJustifyH("CENTER")
     f.dungeon:SetTextColor(unpack(CLR_DIM))
@@ -190,7 +190,7 @@ function DFWidget:Build()
         slot.icon:SetPoint("TOPLEFT", f, "TOPLEFT", roleX, rolesY)
         slot.icon:SetAtlas(ROLE_ATLASES[def])
 
-        slot.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        slot.text = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
         slot.text:SetPoint("LEFT", slot.icon, "RIGHT", 3, 0)
         slot.text:SetText("0/0")
 
@@ -200,13 +200,13 @@ function DFWidget:Build()
     end
 
     -- Avg Wait (right side of role row)
-    f.avgWaitLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.avgWaitLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.avgWaitLabel:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PAD, rolesY + 2)
     f.avgWaitLabel:SetJustifyH("RIGHT")
     f.avgWaitLabel:SetTextColor(unpack(CLR_DIM))
 
     -- In Queue timer (bottom center)
-    f.queueLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.queueLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.queueLabel:SetPoint("TOP", f, "TOP", 0, rolesY - ICON_SIZE - 6)
     f.queueLabel:SetJustifyH("CENTER")
     f.queueLabel:SetTextColor(unpack(CLR_DIM))

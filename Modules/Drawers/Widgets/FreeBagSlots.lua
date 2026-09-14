@@ -67,12 +67,12 @@ function Bags:Build()
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- Free count (large)
-    f.count = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.count = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.count:SetPoint("LEFT", f.icon, "RIGHT", 8, 6)
     f.count:SetJustifyH("LEFT")
 
     -- Sub-label
-    f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.label = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.label:SetPoint("LEFT", f.icon, "RIGHT", 8, -8)
     f.label:SetJustifyH("LEFT")
     f.label:SetTextColor(0.85, 0.85, 0.85)

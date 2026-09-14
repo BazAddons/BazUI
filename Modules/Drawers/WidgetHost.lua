@@ -133,7 +133,7 @@ function WidgetHost:CreateSlot(widget)
     slot.contentBg = slot:CreateTexture(nil, "BACKGROUND")
     slot.contentBg:SetColorTexture(0.05, 0.05, 0.08, 0.6)
 
-    title.label = title:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    title.label = BazUI.Skin.Theme.FontString(title, "OVERLAY", "GameFontNormalSmall")
     title.label:SetPoint("LEFT", 6, 0)
     title.label:SetText(widget.label or widget.id or "")
     title.label:SetTextColor(1, 0.82, 0)
@@ -144,7 +144,7 @@ function WidgetHost:CreateSlot(widget)
     BazUI.SetAtlasOrTexture(title.chevron, "ui-questtrackerbutton-secondary-collapse",
         "Interface\\Buttons\\UI-MinusButton-Up")
 
-    title.status = title:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    title.status = BazUI.Skin.Theme.FontString(title, "OVERLAY", "GameFontHighlightSmall")
     title.status:SetPoint("RIGHT", title.chevron, "LEFT", -6, 0)
     title.status:SetJustifyH("RIGHT")
     title.status:SetText("")

@@ -61,7 +61,7 @@ local function GetOrCreateDividerRow(parent, key)
     row.toggle:SetPoint("LEFT", 4, 0)
 
     -- Category title in suite gold.
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.text = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontNormalSmall")
     row.text:SetPoint("LEFT", row.toggle, "RIGHT", 6, 0)
     row.text:SetTextColor(unpack(TITLE_COLOR))
 
@@ -130,7 +130,7 @@ local function GetOrCreateDropSlot(parent, key, slotSize)
     -- Gold "+" centered in the slot. GameFontNormalHuge is gold by
     -- default; SetTextColor pins the exact suite gold so it tracks
     -- the divider title colour even if the font is themed.
-    slot.plus = slot:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    slot.plus = BazUI.Skin.Theme.FontString(slot, "OVERLAY", "GameFontNormalHuge")
     slot.plus:SetPoint("CENTER", 0, 1)
     slot.plus:SetText("+")
     slot.plus:SetTextColor(unpack(TITLE_COLOR))

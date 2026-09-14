@@ -58,13 +58,13 @@ function Pull:Build()
     f.icon:SetVertexColor(unpack(CLR_RED))
 
     -- "In Combat" label
-    f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.label = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.label:SetPoint("TOPLEFT", f.icon, "TOPRIGHT", 8, -2)
     f.label:SetText("In Combat")
     f.label:SetTextColor(unpack(CLR_LABEL))
 
     -- Large time display
-    f.time = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.time = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.time:SetPoint("BOTTOMLEFT", f.icon, "BOTTOMRIGHT", 8, 2)
     f.time:SetTextColor(unpack(CLR_TIME))
 

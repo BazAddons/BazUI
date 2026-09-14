@@ -27,11 +27,8 @@ function QT.CreateSectionHeader()
     f.chevron:SetAtlas("ui-questtrackerbutton-secondary-collapse")
 
     f.text = f:CreateFontString(nil, "OVERLAY")
-    if _G[C.TITLE_FONT] then
-        f.text:SetFontObject(_G[C.TITLE_FONT])
-    else
-        f.text:SetFontObject("GameFontNormal")
-    end
+    f.text:SetFontObject(BazUI.Skin.Theme.FontObject(C.TITLE_FONT)
+        or BazUI.Skin.Theme.FontObject("GameFontNormal"))
     f.text:SetPoint("LEFT", f, "LEFT", 10, 0)
     f.text:SetPoint("RIGHT", f.chevron, "LEFT", -6, 0)
     f.text:SetJustifyH("LEFT")

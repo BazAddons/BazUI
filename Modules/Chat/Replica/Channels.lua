@@ -674,7 +674,7 @@ local function EnsurePopup()
     popup:Hide()
 
     -- Title (gold, top-left). Refreshed per-show to the tab's name.
-    local title = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local title = BazUI.Skin.Theme.FontString(popup, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", LEFT_PAD, -10)
     title:SetTextColor(1, 0.82, 0)
     popup.title = title
@@ -687,7 +687,7 @@ local function EnsurePopup()
     -- "Name" label + rename EditBox below the title. Enter saves;
     -- Escape reverts. Renaming updates the tab button live and
     -- refreshes the BazUI Tabs options page if open.
-    local nameLabel = popup:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local nameLabel = BazUI.Skin.Theme.FontString(popup, "OVERLAY", "GameFontNormalSmall")
     nameLabel:SetPoint("TOPLEFT", LEFT_PAD, -HEADER_HEIGHT)
     nameLabel:SetText("Name")
     nameLabel:SetTextColor(0.82, 0.82, 0.82)
@@ -790,7 +790,7 @@ local function EnsureRow(popup, i)
     -- anywhere in the row toggles. Negative = outward.
     row:SetHitRectInsets(0, -(ColWidth() - 24), 0, 0)
 
-    row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.label = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontHighlight")
     row.label:SetPoint("LEFT", row, "RIGHT", 4, 1)
 
     -- Click handler is set freshly per-show because it captures the

@@ -405,7 +405,7 @@ function RepairWidget:Build()
     f.listRows = {}
 
     -- "All OK" fallback when nothing is damaged (anchored in col 2)
-    f.allOk = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.allOk = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.allOk:SetPoint("TOPLEFT", COL2_X, -PAD)
     f.allOk:SetText("All OK")
     f.allOk:SetTextColor(0.3, 1.0, 0.3)
@@ -426,12 +426,12 @@ function RepairWidget:GetOrCreateRow(index)
     row = CreateFrame("Frame", nil, f)
     row:SetHeight(ROW_HEIGHT)
 
-    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.name = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
     row.name:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.name:SetWidth(COL_WIDTH)
     row.name:SetJustifyH("LEFT")
 
-    row.pct = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.pct = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
     row.pct:SetPoint("RIGHT", row, "RIGHT", 0, 0)
     row.pct:SetWidth(COL_WIDTH)
     row.pct:SetJustifyH("RIGHT")

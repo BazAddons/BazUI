@@ -45,30 +45,30 @@ function Perf:Build()
     f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT)
 
     -- FPS (left)
-    f.fpsLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.fpsLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.fpsLabel:SetPoint("TOPLEFT", PAD, -4)
     f.fpsLabel:SetText("FPS")
     f.fpsLabel:SetTextColor(0.75, 0.75, 0.75)
 
-    f.fps = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.fps = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.fps:SetPoint("TOPLEFT", f.fpsLabel, "BOTTOMLEFT", 0, -1)
 
     -- Home latency (middle)
-    f.homeLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.homeLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.homeLabel:SetPoint("TOP", f, "TOP", 0, -4)
     f.homeLabel:SetText("Home")
     f.homeLabel:SetTextColor(0.75, 0.75, 0.75)
 
-    f.home = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.home = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.home:SetPoint("TOP", f.homeLabel, "BOTTOM", 0, -1)
 
     -- World latency (right)
-    f.worldLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.worldLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.worldLabel:SetPoint("TOPRIGHT", -PAD, -4)
     f.worldLabel:SetText("World")
     f.worldLabel:SetTextColor(0.75, 0.75, 0.75)
 
-    f.world = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.world = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.world:SetPoint("TOPRIGHT", f.worldLabel, "BOTTOMRIGHT", 0, -1)
 
     -- Tick once per second

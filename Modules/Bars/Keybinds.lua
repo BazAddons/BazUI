@@ -236,12 +236,12 @@ local function CreateKeybindFrame()
     titleBG.Text:SetText("Quick Keybind Mode")
 
     -- Description text
-    local desc1 = f:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    local desc1 = BazUI.Skin.Theme.FontString(f, "ARTWORK", "GameFontHighlight")
     desc1:SetPoint("TOP", 0, -25)
     desc1:SetWidth(360)
     desc1:SetText("You are in Quick Keybind Mode. Mouse over a button and press the desired key to set the binding for that button.")
 
-    local desc2 = f:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    local desc2 = BazUI.Skin.Theme.FontString(f, "ARTWORK", "GameFontHighlight")
     desc2:SetPoint("TOP", desc1, "BOTTOM", 0, -12)
     desc2:SetWidth(360)
     desc2:SetText("Canceling will remove you from Quick Keybind Mode.")
@@ -255,7 +255,7 @@ local function CreateKeybindFrame()
     charCB:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
     charCB:SetCheckedTexture("Interface\\Buttons\\UI-CheckBox-Check")
 
-    local cbLabel = charCB:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    local cbLabel = BazUI.Skin.Theme.FontString(charCB, "ARTWORK", "GameFontHighlight")
     cbLabel:SetPoint("LEFT", charCB, "RIGHT", 4, 0)
     cbLabel:SetText("Character Specific Keybindings")
 

@@ -437,7 +437,7 @@ local function BuildAddButton(ts, dockID)
     addBtn:SetSize(32, 32)
     addBtn:SetPoint("LEFT", ts, "RIGHT", 8, 0)
 
-    local plus = addBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    local plus = BazUI.Skin.Theme.FontString(addBtn, "OVERLAY", "GameFontNormalHuge")
     local fontFile, _, fontFlags = plus:GetFont()
     plus:SetFont(fontFile, 32, fontFlags or "")
     plus:SetShadowOffset(2, -2)

@@ -46,7 +46,7 @@ function SpeedWidget:Build()
     f.icon:SetTexture("Interface\\Icons\\Ability_Rogue_Sprint")
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.label = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.label:SetPoint("LEFT", f.icon, "RIGHT", 6, 0)
 
     -- Bottom row: full-width progress bar

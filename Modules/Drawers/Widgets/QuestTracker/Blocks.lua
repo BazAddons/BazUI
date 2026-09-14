@@ -67,11 +67,10 @@ function QT.CreateBlock()
     -- so they fit one line - wrapping looked cramped at the drawer's
     -- 260 px column width.
     title.text = title:CreateFontString(nil, "OVERLAY")
-    if _G[C.TITLE_FONT] then
-        title.text:SetFontObject(_G[C.TITLE_FONT])
-    else
-        title.text:SetFontObject("GameFontNormal")
-    end
+    -- Blizzard's tracker font in our face, falling back when this
+    -- client has no tracker font of its own.
+    title.text:SetFontObject(BazUI.Skin.Theme.FontObject(C.TITLE_FONT)
+        or BazUI.Skin.Theme.FontObject("GameFontNormal"))
     title.text:SetPoint("LEFT", title, "LEFT", 0, 0)
     title.text:SetPoint("RIGHT", title, "RIGHT", 0, 0)
     title.text:SetJustifyH("LEFT")
@@ -335,7 +334,7 @@ function QT.CreateBlock()
     bar.icon:Hide()
 
     bar.text = bar:CreateFontString(nil, "OVERLAY")
-    bar.text:SetFontObject("GameFontHighlightSmall")
+    bar.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
     -- Center on the actual fill area, not the whole bar+endcap. The
     -- ring on the right pulls the visual center off; offset left to
     -- compensate.
@@ -776,11 +775,8 @@ function QT.PopulateBlock(block, quest)
             line.icon:SetSize(C.NUB_SIZE, C.NUB_SIZE)
 
             line.text = line:CreateFontString(nil, "OVERLAY")
-            if _G[C.OBJECTIVE_FONT] then
-                line.text:SetFontObject(_G[C.OBJECTIVE_FONT])
-            else
-                line.text:SetFontObject("GameFontHighlightSmall")
-            end
+            line.text:SetFontObject(BazUI.Skin.Theme.FontObject(C.OBJECTIVE_FONT)
+                or BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
             line.text:SetJustifyH("LEFT")
             line.text:SetJustifyV("TOP")
             line.text:SetWordWrap(true)

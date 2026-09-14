@@ -75,7 +75,7 @@ local function AttachFrames()
 
     -- Day-of-month label centered on the button. Color #A29580 - warm
     -- desaturated tan that matches the minimap-button bevel chrome.
-    calendarBtn.text = calendarBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    calendarBtn.text = BazUI.Skin.Theme.FontString(calendarBtn, "OVERLAY", "GameFontNormal")
     calendarBtn.text:SetPoint("CENTER", 0, 0)
     calendarBtn.text:SetTextColor(0xA2 / 255, 0x95 / 255, 0x80 / 255)
 

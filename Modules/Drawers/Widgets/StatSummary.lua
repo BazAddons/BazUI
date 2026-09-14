@@ -62,12 +62,12 @@ function StatWidget:Build()
     f.ilvlIcon:SetTexture("Interface\\Icons\\INV_Misc_Statue_03")
     f.ilvlIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    f.ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.ilvlLabel = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
     f.ilvlLabel:SetPoint("LEFT", f.ilvlIcon, "RIGHT", 6, 4)
     f.ilvlLabel:SetText("Item Level")
     f.ilvlLabel:SetTextColor(0.7, 0.7, 0.7)
 
-    f.ilvlValue = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.ilvlValue = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
     f.ilvlValue:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PAD, -PAD - 2)
     f.ilvlValue:SetTextColor(1, 0.82, 0)
 
@@ -83,12 +83,12 @@ function StatWidget:Build()
     local y = -(PAD + 28)
     for _, stat in ipairs(STATS) do
         local row = {}
-        row.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        row.label = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlight")
         row.label:SetPoint("TOPLEFT", PAD + 4, y)
         row.label:SetText(stat.label)
         row.label:SetTextColor(unpack(stat.color))
 
-        row.value = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        row.value = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlight")
         row.value:SetPoint("TOPRIGHT", -PAD, y)
         row.value:SetTextColor(0.95, 0.95, 0.95)
 

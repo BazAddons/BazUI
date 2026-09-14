@@ -132,7 +132,7 @@ function Timestamps:ColumnWidth(chatFrame)
     -- rendered, so the cost is bounded.
     local probe = chatFrame._bcTSProbe
     if not probe then
-        probe = chatFrame:CreateFontString(nil, "BACKGROUND", "ChatFontNormal")
+        probe = BazUI.Skin.Theme.FontString(chatFrame, "BACKGROUND", "ChatFontNormal")
         probe:Hide()
         chatFrame._bcTSProbe = probe
     end
@@ -183,7 +183,7 @@ function Timestamps:Pad(text, chatFrame)
         if colW <= 0 then return text end   -- can't measure yet, no caching
         local probe = chatFrame._bcTSProbe
         if not probe then
-            probe = chatFrame:CreateFontString(nil, "BACKGROUND", "ChatFontNormal")
+            probe = BazUI.Skin.Theme.FontString(chatFrame, "BACKGROUND", "ChatFontNormal")
             probe:Hide()
             chatFrame._bcTSProbe = probe
         end
