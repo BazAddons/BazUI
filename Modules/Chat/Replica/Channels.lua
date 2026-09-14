@@ -64,12 +64,6 @@ local CATEGORIES = {
     { key = "officer",        label = "Officer Chat",       color = "OFFICER",
       events = { "CHAT_MSG_OFFICER" } },
 
-    { key = "guildAchieve",   label = "Guild Achievements", color = "GUILD_ACHIEVEMENT",
-      events = { "CHAT_MSG_GUILD_ACHIEVEMENT" } },
-
-    { key = "achievement",    label = "Achievements",       color = "ACHIEVEMENT",
-      events = { "CHAT_MSG_ACHIEVEMENT" } },
-
     { key = "whisper",        label = "Whispers",           color = "WHISPER",
       events = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM",
                  "CHAT_MSG_AFK", "CHAT_MSG_DND",
@@ -252,18 +246,18 @@ local PRESETS = {
         say=true, emote=true, yell=true, whisper=true, bnWhisper=true,
         party=true, partyLeader=true, raid=true, raidLeader=true,
         raidWarning=true, instance=true, instanceLeader=true,
-        battleground=true, bgLeader=true, achievement=true,
+        battleground=true, bgLeader=true,
         channel=true, system=true, errors=true, targetIcons=true,
     },
     GUILD = {
-        guild=true, officer=true, guildAchieve=true,
+        guild=true, officer=true,
     },
     LOOT  = {   -- Trade tab; loot/money + the channel events that
                 -- carry the actual /trade messages
         loot=true, channel=true,
     },
     LOG   = {
-        combat=true, skill=true, achievement=true,
+        combat=true, skill=true,
     },
     -- Default for a brand-new user-created tab: just Say (minimum
     -- viable; user toggles more on after creation).

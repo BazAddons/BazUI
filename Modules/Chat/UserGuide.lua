@@ -244,7 +244,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "What's stripped" },
                 { type = "paragraph",
-                  text = "Copies always strip Blizzard's colour escapes so the result pastes cleanly into Discord, a bug report, or a forum post. Hyperlinks (item / spell / achievement) keep their human-readable text." },
+                  text = "Copies always strip Blizzard's colour escapes so the result pastes cleanly into Discord, a bug report, or a forum post. Hyperlinks (item / spell / quest) keep their human-readable text." },
             },
         },
 

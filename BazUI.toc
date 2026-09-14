@@ -179,7 +179,6 @@ Modules\Notifications\UI\PanelScroll.lua
 Modules\Notifications\UI\Panel.lua
 Modules\Notifications\UI\ToggleButton.lua
 Modules\Notifications\Options\OptionsPanel.lua
-Modules\Notifications\Sources\Achievements.lua
 Modules\Notifications\Sources\Auction.lua
 Modules\Notifications\Sources\Calendar.lua
 Modules\Notifications\Sources\Group.lua

@@ -139,7 +139,7 @@ local DEFAULTS = {
             indentedWordWrap = true,
             messageSpacing   = 3,
         },
-        -- Log tab. XP / honor / faction / skill / achievements / pet
+        -- Log tab. XP / honor / faction / skill / pet
         -- info. Read-only (no edit box).
         [4] = {
             label            = "Log",
