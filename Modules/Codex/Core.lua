@@ -60,6 +60,31 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                 Codex:ApplySettings()
             end,
         },
+        -- Attunements and keys are written down rather than asked for,
+        -- since the client has no way to answer them. This is how you
+        -- see whether what is written down is right.
+        verify = {
+            desc = "Check the attunement and key list against the client",
+            handler = function()
+                local Access = Codex.Access
+                if not (Access and Access.Validate) then
+                    BazUI:Print("Codex: no attunement data loaded.")
+                    return
+                end
+                local rejected = Access.Validate()
+                local count = 0
+                for _, reason in pairs(rejected) do
+                    BazUI:Print("Codex: " .. reason)
+                    count = count + 1
+                end
+                local total = #Access.entries
+                if count == 0 then
+                    BazUI:Print(("Codex: all %d attunement entries agree with the client."):format(total))
+                else
+                    BazUI:Print(("Codex: %d of %d entries are wrong and are being hidden."):format(count, total))
+                end
+            end,
+        },
     },
     onReady = function(self) Codex:Initialize() end,
 })
