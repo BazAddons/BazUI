@@ -77,20 +77,33 @@ function Dock:Attach(frame, host, opts)
     followers[host] = followers[host] or {}
     followers[host][#followers[host] + 1] = frame
     self:Relayout(host)
+    -- The frame has just taken its host's width; its own followers need
+    -- that passed down to them in the same breath.
+    self:Relayout(frame)
 end
 
 function Dock:Detach(frame, quiet)
     local link = links[frame]
     if not link then return end
-    local list = followers[link.host]
+    local oldHost = link.host
+
+    local list = followers[oldHost]
     if list then
         for i = #list, 1, -1 do
             if list[i] == frame then table.remove(list, i) end
         end
-        if #list == 0 then followers[link.host] = nil end
+        if #list == 0 then followers[oldHost] = nil end
     end
     links[frame] = nil
-    if not quiet then self:Relayout() end
+
+    if not quiet then
+        -- The old host closes the gap, and anything hanging off the
+        -- frame we just detached has to follow it to its new size: a
+        -- bar that leaves a wide action bar takes its own followers
+        -- down to its own width with it.
+        self:Relayout(oldHost)
+        self:Relayout(frame)
+    end
 end
 
 function Dock:GetHost(frame)

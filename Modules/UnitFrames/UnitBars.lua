@@ -434,6 +434,18 @@ function UnitBars:Apply(bar)
     if not bar or InCombatLockdown() then return end
     local def, frame = bar.def, bar.frame
 
+    -- Coming off a host, keep the width it has been wearing. A docked
+    -- bar's width belongs to its host, so its own setting has been
+    -- untouched and probably still says whatever it was created with;
+    -- reverting to that makes the bar jump smaller for no reason the
+    -- player can see.
+    local wasDocked = BazUI.Dock:IsDocked(frame)
+    local goingFloat = not def.dock or def.dock.host == "float"
+    if wasDocked and goingFloat then
+        local width = frame:GetWidth()
+        if width and width > 0 then def.width = math.floor(width + 0.5) end
+    end
+
     frame:SetBarSize(math.max(60, math.min(1200, def.width or 240)),
         math.max(8, math.min(48, def.height or 20)))
     frame:SetTextMode(def.textMode or "always")
