@@ -23,7 +23,9 @@ local optionsTables = BazUI._optionsTables or {}
 BazUI._optionsTables = optionsTables
 
 local ROOT_KEY         = "BazUI"
-local TAB_GAP          = 2
+local TAB_GAP          = 16
+local TAB_INSET        = 4
+local TAB_HEIGHT       = 24
 
 local rootCategory      -- Blizzard category object for BazUI
 local categories = {}   -- [moduleKey] = Blizzard category (root or subcategory)
@@ -274,7 +276,7 @@ local function RebuildTabs(canvas)
         canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, 0)
     else
         strip:Show()
-        canvas.content:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -6)
+        canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, -(TAB_HEIGHT + 10))
         for _, page in ipairs(pages) do
             local tabID = strip:AddTab(page.label)
             canvas.tabIDs[page.key] = tabID
@@ -303,14 +305,19 @@ local function CreateCanvas(moduleKey)
     canvas.tabIDs    = {}
     canvas.tabKeys   = {}
 
-    -- The suite's tab strip (Core/TabStrip.lua), the same one the chat
-    -- dock uses. It sizes itself to its tabs, so only the anchor is set.
+    -- The suite's tab strip (Core/TabStrip.lua) in the same underline
+    -- look the notification centre wears: these sit on a solid panel, so
+    -- they need no plate of their own. It sizes itself to its tabs, so
+    -- only the anchor is set.
     local strip = BazUI.CreateTabStrip(nil, canvas, {
-        inset = 4,
+        style = "underline",
+        inset = TAB_INSET,
         spacing = TAB_GAP,
+        tabHeight = TAB_HEIGHT,
+        dividerParent = canvas,
         tabSelectSound = SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB,
     })
-    strip:SetPoint("TOPLEFT", 0, 0)
+    strip:SetPoint("TOPLEFT", TAB_INSET, -2)
     strip:SetTabSelectedCallback(function(tabID, isUserAction)
         local key = canvas.tabKeys and canvas.tabKeys[tabID]
         if key and isUserAction then RenderPage(canvas, key) end

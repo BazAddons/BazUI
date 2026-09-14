@@ -293,6 +293,9 @@ end
 --   opts.tabHeight       underline tabs only (default 24)
 --   opts.spacing         gap between tabs (default 2)
 --   opts.inset           gap before the first tab (default 0)
+--   opts.dividerParent   frame to span with a rule under the tabs; the
+--                        strip only spans its own tabs, so a full-width
+--                        rule has to hang off the container
 --   opts.tabSelectSound  SOUNDKIT id played on user clicks
 function BazUI.CreateTabStrip(name, parent, opts)
     opts = opts or {}
@@ -308,6 +311,22 @@ function BazUI.CreateTabStrip(name, parent, opts)
     strip.tabInset       = opts.inset or 0
     strip.tabSelectSound = opts.tabSelectSound
     strip:SetSize(1, 1)
+
+    -- A rule along the bottom of the row, which the underline look sits
+    -- on. Anchored to the container rather than the strip, which is only
+    -- as wide as its tabs.
+    if opts.dividerParent then
+        local rule = opts.dividerParent:CreateTexture(nil, "ARTWORK")
+        rule:SetHeight(1)
+        rule:SetPoint("BOTTOMLEFT", strip, "BOTTOMLEFT", 0, 0)
+        rule:SetPoint("BOTTOMRIGHT", opts.dividerParent, "BOTTOMRIGHT", 0, 0)
+        SetTexColor(rule, Theme.colors.divider)
+        strip.divider = rule
+        -- It lives on the container, so it has to follow the strip by hand.
+        strip:HookScript("OnShow", function(self) self.divider:Show() end)
+        strip:HookScript("OnHide", function(self) self.divider:Hide() end)
+        rule:SetShown(strip:IsShown())
+    end
     strip:SetScript("OnUpdate", function(self)
         if self._dirty then self:Layout() end
     end)

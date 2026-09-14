@@ -471,7 +471,8 @@ local function CreatePanel()
     -- text alone, the open tab bright over a gold rule.
     local TAB_KEYS = { "notifications", "history" }
     panel.tabStrip = BazUI.CreateTabStrip(nil, panel.tabRow, {
-        style = "underline", tabHeight = TAB_HEIGHT, spacing = 8,
+        style = "underline", tabHeight = TAB_HEIGHT, spacing = 16,
+        dividerParent = panel.tabRow,
     })
     panel.tabStrip:SetPoint("BOTTOMLEFT", panel.tabRow, "BOTTOMLEFT", 0, 0)
     panel.tabStrip:SetTabSelectedCallback(function(tabID, isUserAction)
@@ -481,13 +482,6 @@ local function CreatePanel()
     panel.tabStrip:AddTab("History")
     panel.tabStrip:Layout()
     panel.tabIDs = { notifications = 1, history = 2 }
-
-    -- Tab divider
-    local tDiv = panel.tabRow:CreateTexture(nil, "ARTWORK")
-    tDiv:SetHeight(1)
-    tDiv:SetPoint("BOTTOMLEFT", panel.tabRow, "BOTTOMLEFT", 0, 0)
-    tDiv:SetPoint("BOTTOMRIGHT", panel.tabRow, "BOTTOMRIGHT", 0, 0)
-    tDiv:SetColorTexture(unpack(Colors.divider))
 
     -----------------------------------------------------------
     -- Notifications content area
