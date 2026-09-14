@@ -35,14 +35,12 @@ end
 
 BazUI:RegisterSettingsSpec(MODULE_NAME, {
     sections = {
-        general = { label = "Auras",   order = 1 },
+        general = { label = "",        order = 1 },
         layout  = { label = "Layout",  order = 2 },
         icons   = { label = "Icons",   order = 3 },
         sorting = { label = "Sorting", order = 4 },
     },
     entries = {
-        { key = "intro", type = "note", section = "general", order = 0, style = "info",
-          text = "Your buffs sit above the health bar of the BazUI player frame and your debuffs above the power bar, eight to a row, with more rows stacking upward as needed. Right-click an icon to cancel that buff. Changes apply live; layout changes made in combat apply when it ends." },
         { key = "enabled", label = "Show BazUI auras", type = "toggle", section = "general", order = 1,
           desc = "Draw your buffs and debuffs on the player frame.",
           get = GetBool("enabled"), set = SetBool("enabled") },
@@ -86,31 +84,15 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     },
 })
 
--- The module's root entry is a landing page; it stays hidden while the
--- module has child pages (the User Manual and General Settings tabs),
--- which is the same shape Bags and Chat use.
-local function GetLandingPage()
-    return BazUI:CreateLandingPage(MODULE_NAME, {
-        subtitle    = "Buffs and debuffs on the player frame",
-        description = "Your buffs sit above the health bar of the BazUI player frame and your " ..
-            "debuffs above the power bar, eight to a row, with more rows stacking upward as needed.",
-        features = "Right-click to cancel a buff, in or out of combat. Time remaining and stack " ..
-            "counts on the icons. Debuff rims coloured by type. Weapon enchants shown with the " ..
-            "buffs. Blizzard's own buff and debuff frames parked while BazUI auras are shown.",
-        guide = {
-            { "/bazauras",           "Open these settings" },
-            { "Right-click an icon", "Cancel that buff or remove a weapon enchant" },
-            { "Layout tab",          "Icons per row, size, spacing and fill direction" },
-        },
-    })
-end
-
 BazUI:QueueForLogin(function()
-    BazUI:RegisterOptionsTable(MODULE_NAME, GetLandingPage)
+    -- The module entry itself never renders: its pages are tabs.
+    BazUI:RegisterOptionsTable(MODULE_NAME, function()
+        return { name = "Auras", type = "group", args = {} }
+    end)
     BazUI:AddToSettings(MODULE_NAME, "Auras")
 
     BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", function()
-        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General Settings" })
+        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General" })
     end)
-    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General Settings", MODULE_NAME)
+    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General", MODULE_NAME)
 end)

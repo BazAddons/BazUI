@@ -106,7 +106,7 @@ BazUI:RegisterUserGuide("Bags", {
                             "You don't care about item-type grouping",
                         }},
                         { type = "h2", text = "Hide Empty Slots" },
-                        { type = "paragraph", text = "In |cffffd700Options > AddOns > BazUI > Bags > General Settings > Layout|r, the Hide Empty Slots toggle compacts the grid to show only slots that currently hold items. Handy if your bags are mostly empty and you'd rather the panel shrink to fit." },
+                        { type = "paragraph", text = "In |cffffd700Options > AddOns > BazUI > Bags > General > Grouping|r, the Hide empty slots toggle compacts the grid to show only slots that currently hold items. Handy if your bags are mostly empty and you'd rather the panel shrink to fit." },
                         { type = "note", style = "info", text = "Hide Empty Slots only applies in Bags mode. Categories mode never renders empty slots - the grid is built from the items themselves, so empty slots are never visible regardless of this setting." },
                         { type = "h2", text = "Separate Each Bag" },
                         { type = "paragraph", text = "By default, Bags mode renders one thin-divider section per equipped bag. Each divider shows the bag's slot label plus the equipped bag's actual item name, like:" },
@@ -278,7 +278,7 @@ BazUI:RegisterUserGuide("Bags", {
         {
             title = "Customising the Panel",
             blocks = {
-                { type = "lead", text = "Most settings live under |cffffd700Options > AddOns > BazUI > Bags > General Settings|r. Changes apply live - you can leave the bag panel open while you tweak and watch the panel reflow." },
+                { type = "lead", text = "Most settings live under |cffffd700Options > AddOns > BazUI > Bags > General|r. Changes apply live - you can leave the bag panel open while you tweak and watch the panel reflow." },
                 { type = "h2", text = "Layout" },
                 { type = "table",
                   columns = { "Setting", "What it does" },

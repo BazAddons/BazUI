@@ -241,113 +241,41 @@ end
 -- Options pages
 ---------------------------------------------------------------------------
 
-local function GetLandingPage()
-    return BazUI:CreateLandingPage("Bags", {
-        subtitle    = "Unified bag panel",
-        description = "A lightweight combined bag panel that merges " ..
-            "all bags into one window with collapsible sections per " ..
-            "bag type. The keyring lives in the same panel as the " ..
-            "main bags - fold it away when you don't need it.",
-        features = "Single combined panel for bags + keyring. " ..
-            "Collapsible sections per bag type, state persisted. " ..
-            "Native item button template (cooldown sweep, quality " ..
-            "border, drag/drop, click-to-use all work as Blizzard " ..
-            "intends). Sort + free-slot indicator. Minimap entry " ..
-            "and slash-command toggle.",
-        guide = {
-            { "/bbg",        "Toggle the panel" },
-            { "Click a section header", "Fold or expand that bag type" },
-            { "Drag the title bar",     "Move the panel" },
-            { "Sort button",            "Calls Blizzard's bag sort" },
-        },
-    })
-end
-
----------------------------------------------------------------------------
--- Settings page - landing page sub-category
----------------------------------------------------------------------------
-
 local function GetSettingsPage()
+    local function Refresh()
+        if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
+    end
+    local function Categories()
+        return addon:GetSetting("bagMode") == "categories"
+    end
     return {
-        name = "Settings",
+        name = "General",
         type = "group",
         args = {
-            intro = {
-                order = 0.1,
-                type  = "lead",
-                text  = "Configure how the bag panel renders. Changes apply live - open the panel with /bbg to see them.",
-            },
-
-            layoutHeader = {
-                order = 1,
-                type  = "header",
-                name  = "Layout",
-            },
+            layoutHeader = { order = 10, type = "header", name = "Layout" },
             cols = {
-                order = 2,
-                type  = "range",
-                name  = "Columns",
-                desc  = "How many slots wide the panel should be. The window resizes around this; rows are added or removed automatically.",
-                min   = 4,
-                max   = 20,
-                step  = 1,
-                get   = function() return addon:GetSetting("cols") or 8 end,
-                set   = function(_, val)
-                    addon:SetSetting("cols", val)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
-            },
-            hideEmpty = {
-                order = 3,
-                type  = "toggle",
-                name  = "Hide Empty Slots",
-                desc  = "Skip empty slots when rendering - shows only slots with items. Compact view; the panel shrinks vertically when many slots are empty.",
-                get   = function() return addon:GetSetting("hideEmpty") and true or false end,
-                set   = function(_, val)
-                    addon:SetSetting("hideEmpty", val and true or false)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
-                disabled = function() return addon:GetSetting("bagMode") == "categories" end,
+                order = 11, type = "range", name = "Columns",
+                min = 4, max = 20, step = 1,
+                get = function() return addon:GetSetting("cols") or 8 end,
+                set = function(_, val) addon:SetSetting("cols", val); Refresh() end,
             },
             maxRows = {
-                order = 4,
-                type  = "range",
-                name  = "Max Rows",
-                desc  = "Soft cap on the bag panel's content area, measured in rows of item slots. The panel grows naturally up to this many rows, then scrolls for anything past it. Crank to the max if you'd rather the panel always sized to fit all your items.",
-                min   = 3,
-                max   = 30,
-                step  = 1,
-                get   = function() return addon:GetSetting("maxRows") or 15 end,
-                set   = function(_, val)
-                    addon:SetSetting("maxRows", val)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
+                order = 12, type = "range", name = "Rows before scrolling",
+                min = 3, max = 30, step = 1,
+                get = function() return addon:GetSetting("maxRows") or 15 end,
+                set = function(_, val) addon:SetSetting("maxRows", val); Refresh() end,
             },
             bgAlpha = {
-                order = 5,
-                type  = "range",
-                name  = "Background Opacity",
-                desc  = "Opacity of the panel's dark background, in percent. 100 is solid; lower lets the world show through. Items, text and chrome stay fully opaque regardless.",
-                min   = 0,
-                max   = 100,
-                step  = 5,
-                get   = function() return math.floor(((addon:GetSetting("bgAlpha") or 1.0) * 100) + 0.5) end,
-                set   = function(_, val)
-                    addon:SetSetting("bgAlpha", val / 100)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
+                order = 13, type = "range", name = "Background opacity",
+                min = 0, max = 1, step = 0.05, isPercent = true,
+                get = function() return addon:GetSetting("bgAlpha") or 1 end,
+                set = function(_, val) addon:SetSetting("bgAlpha", val); Refresh() end,
             },
             strata = {
-                order = 6,
-                type  = "select",
-                name  = "Frame Strata",
-                desc  = "Which Z-order layer the bag renders on. Dialog keeps the bag above the settings panel; pick a lower strata if you'd rather the bag tuck under other UI.",
-                values = {
-                    LOW    = "Low",
-                    MEDIUM = "Medium",
-                    HIGH   = "High",
-                    DIALOG = "Dialog (default)",
-                },
+                order = 14, type = "select", name = "Frame layer",
+                desc = "Dialog keeps the bag above the settings window.",
+                values = { LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog" },
+                sorting = { "LOW", "MEDIUM", "HIGH", "DIALOG" },
                 get = function() return addon:GetSetting("strata") or "DIALOG" end,
                 set = function(_, val)
                     addon:SetSetting("strata", val)
@@ -357,68 +285,48 @@ local function GetSettingsPage()
                 end,
             },
 
-            groupingHeader = {
-                order = 5,
-                type  = "header",
-                name  = "Grouping",
-            },
+            groupingHeader = { order = 20, type = "header", name = "Grouping" },
             bagMode = {
-                order = 6,
-                type  = "select",
-                name  = "Mode",
-                desc  = "Bags shows one collapsible section per equipped bag (the default Blizzard layout). Categories regroups items by what they are - Equipment, Consumables, Trade Goods, Quest Items, Junk, Other - regardless of which bag holds them, with thin divider rows separating each group.",
-                values = {
-                    bags       = "Bags (per-bag sections)",
-                    categories = "Categories (group by item type)",
-                },
+                order = 21, type = "select", name = "Group items by",
+                desc = "Categories sorts by what an item is; Bags keeps one section per bag.",
+                values = { bags = "Bag", categories = "Category" },
+                sorting = { "categories", "bags" },
                 get = function() return addon:GetSetting("bagMode") or "bags" end,
                 set = function(_, val)
                     addon:SetSetting("bagMode", val)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
+                    Refresh()
+                    if BazUI.RefreshOptions then BazUI:RefreshOptions(MODULE_NAME .. "-Settings") end
                 end,
             },
             perBagSections = {
-                order = 7,
-                type  = "toggle",
-                name  = "Separate Each Bag",
-                desc  = "Bags-mode only. When on (default), renders one thin-divider section per equipped bag - Backpack, Bag 1 (BagName), Bag 2 (BagName), ..., Keyring - using the same divider style Categories mode uses, with the equipped bag's actual name shown next to its slot label. When off, all equippable bag slots merge into one Bags section plus a Keyring section. Greys out in Categories mode (the setting has no effect there).",
-                get   = function() return addon:GetSetting("perBagSections") and true or false end,
-                set   = function(_, val)
-                    addon:SetSetting("perBagSections", val and true or false)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
-                disabled = function() return addon:GetSetting("bagMode") == "categories" end,
+                order = 22, type = "toggle", name = "Separate each bag",
+                desc = "Off merges every bag into one section, with the keyring on its own.",
+                get = function() return addon:GetSetting("perBagSections") and true or false end,
+                set = function(_, val) addon:SetSetting("perBagSections", val and true or false); Refresh() end,
+                hidden = Categories,
+            },
+            hideEmpty = {
+                order = 23, type = "toggle", name = "Hide empty slots",
+                desc = "The panel shrinks to the slots that hold items.",
+                get = function() return addon:GetSetting("hideEmpty") and true or false end,
+                set = function(_, val) addon:SetSetting("hideEmpty", val and true or false); Refresh() end,
+                hidden = Categories,
             },
 
-            moneyHeader = {
-                order = 10,
-                type  = "header",
-                name  = "Money",
-            },
+            moneyHeader = { order = 30, type = "header", name = "Money" },
             goldOnly = {
-                order = 12,
-                type  = "toggle",
-                name  = "Gold Only",
-                desc  = "Hide silver and copper in the gold display next to the search bar - keeps just the gold total. Useful at high gold totals where the silver/copper digits add visual noise.",
-                get   = function() return addon:GetSetting("goldOnly") and true or false end,
-                set   = function(_, val)
-                    addon:SetSetting("goldOnly", val and true or false)
-                    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
-                end,
+                order = 31, type = "toggle", name = "Show gold only",
+                desc = "Drops the silver and copper next to the search box.",
+                get = function() return addon:GetSetting("goldOnly") and true or false end,
+                set = function(_, val) addon:SetSetting("goldOnly", val and true or false); Refresh() end,
             },
 
-            blizzardHeader = {
-                order = 20,
-                type  = "header",
-                name  = "Blizzard UI",
-            },
+            blizzardHeader = { order = 40, type = "header", name = "Blizzard UI" },
             hideBagBar = {
-                order = 21,
-                type  = "toggle",
-                name  = "Hide Blizzard's Bag Bar",
-                desc  = "Hide the backpack, bag slot and keyring buttons in the bottom-right corner of the screen. B, /bbg and the minimap entry still open the BazUI panel. To equip a new bag while the bar is hidden, right-click it in your inventory and it goes into an empty bag slot. Applies live.",
-                get   = function() return addon:GetSetting("hideBagBar") and true or false end,
-                set   = function(_, val)
+                order = 41, type = "toggle", name = "Hide Blizzard's bag bar",
+                desc = "B, /bbg and the minimap entry still open the panel. To equip a new bag while the bar is hidden, right-click it in your inventory.",
+                get = function() return addon:GetSetting("hideBagBar") and true or false end,
+                set = function(_, val)
                     addon:SetSetting("hideBagBar", val and true or false)
                     addon:ApplyBagBarVisibility()
                 end,
@@ -428,11 +336,14 @@ local function GetSettingsPage()
 end
 
 addon.config.onLoad = function(self)
-    BazUI:RegisterOptionsTable(MODULE_NAME, GetLandingPage)
+    -- The module entry itself never renders: its pages are tabs.
+    BazUI:RegisterOptionsTable(MODULE_NAME, function()
+        return { name = "Bags", type = "group", args = {} }
+    end)
     BazUI:AddToSettings(MODULE_NAME, "Bags")
 
     BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", GetSettingsPage)
-    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General Settings", MODULE_NAME)
+    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General", MODULE_NAME)
 end
 
 addon.config.onReady = function(self)

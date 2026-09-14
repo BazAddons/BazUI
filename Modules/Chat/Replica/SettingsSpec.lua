@@ -80,7 +80,7 @@ end
 
 local SPEC = {
     sections = {
-        master     = { label = "Master",         order = 1  },   -- options only
+        master     = { label = "",               order = 1  },   -- options only
         appearance = { label = "Appearance",     order = 10 },
         behavior   = { label = "Behavior",       order = 20 },
         timestamps = { label = "Timestamps",     order = 30 },

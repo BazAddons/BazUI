@@ -16,13 +16,6 @@ local addonName = BazUI.Chat.MODULE_NAME
 
 local PAGE_KEY = "BazUIChat-Settings"
 
-local INTRO =
-    "BazUIChat is a full chat replacement built on top of Blizzard's own "
-    .. "ChatFrameMixin formatter. These options control the chat dock's "
-    .. "chrome and behavior and apply to every tab. The same controls also "
-    .. "live inline in Edit Mode - both views edit the same saved settings, "
-    .. "so changes here mirror live to the popup and vice versa."
-
 ---------------------------------------------------------------------------
 -- Register with BazUI
 ---------------------------------------------------------------------------
@@ -31,19 +24,14 @@ BazUI:QueueForLogin(function()
     if not BazUI.RegisterOptionsTable then return end
     if not BazUI.BuildOptionsTableFromSpec then return end
 
-    local function BuildPage()
-        return BazUI:BuildOptionsTableFromSpec(addonName, {
-            name  = "Chat",
-            intro = INTRO,
-        })
-    end
-
-    -- Top-level addon entry (becomes the bottom tab in the BazUI
-    -- standalone options window).
-    BazUI:RegisterOptionsTable(addonName, BuildPage)
+    -- The module entry itself never renders: its pages are tabs.
+    BazUI:RegisterOptionsTable(addonName, function()
+        return { name = "Chat", type = "group", args = {} }
+    end)
     BazUI:AddToSettings(addonName, "Chat")
 
-    -- Settings sub-category in the left sidebar under BazChat.
-    BazUI:RegisterOptionsTable(PAGE_KEY, BuildPage)
-    BazUI:AddToSettings(PAGE_KEY, "Settings", addonName)
+    BazUI:RegisterOptionsTable(PAGE_KEY, function()
+        return BazUI:BuildOptionsTableFromSpec(addonName, { name = "General" })
+    end)
+    BazUI:AddToSettings(PAGE_KEY, "General", addonName)
 end)

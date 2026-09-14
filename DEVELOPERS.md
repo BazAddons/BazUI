@@ -52,8 +52,16 @@ Differences from the old suite:
 
 - One saved variable, `BazUIDB`. No per-module saved variables and no migration from the old addons; BazUI starts fresh.
 - Module init runs on BazUI's own `ADDON_LOADED`, not a per-addon one.
-- The options window shows one bottom tab per module. A module registers its pages with `BazUI:RegisterOptionsTable(key, fn)` and `BazUI:AddToSettings(key, label, parentKey)`, exactly as before.
-- The BazUI landing page lists modules by title; there are no per-module versions.
+- The options window is Blizzard's Settings panel: BazUI is a category, each module a subcategory, and a module's pages are tabs across its canvas. A module registers a page with `BazUI:RegisterOptionsTable(key, fn)` and `BazUI:AddToSettings(key, label, parentKey, order)`. Tabs run General, then the module's own pages (by `order`, else alphabetical), then the User Manual from `BazUI:RegisterUserGuide`. Register a stub `{ name, type = "group", args = {} }` for the module key itself; it never renders once the module has pages. There are no landing pages and no Global Settings tabs: a value that applies to every item lives in a section on General.
+- There are no per-module versions.
+
+### Options pages
+
+`Core/Options` renders one column of rows at up to 640 px: label on the left, control on the right, an optional `desc` under the label. Row types: `toggle`, `range` (`min`/`max`/`step`, then `isPercent` or a `format` such as `"%d s"`), `select` (`values` map plus a `sorting` array), `input`, `execute` (`confirm*` fields; `style = "danger"` for destructive actions), `description` and `header`. Every option accepts `disabled` and `hidden` as a value or a function; a `set` handler that changes what other rows should show calls `BazUI:RefreshOptions(pageKey)`. The User Manual content blocks (`paragraph`, `note`, `table`, ...) also render on a page. Write labels as short sentences in sentence case and keep `desc` for what the label cannot say.
+
+A collection of editable items is a non-inline `group` whose args are one sub-group per item. It renders as a picker row (dropdown, then Up/Down when the group has `onMoveUp`/`onMoveDown`, then buttons) with the selected item's args as the form beneath. On the group: `pickerLabel`, `emptyText`, and `itemActions`, execute-shaped entries whose `func`, `confirmText` and `disabled` receive the selected item. On an item: `toggle = { name, get, set }` draws an on/off switch on the picker row, and `source` groups the dropdown. Executes ordered before the group become buttons on the picker row. `BazUI:CreateManagedListPage` builds this shape from `getItems`/`buildDetail`; selection survives re-renders by the item's args key.
+
+Notifications sources describe their events with `{ type = "event", show, toast, default }` option definitions (see `Modules/Notifications/API/ModuleRegistry.lua`); the Sources page turns each into an Off / History only / Toast choice.
 
 ## Starter profile
 

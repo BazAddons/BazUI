@@ -33,8 +33,6 @@ local function SetBool(key)
 end
 
 local entries = {
-    { key = "intro", type = "note", section = "general", order = 0, style = "info",
-      text = "Blizzard's micro buttons on a movable BazUI bar, drawn as round ring-framed icons. They are still Blizzard's buttons, so tooltips, the talent reminder and keybinds work as before. Move the bar in BazUI Edit Mode." },
     { key = "enabled", label = "Show the BazUI micro menu", type = "toggle", section = "general", order = 1,
       get = GetBool("enabled"), set = SetBool("enabled") },
     { key = "hideBlizzard", label = "Hide Blizzard's micro menu", type = "toggle", section = "general", order = 2,
@@ -76,34 +74,22 @@ end
 
 BazUI:RegisterSettingsSpec(MODULE_NAME, {
     sections = {
-        general = { label = "Micro Menu", order = 1 },
+        general = { label = "",           order = 1 },
         layout  = { label = "Layout",     order = 2 },
         buttons = { label = "Buttons",    order = 3 },
     },
     entries = entries,
 })
 
-local function GetLandingPage()
-    return BazUI:CreateLandingPage(MODULE_NAME, {
-        subtitle    = "Blizzard's micro buttons, BazUI style",
-        description = "The Character, Spellbook, Talents, Quest Log, Social, Guild, World Map, Game Menu and Help " ..
-            "buttons on a movable bar, drawn as round ring-framed icons that match the rest of BazUI.",
-        features = "Still Blizzard's own buttons, so tooltips, keybinds and the talent reminder keep working. " ..
-            "Horizontal or vertical. Show or hide each button. Player portrait on the Character button.",
-        guide = {
-            { "/bazmicro",       "Open these settings" },
-            { "BazUI Edit Mode", "Drag the bar; size and spacing are in its popup too" },
-            { "/bazmicro reset", "Move the bar back to the top centre" },
-        },
-    })
-end
-
 BazUI:QueueForLogin(function()
-    BazUI:RegisterOptionsTable(MODULE_NAME, GetLandingPage)
+    -- The module entry itself never renders: its pages are tabs.
+    BazUI:RegisterOptionsTable(MODULE_NAME, function()
+        return { name = "Micro Menu", type = "group", args = {} }
+    end)
     BazUI:AddToSettings(MODULE_NAME, "Micro Menu")
 
     BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", function()
-        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General Settings" })
+        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General" })
     end)
-    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General Settings", MODULE_NAME)
+    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General", MODULE_NAME)
 end)
