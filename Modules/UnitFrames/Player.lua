@@ -10,12 +10,58 @@ local stockParent, petParent, petDetached
 local active, pending, manualUnlocked = false, false, false
 local hoveredAreas = {}
 
-local function ShowValues()
+---------------------------------------------------------------------------
+-- The health and power numbers
+--
+-- Both values sit on one layer so the pair fades as a unit. The text is
+-- always current; only the layer's alpha says whether it shows. "Always"
+-- and "Never" pin it; "On hover" eases it in and out as the cursor
+-- crosses the bars. Alpha is unprotected, so this runs in combat too.
+---------------------------------------------------------------------------
+
+local VALUE_FADE_IN, VALUE_FADE_OUT = 0.15, 0.3
+
+local valueLayer
+local valueAlpha = 0
+
+local function ValueMode()
     local mode = addon:GetSetting("showValues")
     -- Preserve existing profiles that saved the original boolean toggle.
-    if mode == false or mode == "never" then return false end
-    if mode == "hover" then return next(hoveredAreas) ~= nil end
-    return true
+    if mode == false then return "never" end
+    if mode == "hover" or mode == "never" then return mode end
+    return "always"
+end
+
+local function StepValueFade(self, elapsed)
+    local current = self:GetAlpha()
+    if current == valueAlpha then
+        self:SetScript("OnUpdate", nil)
+        return
+    end
+    local step = elapsed / (valueAlpha > current and VALUE_FADE_IN or VALUE_FADE_OUT)
+    if valueAlpha > current then
+        self:SetAlpha(math.min(valueAlpha, current + step))
+    else
+        self:SetAlpha(math.max(valueAlpha, current - step))
+    end
+end
+
+-- animate = false snaps (a setting change, or a frame nobody can see).
+function addon:ApplyValueAlpha(animate)
+    if not valueLayer then return end
+    local mode = ValueMode()
+    if mode == "hover" then
+        valueAlpha = next(hoveredAreas) ~= nil and 1 or 0
+    else
+        valueAlpha = mode == "always" and 1 or 0
+        animate = false
+    end
+    if animate == false or not valueLayer:IsVisible() then
+        valueLayer:SetScript("OnUpdate", nil)
+        valueLayer:SetAlpha(valueAlpha)
+    else
+        valueLayer:SetScript("OnUpdate", StepValueFade)
+    end
 end
 
 
@@ -51,7 +97,13 @@ local function CreateBar(box, key)
 end
 
 local function ValueText(bar)
-    local text = artLayer:CreateFontString(nil, "OVERLAY")
+    if not valueLayer then
+        valueLayer = CreateFrame("Frame", nil, artLayer)
+        valueLayer:SetAllPoints(artLayer)
+        valueLayer:SetFrameLevel(artLayer:GetFrameLevel() + 1)
+        valueLayer:SetAlpha(0)
+    end
+    local text = valueLayer:CreateFontString(nil, "OVERLAY")
     text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     text:SetPoint("CENTER", bar, "CENTER")
     text:SetTextColor(1, 1, 1)
@@ -74,6 +126,7 @@ local function ClickArea(box, suffix)
     button:SetScript("OnEnter", function(self)
         hoveredAreas[self] = true
         addon:UpdateValues()
+        addon:ApplyValueAlpha()
         if suffix == "PortraitButton" then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetUnit("player")
@@ -83,6 +136,7 @@ local function ClickArea(box, suffix)
     local function Leave(self)
         hoveredAreas[self] = nil
         addon:UpdateValues()
+        addon:ApplyValueAlpha()
         if suffix == "PortraitButton" then GameTooltip_Hide() end
     end
     button:SetScript("OnLeave", Leave)
@@ -165,13 +219,8 @@ function addon:UpdateValues()
     local color = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
     power:SetStatusBarColor(color and color.r or 0.1, color and color.g or 0.3, color and color.b or 1)
     updateNameplate(UnitName("player") or "")
-    if ShowValues() then
-        health.text:SetText(UnitIsGhost("player") and "Ghost" or UnitIsDead("player") and "Dead" or FormatValue(current, maximum))
-        power.text:SetText(maxPower > 0 and FormatValue(currentPower, maxPower) or "")
-    else
-        health.text:SetText("")
-        power.text:SetText("")
-    end
+    health.text:SetText(UnitIsGhost("player") and "Ghost" or UnitIsDead("player") and "Dead" or FormatValue(current, maximum))
+    power.text:SetText(maxPower > 0 and FormatValue(currentPower, maxPower) or "")
 end
 
 -- The edit mover is deliberately independent of the secure unit buttons.
@@ -225,6 +274,7 @@ function addon:ApplySettings()
     SetStockHidden(active)
     self:ApplyPortraitPlacement()
     self:UpdateValues()
+    self:ApplyValueAlpha(false)
     self:UpdatePortrait()
     self:RefreshMover()
     self.Casting:Apply()
