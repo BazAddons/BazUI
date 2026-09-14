@@ -191,6 +191,12 @@ end
 function BNC:SetEventDestination(moduleId, def, which, on)
     if which == "default" then
         if def.blizzard then BNC:SetModuleSetting(moduleId, def.blizzard, not on) end
+        -- Some of Blizzard's displays are silenced by unregistering the
+        -- frame's events, which cannot be undone while the interface is
+        -- running. Say so rather than leaving it looking broken.
+        if on and def.blizzardReload and BazUI.PromptReload then
+            BazUI:PromptReload(def.blizzardReload)
+        end
         return
     end
 

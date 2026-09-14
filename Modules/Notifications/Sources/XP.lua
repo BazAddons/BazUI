@@ -136,7 +136,7 @@ BNC:RegisterModule({
 
 BNC:RegisterModuleOptions(MODULE_ID, {
     { type = "event", key = "gains",   label = "XP gains",           show = "showXPGains", toast = "xpToasts" },
-    { type = "event", key = "levelUp", label = "Level up",           show = "showLevelUp", toast = "levelToasts", blizzard = "hideDefaultLevelUp" },
+    { type = "event", key = "levelUp", label = "Level up",           show = "showLevelUp", toast = "levelToasts", blizzard = "hideDefaultLevelUp", blizzardReload = "Blizzard's level-up display" },
     { type = "event", key = "rested",  label = "Rested XP at login", show = "showRested",  toast = "restedToasts" },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
 })

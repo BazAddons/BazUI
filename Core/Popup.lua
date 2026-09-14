@@ -408,3 +408,55 @@ function BazUI:Alert(opts)
         },
     })
 end
+
+---------------------------------------------------------------------------
+-- Public: BazUI:PromptReload(reason)
+--
+-- Some settings cannot take effect until the interface is rebuilt. The
+-- honest thing is to say so at the moment the setting is changed, and to
+-- offer the reload rather than leaving the player to find the command.
+--
+-- Reasons collect: flip three such settings and you are asked once, with
+-- all three listed, because being asked three times is worse than not
+-- being asked at all. The prompt is not modal and Later simply closes
+-- it; the setting is already saved either way, and will apply on the
+-- next reload whenever that happens.
+---------------------------------------------------------------------------
+
+local reloadReasons = {}
+local reloadPending = false
+
+function BazUI:PromptReload(reason)
+    if reason and reason ~= "" then
+        for _, existing in ipairs(reloadReasons) do
+            if existing == reason then reason = nil break end
+        end
+        if reason then reloadReasons[#reloadReasons + 1] = reason end
+    end
+    if reloadPending then return end
+    reloadPending = true
+
+    -- One frame's grace, so a change that writes several settings at
+    -- once gathers them into a single question.
+    C_Timer.After(0, function()
+        reloadPending = false
+        local body = "These need the interface reloaded before they take effect:"
+        for _, r in ipairs(reloadReasons) do
+            body = body .. "|n|cffd9c7a0" .. r .. "|r"
+        end
+        if #reloadReasons == 0 then
+            body = "This needs the interface reloaded before it takes effect."
+        end
+        wipe(reloadReasons)
+
+        BazUI:OpenPopup({
+            title = "Reload needed",
+            body  = body,
+            buttons = {
+                { label = "Later", style = "default" },
+                { label = "Reload now", style = "primary",
+                  onClick = function() ReloadUI() end },
+            },
+        })
+    end)
+end
