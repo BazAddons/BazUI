@@ -96,8 +96,6 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("SKILL_LINES_CHANGED")
 eventFrame:RegisterEvent("CHAT_MSG_LOOT")
 
-pcall(function() eventFrame:RegisterEvent("TRADE_SKILL_CRAFT_BEGIN") end)
-pcall(function() eventFrame:RegisterEvent("TRADE_SKILL_CRAFT_COMPLETED") end)
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then

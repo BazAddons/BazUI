@@ -18,7 +18,6 @@ BazUI:RegisterUserGuide("Notifications", {
                     "Loot drops with rarity colors",
                     "Reputation gains and losses",
                     "XP",
-                    "Currency changes",
                     "Guild member activity",
                     "LFG queue events",
                     "Profession crafts",
@@ -71,9 +70,6 @@ BazUI:RegisterUserGuide("Notifications", {
                 { type = "collapsible", title = "XP", style = "h4", blocks = {
                     { type = "paragraph", text = "Experience gains. Suppressed at max level automatically." },
                 }},
-                { type = "collapsible", title = "Achievements", style = "h4", blocks = {
-                    { type = "paragraph", text = "Achievement completions for you and (optionally) party/raid members." },
-                }},
                 { type = "collapsible", title = "Quests", style = "h4", blocks = {
                     { type = "paragraph", text = "Quest accept, complete, and turn-in events with quest icon and rewards." },
                 }},
@@ -96,13 +92,10 @@ BazUI:RegisterUserGuide("Notifications", {
                     { type = "paragraph", text = "Auction house events - successful sales, expirations, and outbids." },
                 }},
                 { type = "collapsible", title = "Inventory", style = "h4", blocks = {
-                    { type = "paragraph", text = "Bag-space warnings, currency captures, and notable inventory transitions." },
-                }},
-                { type = "collapsible", title = "Calendar", style = "h4", blocks = {
-                    { type = "paragraph", text = "Calendar invites and event reminders." },
+                    { type = "paragraph", text = "Bag-space warnings, low durability, and repairs." },
                 }},
                 { type = "collapsible", title = "Social", style = "h4", blocks = {
-                    { type = "paragraph", text = "Guildmates and friends - online/offline, level-ups, achievements, BNet status." },
+                    { type = "paragraph", text = "Guildmates and friends coming online and going offline, whispers, and group requests." },
                 }},
                 { type = "collapsible", title = "System", style = "h4", blocks = {
                     { type = "paragraph", text = "Important system messages - disconnects, reconnect attempts, and error notifications." },

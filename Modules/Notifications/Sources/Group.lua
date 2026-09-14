@@ -2,17 +2,15 @@
 local BNC = BazUI.Notifications.API
 -- ==========================================================================
 -- BNC-Group: Group roster changes, queue pops, role checks, and pull timers.
--- Events: GROUP_ROSTER_UPDATE, LFG_PROPOSAL_SHOW, ROLE_POLL_BEGIN, START_TIMER
+-- Events: GROUP_ROSTER_UPDATE, START_TIMER
 -- ==========================================================================
 
 local MODULE_ID = "group"
 local MODULE_NAME = "Group"
 local MODULE_ICON = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend"
 
-local ICON_LFG = "Interface\\Icons\\INV_Misc_GroupLooking"
 local ICON_MEMBER_JOIN = "Interface\\Icons\\Ability_Spy"
 local ICON_MEMBER_LEAVE = "Interface\\Icons\\Ability_Rogue_TricksOfTheTrade"
-local ICON_ROLE = "Interface\\Icons\\Spell_Nature_Polymorph"
 local ICON_COUNTDOWN = "Interface\\Icons\\Spell_Holy_BorrowedTime"
 
 local GetSetting = BNC:CreateGetSetting(MODULE_ID)
@@ -81,36 +79,6 @@ local function CheckGroupChanges()
     groupMembers = current
 end
 
-local function OnLFGProposal()
-    if GetSetting("showQueuePop") == false then return end
-
-    BNC:Push({
-        event = "queue",
-        module = MODULE_ID,
-        title = "Queue Ready!",
-        message = "A group has been found",
-        icon = ICON_LFG,
-        priority = "high",
-        duration = GetSetting("toastDuration") or 8,
-        silent = GetSetting("queueToasts") == false,
-    })
-end
-
-local function OnRoleCheck()
-    if GetSetting("showRoleCheck") == false then return end
-
-    BNC:Push({
-        event = "roleCheck",
-        module = MODULE_ID,
-        title = "Role Check",
-        message = "Confirm your role",
-        icon = ICON_ROLE,
-        priority = "high",
-        duration = GetSetting("toastDuration") or 5,
-        silent = GetSetting("roleToasts") == false,
-    })
-end
-
 local function OnCountdown(event, initiatedBy, timeRemaining)
     if GetSetting("showCountdown") == false then return end
 
@@ -131,8 +99,6 @@ local eventFrame = CreateFrame("Frame")
 
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
-eventFrame:RegisterEvent("LFG_PROPOSAL_SHOW")
-eventFrame:RegisterEvent("ROLE_POLL_BEGIN")
 eventFrame:RegisterEvent("START_TIMER")
 
 eventFrame:SetScript("OnEvent", function(self, event, ...)
@@ -140,10 +106,6 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         groupMembers = GetGroupMemberList()
     elseif event == "GROUP_ROSTER_UPDATE" then
         C_Timer.After(0.2, CheckGroupChanges)
-    elseif event == "LFG_PROPOSAL_SHOW" then
-        OnLFGProposal()
-    elseif event == "ROLE_POLL_BEGIN" then
-        OnRoleCheck()
     elseif event == "START_TIMER" then
         OnCountdown(event, ...)
     end
@@ -156,9 +118,7 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { type = "event", key = "queue",     label = "Queue pop",                   show = "showQueuePop",      toast = "queueToasts" },
     { type = "event", key = "members",   label = "Members joining and leaving", show = "showMemberChanges", toast = "memberToasts" },
-    { type = "event", key = "roleCheck", label = "Role checks",                 show = "showRoleCheck",     toast = "roleToasts" },
     { type = "event", key = "countdown", label = "Pull timers",                 show = "showCountdown",     toast = "countdownToasts" },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })
