@@ -579,6 +579,44 @@ BazUI:QueueForLogin(function()
                     end
                 end,
             },
+            escdebug = {
+                desc = "Print what Blizzard's Escape handler sees (debugging Esc not clearing the target)",
+                handler = function()
+                    local function shown(f) return f and f.IsShown and f:IsShown() and true or false end
+                    BazUI:Print("Escape chain check:")
+                    print("  target exists:", UnitExists("target"), " charmed:", UnitIsCharmed("player"), " spell targeting:", _G.SpellIsTargeting())
+                    print("  GameMenu:", shown(_G.GameMenuFrame), " Help:", shown(_G.HelpFrame), " EditMode:", shown(_G.EditModeManagerFrame),
+                        " Loot:", shown(_G.LootFrame), " Opacity:", shown(_G.OpacityFrame), " ModelPreview:", shown(_G.ModelPreviewFrame))
+                    for i = 1, 4 do
+                        local sp = _G["StaticPopup" .. i]
+                        if shown(sp) then print("  StaticPopup" .. i .. " shown:", tostring(sp.which)) end
+                    end
+                    for _, n in ipairs(_G.UIMenus or {}) do
+                        if shown(_G[n]) then print("  menu shown:", n) end
+                    end
+                    local any = false
+                    for _, n in ipairs(UISpecialFrames) do
+                        if shown(_G[n]) then print("  special frame shown:", n); any = true end
+                    end
+                    if not any then print("  no special frames shown") end
+                    for _, area in ipairs({ "left", "center", "right", "doublewide", "fullscreen" }) do
+                        local f = _G.GetUIPanel and _G.GetUIPanel(area)
+                        if f then print("  UI panel " .. area .. ":", f:GetName() or "?") end
+                    end
+                    local dock = _G.GeneralDockManager
+                    if dock and dock.overflowButton and dock.overflowButton.list then
+                        print("  chat overflow list shown:", shown(dock.overflowButton.list))
+                    end
+                    if _G.Menu and _G.Menu.GetManager then
+                        local ok, mgr = pcall(_G.Menu.GetManager)
+                        if ok and mgr and mgr.GetOpenMenu then
+                            local ok2, open = pcall(mgr.GetOpenMenu, mgr)
+                            print("  open _G.Menu:", ok2 and tostring(open) or "n/a")
+                        end
+                    end
+                    print("  If everything above is false or empty, Esc reaches ClearTarget and a taint block is likely: check BugSack for 'ClearTarget'.")
+                end,
+            },
             profiles = {
                 desc = "List all profiles",
                 handler = function()
