@@ -114,11 +114,17 @@ end
 function C:Apply()
     if not self.frame then return end
     -- Upgrade untouched original defaults once, preserving custom choices.
-    if not addon:GetSetting("castMotionVersion") then
+    local version = addon:GetSetting("castMotionVersion") or 0
+    if version < 1 then
         if addon:GetSetting("castOpacity") == .28 then addon:SetSetting("castOpacity", .42) end
         if addon:GetSetting("castSwirl") == .55 then addon:SetSetting("castSwirl", .75) end
-        addon:SetSetting("castMotionVersion", 1)
     end
+    if version < 2 then
+        -- Only moves a value still sitting on the old default: anyone who
+        -- set their own keeps it.
+        if addon:GetSetting("castOpacity") == .42 then addon:SetSetting("castOpacity", .55) end
+    end
+    if version < 2 then addon:SetSetting("castMotionVersion", 2) end
     -- Called by the player's combat-deferred ApplySettings, never from cast events.
     for _, key in ipairs({"CastingBarFrame", "PlayerCastingBarFrame"}) do
         local stock = _G[key]
