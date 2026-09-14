@@ -44,9 +44,12 @@ local adopted = {}    -- key -> { button, def, icon, regions, origParent, origW,
 -- Adopting a button
 ---------------------------------------------------------------------------
 
+-- Stock art is moved onto the hidden holder rather than faded: Blizzard's
+-- own updates set alpha back (CharacterMicroButton_SetNormal puts the
+-- portrait at 1.0 on every refresh), but nothing reparents these again.
 local function Stash(entry, region)
-    if region and region.GetAlpha and region.SetAlpha and entry.regions[region] == nil then
-        entry.regions[region] = region:GetAlpha()
+    if region and region.SetParent and region.GetParent and entry.regions[region] == nil then
+        entry.regions[region] = region:GetParent() or entry.button
     end
 end
 
@@ -62,15 +65,31 @@ local function CollectChrome(entry)
 end
 
 local function SetChromeHidden(entry, hidden)
-    for region, alpha in pairs(entry.regions) do
-        region:SetAlpha(hidden and 0 or alpha)
+    for region, parent in pairs(entry.regions) do
+        region:SetParent(hidden and hiddenParent or parent)
     end
 end
 
 local function RefreshState(entry)
     if not entry.active then return end
     local pushed = entry.button:GetButtonState() == "PUSHED"
-    Theme.SetRoundButtonHover(entry.button, pushed or entry.hovered)
+    Theme.SetRoundButtonHover(entry.button, pushed or entry.hovered or entry.pulsing)
+    local ring = entry.button._bazRing
+    if ring then
+        if entry.pulsing then ring:SetVertexColor(1, 0.92, 0.55) else ring:SetVertexColor(1, 1, 1) end
+    end
+end
+
+-- Blizzard's "you have something new" flash (talent points, guild
+-- invites) drives the stock Flash texture, which now sits on the hidden
+-- holder. Mirror it as a brighter ring and lit disc instead.
+local byButton = {}
+
+local function SetPulsing(button, on)
+    local entry = byButton[button]
+    if not entry then return end
+    entry.pulsing = on and true or false
+    RefreshState(entry)
 end
 
 local function UpdatePortrait(entry)
@@ -88,6 +107,7 @@ local function Adopt(def)
         origW = button:GetWidth(), origH = button:GetHeight(),
     }
     adopted[def.key] = entry
+    byButton[button] = entry
     CollectChrome(entry)
 
     local icon = button:CreateTexture(nil, "ARTWORK")
@@ -315,6 +335,8 @@ function addon:Initialize()
     })
 
     hooksecurefunc("UpdateMicroButtons", function() addon:OnBlizzardUpdate() end)
+    hooksecurefunc("MicroButtonPulse",     function(button) SetPulsing(button, true) end)
+    hooksecurefunc("MicroButtonPulseStop", function(button) SetPulsing(button, false) end)
     self:On("UNIT_PORTRAIT_UPDATE", function(_, unit)
         if unit == "player" then self:UpdatePortraits() end
     end)
