@@ -115,11 +115,11 @@ local FRAME_STYLES = {
 }
 
 -- Assets\BazUI_Frame.png is 1024x1024 with the ring centred. Its inner
--- edge is 75% of the texture width and its outer edge 92%; the N tag and
--- studs reach ~94%. Sized so the inner edge overlaps the map edge by a
+-- edge is 87% of the texture width; the N tag and
+-- outer rim stay outside the map. Sized so the inner edge overlaps by a
 -- few pixels to hide the mask's anti-aliasing.
 local BAZUI_RING_FILE        = BazUI.Skin.MINIMAP_RING
-local BAZUI_RING_INNER_RATIO = BazUI.Skin.MINIMAP_RING_INNER_RATIO
+local BAZUI_RING_INNER_RATIO = BazUI.Skin.Theme.minimapRingInnerRatio
 local BAZUI_RING_OVERLAP     = BazUI.Skin.Theme.minimapRingOverlap
 
 local ringTexture
