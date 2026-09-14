@@ -26,7 +26,7 @@ function BazUI:RegisterCommands(addonName, config)
 
         -- Built-in: settings
         if cmd == "settings" then
-            BazUI:OpenSettings(addonName)
+            BazUI:OpenOptionsPanel(addonName)
             return
         end
 
@@ -43,7 +43,7 @@ function BazUI:RegisterCommands(addonName, config)
             elseif BazUI.OpenOptionsPanel then
                 BazUI:OpenOptionsPanel(addonName)
             else
-                BazUI:OpenSettings(addonName)
+                BazUI:OpenOptionsPanel(addonName)
             end
             return
         end

@@ -511,12 +511,6 @@ function addon:ApplyDefaultBarVisibility()
     return true
 end
 
--- Back-compat alias used by onReady wiring (just runs the apply pass
--- with whatever the saved state already is).
-function addon:HideDefaultActionBar()
-    self:ApplyDefaultBarVisibility()
-end
-
 ---------------------------------------------------------------------------
 -- First-run CVar warning
 -- If the player has "cast on key down" enabled, dragging BazBars buttons
@@ -554,7 +548,7 @@ addon.config.onReady = function(self)
     self:MigrateButtonsToCharStorage()
     self:ResolveCharBucket()
     self.Bar:LoadAll()
-    self:HideDefaultActionBar()   -- no-op unless the option is set
+    self:ApplyDefaultBarVisibility()   -- no-op unless the option is set
 
     -- Abilities on the bars (AutoFill.lua): once the world is entered,
     -- spells the character doesn't know are cleared and a new

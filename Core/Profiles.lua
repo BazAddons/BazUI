@@ -132,7 +132,7 @@ end
 
 ---------------------------------------------------------------------------
 -- Per-Addon Profile Setup
--- Called from RegisterAddon when profiles = true
+-- Called from RegisterModule when profiles = true
 -- Ensures the addon's section exists and has defaults filled
 ---------------------------------------------------------------------------
 

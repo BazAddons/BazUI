@@ -34,9 +34,9 @@ local canvases   = {}   -- [moduleKey] = canvas frame registered with the panel
 -- Page ordering
 ---------------------------------------------------------------------------
 
--- Returns the ordered pages of one module's canvas. Includes the module's
--- own root entry only when it has no pages or explicitly asks for it via
--- showRoot, so a module normally opens straight onto its first page.
+-- Returns the ordered pages of one module's canvas. The module's own
+-- entry is included only when it has no pages, so a module normally
+-- opens straight onto its first page.
 local function GetPagesFor(parentName)
     local parentEntry = optionsTables[parentName]
     local children = {}
@@ -69,16 +69,9 @@ local function GetPagesFor(parentName)
     end)
 
     local list = {}
-    -- Show the parent (landing) entry only when:
-    --   * it has no children to navigate to, OR
-    --   * the parent explicitly opts in via showRoot = true
-    -- This means every addon defaults to "click tab -> land on first
-    -- sub-category" with no separate landing page in the way.
-    -- An explicit hideRoot still wins over showRoot.
-    local includeParent = parentEntry
-        and not parentEntry.hideRoot
-        and (#children == 0 or parentEntry.showRoot)
-    if includeParent then
+    -- A module with pages opens straight onto the first one; its own
+    -- entry renders only when it has no pages to show instead.
+    if parentEntry and #children == 0 then
         list[#list + 1] = {
             key = parentName,
             label = parentEntry.displayName or parentName,
@@ -236,8 +229,6 @@ local function RenderIntoCanvas(container, optionsTable)
         end
     end)
 end
-
-BazUI._RenderIntoCanvas = RenderIntoCanvas
 
 ---------------------------------------------------------------------------
 -- Canvases: one frame per module, pages as tabs across the top
@@ -448,10 +439,6 @@ function BazUI:OpenOptionsPanel(key)
     end
 end
 
-function BazUI:OpenSettings(key)
-    return self:OpenOptionsPanel(key)
-end
-
 -- Re-render a page if it is the one currently on screen.
 function BazUI:RefreshOptions(key)
     local entry = optionsTables[key]
@@ -460,10 +447,4 @@ function BazUI:RefreshOptions(key)
     if canvas and canvas:IsShown() and canvas.activeKey == key then
         RenderPage(canvas, key)
     end
-end
-
--- The Blizzard category for a module, for callers that want to open the
--- panel themselves.
-function BazUI:GetOptionsCategory(moduleKey)
-    return categories[moduleKey or ROOT_KEY]
 end

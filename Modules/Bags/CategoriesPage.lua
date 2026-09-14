@@ -58,7 +58,7 @@ end
 -- with the new shape (changing Type swaps the Op options + the Value
 -- widget kind, e.g. picking "Item Level" replaces a class-name
 -- dropdown with a numeric input). The whole row is one custom widget
--- registered via O.widgetFactories.ruleRow + O.RegisterFullWidthBlockType
+-- registered via O.widgetFactories.ruleRow
 -- so the LayoutEngine treats it as a block-level item that gets its
 -- own row in the panel.
 ---------------------------------------------------------------------------
@@ -321,9 +321,6 @@ end
 -- overwrites the same factory entry.
 if O and O.widgetFactories then
     O.widgetFactories.ruleRow = CreateRuleRowWidget
-end
-if O and O.RegisterFullWidthBlockType then
-    O.RegisterFullWidthBlockType("ruleRow")
 end
 
 ---------------------------------------------------------------------------

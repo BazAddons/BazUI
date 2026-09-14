@@ -97,7 +97,7 @@ end
 -- registers here with its defaults, slash commands and lifecycle hooks
 -- and gets back a module object whose db.profile proxy points at its
 -- section of the active profile in BazUIDB. The API keeps the old
--- BazUI names (RegisterAddon / GetAddon) as aliases so ported code
+-- BazUI names (GetAddon) as an alias so ported code
 -- keeps working.
 ---------------------------------------------------------------------------
 
@@ -205,7 +205,6 @@ function BazUI:RegisterModule(name, config)
 
     return addon
 end
-BazUI.RegisterAddon = BazUI.RegisterModule  -- legacy name used by ported code
 
 function BazUI:GetModule(name)
     return self.addonObjects[name]

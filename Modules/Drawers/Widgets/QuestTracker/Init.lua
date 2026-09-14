@@ -8,9 +8,6 @@ if not addon then return end
 local QT = addon.QT
 local C  = QT.C
 
--- Keep a legacy alias so the widget host's older references still work
-addon.QuestTrackerWidget = QT
-
 ---------------------------------------------------------------------------
 -- Auto-complete popup (singleton frame, reused each Refresh)
 ---------------------------------------------------------------------------

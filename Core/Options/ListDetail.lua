@@ -234,8 +234,3 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
     end
     return yOffset
 end
-
--- Old name, kept for any caller still using it. Returns the new y offset.
-function O.BuildListDetailPanel(container, groupOpt, contentWidth, yOffset, executeArgs)
-    return O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, executeArgs)
-end

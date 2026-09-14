@@ -29,7 +29,7 @@ BazUI/
 
 ## The module system
 
-`BazUI:RegisterModule(name, config)` is BazCore's `RegisterAddon` under a new name (the old name stays as an alias). A module's `Core.lua` looks like:
+`BazUI:RegisterModule(name, config)` is BazCore's `RegisterAddon` under a new name. A module's `Core.lua` looks like:
 
 ```lua
 local MODULE_NAME = "Drawers"

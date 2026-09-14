@@ -12,10 +12,6 @@
 
 local O = BazUI._Options
 
--- Kept for callers that registered block types under the old two-column
--- engine; every block is full width now.
-function O.RegisterFullWidthBlockType() end
-
 -- Renders sorted args into `parent` from `startY` downward. Returns the
 -- y offset below the last widget.
 function O.RenderWidgets(parent, args, contentWidth, _, startY)
