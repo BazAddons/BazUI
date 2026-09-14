@@ -100,10 +100,16 @@ function addon:InitializeBars()
 
     -- Floating for now: the dock's other hosts, the action bars, get
     -- their handles in the next step.
-    local pos = self:GetSetting("playerBarPos")
-    set.health:ClearAllPoints()
-    set.health:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-
-    UnitBars:Update("player")
+    UnitBars:CreateMover("player")
+    UnitBars:ApplySettings("player")
     UnitBars:SyncCast("player")
+
+    -- Edit Mode may open or close at any time, and the mover is the only
+    -- thing it is ever allowed to move.
+    self:On("BAZ_EDITMODE_ENTER", function() UnitBars:ShowMover("player") end)
+    self:On("BAZ_EDITMODE_EXIT",  function() UnitBars:ShowMover("player") end)
+    self:On("PLAYER_REGEN_ENABLED", function()
+        UnitBars:ApplySettings("player")
+        UnitBars:ShowMover("player")
+    end)
 end

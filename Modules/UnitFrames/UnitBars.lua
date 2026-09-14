@@ -273,6 +273,135 @@ function UnitBars:Create(unit)
     return set
 end
 
+
+---------------------------------------------------------------------------
+-- Moving them
+--
+-- The bars are secure, so they cannot be dragged in combat, and Edit
+-- Mode can be open during one. Each stack therefore gets an ordinary
+-- frame standing in for it: that is what Edit Mode moves, and the real
+-- bars follow once it is safe. The same trick the XP bar uses, and the
+-- reason nothing here ever touches a protected frame at the wrong time.
+--
+-- Only the head of a chain gets a mover. Power and cast follow their
+-- host through the dock, so moving them individually would be a lie.
+---------------------------------------------------------------------------
+
+local LABELS = { player = "Player Bars", target = "Target Bars" }
+
+function UnitBars:PositionKey(unit)
+    return unit == "target" and "targetBarPos" or "playerBarPos"
+end
+
+function UnitBars:ApplyPosition(unit)
+    local set = self.sets[unit]
+    if not set or InCombatLockdown() then return end
+    local pos = addon:GetSetting(self:PositionKey(unit))
+        or { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 }
+    set.health:ClearAllPoints()
+    set.health:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    BazUI.Dock:Relayout(set.health)
+end
+
+function UnitBars:SavePosition(unit)
+    local mover = self.movers and self.movers[unit]
+    if not mover then return end
+    mover:StopMovingOrSizing()
+    local x, y = mover:GetCenter()
+    if not x then return end
+    local factor = mover:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    addon:SetSetting(self:PositionKey(unit), {
+        point = "CENTER", relPoint = "BOTTOMLEFT", x = x * factor, y = y * factor })
+    self:ApplyPosition(unit)
+end
+
+function UnitBars:RefreshMover(unit)
+    local mover = self.movers and self.movers[unit]
+    local set = self.sets[unit]
+    if not (mover and set) then return end
+
+    -- The mover covers the whole stack, so what you grab is what moves.
+    local height = 0
+    for _, key in ipairs({ "health", "power", "cast" }) do
+        local bar = set[key]
+        if bar and bar:IsShown() then height = height + bar:GetHeight() + 2 end
+    end
+    mover:SetSize(set.health:GetWidth(), math.max(24, height))
+    mover:ClearAllPoints()
+    mover:SetPoint("TOP", set.health, "TOP", 0, 0)
+end
+
+function UnitBars:CreateMover(unit)
+    self.movers = self.movers or {}
+    if self.movers[unit] then return self.movers[unit] end
+
+    local mover = CreateFrame("Frame", "BazUI" .. unit .. "BarsMover", UIParent)
+    mover:SetFrameStrata("DIALOG")
+    mover:SetMovable(true)
+    mover:SetClampedToScreen(true)
+    mover:EnableMouse(true)
+    mover:RegisterForDrag("LeftButton")
+    mover:Hide()
+
+    local tint = mover:CreateTexture(nil, "BACKGROUND")
+    tint:SetAllPoints(mover)
+    tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
+
+    local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormal")
+    label:SetPoint("CENTER")
+    label:SetText(LABELS[unit] or unit)
+
+    mover:SetScript("OnDragStart", function(self)
+        if not InCombatLockdown() then self:StartMoving() end
+    end)
+    mover:SetScript("OnDragStop", function() UnitBars:SavePosition(unit) end)
+
+    self.movers[unit] = mover
+
+    BazUI:RegisterEditModeFrame(mover, {
+        label = LABELS[unit] or unit,
+        addonName = "UnitFrames",
+        positionKey = false,
+        settings = BazUI:BuildEditModeArrayFromSpec("UnitFrames"),
+        onPositionChanged = function() UnitBars:SavePosition(unit) end,
+        onEnter = function() UnitBars:ShowMover(unit) end,
+        onExit  = function() UnitBars:ShowMover(unit) end,
+    })
+    return mover
+end
+
+function UnitBars:ShowMover(unit)
+    local mover = self.movers and self.movers[unit]
+    if not mover then return end
+    local editing = BazUI:IsEditMode()
+    mover:SetShown(editing and not InCombatLockdown())
+    if editing then self:RefreshMover(unit) end
+end
+
+---------------------------------------------------------------------------
+-- Size and text, applied to a stack that already exists
+---------------------------------------------------------------------------
+
+function UnitBars:ApplySettings(unit)
+    local set = self.sets[unit]
+    if not set or InCombatLockdown() then return end
+
+    local width  = math.max(80, math.min(900, addon:GetSetting("barWidth") or 240))
+    local height = math.max(10, math.min(40, addon:GetSetting("barHeight") or 20))
+    local mode   = addon:GetSetting("barText") or "always"
+
+    set.health:SetBarSize(width, height)
+    set.power:SetBarSize(width, math.max(8, math.floor(height * 0.6)))
+    set.cast:SetBarSize(width, math.max(10, math.floor(height * 0.7)))
+    for _, key in ipairs({ "health", "power", "cast" }) do
+        set[key]:SetTextMode(mode)
+    end
+
+    self:ApplyPosition(unit)
+    self:Update(unit)
+    self:RefreshMover(unit)
+end
+
 ---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------

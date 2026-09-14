@@ -16,14 +16,39 @@ local function Set(key)
 end
 local function Get(key) return function() return addon:GetSetting(key) end end
 
+local function SetBars(key)
+    return function(_, value)
+        addon:SetSetting(key, value)
+        for unit in pairs(addon.UnitBars and addon.UnitBars.sets or {}) do
+            addon.UnitBars:ApplySettings(unit)
+        end
+    end
+end
+
 BazUI:RegisterSettingsSpec("UnitFrames", {
     sections = {
+        bars = { label = "Bars", order = 0 },
         player = { label = "Player Frames", order = 1 },
         layout = { label = "Position", order = 2 },
         portraitAdjust = { label = "3D Portrait Placement", order = 3 },
         casting = { label = "Portrait Casting", order = 4 },
     },
     entries = {
+        { key = "barMode", label = "Draw units as bars", type = "toggle", section = "bars", order = 1,
+          desc = "The bars can float or dock to an action bar. Off returns the old portrait frames until they are retired.",
+          get = Get("barMode"), set = SetBars("barMode") },
+        { key = "barWidth", label = "Width", type = "slider", section = "bars", order = 2, surfaces = both,
+          min = 80, max = 900, step = 5, get = Get("barWidth"), set = SetBars("barWidth") },
+        { key = "barHeight", label = "Height", type = "slider", section = "bars", order = 3, surfaces = both,
+          min = 10, max = 40, step = 1, get = Get("barHeight"), set = SetBars("barHeight") },
+        { key = "barText", label = "Show text", type = "select", section = "bars", order = 4, surfaces = both,
+          values = valueModes, get = Get("barText"), set = SetBars("barText") },
+        { key = "healthText", label = "Health bar says", type = "select", section = "bars", order = 5, surfaces = both,
+          values = { ["current/max"] = "Current / Max", current = "Current", percent = "Percent", name = "Name", namePercent = "Name and percent" }, get = Get("healthText"), set = SetBars("healthText") },
+        { key = "powerText", label = "Power bar says", type = "select", section = "bars", order = 6, surfaces = both,
+          values = { ["current/max"] = "Current / Max", current = "Current", percent = "Percent", name = "Name", namePercent = "Name and percent" }, get = Get("powerText"), set = SetBars("powerText") },
+        { key = "unitTooltips", label = "Tooltip on hover", type = "toggle", section = "bars", order = 7,
+          get = Get("unitTooltips"), set = SetBars("unitTooltips") },
         { key = "castEnabled", label = "Liquid portrait casting", type = "toggle", section = "casting", order = 1,
           get = Get("castEnabled"), set = Set("castEnabled") },
         { key = "castOpacity", label = "Liquid opacity", type = "slider", section = "casting", order = 2,
