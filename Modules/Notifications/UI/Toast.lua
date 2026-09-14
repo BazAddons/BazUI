@@ -207,6 +207,61 @@ local function ShowToast(notification)
     end)
 end
 
+
+---------------------------------------------------------------------------
+-- Preview
+--
+-- Sizing a toast by pushing the slider and then waiting for something to
+-- happen is no way to do it, so this raises a few samples on demand.
+-- They go straight to the screen rather than through Push, which means
+-- they never reach your history: a preview is a thing you looked at,
+-- not a thing that happened.
+--
+-- They linger long enough to drag a slider, and moving Toast size while
+-- they are up resizes them where they stand.
+---------------------------------------------------------------------------
+
+local PREVIEW_DURATION = 25
+
+local PREVIEW_SAMPLES = {
+    {
+        title = "Bags Almost Full", message = "3 slots remaining",
+        icon = "Interface\\Icons\\INV_Misc_Bag_08", priority = "high",
+    },
+    {
+        title = "Sunken Temple", message = "Quest complete",
+        icon = "Interface\\Icons\\INV_Misc_Note_01", priority = "normal",
+    },
+    {
+        title = "Gold Received", message = "1g 24s 8c",
+        icon = "Interface\\Icons\\INV_Misc_Coin_02", priority = "low",
+    },
+}
+
+function addon.ShowToastPreview()
+    -- Clear any previous run so pressing it twice does not stack a wall
+    -- of samples on top of the ones already there.
+    for i = #activeToasts, 1, -1 do
+        if activeToasts[i]._preview then addon.DismissToast(activeToasts[i]) end
+    end
+
+    for index, sample in ipairs(PREVIEW_SAMPLES) do
+        C_Timer.After(index * 0.12, function()
+            ShowToast({
+                module   = "preview",
+                title    = sample.title,
+                message  = sample.message,
+                icon     = sample.icon,
+                priority = sample.priority,
+                duration = PREVIEW_DURATION,
+                realTime = time(),
+                timestamp = GetTime(),
+                _preview = true,
+            })
+        end)
+    end
+end
+
 -- Listen for toast requests
 addon.Events:Register("TOAST_REQUESTED", ShowToast)
 addon.Events:Register("SETTING_CHANGED_position", ReanchorToasts)

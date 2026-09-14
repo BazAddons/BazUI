@@ -110,6 +110,13 @@ local function GetGeneralOptionsTable()
                 get = function() return DB("toastScale", 1) end,
                 set = Setter("toastScale"),
             },
+            toastPreview = {
+                order = 14, type = "execute", name = "Show a sample",
+                desc = "Raises a few toasts so you can size them against the real thing. They never reach your history.",
+                func = function()
+                    if addon.ShowToastPreview then addon.ShowToastPreview() end
+                end,
+            },
             soundEnabled = {
                 order = 13, type = "toggle", name = "Play sounds",
                 get = function() return DB("soundEnabled", true) ~= false end,
