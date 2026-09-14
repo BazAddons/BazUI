@@ -205,6 +205,63 @@ function Theme.SetFlatPanelAlpha(frame, bgAlpha, edgeAlpha)
 end
 
 ---------------------------------------------------------------------------
+-- Search box
+--
+-- One text field for the whole suite, wearing the flat chrome: a raised
+-- interior, the one-pixel edge, a placeholder that steps aside as soon
+-- as you type, and Escape to let go. Anywhere a panel wants a filter or
+-- a lookup it asks for this rather than reaching for Blizzard's gold
+-- InputBoxTemplate, which belongs to a different UI than ours.
+--
+--   local box = Theme.CreateSearchBox(parent, "Search history...",
+--       function(text) ReFilter(text) end)
+--
+-- The callback fires on every keystroke with the current text. The box
+-- is a plain EditBox, so callers can still size, anchor and focus it.
+---------------------------------------------------------------------------
+
+function Theme.CreateSearchBox(parent, placeholder, onChanged)
+    local box = CreateFrame("EditBox", nil, parent)
+    box:SetHeight(22)
+    box:SetAutoFocus(false)
+    box:SetTextInsets(7, 7, 0, 0)
+    box:SetFontObject(Theme.FontObject("GameFontHighlightSmall"))
+    box:SetTextColor(unpack(Theme.colors.text))
+    Theme.ApplyFlatPanel(box, Theme.colors.bgRaised, Theme.colors.edge)
+
+    local hint = Theme.FontString(box, "OVERLAY", "GameFontHighlightSmall")
+    hint:SetPoint("LEFT", 7, 0)
+    hint:SetTextColor(unpack(Theme.colors.textMuted))
+    hint:SetText(placeholder or "Search...")
+    box.placeholder = hint
+
+    function box:SetPlaceholder(text)
+        hint:SetText(text or "")
+    end
+
+    box:SetScript("OnTextChanged", function(self)
+        local text = self:GetText() or ""
+        hint:SetShown(text == "")
+        if onChanged then onChanged(text, self) end
+    end)
+    box:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+    end)
+    box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    -- A field that lights up when it has the cursor tells you where your
+    -- typing is going without a focus ring fighting the chrome.
+    box:SetScript("OnEditFocusGained", function(self)
+        Theme.SetFlatPanelColor(self, Theme.colors.bgHover)
+    end)
+    box:SetScript("OnEditFocusLost", function(self)
+        Theme.SetFlatPanelColor(self, Theme.colors.bgRaised)
+    end)
+
+    return box
+end
+
+---------------------------------------------------------------------------
 -- Round ring-framed button (the minimap-button treatment)
 --
 -- A dark disc, the icon masked to a circle inside the ring, and the gold

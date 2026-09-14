@@ -62,6 +62,28 @@ function BazUI:FormatTime(seconds)
 end
 
 ---------------------------------------------------------------------------
+-- Span Formatting
+-- A stretch of time in the largest two units that matter: "3d 4h",
+-- "5h 12m", "40m". For anything measured in days a clock reads wrong,
+-- so lockout timers, reset clocks and "how long ago" use this instead
+-- of FormatTime above.
+---------------------------------------------------------------------------
+
+function BazUI:FormatSpan(seconds)
+    seconds = floor(tonumber(seconds) or 0)
+    if seconds <= 0 then return "now" end
+
+    local days = floor(seconds / 86400)
+    local hours = floor((seconds % 86400) / 3600)
+    local mins = floor((seconds % 3600) / 60)
+
+    if days > 0 then return string.format("%dd %dh", days, hours) end
+    if hours > 0 then return string.format("%dh %dm", hours, mins) end
+    if mins > 0 then return string.format("%dm", mins) end
+    return "under a minute"
+end
+
+---------------------------------------------------------------------------
 -- Number Formatting
 -- Adds thousand separators (1,234,567)
 ---------------------------------------------------------------------------

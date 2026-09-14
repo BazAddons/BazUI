@@ -370,16 +370,13 @@ local function BuildPicker()
     end
 
     -- Search box
-    local search = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    search:SetSize(GRID_WIDTH - 10, SEARCH_HEIGHT)
-    search:SetPoint("TOPLEFT", 14, -56)
-    search:SetAutoFocus(false)
-    search:SetScript("OnTextChanged", function(self)
+    local search = BazUI.Skin.Theme.CreateSearchBox(f, "Search icons...", function(text)
         scrollOffset = 0
-        ApplyFilter(self:GetText())
+        ApplyFilter(text)
         RenderGrid()
     end)
-    search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    search:SetSize(GRID_WIDTH - 10, SEARCH_HEIGHT)
+    search:SetPoint("TOPLEFT", 14, -56)
     f.searchBox = search
 
     -- Grid container

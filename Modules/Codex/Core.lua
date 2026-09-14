@@ -1,0 +1,129 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Codex
+--
+-- One window answering two questions: what can I do today, and what
+-- have I already accomplished. Everything it shows belongs under one or
+-- the other, which is what keeps it a codex rather than a pile of
+-- readouts. A host with a registry rather than
+-- a fixed page, the same shape the drawer uses for widgets and
+-- Notifications uses for its sources, so a new tracker is an addition
+-- instead of a rewrite. That matters most for Forever, whose systems
+-- are still arriving.
+--
+-- Nothing here ships a database. Every section answers from what the
+-- client already knows: lockouts, completed quests, known spells, item
+-- counts. Where an answer would need outside knowledge (where a thing
+-- drops, which step of a chain comes next) that is a data pack we write
+-- deliberately, not a hidden dependency.
+---------------------------------------------------------------------------
+
+local MODULE_NAME = "Codex"
+
+local Codex = BazUI.Codex or {}
+BazUI.Codex = Codex
+
+local addon
+addon = BazUI:RegisterModule(MODULE_NAME, {
+    title    = "Codex",
+    icon     = "Interface\\Icons\\INV_Misc_Book_09",
+    profiles = true,
+    defaults = {
+        -- Panel
+        position     = nil,      -- { point, relPoint, x, y }, set by dragging
+        scale        = 1.0,
+        opacity      = 0.95,
+        activeTab    = "today",
+        collapsed    = {},       -- [sectionID] = true
+
+        -- Item lookup. The index is what this character has met: bags,
+        -- bank, loot, vendors, links in chat. It ships empty and grows.
+        indexItems   = true,
+        itemIndex    = {},       -- [itemID] = itemName
+        wishlist     = {},       -- [itemID] = { note = string, added = time }
+    },
+    minimap = { label = "Codex", icon = "Interface\\Icons\\INV_Misc_Book_09" },
+    slash = { "/bazcodex", "/codex" },
+    defaultHandler = function() Codex:Toggle() end,
+    commands = {
+        show  = { desc = "Open the codex",  handler = function() Codex:Show() end },
+        hide  = { desc = "Close the codex", handler = function() Codex:Hide() end },
+        reset = {
+            desc = "Move the codex back to the middle of the screen",
+            handler = function()
+                addon:SetSetting("position", nil)
+                Codex:ApplySettings()
+            end,
+        },
+    },
+    onReady = function(self) Codex:Initialize() end,
+})
+
+addon.MODULE_NAME = MODULE_NAME
+Codex.addon = addon
+
+---------------------------------------------------------------------------
+-- Sections
+--
+-- A section is one block of rows on a tab. Register one with:
+--
+--   BazUI.Codex:RegisterSection({
+--       id     = "lockouts",          -- unique
+--       tab    = "today",             -- "today" or "achieved", mostly
+--       title  = "Raid lockouts",
+--       order  = 10,
+--       empty  = "Nothing saved.",    -- shown when GetRows returns none
+--       events = { "UPDATE_INSTANCE_INFO" },   -- refresh triggers
+--       GetRows = function() return { ... } end,
+--   })
+--
+-- A row is data, not frames, so every section looks the same and the
+-- panel owns the drawing:
+--
+--   { label = "Molten Core", detail = "9/10 bosses", state = "locked",
+--     tip = "Resets Wednesday", icon = "Interface\\Icons\\..." }
+--
+-- state is "open" (available), "locked" (on cooldown or saved), "done"
+-- (finished) or nil (no state colour).
+---------------------------------------------------------------------------
+
+Codex.sections = Codex.sections or {}
+
+-- A tab that cannot be expressed as a stack of rows owns its whole page
+-- instead: it supplies Render(content, width), sets its own height, and
+-- a Hide() that puts its frames away when another tab is showing. Item
+-- lookup and the wishlist work this way because they take typing.
+Codex.customTabs = Codex.customTabs or {}
+
+function Codex:RegisterSection(def)
+    if type(def) ~= "table" or not def.id then return end
+    def.tab   = def.tab or "today"
+    def.order = def.order or 100
+    self.sections[def.id] = def
+    if self.Panel and self.Panel.QueueRefresh then self.Panel:QueueRefresh() end
+    return def
+end
+
+-- Sections on one tab, in order.
+function Codex:GetSections(tab)
+    local out = {}
+    for _, def in pairs(self.sections) do
+        if def.tab == (tab or "today") then out[#out + 1] = def end
+    end
+    table.sort(out, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return tostring(a.title) < tostring(b.title)
+    end)
+    return out
+end
+
+function Codex:IsCollapsed(sectionID)
+    local map = addon:GetSetting("collapsed") or {}
+    return map[sectionID] == true
+end
+
+function Codex:SetCollapsed(sectionID, collapsed)
+    local map = addon:GetSetting("collapsed") or {}
+    map[sectionID] = collapsed or nil
+    addon:SetSetting("collapsed", map)
+end

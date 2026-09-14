@@ -15,13 +15,6 @@ local CONTENT_WIDTH = PANEL_WIDTH - PANEL_PADDING * 2
 local HISTORY_PAGE_SIZE = 100
 
 
-local BACKDROP_INPUT = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 4, right = 4, top = 2, bottom = 2 },
-}
-
 -- Reused across every history card. Previously a fresh dict was
 -- allocated on every CreateHistoryCard AND every ResetHistoryCard
 -- call; with a busy history this was several hundred wasted tables
@@ -533,31 +526,13 @@ local function CreatePanel()
     panel.histDateDropdown:SetPoint("LEFT", panel.histModuleDropdown, "RIGHT", 6, 0)
 
     -- Search box (history)
-    panel.histSearchBox = CreateFrame("EditBox", "BazUINotifHistSearchBox", panel, "BackdropTemplate")
-    panel.histSearchBox:SetSize(CONTENT_WIDTH, 22)
-    panel.histSearchBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -histSearchTop)
-    panel.histSearchBox:SetBackdrop(BACKDROP_INPUT)
-    panel.histSearchBox:SetBackdropColor(unpack(Colors.cardBg))
-    panel.histSearchBox:SetBackdropBorderColor(unpack(Colors.cardBorder))
-    panel.histSearchBox:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
-    panel.histSearchBox:SetTextColor(unpack(Colors.textPrimary))
-    panel.histSearchBox:SetAutoFocus(false)
-    panel.histSearchBox:SetTextInsets(6, 6, 0, 0)
-
-    panel.histSearchBox.placeholder = panel.histSearchBox:CreateFontString(nil, "OVERLAY")
-    panel.histSearchBox.placeholder:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
-    panel.histSearchBox.placeholder:SetTextColor(unpack(Colors.textMuted))
-    panel.histSearchBox.placeholder:SetText("Search history...")
-    panel.histSearchBox.placeholder:SetPoint("LEFT", panel.histSearchBox, "LEFT", 6, 0)
-
-    panel.histSearchBox:SetScript("OnTextChanged", function(self)
-        local text = self:GetText()
-        self.placeholder:SetShown(not text or text == "")
-        historySearch = text or ""
+    panel.histSearchBox = BazUI.Skin.Theme.CreateSearchBox(panel, "Search history...", function(text)
+        historySearch = text
         RunHistorySearch()
         if panel.PopulateHistory then panel.PopulateHistory() end
     end)
-    panel.histSearchBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    panel.histSearchBox:SetSize(CONTENT_WIDTH, 22)
+    panel.histSearchBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -histSearchTop)
 
     -- History scroll
     historyScroll = addon.CreateScrollContainer(panel, CONTENT_WIDTH, PANEL_HEIGHT - histTop - PANEL_PADDING)
