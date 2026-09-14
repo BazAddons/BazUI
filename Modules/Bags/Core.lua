@@ -58,6 +58,10 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         -- Money
         goldOnly        = false,  -- hide silver + copper in the money display
 
+        -- Blizzard UI. Reparent Blizzard's BagsBar (backpack, bag slots,
+        -- keyring) to a hidden frame so only the BazUI panel remains.
+        hideBagBar      = false,
+
         -- Section collapse state. Per-section, persisted across
         -- sessions so the user's preference sticks. Built-in bag
         -- sections + every category key share this map.
@@ -176,6 +180,60 @@ function addon.SortBags()
         C_Container.SortBags()
     elseif SortBags then
         SortBags()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Hide Blizzard's bag bar
+--
+-- The backpack, bag slot and keyring buttons sit on Blizzard's BagsBar,
+-- an Edit Mode system that Edit Mode itself has no hide option for.
+-- With the BazUI panel on B, most players want that row gone.
+--
+-- Reparenting the bar to a hidden carrier frame keeps it out of sight
+-- no matter who calls Show() on it later (Edit Mode re-applying a
+-- layout, Blizzard's keyring fly-in). Restoring puts it straight back
+-- under its original parent, live. None of these frames are protected,
+-- so the toggle works in combat too.
+---------------------------------------------------------------------------
+
+local hiddenParent
+local function GetHiddenParent()
+    if not hiddenParent then
+        hiddenParent = CreateFrame("Frame")
+        hiddenParent:Hide()
+    end
+    return hiddenParent
+end
+
+-- Modern clients group everything on BagsBar. Fall back to the
+-- individual buttons for any client that still parents them straight
+-- to the main bar.
+local function GetBagBarFrames()
+    if _G.BagsBar then return { _G.BagsBar } end
+    local frames = {}
+    for _, name in ipairs({
+        "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot",
+        "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot",
+        "KeyRingButton", "BagBarExpandToggle",
+    }) do
+        if _G[name] then frames[#frames + 1] = _G[name] end
+    end
+    return frames
+end
+
+function addon:ApplyBagBarVisibility()
+    local hide = self:GetSetting("hideBagBar") == true
+    for _, f in ipairs(GetBagBarFrames()) do
+        if hide then
+            if not f._bazOriginalParent then
+                f._bazOriginalParent = f:GetParent() or UIParent
+                f:SetParent(GetHiddenParent())
+            end
+        elseif f._bazOriginalParent then
+            f:SetParent(f._bazOriginalParent)
+            f._bazOriginalParent = nil
+        end
     end
 end
 
@@ -348,6 +406,23 @@ local function GetSettingsPage()
                     if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
                 end,
             },
+
+            blizzardHeader = {
+                order = 20,
+                type  = "header",
+                name  = "Blizzard UI",
+            },
+            hideBagBar = {
+                order = 21,
+                type  = "toggle",
+                name  = "Hide Blizzard's Bag Bar",
+                desc  = "Hide the backpack, bag slot and keyring buttons in the bottom-right corner of the screen. B, /bbg and the minimap entry still open the BazUI panel. To equip a new bag while the bar is hidden, right-click it in your inventory and it goes into an empty bag slot. Applies live.",
+                get   = function() return addon:GetSetting("hideBagBar") and true or false end,
+                set   = function(_, val)
+                    addon:SetSetting("hideBagBar", val and true or false)
+                    addon:ApplyBagBarVisibility()
+                end,
+            },
         },
     }
 end
@@ -359,3 +434,11 @@ addon.config.onLoad = function(self)
     BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", GetSettingsPage)
     BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General Settings", MODULE_NAME)
 end
+
+addon.config.onReady = function(self)
+    self:ApplyBagBarVisibility()
+end
+
+addon:OnProfileChanged(function()
+    addon:ApplyBagBarVisibility()
+end)

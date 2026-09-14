@@ -294,6 +294,10 @@ BazUI:RegisterUserGuide("Bags", {
                 { type = "list", items = {
                     "|cffffd700Gold Only|r - hide silver and copper next to the search bar; useful at high gold totals where the silver/copper digits are visual noise",
                 }},
+                { type = "h2", text = "Blizzard UI" },
+                { type = "list", items = {
+                    "|cffffd700Hide Blizzard's Bag Bar|r - remove the backpack, bag slot and keyring buttons from the bottom-right corner. B, /bbg and the minimap entry still open the panel. To equip a new bag while the bar is hidden, right-click it in your inventory and it goes into an empty bag slot",
+                }},
                 { type = "h2", text = "Search" },
                 { type = "paragraph", text = "The search box at the top-left of the panel filters every bag at once. Type a partial name, an item type (\"potion\"), a quality (\"epic\"), or any other tooltip-text fragment — items that don't match dim. Clear the box to restore the full view. The search reuses Blizzard's BagSearchBoxTemplate, so it behaves identically to the search box in the default UI." },
             },
