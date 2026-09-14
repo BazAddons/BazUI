@@ -143,9 +143,19 @@ local function SetActive(entry, active, size)
         entry.icon:Hide()
         SetChromeHidden(entry, false)
         b:SetSize(entry.origW, entry.origH)
+        -- Drop the anchors that placed it on our bar, or it keeps drawing
+        -- there after it is handed back; Blizzard's grid re-anchors it.
+        b:ClearAllPoints()
         if b:GetParent() ~= entry.origParent then b:SetParent(entry.origParent) end
-        if entry.origParent and entry.origParent.MarkDirty then entry.origParent:MarkDirty() end
     end
+end
+
+-- Re-run Blizzard's own layout after buttons are handed back.
+local function RelayoutBlizzard()
+    local grid = _G.MicroMenu
+    if grid and grid.Layout then grid:Layout() end
+    local container = _G.MicroMenuContainer
+    if container and container.Layout then container:Layout() end
 end
 
 ---------------------------------------------------------------------------
@@ -219,43 +229,61 @@ end
 ---------------------------------------------------------------------------
 
 local editing = false
+local fadeTarget = 1
 
-local function FadeTo(alpha)
-    if bar._bazTargetAlpha == alpha then return end
-    bar._bazTargetAlpha = alpha
-    local current = bar:GetAlpha()
-    if UIFrameFadeIn and UIFrameFadeOut then
-        if alpha > current then
-            UIFrameFadeIn(bar, FADE_IN, current, alpha)
-        else
-            UIFrameFadeOut(bar, FADE_OUT, current, alpha)
+-- The cursor counts as over the bar when it is over the bar's rect or
+-- any button on it (a button can extend past the bar while it resizes).
+local function Hovered()
+    if bar:IsMouseOver(6, -6, -6, 6) then return true end
+    for _, entry in pairs(adopted) do
+        if entry.active and entry.button:GetParent() == bar and entry.button:IsMouseOver() then
+            return true
         end
+    end
+    return false
+end
+
+local function WantedAlpha()
+    if editing or not addon:GetSetting("mouseoverFade") then return 1 end
+    if Hovered() then return 1 end
+    return (addon:GetSetting("fadeAlpha") or 0) / 100
+end
+
+-- Alpha is eased toward the target every frame by this module alone, so
+-- it always converges on what the settings say; nothing can leave the
+-- bar stuck invisible.
+local function StepFade(elapsed)
+    local current = bar:GetAlpha()
+    if current == fadeTarget then return end
+    local duration = fadeTarget > current and FADE_IN or FADE_OUT
+    local step = elapsed / duration
+    if fadeTarget > current then
+        bar:SetAlpha(math.min(fadeTarget, current + step))
     else
-        bar:SetAlpha(alpha)
+        bar:SetAlpha(math.max(fadeTarget, current - step))
     end
 end
 
 local function UpdateFade()
     if not bar then return end
-    if editing or not addon:GetSetting("mouseoverFade") then
-        FadeTo(1)
-        return
-    end
-    local faded = (addon:GetSetting("fadeAlpha") or 0) / 100
-    FadeTo(bar:IsMouseOver(6, -6, -6, 6) and 1 or faded)
+    fadeTarget = WantedAlpha()
 end
 
 local function SetFadeTicker(on)
     if on then
-        bar._bazFadeElapsed = 0
+        bar._bazFadeElapsed = FADE_TICK   -- poll on the first frame
         bar:SetScript("OnUpdate", function(self, elapsed)
             self._bazFadeElapsed = self._bazFadeElapsed + elapsed
-            if self._bazFadeElapsed < FADE_TICK then return end
-            self._bazFadeElapsed = 0
-            UpdateFade()
+            if self._bazFadeElapsed >= FADE_TICK then
+                self._bazFadeElapsed = 0
+                UpdateFade()
+            end
+            StepFade(elapsed)
         end)
     else
         bar:SetScript("OnUpdate", nil)
+        fadeTarget = 1
+        bar:SetAlpha(1)
     end
     UpdateFade()
 end
@@ -263,6 +291,27 @@ end
 function addon:SetEditing(value)
     editing = value and true or false
     UpdateFade()
+    if bar and not bar:GetScript("OnUpdate") then bar:SetAlpha(1) end
+end
+
+-- /bazmicro debug: what the bar is doing right now.
+function addon:PrintDebug()
+    if not bar then self:Print("Micro menu bar not created yet."); return end
+    local point, rel, relPoint, x, y = bar:GetPoint()
+    local shown, active = 0, 0
+    for _, entry in pairs(adopted) do
+        if entry.active then active = active + 1 end
+        if entry.active and entry.button:GetParent() == bar and entry.button:IsShown() then shown = shown + 1 end
+    end
+    self:Print(("bar shown=%s alpha=%.2f target=%.2f size=%dx%d anchor=%s/%s/%s %.0f,%.0f ticker=%s editing=%s buttons active=%d visible=%d"):format(
+        tostring(bar:IsShown()), bar:GetAlpha(), fadeTarget, bar:GetWidth(), bar:GetHeight(),
+        tostring(point), rel and rel:GetName() or "?", tostring(relPoint), x or 0, y or 0,
+        tostring(bar:GetScript("OnUpdate") ~= nil), tostring(editing), active, shown))
+    local pos = self:GetSetting("position")
+    self:Print(("settings: enabled=%s mouseoverFade=%s fadeAlpha=%s size=%s spacing=%s position=%s"):format(
+        tostring(self:GetSetting("enabled")), tostring(self:GetSetting("mouseoverFade")), tostring(self:GetSetting("fadeAlpha")),
+        tostring(self:GetSetting("buttonSize")), tostring(self:GetSetting("spacing")),
+        pos and (pos.point and ("%s %s %s,%s"):format(pos.point, pos.relPoint or pos.point, pos.x, pos.y) or ("centre %.0f,%.0f"):format(pos.x or 0, pos.y or 0)) or "nil"))
 end
 
 local function SetBlizzardHidden(hide)
@@ -288,17 +337,30 @@ function addon:ApplySettings()
     if not bar then return end
     local enabled = self:GetSetting("enabled") ~= false
     local size = self:GetSetting("buttonSize") or 30
+
+    if not enabled then
+        -- Bring Blizzard's container back first so its grid can lay the
+        -- returned buttons out in their stock spot.
+        SetBlizzardHidden(false)
+        for _, def in ipairs(DEFS) do
+            local entry = adopted[def.key]
+            if entry then SetActive(entry, false, size) end
+        end
+        RelayoutBlizzard()
+        bar:Hide()
+        SetFadeTicker(false)
+        return
+    end
+
     for _, def in ipairs(DEFS) do
         local entry = adopted[def.key]
-        if entry then SetActive(entry, enabled, size) end
+        if entry then SetActive(entry, true, size) end
     end
-    bar:SetShown(enabled)
-    if enabled then
-        self:Layout()
-        ApplyPosition()
-    end
-    SetFadeTicker(enabled and self:GetSetting("mouseoverFade") and true or false)
-    SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
+    bar:Show()
+    self:Layout()
+    ApplyPosition()
+    SetFadeTicker(self:GetSetting("mouseoverFade") and true or false)
+    SetBlizzardHidden(self:GetSetting("hideBlizzard") ~= false)
 end
 
 function addon:UpdatePortraits()
@@ -347,7 +409,11 @@ function addon:Initialize()
         self:UpdatePortraits()
         self:Layout()
     end)
-    self:OnProfileChanged(function() self:ApplySettings() end)
+    -- Apply a profile switch one frame later, after every module has
+    -- finished its own switch, so nothing we lay out is moved under us.
+    self:OnProfileChanged(function()
+        C_Timer.After(0, function() addon:ApplySettings() end)
+    end)
 
     self:ApplySettings()
 end

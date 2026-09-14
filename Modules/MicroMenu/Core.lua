@@ -35,6 +35,10 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
             desc = "Move the micro menu back to the bottom right",
             handler = function() addon:ResetPosition() end,
         },
+        debug = {
+            desc = "Print the bar's current state",
+            handler = function() addon:PrintDebug() end,
+        },
     },
     onReady = function(self) self:Initialize() end,
 })
