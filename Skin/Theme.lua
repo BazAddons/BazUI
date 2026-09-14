@@ -17,6 +17,8 @@ Skin.Theme = Theme
 Theme.minimapRingOverlap = 5
 -- Edited ring: inner diameter 87% of the canvas; source preserved in Assets/Source.
 Theme.minimapRingInnerRatio = 0.87
+-- Preserve the original ring footprint independently of the artwork opening.
+Theme.minimapRingDesignRatio = 0.75
 
 Theme.colors = {
     gold      = { 1.00, 0.82, 0.00, 1.00 },  -- headings, selected state (the |cffffd700 gold)

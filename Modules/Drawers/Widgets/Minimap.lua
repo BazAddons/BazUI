@@ -35,6 +35,7 @@ addon.MinimapWidget = MinimapWidget
 local wrapper
 local widgetInfo
 local minimapParentedInto = nil
+local nativeMapWidth, nativeMapHeight
 
 ---------------------------------------------------------------------------
 -- Parent the Minimap into the given frame (either the wrapper when docked,
@@ -149,10 +150,13 @@ end
 
 local function LayoutRingTexture()
     if not ringTexture or not Minimap then return end
-    local d = Minimap:GetWidth()
-    if not d or d <= 0 then d = DEFAULT_SIZE end
-    local size = (d - BAZUI_RING_OVERLAP * 2) / BAZUI_RING_INNER_RATIO
+    -- Size the ring from the original widget footprint, never the enlarged
+    -- map. Reapplying settings must not grow both in a feedback loop.
+    local d = nativeMapWidth or DEFAULT_SIZE
+    local size = (d - BAZUI_RING_OVERLAP * 2) / BazUI.Skin.Theme.minimapRingDesignRatio
     ringTexture:SetSize(size, size)
+    local mapSize = size * BAZUI_RING_INNER_RATIO + BAZUI_RING_OVERLAP * 2
+    raw.SetSize(Minimap, mapSize, mapSize)
 end
 
 local function GetFrameStyle()
@@ -174,8 +178,9 @@ function MinimapWidget:ApplyFrameStyle()
             LayoutRingTexture()
             tex:Show()
         end
-    elseif ringTexture then
-        ringTexture:Hide()
+    else
+        if ringTexture then ringTexture:Hide() end
+        if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
     end
 end
 
@@ -297,6 +302,7 @@ function MinimapWidget:Init()
     local mapH = Minimap:GetHeight() or DEFAULT_SIZE
     if not mapW or mapW == 0 then mapW = DEFAULT_SIZE end
     if not mapH or mapH == 0 then mapH = DEFAULT_SIZE end
+    nativeMapWidth, nativeMapHeight = mapW, mapH
 
     -- Hide Blizzard's cluster shell
     HideMinimapCluster()
