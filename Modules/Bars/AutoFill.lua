@@ -13,6 +13,10 @@
 --
 -- Buttons cast by name, so a new rank of a spell already on a bar needs
 -- nothing: the existing button casts it.
+--
+-- The bars only ever hold what the character knows: once the world is
+-- entered, and again whenever the spellbook changes (a respec), spell
+-- buttons the character doesn't know are cleared.
 ---------------------------------------------------------------------------
 
 local BazBars = BazUI.Bars
@@ -28,6 +32,8 @@ local BOOK = _G.BOOKTYPE_SPELL or "spell"
 local SPELL_KIND = _G.Enum and _G.Enum.SpellBookItemType and _G.Enum.SpellBookItemType.Spell or 1
 
 local pending = {}   -- spellIDs learned in combat, placed when it ends
+local prunePending = false
+local pruneQueued  = false
 
 ---------------------------------------------------------------------------
 -- Reading the spellbook
@@ -36,6 +42,13 @@ local pending = {}   -- spellIDs learned in combat, placed when it ends
 local function SpellName(spellID)
     local info = C_Spell.GetSpellInfo(spellID)
     return info and info.name
+end
+
+local function IsKnown(spellID)
+    if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
+        return C_SpellBook.IsSpellKnownOrInSpellBook(spellID)
+    end
+    return IsSpellKnown(spellID)
 end
 
 local function IsPassive(spellID)
@@ -175,6 +188,58 @@ end
 ---------------------------------------------------------------------------
 -- Passes
 ---------------------------------------------------------------------------
+
+-- Clears spell buttons the character doesn't know. Skipped while the
+-- spellbook is empty (a loading screen) or if it would clear every
+-- spell on the bars, which means the book isn't readable yet rather
+-- than that the character knows nothing.
+function AutoFill:PruneUnknown()
+    if InCombatLockdown() then
+        prunePending = true
+        return 0
+    end
+    prunePending = false
+    if (GetNumSpellTabs() or 0) == 0 then return 0 end
+
+    local stale, total = {}, 0
+    for _, frame in pairs(addon.Bar:GetAll()) do
+        for _, row in pairs(frame.buttons or {}) do
+            for _, btn in pairs(row) do
+                local a = btn.action
+                if a and a.type == "spell" and a.data and a.data.id then
+                    total = total + 1
+                    if not IsKnown(a.data.id) then stale[#stale + 1] = btn end
+                end
+            end
+        end
+    end
+    if #stale == 0 or (#stale == total and total > 1) then return 0 end
+    for _, btn in ipairs(stale) do addon.Button:ClearAction(btn) end
+    return #stale
+end
+
+function AutoFill:QueuePrune()
+    if pruneQueued then return end
+    pruneQueued = true
+    C_Timer.After(0.5, function()
+        pruneQueued = false
+        AutoFill:PruneUnknown()
+    end)
+end
+
+function AutoFill:PruneIfPending()
+    if prunePending then self:PruneUnknown() end
+end
+
+-- First time in the world this session: clear what isn't known, then
+-- fill a new character's bars.
+function AutoFill:OnWorldEntered()
+    local cleared = self:PruneUnknown()
+    if cleared > 0 then
+        addon:Print(("Removed %d abilities this character doesn't know from the bars."):format(cleared))
+    end
+    self:OnFirstLogin()
+end
 
 -- Every unplaced ability into the empty slots. Used by the first login
 -- and by the button on the General page.

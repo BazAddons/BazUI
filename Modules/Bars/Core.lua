@@ -213,9 +213,19 @@ addon = BazUI:RegisterModule("Bars", {
 -- empty bars and re-slot independently (the desired behavior).
 ---------------------------------------------------------------------------
 
-local function GetCharKey()
+-- Buttons are keyed by the character's GUID, which a deleted and
+-- re-created character never shares (a same-name character did, and
+-- inherited the old one's bars). Earlier builds keyed by name-realm;
+-- ResolveCharBucket moves or drops those tables once at login.
+local function LegacyCharKey()
     local name, realm = UnitFullName("player")
     return (name or "Unknown") .. "-" .. (realm or "Unknown")
+end
+
+local function GetCharKey()
+    local guid = UnitGUID("player")
+    if guid and guid ~= "" then return guid end
+    return LegacyCharKey()
 end
 
 local function GetActiveProfileName()
@@ -281,6 +291,57 @@ function addon:HasAnyButtons()
     return false
 end
 
+local function IsSpellKnownHere(spellID)
+    if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
+        return C_SpellBook.IsSpellKnownOrInSpellBook(spellID)
+    end
+    return IsSpellKnown(spellID)
+end
+
+-- One-time at login: a table saved under the old name-realm key is
+-- moved to this character's GUID if it looks like this character's
+-- (recorded class matches, or its spells are ones this character
+-- knows) and dropped otherwise: names are unique per realm, so a
+-- mismatch means that character is gone. The GUID table records the
+-- class and name for next time.
+function addon:ResolveCharBucket()
+    local cb = BazUIDB and BazUIDB.barsCharButtons
+    if not cb then return end
+    local ck, legacy = GetCharKey(), LegacyCharKey()
+    local _, class = UnitClass("player")
+
+    if ck ~= legacy and not cb[ck] and cb[legacy] then
+        local old = cb[legacy]
+        local adopt
+        if old._meta and old._meta.class then
+            adopt = old._meta.class == class
+        else
+            local known, unknown = 0, 0
+            for pn, bars in pairs(old) do
+                if pn ~= "_meta" and type(bars) == "table" then
+                    for barID, buttons in pairs(bars) do
+                        if type(barID) == "number" and type(buttons) == "table" then
+                            for _, payload in pairs(buttons) do
+                                if type(payload) == "table" and payload.type == "spell"
+                                    and type(payload.data) == "table" and payload.data.id then
+                                    if IsSpellKnownHere(payload.data.id) then known = known + 1 else unknown = unknown + 1 end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            adopt = known >= unknown
+        end
+        if adopt then cb[ck] = old end
+        cb[legacy] = nil
+    end
+
+    if cb[ck] then
+        cb[ck]._meta = { class = class, name = LegacyCharKey() }
+    end
+end
+
 -- One-shot migration: walks profile.bars[*].buttons and moves each
 -- payload to the current character's bucket. Per-profile sentinel so
 -- subsequent characters using the same profile DON'T inherit (which
@@ -318,7 +379,6 @@ end
 
 -- Lifecycle callbacks (defined after addon is assigned)
 addon.config.onLoad = function(self)
-    self:MigrateButtonsToCharStorage()
     self.Options:Setup()
 end
 
@@ -489,21 +549,33 @@ local function MaybeShowKeyDownWarning()
 end
 
 addon.config.onReady = function(self)
+    -- The GUID and the spellbook are both available at login; the
+    -- button tables need them before any bar loads.
+    self:MigrateButtonsToCharStorage()
+    self:ResolveCharBucket()
     self.Bar:LoadAll()
     self:HideDefaultActionBar()   -- no-op unless the option is set
 
-    -- A new character's abilities, and each new spell after that
-    -- (AutoFill.lua). The spellbook is complete once the world is
-    -- entered; the first login pass waits for that.
+    -- Abilities on the bars (AutoFill.lua): once the world is entered,
+    -- spells the character doesn't know are cleared and a new
+    -- character's abilities are placed; after a respec the spellbook
+    -- changes and the clear runs again; each newly learned spell takes
+    -- the first empty slot.
     if self.AutoFill then
         local firstWorld = true
         self:On("PLAYER_ENTERING_WORLD", function()
             if not firstWorld then return end
             firstWorld = false
-            C_Timer.After(1.5, function() addon.AutoFill:OnFirstLogin() end)
+            C_Timer.After(1.5, function() addon.AutoFill:OnWorldEntered() end)
+        end)
+        self:On("SPELLS_CHANGED", function()
+            if not firstWorld then addon.AutoFill:QueuePrune() end
         end)
         self:On("LEARNED_SPELL_IN_SKILL_LINE", function(_, spellID) addon.AutoFill:OnLearned(spellID) end)
-        self:On("PLAYER_REGEN_ENABLED", function() addon.AutoFill:PlacePending() end)
+        self:On("PLAYER_REGEN_ENABLED", function()
+            addon.AutoFill:PlacePending()
+            addon.AutoFill:PruneIfPending()
+        end)
     end
     -- Re-apply any pending default-bar visibility toggle once combat
     -- ends. Setter just stashes the desired state if called in combat.
