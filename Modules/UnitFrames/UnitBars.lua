@@ -456,7 +456,10 @@ function UnitBars:Apply(bar)
     BazUI.Dock:Relayout(frame)
 
     if bar.mover then BazUI:UpdateEditModeLabel(bar.mover, def.name) end
-    self:RefreshMover(bar)
+    -- ShowMover rather than RefreshMover: a bar made while Edit Mode is
+    -- already open has missed the event that reveals handles, so without
+    -- this its handle stays hidden until you leave and come back.
+    self:ShowMover(bar)
     self:Update(bar)
 end
 
