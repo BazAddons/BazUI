@@ -57,12 +57,12 @@ O.DIVIDER_COLOR   = { 0.40, 0.35, 0.20, 0.6 }
 ---------------------------------------------------------------------------
 
 O.TEXT_PRESETS = {
-    h1        = { font = "GameFontNormalHuge",      color = O.GOLD,     marginBot = 10, accent = "underline" },
-    h2        = { font = "GameFontNormalLarge",     color = O.GOLD,     marginBot = 6,  accent = "underline" },
-    h3        = { font = "GameFontHighlightLarge",  color = O.GOLD,     marginBot = 4 },
-    h4        = { font = "GameFontHighlight",       color = O.GOLD,     marginBot = 2 },
+    h1        = { font = "GameFontNormalLarge",     color = O.GOLD,     marginBot = 8,  accent = "underline" },
+    h2        = { font = "GameFontHighlightMedium", color = O.GOLD,     marginBot = 4,  accent = "underline" },
+    h3        = { font = "GameFontHighlight",       color = O.GOLD,     marginBot = 3 },
+    h4        = { font = "GameFontHighlightSmall",  color = O.GOLD,     marginBot = 2 },
     paragraph = { font = "GameFontHighlight",       color = O.TEXT_NORMAL, marginBot = 4, wrap = true },
-    lead      = { font = "GameFontHighlightMedium", color = O.WHITE,    marginBot = 6, wrap = true },
+    lead      = { font = "GameFontHighlight",       color = O.WHITE,    marginBot = 6, wrap = true },
     caption   = { font = "GameFontHighlightSmall",  color = O.DIM,      marginBot = 4, wrap = true, justify = "CENTER" },
     quote     = { font = "GameFontHighlight",       color = O.DIM,      marginBot = 6, wrap = true, indent = 14, leftBar = true },
 }

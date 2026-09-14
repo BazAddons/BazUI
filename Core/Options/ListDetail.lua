@@ -1,319 +1,198 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BazUI Options: List/Detail Split Panel
--- Gold text links on dark background (Traveler's Log style).
--- Left list, right detail. Used by Widgets, Drawers, BazBars bars, etc.
+-- BazUI Options: Picker + form
+--
+-- Replaces the side list / detail split. A collection of editable items
+-- (bars, drawers, widgets, bag categories, chat tabs, notification
+-- sources) renders as one row at the top of the page:
+--
+--   Bar   [ Main bar               ▼ ]   [Up] [Down]   [New bar] [Reset]
+--
+-- with the selected item's form beneath it. It fits the Options canvas
+-- at any width and scrolls with the rest of the page. The selection is
+-- remembered per page on the long-lived content frame, so editing a
+-- value (which re-renders the page) keeps the same item open.
+--
+-- Input shape is unchanged from the old list/detail: a group whose
+-- args are one sub-group per item (optionally tagged with `source` for
+-- grouped menus, with `_lazyDetailBuild` for deferred detail args), and
+-- an optional list of execute options rendered as buttons on the row.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
 
----------------------------------------------------------------------------
--- Build a list/detail split panel inside a container.
--- groupOpt: the group option containing child groups
--- container: parent frame
--- contentWidth: available width
--- yOffset: starting Y position
--- executeArgs: optional buttons above the list (Create New, etc.)
--- Returns: new yOffset after the split panel
----------------------------------------------------------------------------
+local function ItemLabel(child)
+    return child.name or child._key or "?"
+end
 
-function O.BuildListDetailPanel(container, groupOpt, contentWidth, yOffset, executeArgs)
-    -- Selection + collapse state persistence target. `container` is
-    -- typically a renderTarget Frame that gets discarded on every
-    -- RefreshOptions call (Registration.lua's RenderIntoCanvas
-    -- recreates it from scratch each render to avoid orphaned-frame
-    -- bugs). Storing _lastSelectedItem on it would lose the user's
-    -- selection every time they edit any option in the detail pane.
-    -- Walk up to the longest-lived ancestor we have (window.content)
-    -- and stash there with a key derived from groupOpt.name, so
-    -- multiple list-details on different subcategories don't collide.
-    local stateHost = container:GetParent() or container
-    local stateKey  = "_bazListDetail_" .. tostring(groupOpt.name or "default")
-
-    -- Split frame: anchors to bottom of container to fill space
-    local splitFrame = CreateFrame("Frame", nil, container)
-    splitFrame:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
-    splitFrame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -O.PAD, O.PAD)
-    splitFrame:Show()
-
-    -- List width via the shared resolver (28 % / 200-320 px) so the
-    -- standard list/detail panel matches the User Manual exactly.
-    local containerW = container:GetWidth() or contentWidth or 600
-    local listW = O.ResolveListWidth(containerW)
-
-    -- Left: list panel
-    local listBg = CreateFrame("Frame", nil, splitFrame, "BackdropTemplate")
-    listBg:SetPoint("TOPLEFT", 0, 0)
-    listBg:SetPoint("BOTTOMLEFT", 0, 0)
-    listBg:SetWidth(listW)
-    listBg:SetBackdrop(O.LIST_BACKDROP)
-    listBg:SetBackdropColor(unpack(O.LIST_BG))
-    listBg:SetBackdropBorderColor(unpack(O.PANEL_BORDER))
-
-    -- Execute buttons at top of list (e.g. Create New Drawer)
-    local listTopY = -6
-    for _, execOpt in ipairs(executeArgs or {}) do
-        local execBtn = CreateFrame("Button", nil, listBg, "UIPanelButtonTemplate")
-        execBtn:SetSize(listW - 12, 24)
-        execBtn:SetPoint("TOPLEFT", listBg, "TOPLEFT", 6, listTopY)
-        execBtn:SetText(execOpt.name or "")
-        execBtn:SetScript("OnClick", function()
-            if execOpt.func then execOpt.func() end
-        end)
-        local fs = execBtn:GetFontString()
-        if fs then fs:SetFontObject("GameFontHighlightSmall") end
-        execBtn:Show()
-        listTopY = listTopY - 28
+function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, executeArgs, stateHost)
+    contentWidth = math.min(contentWidth, O.CONTENT_MAX)
+    stateHost = stateHost or container:GetParent() or container
+    local stateKey = "_bazPicker_" .. tostring(groupOpt._key or groupOpt.name or "items")
+    local state = stateHost[stateKey]
+    if type(state) ~= "table" then
+        state = {}
+        stateHost[stateKey] = state
     end
 
-    -- List scroll
-    local listScroll = CreateFrame("ScrollFrame", nil, listBg)
-    listScroll:SetPoint("TOPLEFT", 4, listTopY - 2)
-    listScroll:SetPoint("BOTTOMRIGHT", -14, 4)
-    listScroll:EnableMouseWheel(true)
+    local children = {}
+    for _, child in ipairs(O.SortedArgs(groupOpt.args)) do
+        if child.type == "group" then children[#children + 1] = child end
+    end
 
-    local listScrollBar = CreateFrame("EventFrame", nil, listBg, "MinimalScrollBar")
-    listScrollBar:SetPoint("TOPLEFT", listScroll, "TOPRIGHT", 2, 0)
-    listScrollBar:SetPoint("BOTTOMLEFT", listScroll, "BOTTOMRIGHT", 2, 0)
-    ScrollUtil.InitScrollFrameWithScrollBar(listScroll, listScrollBar)
+    local hasSources = false
+    for _, c in ipairs(children) do
+        if c.source then hasSources = true break end
+    end
 
-    local listContent = CreateFrame("Frame", nil, listScroll)
-    listContent:SetWidth(listW - 26)
-    listScroll:SetScrollChild(listContent)
-    O.AutoHideScrollbar(listScroll, listScrollBar)
-
-    -- Right: detail panel
-    local detailFrame = CreateFrame("Frame", nil, splitFrame, "BackdropTemplate")
-    detailFrame:SetPoint("TOPLEFT", listBg, "TOPRIGHT", O.PAGE_LIST_GAP, 0)
-    detailFrame:SetPoint("BOTTOMRIGHT", 0, 0)
-    detailFrame:SetBackdrop(O.LIST_BACKDROP)
-    detailFrame:SetBackdropColor(unpack(O.PANEL_BG))
-    detailFrame:SetBackdropBorderColor(unpack(O.PANEL_BORDER))
-
-    local detailScroll = CreateFrame("ScrollFrame", nil, detailFrame)
-    detailScroll:SetPoint("TOPLEFT", 4, -4)
-    detailScroll:SetPoint("BOTTOMRIGHT", -14, 4)
-    detailScroll:EnableMouseWheel(true)
-
-    local detailScrollBar = CreateFrame("EventFrame", nil, detailFrame, "MinimalScrollBar")
-    detailScrollBar:SetPoint("TOPLEFT", detailScroll, "TOPRIGHT", 2, 0)
-    detailScrollBar:SetPoint("BOTTOMLEFT", detailScroll, "BOTTOMRIGHT", 2, 0)
-    ScrollUtil.InitScrollFrameWithScrollBar(detailScroll, detailScrollBar)
-    O.AutoHideScrollbar(detailScroll, detailScrollBar)
-
-    local detailContent = CreateFrame("Frame", nil, detailScroll)
-    detailContent:SetWidth(detailFrame:GetWidth() - 28)
-    detailScroll:SetScrollChild(detailContent)
-
-    -- Build child groups list
-    local childSorted = O.SortedArgs(groupOpt.args)
-    local childGroups = {}
-    for _, child in ipairs(childSorted) do
-        if child.type == "group" then
-            childGroups[#childGroups + 1] = child
+    local function FindByLabel(label)
+        for _, c in ipairs(children) do
+            if ItemLabel(c) == label then return c end
         end
     end
+    local selected = FindByLabel(state.selected) or children[1]
+    state.selected = selected and ItemLabel(selected) or nil
 
-    -- Detect source-based grouping. When ANY child group declares a
-    -- `source`, switch to collapsible-section rendering: one header
-    -- per source, children listed under it. Without this, all the
-    -- child groups would render flat - fine for short lists but
-    -- noisy for wide lists like the BWD Widgets page once a user
-    -- has many LDB feeds installed.
-    local hasSourceGrouping = false
-    for _, child in ipairs(childGroups) do
-        if child.source then hasSourceGrouping = true break end
-    end
+    ------------------------------------------------------------------
+    -- Picker row
+    ------------------------------------------------------------------
+    local row = CreateFrame("Frame", nil, container)
+    row:SetSize(contentWidth, O.PICKER_H)
+    row:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
 
-    -- Selection is tracked by the child's `name` string (stable across
-    -- list rebuilds when sections are expanded/collapsed). Persisted
-    -- on stateHost (window.content) so it survives RefreshOptions
-    -- rebuilds. Falls back to nil if the previously selected item
-    -- no longer exists in the rebuilt list.
-    local selectionState = stateHost[stateKey]
-    if type(selectionState) ~= "table" then
-        selectionState = {}
-        stateHost[stateKey] = selectionState
-    end
-    local selectedKey = selectionState.selected
-    -- Legacy: older sessions stored an integer index. Drop it - the
-    -- restore path below will pick the first available group instead.
-    if type(selectedKey) ~= "string" then selectedKey = nil end
+    local label = row:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
+    label:SetPoint("LEFT", O.ROW_PAD, 0)
+    label:SetText(groupOpt.pickerLabel or "Select")
+    label:SetTextColor(unpack(O.TEXT_DESC))
 
-    -- Per-source collapse state lives in the same persistent state
-    -- bucket so it also survives RefreshOptions rebuilds (resets on
-    -- /reload, when the entire window goes away).
-    selectionState.collapsedSources = selectionState.collapsedSources or {}
-    local collapsedSources = selectionState.collapsedSources
-
-    local function GetChildByKey(key)
-        if not key then return nil end
-        for _, c in ipairs(childGroups) do
-            if c.name == key then return c end
+    -- Buttons on the right: move arrows (when the page supports
+    -- ordering) then the page's own actions (Create, Reset ...).
+    local rightEdge = row
+    local rightX = -O.ROW_PAD
+    local function AddButton(text, width, onClick, danger)
+        local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        btn:SetSize(width, 22)
+        btn:SetPoint("RIGHT", rightEdge, rightEdge == row and "RIGHT" or "LEFT", rightX, 0)
+        btn:SetText(text)
+        local fs = btn:GetFontString()
+        if fs then
+            fs:SetFontObject("GameFontHighlightSmall")
+            if danger then fs:SetTextColor(1, 0.45, 0.45) end
         end
+        btn:SetScript("OnClick", onClick)
+        rightEdge, rightX = btn, -6
+        return btn
     end
 
-    local RenderList  -- forward declared so SelectGroup can rebuild
-
-    local function RenderDetailFor(child)
-        O.ClearChildren(detailContent)
-        if not child then return end
-        -- Lazy detail: pages produced by CreateManagedListPage stash a
-        -- `_lazyDetailBuild` closure instead of pre-building the args
-        -- table for every item upfront. We evaluate it on first
-        -- selection here, then cache the result on the child so
-        -- subsequent re-renders (e.g. window resize, RefreshOptions)
-        -- don't repeat the work.
-        if not child.args and child._lazyDetailBuild then
-            child.args = child._lazyDetailBuild()
-            child._lazyDetailBuild = nil  -- one-shot
-        end
-        if child.args then
-            local dw = detailContent:GetWidth() - O.PAD
-            if dw <= 0 then dw = 360 end
-            local bottomY = O.RenderWidgets(detailContent, child.args, dw)
-            detailContent:SetHeight(math.abs(bottomY) + O.PAD)
-        end
-    end
-
-    -- Picking an item updates the selection state and re-renders both
-    -- panels. The list rebuild flows the new isSelected flag through
-    -- the shared row builder so the gold-gradient highlight follows
-    -- the click without needing a separate per-row update path.
-    local function SelectGroup(child)
-        if not child then return end
-        selectedKey = child.name
-        selectionState.selected = selectedKey
-        RenderList()
-        RenderDetailFor(child)
-    end
-
-    -- Builds the row spec array O.RenderListRows consumes. Each child
-    -- group becomes an "item" row; in source-grouped mode each unique
-    -- source becomes a "parent" row preceding its items, with an
-    -- indent so children visually nest under their header. Source
-    -- parents are selectable (matches User Manual tree behaviour: a
-    -- click toggles expansion and marks the header as the active row
-    -- with white text). Collapsed sources skip emitting their item
-    -- rows.
-    local function BuildRowSpecs()
-        local rows = {}
-        if hasSourceGrouping then
-            local bySource, sourceOrder = {}, {}
-            for _, child in ipairs(childGroups) do
-                local src = child.source or "Other"
-                if not bySource[src] then
-                    bySource[src] = {}
-                    sourceOrder[#sourceOrder + 1] = src
-                end
-                table.insert(bySource[src], child)
+    local actions = {}
+    for _, exec in ipairs(executeArgs or {}) do actions[#actions + 1] = exec end
+    -- Rightmost button first, so actions read left to right in order.
+    for i = #actions, 1, -1 do
+        local exec = actions[i]
+        local probe = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        probe:SetText(exec.name or "")
+        local w = math.max(70, math.min(160, (probe:GetStringWidth() or 60) + 24))
+        probe:Hide()
+        local danger = exec.style == "danger" or exec.confirmStyle == "destructive"
+        AddButton((exec.name or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""), w, function()
+            if exec.confirm and BazUI.Confirm then
+                BazUI:Confirm({
+                    title = exec.confirmTitle or "Confirm", body = exec.confirmText or "Are you sure?",
+                    acceptLabel = exec.confirmAcceptLabel or "Yes", cancelLabel = exec.confirmCancelLabel or "No",
+                    acceptStyle = exec.confirmStyle or "primary",
+                    onAccept = function() if exec.func then exec.func() end end,
+                })
+            elseif exec.func then
+                exec.func()
             end
-            for _, src in ipairs(sourceOrder) do
-                local capturedSrc = src
-                local sourceKey   = "__source_" .. capturedSrc
-                local collapsed   = collapsedSources[capturedSrc] or false
-                -- Source headers are selectable like User Manual tree
-                -- parents: a click toggles expansion AND turns the
-                -- header text white, matching the User Manual look.
-                -- Selection just lives on the row visual; the detail
-                -- panel only updates on child clicks (source headers
-                -- don't have their own page content), so the previous
-                -- child's content stays put until the user picks a
-                -- different child.
-                rows[#rows + 1] = {
-                    key        = sourceKey,
-                    label      = capturedSrc,
-                    count      = #bySource[capturedSrc],
-                    isParent   = true,
-                    expanded   = not collapsed,
-                    isSelected = (sourceKey == selectedKey),
-                    onClick    = function()
-                        collapsedSources[capturedSrc] =
-                            not collapsedSources[capturedSrc]
-                        selectedKey = sourceKey
-                        selectionState.selected = selectedKey
-                        RenderList()
-                    end,
-                }
-                if not collapsed then
-                    for _, child in ipairs(bySource[capturedSrc]) do
-                        local capturedChild = child
-                        rows[#rows + 1] = {
-                            key        = capturedChild.name,
-                            label      = capturedChild.name or "?",
-                            isParent   = false,
-                            isSelected = (capturedChild.name == selectedKey),
-                            indent     = 18,  -- nested under section header
-                            onClick    = function() SelectGroup(capturedChild) end,
-                        }
-                    end
+        end, danger)
+    end
+
+    if selected and (groupOpt.onMoveUp or groupOpt.onMoveDown) then
+        local idx
+        for i, c in ipairs(children) do if c == selected then idx = i end end
+        local down = AddButton("Down", 54, function() if groupOpt.onMoveDown then groupOpt.onMoveDown(selected) end end)
+        local up   = AddButton("Up", 44, function() if groupOpt.onMoveUp then groupOpt.onMoveUp(selected) end end)
+        if not idx or idx == 1 then up:Disable() end
+        if not idx or idx == #children then down:Disable() end
+    end
+
+    -- The dropdown fills the space between the label and the buttons.
+    local dd = CreateFrame("DropdownButton", nil, row, "WowStyle1DropdownTemplate")
+    dd:SetHeight(22)
+    dd:SetPoint("LEFT", label, "RIGHT", 10, 0)
+    dd:SetPoint("RIGHT", rightEdge, rightEdge == row and "RIGHT" or "LEFT", rightEdge == row and -O.ROW_PAD or -12, 0)
+    dd:SetDefaultText(selected and ItemLabel(selected) or "Nothing to show")
+
+    local function Select(child)
+        state.selected = ItemLabel(child)
+        -- Re-render the whole page so the form below reflects the pick.
+        if stateHost._bazRefresh then stateHost._bazRefresh() end
+    end
+
+    dd:SetupMenu(function(_, root)
+        if hasSources then
+            local order, bySource = {}, {}
+            for _, c in ipairs(children) do
+                local src = c.source or "Other"
+                if not bySource[src] then bySource[src] = {}; order[#order + 1] = src end
+                table.insert(bySource[src], c)
+            end
+            for _, src in ipairs(order) do
+                root:CreateTitle(src)
+                for _, c in ipairs(bySource[src]) do
+                    local child = c
+                    root:CreateRadio(ItemLabel(child), function() return child == selected end, function() Select(child) end)
                 end
             end
         else
-            -- Flat list (legacy behaviour for pages without source-tagged
-            -- children, e.g. Drawers, Categories). When the wrapper
-            -- group exposes onMoveUp / onMoveDown callbacks, every row
-            -- gets up/down arrow buttons on the right edge - the topmost
-            -- and bottommost rows render their boundary arrow disabled
-            -- so users still see the affordance but can't move past
-            -- the list edge. Pages without ordering simply don't set
-            -- the callbacks and no arrows render.
-            local total      = #childGroups
-            local onMoveUp   = groupOpt.onMoveUp
-            local onMoveDown = groupOpt.onMoveDown
-            for idx, child in ipairs(childGroups) do
-                local capturedChild = child
-                local moveUp, moveDown
-                if onMoveUp and idx > 1 then
-                    moveUp = function() onMoveUp(capturedChild) end
-                end
-                if onMoveDown and idx < total then
-                    moveDown = function() onMoveDown(capturedChild) end
-                end
-                rows[#rows + 1] = {
-                    key        = capturedChild.name,
-                    label      = capturedChild.name or "?",
-                    isParent   = false,
-                    isSelected = (capturedChild.name == selectedKey),
-                    onClick    = function() SelectGroup(capturedChild) end,
-                    moveUp     = moveUp,
-                    moveDown   = moveDown,
-                }
+            for _, c in ipairs(children) do
+                local child = c
+                root:CreateRadio(ItemLabel(child), function() return child == selected end, function() Select(child) end)
             end
         end
-        return rows
-    end
-
-    RenderList = function()
-        O.ClearChildren(listContent)
-        local rows = BuildRowSpecs()
-        local _, totalH = O.RenderListRows(listContent, rows, { width = listW - 26 })
-        listContent:SetHeight(math.max(totalH or 0, 1))
-    end
-
-    RenderList()
-
-    -- Auto-select: restore previous selection or pick the first child
-    if #childGroups > 0 then
-        C_Timer.After(0, function()
-            detailContent:SetWidth(detailFrame:GetWidth() - 28)
-            local restore = GetChildByKey(selectedKey) or childGroups[1]
-            -- If the restored child sits inside a collapsed source,
-            -- expand that source so the user sees their selection.
-            if hasSourceGrouping and restore.source
-               and collapsedSources[restore.source] then
-                collapsedSources[restore.source] = false
-                RenderList()
-            end
-            SelectGroup(restore)
-        end)
-    end
-
-    detailFrame:SetScript("OnSizeChanged", function(self, w)
-        detailContent:SetWidth(w - 28)
-        local cur = GetChildByKey(selectedKey)
-        if cur then SelectGroup(cur) end
     end)
+    if #children == 0 then dd:Disable() end
 
-    return splitFrame
+    local rule = row:CreateTexture(nil, "ARTWORK")
+    rule:SetHeight(1)
+    rule:SetPoint("BOTTOMLEFT", O.ROW_PAD, 0)
+    rule:SetPoint("BOTTOMRIGHT", -O.ROW_PAD, 0)
+    rule:SetColorTexture(unpack(O.HEADER_LINE))
+    row:Show()
+    yOffset = yOffset - O.PICKER_H - O.SPACING
+
+    ------------------------------------------------------------------
+    -- Form for the selected item
+    ------------------------------------------------------------------
+    if selected then
+        if not selected.args and selected._lazyDetailBuild then
+            selected.args = selected._lazyDetailBuild()
+            selected._lazyDetailBuild = nil
+        end
+        if selected.args then
+            -- Managed lists prepend an h1 with the item's name; the picker
+            -- already shows it, so that heading is redundant here.
+            for key, opt in pairs(selected.args) do
+                if type(opt) == "table" and (opt.type == "h1" or opt.type == "h2") and opt.text == ItemLabel(selected) then
+                    selected.args[key] = nil
+                end
+            end
+            yOffset = O.RenderWidgets(container, selected.args, contentWidth, nil, yOffset)
+        end
+    elseif groupOpt.emptyText then
+        local fs = container:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+        fs:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD + O.ROW_PAD, yOffset)
+        fs:SetWidth(contentWidth - O.ROW_PAD * 2)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(groupOpt.emptyText)
+        fs:SetTextColor(unpack(O.TEXT_DESC))
+        yOffset = yOffset - (fs:GetStringHeight() or 12) - O.SPACING
+    end
+    return yOffset
+end
+
+-- Old name, kept for any caller still using it. Returns the new y offset.
+function O.BuildListDetailPanel(container, groupOpt, contentWidth, yOffset, executeArgs)
+    return O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, executeArgs)
 end

@@ -12,23 +12,41 @@ local O = BazUI._Options
 -- Layout Dimensions
 ---------------------------------------------------------------------------
 
-O.PAD            = 14
-O.WIDGET_HEIGHT  = 32
-O.HEADER_HEIGHT  = 28
-O.SPACING        = 8
+O.PAD            = 8
+O.WIDGET_HEIGHT  = 28
+O.HEADER_HEIGHT  = 24
+O.SPACING        = 2
 O.LIST_WIDTH     = 180
 O.LIST_ITEM_HEIGHT = 28
 O.COL_GAP        = 14
 O.PANEL_PAD      = 12
 
+-- The form language (WidgetFactories / LayoutEngine / ListDetail).
+-- Sized for the Options panel's canvas: ~665 px wide at the default
+-- window size, so one column with controls at fixed widths.
+O.CONTENT_MAX    = 640   -- content never stretches wider than this
+O.ROW_H          = 28    -- a control row
+O.ROW_DESC_H     = 44    -- a control row with a description line
+O.ROW_PAD        = 6     -- inset of label and control from the row edges
+O.ROW_GAP        = 14    -- minimum gap between label and control
+O.SECTION_GAP    = 10    -- extra air above a section header
+O.CHECK_W        = 24
+O.CTRL_W         = 180   -- dropdowns and sliders (slider includes its value box)
+O.CTRL_MAX_W     = 240   -- a dropdown may widen to this for long values
+O.INPUT_W        = 200
+O.VALUE_W        = 44    -- slider value box
+O.BUTTON_MIN_W   = 90
+O.BUTTON_MAX_W   = 200
+O.PICKER_H       = 34    -- the "pick an item" row above an item's form
+
 ---------------------------------------------------------------------------
 -- Fonts
 ---------------------------------------------------------------------------
 
-O.LABEL_FONT     = "GameFontNormalLarge"
-O.DESC_FONT      = "GameFontNormalLarge"
-O.HEADER_FONT    = "GameFontNormalLarge"
-O.LIST_FONT      = "GameFontNormalLarge"
+O.LABEL_FONT     = "GameFontHighlight"
+O.DESC_FONT      = "GameFontHighlightSmall"
+O.HEADER_FONT    = "GameFontNormal"
+O.LIST_FONT      = "GameFontHighlight"
 O.SMALL_FONT     = "GameFontHighlight"
 
 ---------------------------------------------------------------------------
@@ -39,13 +57,14 @@ O.GOLD           = { 1, 0.82, 0 }
 O.WHITE          = { 1, 1, 1 }
 O.DIM            = { 0.6, 0.6, 0.6 }
 O.TEXT_NORMAL    = { 0.9, 0.9, 0.9 }
-O.TEXT_DESC      = { 0.7, 0.7, 0.7 }
+O.TEXT_DESC      = { 0.62, 0.58, 0.50 }
+O.TEXT_DISABLED  = { 0.42, 0.40, 0.36 }
 O.PANEL_BG       = { 0.04, 0.04, 0.06, 0.7 }
 O.PANEL_BORDER   = { 0.25, 0.25, 0.3, 0.6 }
 O.LIST_BG        = { 0.03, 0.03, 0.05, 0.6 }
 O.LIST_HOVER     = { 0.1, 0.2, 0.4, 0.3 }
 O.LIST_SELECTED  = { 0.15, 0.35, 0.6, 0.6 }
-O.HEADER_LINE    = { 0.4, 0.35, 0.2, 0.8 }
+O.HEADER_LINE    = { 0.62, 0.48, 0.20, 0.55 }
 
 -- Floating-dialog colours (Popup, CopyDialog, IconPicker). Brighter
 -- and more opaque than the inline PANEL_* tones so a popup floating
@@ -95,6 +114,11 @@ end
 function O.IsDisabled(opt)
     if type(opt.disabled) == "function" then return opt.disabled() end
     return opt.disabled or false
+end
+
+function O.IsHidden(opt)
+    if type(opt.hidden) == "function" then return opt.hidden() end
+    return opt.hidden or false
 end
 
 ---------------------------------------------------------------------------

@@ -1,237 +1,208 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
 -- BazUI Options: Widget Factories
--- Each factory creates a UI widget and returns (frame, height).
--- Redesigned with larger fonts and cleaner styling.
+--
+-- One form language for every settings page, sized for the Options
+-- panel's canvas (about 665 px wide at the default window size):
+--
+--   Label                                     [control]
+--   description in small muted text
+--
+-- Every control row is `contentWidth` wide, O.ROW_H tall (O.ROW_DESC_H
+-- with a description), label on the left, control right-aligned at a
+-- fixed width from O.CTRL_W / O.INPUT_W / O.VALUE_W. Section headers
+-- are a gold title with a rule. Each factory returns (frame, height).
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
 
+local function Color(fs, c) fs:SetTextColor(c[1], c[2], c[3], c[4] or 1) end
+
+-- Row scaffold: label (and optional description) on the left, a control
+-- anchor on the right. Returns frame, label, height, controlWidth.
+local function BuildRow(parent, opt, contentWidth, ctrlWidth)
+    local frame = CreateFrame("Frame", nil, parent)
+    local labelW = contentWidth - ctrlWidth - O.ROW_GAP - O.ROW_PAD * 2
+
+    local label = frame:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
+    label:SetPoint("TOPLEFT", O.ROW_PAD, -((O.ROW_H - 14) / 2))
+    label:SetWidth(labelW)
+    label:SetJustifyH("LEFT")
+    label:SetWordWrap(false)
+    label:SetText(opt.name or "")
+    Color(label, O.TEXT_NORMAL)
+    frame.label = label
+
+    local h = O.ROW_H
+    if opt.desc and opt.desc ~= "" then
+        local desc = frame:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+        desc:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -1)
+        desc:SetWidth(labelW)
+        desc:SetJustifyH("LEFT")
+        desc:SetWordWrap(true)
+        desc:SetText(opt.desc)
+        Color(desc, O.TEXT_DESC)
+        frame.desc = desc
+        h = math.max(O.ROW_DESC_H, O.ROW_H - 4 + (desc:GetStringHeight() or 12) + 6)
+    end
+    frame:SetSize(contentWidth, h)
+
+    frame.SetRowDisabled = function(self, disabled)
+        Color(self.label, disabled and O.TEXT_DISABLED or O.TEXT_NORMAL)
+        if self.desc then Color(self.desc, disabled and O.TEXT_DISABLED or O.TEXT_DESC) end
+    end
+    return frame, h
+end
+
+-- Control anchor: vertically centred on the first line of the row.
+local function AnchorControl(frame, control, width, height)
+    control:SetSize(width, height)
+    control:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -O.ROW_PAD, -((O.ROW_H - height) / 2))
+end
+
 ---------------------------------------------------------------------------
--- Description
+-- Text blocks
 ---------------------------------------------------------------------------
 
 local function CreateDescriptionWidget(parent, opt, contentWidth)
     local frame = CreateFrame("Frame", nil, parent)
-    local font = opt.fontSize == "small" and O.SMALL_FONT or O.DESC_FONT
-    local fs = frame:CreateFontString(nil, "OVERLAY")
-    fs:SetFontObject(font)
-    fs:SetPoint("TOPLEFT")
-    fs:SetWidth(contentWidth)
+    local fs = frame:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+    fs:SetPoint("TOPLEFT", O.ROW_PAD, -2)
+    fs:SetWidth(contentWidth - O.ROW_PAD * 2)
     fs:SetJustifyH("LEFT")
-    fs:SetText(opt.name or "")
-    fs:SetTextColor(unpack(O.TEXT_DESC))
     fs:SetWordWrap(true)
-    local h = fs:GetStringHeight() + 4
+    fs:SetText(opt.name or opt.text or "")
+    Color(fs, O.TEXT_DESC)
+    local h = (fs:GetStringHeight() or 12) + 6
     frame:SetSize(contentWidth, h)
     return frame, h
 end
 
----------------------------------------------------------------------------
--- Header
----------------------------------------------------------------------------
-
+-- Section title: small gold caps with a rule running to the right edge.
 local function CreateHeaderWidget(parent, opt, contentWidth)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetSize(contentWidth, O.HEADER_HEIGHT)
     local text = frame:CreateFontString(nil, "OVERLAY", O.HEADER_FONT)
-    text:SetPoint("LEFT", 0, 0)
+    text:SetPoint("BOTTOMLEFT", O.ROW_PAD, 5)
     text:SetText(opt.name or "")
-    text:SetTextColor(unpack(O.GOLD))
+    Color(text, O.GOLD)
     if opt.name and opt.name ~= "" then
         local line = frame:CreateTexture(nil, "ARTWORK")
         line:SetHeight(1)
-        line:SetPoint("LEFT", text, "RIGHT", 8, 0)
-        line:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+        line:SetPoint("LEFT", text, "RIGHT", 10, 0)
+        line:SetPoint("RIGHT", frame, "RIGHT", -O.ROW_PAD, 0)
+        line:SetPoint("BOTTOM", frame, "BOTTOM", 0, 8)
         line:SetColorTexture(unpack(O.HEADER_LINE))
     end
+    frame.isHeader = true
     return frame, O.HEADER_HEIGHT
 end
 
 ---------------------------------------------------------------------------
--- Toggle (Checkbox)
+-- Toggle
 ---------------------------------------------------------------------------
 
 local function CreateToggleWidget(parent, opt, contentWidth)
-    local frame = CreateFrame("Frame", nil, parent)
+    local frame, h = BuildRow(parent, opt, contentWidth, O.CHECK_W)
     local cb = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-    cb:SetPoint("TOPLEFT", 0, 0)
+    AnchorControl(frame, cb, O.CHECK_W, O.CHECK_W)
     cb:SetChecked(opt.get and opt.get() or false)
     cb:SetScript("OnClick", function(self)
-        if opt.set then opt.set(nil, self:GetChecked()) end
+        if opt.set then opt.set(nil, self:GetChecked() and true or false) end
     end)
-
-    local label = frame:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
-    label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
-    label:SetText(opt.name or "")
-
-    local totalH = O.WIDGET_HEIGHT
-    if opt.desc then
-        local desc = frame:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
-        desc:SetPoint("TOPLEFT", cb, "BOTTOMLEFT", 28, -2)
-        desc:SetWidth(contentWidth - 32)
-        desc:SetJustifyH("LEFT")
-        desc:SetText(opt.desc)
-        desc:SetTextColor(unpack(O.TEXT_DESC))
-        desc:SetWordWrap(true)
-        totalH = totalH + desc:GetStringHeight() + 6
-    end
-
-    frame:SetSize(contentWidth, totalH)
-
-    -- Dynamic disabled state
-    frame:SetScript("OnShow", function()
+    -- Clicking the label toggles too.
+    local hit = CreateFrame("Button", nil, frame)
+    hit:SetPoint("TOPLEFT", 0, 0)
+    hit:SetPoint("BOTTOMRIGHT", cb, "BOTTOMLEFT", 0, 0)
+    hit:SetScript("OnClick", function()
+        if cb:IsEnabled() then cb:Click() end
+    end)
+    frame:SetScript("OnShow", function(self)
         local disabled = O.IsDisabled(opt)
         cb:SetEnabled(not disabled)
         cb:SetChecked(opt.get and opt.get() or false)
-        label:SetTextColor(disabled and 0.4 or 0.9, disabled and 0.4 or 0.9, disabled and 0.4 or 0.9)
+        self:SetRowDisabled(disabled)
     end)
-
-    return frame, totalH
+    return frame, h
 end
 
 ---------------------------------------------------------------------------
--- Range (Slider)
+-- Range (slider + value box)
 ---------------------------------------------------------------------------
 
 local function CreateRangeWidget(parent, opt, contentWidth)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(contentWidth, 54)
-
-    local label = frame:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
-    label:SetPoint("TOPLEFT", 0, 0)
-
-    local minVal = opt.min or 0
-    local maxVal = opt.max or 100
-    local step = opt.step or 1
+    local frame, h = BuildRow(parent, opt, contentWidth, O.CTRL_W)
+    local minVal, maxVal, step = opt.min or 0, opt.max or 100, opt.step or 1
 
     local function FormatValue(val)
-        if opt.isPercent then return math.floor((val or 0) * 100) .. "%" end
-        if opt.format then return string.format(opt.format, val or 0) end
-        if step < 1 then return string.format("%.1f", val or 0) end
-        return tostring(math.floor(val or 0))
+        val = val or 0
+        if opt.isPercent then return math.floor(val * 100 + 0.5) .. "%" end
+        if type(opt.format) == "function" then return opt.format(val) end
+        if opt.format == "percent" then return math.floor(val * 100 + 0.5) .. "%" end
+        if type(opt.format) == "string" then return string.format(opt.format, val) end
+        if step < 1 then return string.format("%.1f", val) end
+        return tostring(math.floor(val + 0.5))
     end
 
-    local val = opt.get and opt.get() or minVal
-    -- Label keeps the "name: value" format so a glance down the page
-    -- reads naturally even when the editbox is collapsed/out of focus.
-    label:SetText((opt.name or "") .. ": " .. FormatValue(val))
+    local valueBox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+    valueBox:SetSize(O.VALUE_W, 20)
+    valueBox:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -O.ROW_PAD, -((O.ROW_H - 20) / 2))
+    valueBox:SetAutoFocus(false)
+    valueBox:SetJustifyH("CENTER")
+    valueBox:SetFontObject("GameFontHighlightSmall")
 
-    -- Reserve right-edge space for the editable value box so the
-    -- slider doesn't fight it for clicks. Width fits "100%" or 4 digits.
-    local EDITBOX_W = 56
-
+    local sliderW = O.CTRL_W - O.VALUE_W - 10
     local slider = CreateFrame("Frame", nil, frame, "MinimalSliderWithSteppersTemplate")
-    slider:SetPoint("TOPLEFT", 0, -22)
-    slider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -EDITBOX_W - 12, -22)
-    -- 24px (was 20) gives a friendlier vertical hit area for the
-    -- diamond thumb in MinimalSliderWithSteppersTemplate.
-    slider:SetHeight(24)
+    slider:SetSize(sliderW, 20)
+    slider:SetPoint("RIGHT", valueBox, "LEFT", -10, 0)
 
+    local val = opt.get and opt.get() or minVal
     slider.Slider:SetMinMaxValues(minVal, maxVal)
     slider.Slider:SetValueStep(step)
     slider.Slider:SetObeyStepOnDrag(true)
     slider.Slider:SetValue(val)
+    valueBox:SetText(FormatValue(val))
 
-    -- Click-anywhere-to-snap overlay.
-    --
-    -- MinimalSliderWithSteppersTemplate decides drag-vs-track-click by
-    -- hit-testing the cursor against the thumb texture's exact rect.
-    -- That rect is small (~16x16) and clicks landing on what visually
-    -- looks like the thumb often miss it, getting routed as page-step
-    -- clicks instead - so the slider feels ungrabbable on long ranges.
-    --
-    -- This invisible button covers the entire trough. Mouse-down sets
-    -- the slider value to the cursor's fractional position, then
-    -- OnUpdate keeps tracking the cursor until release. Net effect:
-    -- click anywhere -> snap there + drag from there, like every
-    -- modern slider widget. Steppers (slider.Back / slider.Forward)
-    -- live outside the overlay's bounds and keep working.
+    -- Click anywhere on the track to jump there and keep dragging; the
+    -- template only drags when the thumb itself is hit.
     local overlay = CreateFrame("Button", nil, slider.Slider)
     overlay:SetAllPoints()
     overlay:RegisterForClicks("LeftButtonDown", "LeftButtonUp")
-
     local dragging = false
     local function ValueAtCursor()
         local cx = GetCursorPosition() / overlay:GetEffectiveScale()
-        local left = overlay:GetLeft() or 0
-        local width = overlay:GetWidth() or 1
-        local frac = (cx - left) / width
-        if frac < 0 then frac = 0 end
-        if frac > 1 then frac = 1 end
+        local frac = (cx - (overlay:GetLeft() or 0)) / math.max(overlay:GetWidth() or 1, 1)
+        frac = math.max(0, math.min(1, frac))
         return minVal + frac * (maxVal - minVal)
     end
-
     overlay:SetScript("OnMouseDown", function(self, button)
-        if button ~= "LeftButton" then return end
+        if button ~= "LeftButton" or not slider.Slider:IsEnabled() then return end
         dragging = true
         slider.Slider:SetValue(ValueAtCursor())
-        self:SetScript("OnUpdate", function()
-            if dragging then slider.Slider:SetValue(ValueAtCursor()) end
-        end)
+        self:SetScript("OnUpdate", function() if dragging then slider.Slider:SetValue(ValueAtCursor()) end end)
     end)
     overlay:SetScript("OnMouseUp", function(self)
         if not dragging then return end
         dragging = false
         self:SetScript("OnUpdate", nil)
-        -- Commit the final value. OnValueChanged below skips opt.set
-        -- while `dragging` is true, so the setter fires exactly once
-        -- per drag here on release - important for setters with
-        -- expensive side effects (Categories.Reorder rebuilds the bag).
         if opt.set then
-            local v = math.floor(slider.Slider:GetValue() / step + 0.5) * step
-            opt.set(nil, v)
+            opt.set(nil, math.floor(slider.Slider:GetValue() / step + 0.5) * step)
         end
     end)
-    overlay:SetScript("OnHide", function(self)
-        dragging = false
-        self:SetScript("OnUpdate", nil)
-    end)
+    overlay:SetScript("OnHide", function(self) dragging = false; self:SetScript("OnUpdate", nil) end)
 
-    -- Editable value box on the right. Bypasses slider precision for
-    -- ranges where the user knows the exact value they want (e.g.
-    -- Order = 36). Slider OnValueChanged keeps the box in sync; the
-    -- box's commit writes through SetValue so the standard set()
-    -- chain fires from one place only.
-    local valueBox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-    valueBox:SetPoint("LEFT", slider, "RIGHT", 16, 0)
-    valueBox:SetSize(EDITBOX_W - 8, 22)
-    valueBox:SetAutoFocus(false)
-    valueBox:SetJustifyH("CENTER")
-    valueBox:SetText(FormatValue(val))
-
-    -- OnValueChanged updates the visual surfaces (label + editbox) on
-    -- every change for live feedback. opt.set is suppressed while a
-    -- drag is in progress - overlay's OnMouseUp commits exactly once
-    -- on release. Stepper buttons and the editbox commit via direct
-    -- SetValue calls outside any drag, so this branch fires opt.set
-    -- for them as before.
-    --
-    -- opt.live = true overrides the suppression: the setter fires on
-    -- every drag tick, for callers (e.g. the BazBars flyout config
-    -- form) that drive a live preview off the slider value.
-    slider.Slider:SetScript("OnValueChanged", function(self, value)
+    slider.Slider:SetScript("OnValueChanged", function(_, value)
         value = math.floor(value / step + 0.5) * step
-        label:SetText((opt.name or "") .. ": " .. FormatValue(value))
         valueBox:SetText(FormatValue(value))
-        if (not dragging or opt.live) and opt.set then
-            opt.set(nil, value)
-        end
+        if (not dragging or opt.live) and opt.set then opt.set(nil, value) end
     end)
 
-    -- EditBox commit on Enter: parse, clamp, snap to step, write
-    -- through the slider so a single OnValueChanged path handles all
-    -- updates. Strips a trailing % so percent ranges accept "75%" or
-    -- "75". Empty / non-numeric input reverts to the slider's value.
     valueBox:SetScript("OnEnterPressed", function(self)
-        local raw = self:GetText():gsub("%%", "")
-        local n = tonumber(raw)
+        local n = tonumber((self:GetText():gsub("%%", "")))
         if n then
-            if opt.isPercent then n = n / 100 end
-            if n < minVal then n = minVal end
-            if n > maxVal then n = maxVal end
-            n = math.floor(n / step + 0.5) * step
-            slider.Slider:SetValue(n)
+            if opt.isPercent or opt.format == "percent" then n = n / 100 end
+            n = math.max(minVal, math.min(maxVal, n))
+            slider.Slider:SetValue(math.floor(n / step + 0.5) * step)
         else
             self:SetText(FormatValue(slider.Slider:GetValue()))
         end
@@ -242,39 +213,30 @@ local function CreateRangeWidget(parent, opt, contentWidth)
         self:ClearFocus()
     end)
 
-    -- Disabled state
-    frame:SetScript("OnShow", function()
+    frame:SetScript("OnShow", function(self)
         local disabled = O.IsDisabled(opt)
         slider.Slider:SetEnabled(not disabled)
-        slider.Back:SetEnabled(not disabled)
-        slider.Forward:SetEnabled(not disabled)
+        if slider.Back then slider.Back:SetEnabled(not disabled) end
+        if slider.Forward then slider.Forward:SetEnabled(not disabled) end
         valueBox:SetEnabled(not disabled)
-        label:SetTextColor(disabled and 0.4 or 0.9, disabled and 0.4 or 0.9, disabled and 0.4 or 0.9)
+        self:SetRowDisabled(disabled)
         local v = opt.get and opt.get() or minVal
         slider.Slider:SetValue(v)
-        label:SetText((opt.name or "") .. ": " .. FormatValue(v))
         valueBox:SetText(FormatValue(v))
     end)
-
-    return frame, 54
+    return frame, h
 end
 
 ---------------------------------------------------------------------------
--- Input (EditBox)
+-- Input
 ---------------------------------------------------------------------------
 
 local function CreateInputWidget(parent, opt, contentWidth)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(contentWidth, 50)
-
-    local label = frame:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
-    label:SetPoint("TOPLEFT", 0, 0)
-    label:SetText(opt.name or "")
-
+    local frame, h = BuildRow(parent, opt, contentWidth, O.INPUT_W)
     local editBox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
-    editBox:SetPoint("TOPLEFT", 0, -20)
-    editBox:SetSize(math.min(contentWidth, 400), 22)
+    AnchorControl(frame, editBox, O.INPUT_W - 8, 20)
     editBox:SetAutoFocus(false)
+    editBox:SetFontObject("GameFontHighlightSmall")
     editBox:SetText(opt.get and opt.get() or "")
     editBox:SetScript("OnEnterPressed", function(self)
         if opt.set then opt.set(nil, self:GetText()) end
@@ -284,48 +246,54 @@ local function CreateInputWidget(parent, opt, contentWidth)
         self:SetText(opt.get and opt.get() or "")
         self:ClearFocus()
     end)
-
-    return frame, 50
+    editBox:SetScript("OnEditFocusLost", function(self)
+        if opt.commitOnFocusLost ~= false and opt.set then opt.set(nil, self:GetText()) end
+    end)
+    frame:SetScript("OnShow", function(self)
+        local disabled = O.IsDisabled(opt)
+        editBox:SetEnabled(not disabled)
+        editBox:SetText(opt.get and opt.get() or "")
+        self:SetRowDisabled(disabled)
+    end)
+    return frame, h
 end
 
 ---------------------------------------------------------------------------
--- Execute (Button)
+-- Execute (button)
 ---------------------------------------------------------------------------
 
 local function CreateExecuteWidget(parent, opt, contentWidth)
-    local frame = CreateFrame("Frame", nil, parent)
-    local isHalf = (opt.width == "half")
-    local borderless = opt.borderless
-    frame:SetSize(contentWidth, O.WIDGET_HEIGHT + 4)
-    local btnWidth = isHalf and contentWidth or math.min(260, contentWidth)
-    -- Use if/else; the `and/or` ternary breaks when the true value is nil
-    local template
-    if borderless then
-        template = nil
-    else
-        template = "UIPanelButtonTemplate"
+    -- The label doubles as the button text when there's no separate
+    -- description, so the row doesn't say the same thing twice.
+    local rowOpt = { name = opt.desc and opt.name or "", desc = opt.desc }
+    local btnText = opt.name or "Run"
+    local probe = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    probe:SetText(btnText)
+    local btnW = math.max(O.BUTTON_MIN_W, math.min(O.BUTTON_MAX_W, (probe:GetStringWidth() or 60) + 28))
+    probe:Hide()
+
+    local frame, h = BuildRow(parent, rowOpt, contentWidth, btnW)
+    if rowOpt.name == "" then frame.label:SetText("") end
+    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    AnchorControl(frame, btn, btnW, 22)
+    btn:SetText(btnText)
+    local fs = btn:GetFontString()
+    if fs then fs:SetFontObject("GameFontHighlightSmall") end
+    local danger = opt.style == "danger" or opt.confirmStyle == "destructive"
+        or (type(opt.name) == "string" and opt.name:find("|cffff4444", 1, true))
+    if danger and fs then
+        fs:SetText((opt.name or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+        fs:SetTextColor(1, 0.45, 0.45)
     end
-    local btn = CreateFrame("Button", nil, frame, template)
-    btn:SetPoint("LEFT", 0, 0)
-    btn:SetSize(btnWidth, O.WIDGET_HEIGHT)
-    if borderless then
-        -- Static display: just a centered label, no hover, not clickable
-        btn:EnableMouse(false)
-        btn.label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        btn.label:SetPoint("CENTER")
-        btn.label:SetText(opt.name or "")
-    else
-        btn:SetText(opt.name or "Execute")
+    -- Left-align the button when the row has no label of its own, so a
+    -- lone action reads as part of the form rather than floating right.
+    if rowOpt.name == "" and not opt.alignRight then
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPLEFT", frame, "TOPLEFT", O.ROW_PAD, -((O.ROW_H - 22) / 2))
     end
 
     btn:SetScript("OnClick", function()
         if opt.confirm then
-            -- Route through BazUI:Confirm so the popup matches the rest
-            -- of the BazUI UI (same fonts, buttons, backdrop). The
-            -- caller can opt into a destructive (red) accept button by
-            -- setting confirmStyle = "destructive" on the option entry,
-            -- or pass confirmAcceptLabel / confirmCancelLabel for custom
-            -- button text. Defaults preserve the old "Yes / No" feel.
             if BazUI.Confirm then
                 BazUI:Confirm({
                     title       = opt.confirmTitle or "Confirm",
@@ -336,17 +304,13 @@ local function CreateExecuteWidget(parent, opt, contentWidth)
                     onAccept    = function() if opt.func then opt.func() end end,
                 })
             elseif opt.func then
-                -- Pre-Popup BazUI (089-): silently fall through to the
-                -- action so the click isn't lost. Should never trigger
-                -- in practice since this file ships in the same package.
                 opt.func()
             end
-        else
-            if opt.func then opt.func() end
+        elseif opt.func then
+            opt.func()
         end
     end)
-
-    if opt.desc then
+    if opt.desc and rowOpt.name == "" then
         btn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:SetText(opt.desc, nil, nil, nil, nil, true)
@@ -354,106 +318,80 @@ local function CreateExecuteWidget(parent, opt, contentWidth)
         end)
         btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
-
-    -- Disabled state
-    frame:SetScript("OnShow", function()
-        btn:SetEnabled(not O.IsDisabled(opt))
+    frame:SetScript("OnShow", function(self)
+        local disabled = O.IsDisabled(opt)
+        btn:SetEnabled(not disabled)
+        self:SetRowDisabled(disabled)
     end)
-
-    return frame, O.WIDGET_HEIGHT + 4
+    return frame, h
 end
 
 ---------------------------------------------------------------------------
--- Select (Dropdown)
+-- Select (dropdown)
 ---------------------------------------------------------------------------
+
+local function GetValues(opt)
+    local v = opt.values
+    if type(v) == "function" then v = v() end
+    return v or {}
+end
+
+-- Values render sorted by label unless the table carries `sorting`
+-- (an array of keys) the way AceConfig allows.
+local function OrderedKeys(opt, values)
+    if type(opt.sorting) == "table" then return opt.sorting end
+    local keys = {}
+    for k in pairs(values) do keys[#keys + 1] = k end
+    table.sort(keys, function(a, b) return tostring(values[a]) < tostring(values[b]) end)
+    return keys
+end
 
 local function CreateSelectWidget(parent, opt, contentWidth)
-    local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(contentWidth, 54)
-
-    local label = frame:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
-    label:SetPoint("TOPLEFT", 0, 0)
-    label:SetText(opt.name or "")
-
-    -- WowStyle1DropdownTemplate is the modern Blizzard dropdown widget
-    -- (chevron arrow on the right, bordered box, checkmark on the
-    -- selected item via SetupMenu/CreateRadio). Same template the Edit
-    -- Mode framework uses, so dropdowns look identical across the
-    -- Options page and Edit Mode popups.
-    local btn = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
-    btn:SetPoint("TOPLEFT", 0, -22)
-
-    -- Measuring FontString for sizing the dropdown to the widest value
-    -- so labels never get clipped. Hidden so it doesn't render.
-    local probe = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local values = GetValues(opt)
+    -- Fixed 180, widening to 240 only when a value needs it.
+    local probe = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local longest = 0
+    for _, v in pairs(values) do
+        probe:SetText(tostring(v))
+        longest = math.max(longest, probe:GetStringWidth() or 0)
+    end
     probe:Hide()
+    local ddW = math.max(O.CTRL_W, math.min(O.CTRL_MAX_W, longest + 40))
 
-    local function GetValues()
-        local v = opt.values
-        if type(v) == "function" then v = v() end
-        return v or {}
-    end
-
-    -- Size the dropdown to the WIDEST value text plus chrome padding.
-    -- 36 px accounts for the template's left padding + the chevron
-    -- arrow on the right; clamped to contentWidth as the absolute
-    -- upper bound and 100 px as a sensible lower bound.
-    local MIN_W = 100
-    local PADDING = 36
-    local function ResizeToFitLongest()
-        local values = GetValues()
-        local maxW = MIN_W
-        for _, v in pairs(values) do
-            probe:SetText(v)
-            local w = probe:GetStringWidth() or 0
-            if w > maxW then maxW = w end
-        end
-        local final = math.min(maxW + PADDING, contentWidth)
-        btn:SetWidth(final)
-    end
+    local frame, h = BuildRow(parent, opt, contentWidth, ddW)
+    local btn = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+    AnchorControl(frame, btn, ddW, 22)
 
     local function UpdateLabel()
+        local vals = GetValues(opt)
         local val = opt.get and opt.get()
-        local values = GetValues()
-        btn:SetDefaultText(values[val] or val or "Select...")
+        btn:SetDefaultText(vals[val] or (val ~= nil and tostring(val)) or "Select...")
     end
-
-    -- The dropdown menu itself is built lazily on each open via
-    -- SetupMenu's callback. CreateRadio gives the modern checkmark-on-
-    -- selected-row appearance instead of a flat clickable list.
-    btn:SetupMenu(function(dropdown, rootDescription)
-        local values = GetValues()
-        local currentVal = opt.get and opt.get()
-        for k, v in pairs(values) do
-            rootDescription:CreateRadio(
-                v,
-                function() return currentVal == k end,
+    btn:SetupMenu(function(_, rootDescription)
+        local vals = GetValues(opt)
+        local current = opt.get and opt.get()
+        for _, k in ipairs(OrderedKeys(opt, vals)) do
+            local key = k
+            rootDescription:CreateRadio(tostring(vals[key]),
+                function() return current == key end,
                 function()
-                    if opt.set then opt.set(nil, k) end
+                    if opt.set then opt.set(nil, key) end
                     UpdateLabel()
-                end
-            )
+                end)
         end
     end)
-
     UpdateLabel()
-    ResizeToFitLongest()
-
-    frame:SetScript("OnShow", function()
+    frame:SetScript("OnShow", function(self)
         UpdateLabel()
-        ResizeToFitLongest()
-        if O.IsDisabled(opt) then
-            btn:Disable()
-        else
-            btn:Enable()
-        end
+        local disabled = O.IsDisabled(opt)
+        if disabled then btn:Disable() else btn:Enable() end
+        self:SetRowDisabled(disabled)
     end)
-
-    return frame, 54
+    return frame, h
 end
 
 ---------------------------------------------------------------------------
--- Factory Registry
+-- Registry
 ---------------------------------------------------------------------------
 
 O.widgetFactories = {
@@ -461,6 +399,7 @@ O.widgetFactories = {
     header      = CreateHeaderWidget,
     toggle      = CreateToggleWidget,
     range       = CreateRangeWidget,
+    slider      = CreateRangeWidget,
     input       = CreateInputWidget,
     execute     = CreateExecuteWidget,
     select      = CreateSelectWidget,

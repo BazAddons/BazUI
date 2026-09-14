@@ -96,136 +96,78 @@ end
 -- Content rendering (shared with the list/detail pattern)
 ---------------------------------------------------------------------------
 
-local function CreateTwoPanelLayout(container, optionsTable)
+-- Renders one options table into `content` (the scroll child): a single
+-- column of widgets, sections as headers, inline groups as a header plus
+-- their args, and every non-inline group collected into one picker
+-- (dropdown + the selected item's form). Executes that come before the
+-- first group become buttons on the picker row.
+local function RenderPageContent(content, optionsTable, width, stateHost)
+    local contentWidth = math.min(width - O.PAD * 2, O.CONTENT_MAX)
     local args = optionsTable.args or {}
-    local contentWidth = container:GetWidth() or 600
+    local sorted = O.SortedArgs(args)
+    -- Executes ahead of the first non-inline group become buttons on
+    -- the picker row; pages without such a group keep them inline.
+    local hasPickers = false
+    for _, opt in ipairs(sorted) do
+        if opt.type == "group" and not opt.inline and opt.args then hasPickers = true break end
+    end
+    local y = -O.PAD
+    local pickerGroups, pickerButtons = {}, {}
+    local seenGroup, first = false, true
 
-    -- Split args into: topArgs, groupArgs, executeArgs
-    local topArgs, groupArgs, executeArgs = {}, {}, {}
-    local sortedRoot = O.SortedArgs(args)
-    local hasTwoPanelGroups = false
+    local function Place(widget, h)
+        widget:SetPoint("TOPLEFT", content, "TOPLEFT", O.PAD, y)
+        widget:Show()
+        y = y - h - O.SPACING
+        first = false
+    end
 
-    for _, opt in ipairs(sortedRoot) do
+    for _, opt in ipairs(sorted) do
         if opt.type == "group" and opt.inline then
-            topArgs[#topArgs + 1] = opt
-        elseif opt.type == "group" and not opt.inline and opt.args then
-            groupArgs[#groupArgs + 1] = opt
-            hasTwoPanelGroups = true
-        elseif opt.type == "execute" and not hasTwoPanelGroups then
-            executeArgs[#executeArgs + 1] = opt
-        else
-            topArgs[#topArgs + 1] = opt
-        end
-    end
-
-    local yOffset = -O.PAD
-
-    -- Shared title bar (same one the User Manual uses) - addon icon,
-    -- gold title, version, horizontal rule.
-    local titleFrame, headerHeight = O.BuildTitleBar(container, {
-        title        = optionsTable.name,
-        addonName    = optionsTable.name,
-        contentWidth = contentWidth,
-    })
-    titleFrame:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
-    yOffset = yOffset - headerHeight
-
-    -- Top-level items
-    local hasTopGroups = false
-    for _, opt in ipairs(topArgs) do
-        if opt.type == "group" and opt.inline then hasTopGroups = true; break end
-    end
-
-    if not hasTwoPanelGroups and not hasTopGroups then
-        yOffset = O.RenderWidgets(container, args, contentWidth, nil, yOffset)
-    else
-        for _, opt in ipairs(topArgs) do
-            if opt.type == "group" and opt.inline then
-                local hdr, hh = O.widgetFactories.header(container, opt, contentWidth - O.PAD * 2)
-                hdr:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
-                hdr:Show()
-                yOffset = yOffset - hh - O.SPACING
-                if opt.args then
-                    yOffset = O.RenderWidgets(container, opt.args, contentWidth - O.PAD * 2, opt.columns, yOffset)
-                end
-            elseif opt.type == "group" then
-                local hdr, hh = O.widgetFactories.header(container, opt, contentWidth - O.PAD * 2)
-                hdr:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
-                hdr:Show()
-                yOffset = yOffset - hh - O.SPACING
-                if opt.args then
-                    yOffset = O.RenderWidgets(container, opt.args, contentWidth - O.PAD * 2, opt.columns, yOffset)
-                end
-            elseif opt.type ~= "group" then
-                local factory = O.widgetFactories[opt.type]
-                if factory then
-                    local widget, h = factory(container, opt, contentWidth - O.PAD * 2)
-                    widget:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
-                    widget:Show()
-                    yOffset = yOffset - h - O.SPACING
-                end
+            if opt.name and opt.name ~= "" then
+                if not first then y = y - O.SECTION_GAP end
+                Place(O.widgetFactories.header(content, opt, contentWidth))
+            end
+            if opt.args then
+                y = O.RenderWidgets(content, opt.args, contentWidth, nil, y)
+                first = false
+            end
+        elseif opt.type == "group" and opt.args then
+            pickerGroups[#pickerGroups + 1] = opt
+            seenGroup = true
+        elseif opt.type == "execute" and hasPickers and not seenGroup then
+            pickerButtons[#pickerButtons + 1] = opt
+        elseif not O.IsHidden(opt) then
+            local factory = O.widgetFactories[opt.type]
+            if factory then
+                if opt.type == "header" and not first then y = y - O.SECTION_GAP end
+                Place(factory(content, opt, contentWidth))
             end
         end
     end
 
-    -- Two-panel groups (list/detail). Two shapes are supported:
-    --
-    --   Wrapper shape (BWD Drawers, BazBars Bars):
-    --     args = { drawers = { type="group", name="", args = {
-    --       drawer_1 = ..., drawer_2 = ...
-    --     } } }
-    --   The single top-level group's `args` ARE the list rows.
-    --
-    --   Sibling shape (BazBags Categories):
-    --     args = { cat_equipment = { type="group", name="Equipment", args=...},
-    --              cat_consumables = { ... }, ... }
-    --   Multiple top-level groups, each becomes a list row directly.
-    --
-    -- The wrapper-shape path is preserved for backwards compatibility.
-    -- The sibling-shape path used to call BuildListDetailPanel once per
-    -- group, stacking N panels on top of each other - fixed by wrapping
-    -- the groups in a synthetic host so BuildListDetailPanel sees them
-    -- as a single unified list.
-    if #groupArgs == 1 then
-        local groupOpt = groupArgs[1]
-        if groupOpt.name and groupOpt.name ~= "" then
-            local hdr, hh = O.widgetFactories.header(container, groupOpt, contentWidth - O.PAD * 2)
-            hdr:SetPoint("TOPLEFT", container, "TOPLEFT", O.PAD, yOffset)
-            hdr:Show()
-            yOffset = yOffset - hh - 4
+    if #pickerGroups == 1 then
+        local g = pickerGroups[1]
+        if g.name and g.name ~= "" then
+            if not first then y = y - O.SECTION_GAP end
+            Place(O.widgetFactories.header(content, g, contentWidth))
         end
-        O.BuildListDetailPanel(container, groupOpt, contentWidth, yOffset, executeArgs)
-    elseif #groupArgs > 1 then
-        local hostGroup = { args = {} }
-        for i, g in ipairs(groupArgs) do
-            hostGroup.args[g._key or g.name or ("group_" .. i)] = g
+        y = O.RenderPickerGroup(content, g, contentWidth, y, pickerButtons, stateHost)
+    elseif #pickerGroups > 1 then
+        local host = { args = {}, _key = optionsTable.name or "items", pickerLabel = optionsTable.pickerLabel }
+        for i, g in ipairs(pickerGroups) do
+            host.args[g._key or g.name or ("group_" .. i)] = g
         end
-        O.BuildListDetailPanel(container, hostGroup, contentWidth, yOffset, executeArgs)
+        if not first then y = y - O.SECTION_GAP end
+        y = O.RenderPickerGroup(content, host, contentWidth, y, pickerButtons, stateHost)
     end
 
-    container:SetHeight(math.abs(yOffset) + O.PAD)
+    content:SetHeight(math.abs(y) + O.PAD)
 end
 
 local function RenderIntoCanvas(container, optionsTable)
-    local hasTwoPanelGroups = false
-    if optionsTable.args then
-        for _, opt in pairs(optionsTable.args) do
-            if type(opt) == "table" and opt.type == "group" and not opt.inline and opt.args then
-                hasTwoPanelGroups = true
-                break
-            end
-        end
-    end
-
-    -- Always discard any previous render target and create a fresh
-    -- one. The SelectSubcategory helper clears window.content's
-    -- children (SetParent(nil)) before calling us, which leaves our
-    -- cached container._renderTarget / container._scrollFrame fields
-    -- pointing to orphaned frames. Reusing an orphaned frame is the
-    -- blank-page bug: GetParent() returns nil, GetLeft() stays nil,
-    -- and our polling TryRender exits on the parent check - so
-    -- Layout() never runs. Starting fresh every render is cheap
-    -- (just a Frame) and bypasses the problem entirely.
+    -- Fresh scroll frame and content every render: reusing a frame whose
+    -- parent was cleared is the blank-page bug of old.
     if container._scrollFrame then
         container._scrollFrame:Hide()
         container._scrollFrame:SetParent(nil)
@@ -236,116 +178,66 @@ local function RenderIntoCanvas(container, optionsTable)
         container._renderTarget:SetParent(nil)
         container._renderTarget = nil
     end
+    -- Pickers call this to re-render after a selection change; the
+    -- container outlives each render, so selection state lives on it.
+    container._bazRefresh = function() RenderIntoCanvas(container, optionsTable) end
 
-    if hasTwoPanelGroups then
-        container._renderTarget = CreateFrame("Frame", nil, container)
-        container._renderTarget:SetAllPoints()
-        local renderTarget = container._renderTarget
+    local scroll = CreateFrame("ScrollFrame", nil, container)
+    scroll:SetPoint("TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", -18, 0)
+    scroll:EnableMouseWheel(true)
+    container._scrollFrame = scroll
 
-        local function Layout()
-            O.ClearChildren(renderTarget)
-            CreateTwoPanelLayout(renderTarget, optionsTable)
-            renderTarget._lastRenderedWidth = renderTarget:GetWidth() or 0
-        end
+    local scrollBar = CreateFrame("EventFrame", nil, container, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 4, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 4, 0)
+    ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+    O.AutoHideScrollbar(scroll, scrollBar)
 
-        -- Wait for the layout engine to resolve the render target's
-        -- size before rendering. GetLeft() is nil until a frame has
-        -- been laid out. We *don't* render eagerly first - doing so
-        -- at a zero width has caused corrupted render state we can't
-        -- recover from. Single deferred render at known-good width is
-        -- the most reliable path we've found.
-        local attempts = 0
-        local function TryRender()
-            attempts = attempts + 1
-            if not renderTarget:GetParent() then return end
-            if attempts > 20 then
-                -- Give up after ~1s and render anyway so the user
-                -- doesn't stare at a permanent blank screen.
-                Layout()
-                return
-            end
-            local laidOut = renderTarget:GetLeft() ~= nil
-            local w = renderTarget:GetWidth() or 0
-            if laidOut and w > 0 then
-                Layout()
-                return
-            end
-            C_Timer.After(0.05, TryRender)
-        end
-        C_Timer.After(0, TryRender)
+    local content = CreateFrame("Frame", nil, scroll)
+    scroll:SetScrollChild(content)
+    container._renderTarget = content
 
-        -- Long-term safety: any future resize re-flows the content
-        renderTarget:SetScript("OnSizeChanged", function(self, w)
-            if not w or w <= 0 then return end
-            if math.abs(w - (renderTarget._lastRenderedWidth or 0)) > 1 then
-                Layout()
-            end
-        end)
-    else
-        local scroll = CreateFrame("ScrollFrame", nil, container)
-        scroll:SetPoint("TOPLEFT", 0, 0)
-        scroll:SetPoint("BOTTOMRIGHT", -18, 0)
-        scroll:EnableMouseWheel(true)
-        container._scrollFrame = scroll
-
-        local scrollBar = CreateFrame("EventFrame", nil, container, "MinimalScrollBar")
-        scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 4, 0)
-        scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 4, 0)
-        ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
-        O.AutoHideScrollbar(scroll, scrollBar)
-
-        local content = CreateFrame("Frame", nil, scroll)
-        scroll:SetScrollChild(content)
-        container._renderTarget = content
-
-        local function Layout(width)
-            if not width or width <= 0 then return end
-            content:SetWidth(width)
-            O.ClearChildren(content)
-            CreateTwoPanelLayout(content, optionsTable)
-            -- Track on the SCROLL (per-render fresh frame), not on the
-            -- container (shared across renders). Avoids stale guard
-            -- preventing legitimate re-layouts on next navigation.
-            scroll._lastRenderedWidth = width
-        end
-
-        local function ResolveWidth()
-            local w = scroll:GetWidth() or 0
-            if w <= 0 then w = (container:GetWidth() or 0) - 18 end
-            return w
-        end
-
-        -- Wait for the scroll frame to be laid out, then render once
-        -- at the resolved width. Avoid rendering eagerly at zero width
-        -- - it's been a consistent source of blank-page bugs.
-        local attempts = 0
-        local function TryRender()
-            attempts = attempts + 1
-            if not content:GetParent() then return end
-            if attempts > 20 then
-                Layout(ResolveWidth())  -- last-ditch
-                return
-            end
-            local laidOut = scroll:GetLeft() ~= nil
-            local w = ResolveWidth()
-            if laidOut and w > 0 then
-                Layout(w)
-                return
-            end
-            C_Timer.After(0.05, TryRender)
-        end
-        C_Timer.After(0, TryRender)
-
-        -- Long-term: any future size change re-flows the content
-        scroll:SetScript("OnSizeChanged", function(self, w)
-            if not w or w <= 0 then return end
-            content:SetWidth(w)
-            if not scroll._lastRenderedWidth
-               or math.abs(w - scroll._lastRenderedWidth) > 1 then
-                Layout(w)
-            end
-        end)
+    local function Layout(width)
+        if not width or width <= 0 then return end
+        content:SetWidth(width)
+        O.ClearChildren(content)
+        RenderPageContent(content, optionsTable, width, container)
+        scroll._lastRenderedWidth = width
     end
+
+    local function ResolveWidth()
+        local w = scroll:GetWidth() or 0
+        if w <= 0 then w = (container:GetWidth() or 0) - 18 end
+        return w
+    end
+
+    -- Render once the scroll frame has a real width; rendering at zero
+    -- width has produced blank pages before.
+    local attempts = 0
+    local function TryRender()
+        attempts = attempts + 1
+        if not content:GetParent() then return end
+        if attempts > 20 then
+            Layout(ResolveWidth())
+            return
+        end
+        local w = ResolveWidth()
+        if scroll:GetLeft() ~= nil and w > 0 then
+            Layout(w)
+            return
+        end
+        C_Timer.After(0.05, TryRender)
+    end
+    C_Timer.After(0, TryRender)
+
+    scroll:SetScript("OnSizeChanged", function(_, w)
+        if not w or w <= 0 then return end
+        content:SetWidth(w)
+        if not scroll._lastRenderedWidth or math.abs(w - scroll._lastRenderedWidth) > 1 then
+            Layout(w)
+        end
+    end)
 end
 
 BazUI._RenderIntoCanvas = RenderIntoCanvas
