@@ -21,8 +21,8 @@
 -- the item itself, drawn on the picker row next to the dropdown. The
 -- group may carry `itemActions`, a list of execute-shaped entries whose
 -- `func` receives the selected item (Duplicate, Delete ...); they render
--- as buttons after the page's own actions. `confirmText` may be a
--- function of the item.
+-- as buttons after the page's own actions. `confirmText` and
+-- `disabled` may be functions of the item.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
@@ -128,7 +128,11 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
                 Run()
             end
         end, danger)
-        if forItem and not selected then btn:Disable() end
+        if forItem then
+            local off = not selected
+            if not off and type(exec.disabled) == "function" then off = exec.disabled(selected) and true or false end
+            if off then btn:Disable() end
+        end
     end
 
     if selected and (groupOpt.onMoveUp or groupOpt.onMoveDown) then

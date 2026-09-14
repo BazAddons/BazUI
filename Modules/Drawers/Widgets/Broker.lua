@@ -272,15 +272,14 @@ function Broker.GetOptionsTable()
         type = "group",
         args = {
             intro = {
-                order = 0.1, type = "lead",
-                text = "Any addon that publishes a LibDataBroker feed (Bagnon, Recount, BugSack and most addons with a minimap data button) shows up as its own widget on the Widgets page, in the LibDataBroker group. Enable, reorder and float them like any other widget.",
+                order = 0.1, type = "description",
+                name = "Addons that publish a LibDataBroker feed (Bagnon, Recount, BugSack and most addons with a minimap data button) appear as widgets on the Widgets page, in the LibDataBroker group.",
             },
             displayHeader = { order = 1, type = "header", name = "Display" },
-            showIcon  = Toggle(2, "showIcon",  "Show Icon",  "Show the feed's icon at the left of its widget."),
-            showLabel = Toggle(3, "showLabel", "Show Label", "Show the feed's label next to its value."),
+            showIcon  = Toggle(2, "showIcon",  "Show the feed's icon"),
+            showLabel = Toggle(3, "showLabel", "Show the feed's label"),
             emptyText = {
-                order = 4, type = "input", name = "Empty-Value Placeholder",
-                desc = "Shown when a feed has no value yet.",
+                order = 4, type = "input", name = "Placeholder for empty values",
                 get = function() return Settings().emptyText or "-" end,
                 set = function(_, val)
                     local s = Settings(); s.emptyText = val
@@ -288,17 +287,15 @@ function Broker.GetOptionsTable()
                     Broker:Refresh()
                 end,
             },
-            discoveryHeader = { order = 10, type = "header", name = "Discovery" },
-            autoEnableNew = Toggle(11, "autoEnableNew", "Auto-Enable New Feeds",
-                "Turn a feed's widget on the first time it is seen. Off leaves new feeds disabled until you enable them on the Widgets page."),
+            discoveryHeader = { order = 10, type = "header", name = "New feeds" },
+            autoEnableNew = Toggle(11, "autoEnableNew", "Turn new feeds on when first seen",
+                "Off leaves them disabled until you enable them on the Widgets page."),
             rescan = {
-                order = 12, type = "execute", name = "Rescan Feeds",
-                desc = "Check the registry again and create widgets for any feed that was missed.",
+                order = 12, type = "execute", name = "Rescan feeds",
                 func = function() Broker:Rescan(true) end,
             },
             printFeeds = {
-                order = 13, type = "execute", name = "Print Feed List",
-                desc = "List every registered feed in the chat frame.",
+                order = 13, type = "execute", name = "List feeds in chat",
                 func = function() Broker:PrintList() end,
             },
         },

@@ -42,14 +42,16 @@ local function GetPagesFor(parentName)
     local children = {}
     for name, entry in pairs(optionsTables) do
         if entry.parent == parentName and entry.displayName then
-            children[#children + 1] = { key = name, label = entry.displayName }
+            children[#children + 1] = { key = name, label = entry.displayName, order = entry.order }
         end
     end
-    -- Sort order: General first, the module's own pages next
-    -- (alphabetical), then Global Settings, Profiles, and the User
-    -- Manual last so docs sit at the end of every tab strip. Old labels
-    -- ("User Guide", "Settings", "Global Options") map to the same slots.
-    local function Rank(label)
+    -- Sort order: General first, the module's own pages next (by the
+    -- order given to AddToSettings, else alphabetical), then Global
+    -- Settings, Profiles, and the User Manual last so docs sit at the
+    -- end of every tab strip. Old labels ("User Guide", "Settings",
+    -- "Global Options") map to the same slots.
+    local function Rank(label, order)
+        if order then return 100 + order end
         if label == "General" or label == "General Settings" or label == "Settings"
             then return 1 end
         if label == "Global Settings" or label == "Global Options"
@@ -61,7 +63,7 @@ local function GetPagesFor(parentName)
         return 500
     end
     table.sort(children, function(a, b)
-        local ra, rb = Rank(a.label), Rank(b.label)
+        local ra, rb = Rank(a.label, a.order), Rank(b.label, b.order)
         if ra ~= rb then return ra < rb end
         return a.label < b.label
     end)
@@ -402,15 +404,18 @@ function BazUI:RegisterOptionsTable(key, optionsTableOrFunc)
     optionsTables[key].func = optionsTableOrFunc
 end
 
--- AddToSettings(key, displayName, parentKey)
+-- AddToSettings(key, displayName, parentKey, order)
 --   key         = unique key (used with RegisterOptionsTable)
 --   displayName = subcategory name (modules) or tab label (pages)
 --   parentKey   = optional; when given, key is a page of that module
-function BazUI:AddToSettings(key, displayName, parentKey)
+--   order       = optional; places the page among the module's own
+--                 pages (after General, before the User Manual)
+function BazUI:AddToSettings(key, displayName, parentKey, order)
     local entry = optionsTables[key]
     if not entry then return end
     entry.displayName = displayName or key
     entry.parent = parentKey
+    entry.order = order
 
     local moduleKey = parentKey or key
     EnsureModule(moduleKey)

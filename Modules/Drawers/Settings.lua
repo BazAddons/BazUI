@@ -1,8 +1,15 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
--- BazUI Drawers Settings
--- Landing page + Settings subcategory + Widgets subcategory.
--- The Widgets subcategory uses BazUI's list/detail options pattern
--- (same shape BazBars uses for per-bar options).
+---------------------------------------------------------------------------
+-- Drawers: options pages
+--
+-- General      - the drawer itself: side, width, appearance, fading, and
+--                the "same on every widget" fade values.
+-- Drawers      - a picker of your drawer tabs: name, icon, which widgets
+--                each one holds.
+-- Widgets      - a picker of every registered widget: placement, fading
+--                and the widget's own settings.
+-- Broker Feeds - LibDataBroker feeds shown as widgets (Widgets/Broker.lua).
+---------------------------------------------------------------------------
 
 local addon = BazUI:GetModule("Drawers")
 
@@ -10,187 +17,189 @@ local addon = BazUI:GetModule("Drawers")
 -- General settings (side + width + toggle)
 ---------------------------------------------------------------------------
 
+local PAGE_GENERAL = "BazUIDrawer-Settings"
+local PAGE_DRAWERS = "BazUIDrawer-Drawers"
+local PAGE_WIDGETS = "BazUIDrawer-Widgets"
+
+local function Refresh(page)
+    if BazUI.RefreshOptions then BazUI:RefreshOptions(page) end
+end
+
+local function Locked()
+    return addon:GetSetting("locked") and true or false
+end
+
+local function FadeOff()
+    return addon:GetSetting("fadeEnabled") == false
+end
+
+-- Values every widget can share (the old Global Settings tab).
+local WIDGET_OVERRIDES = {
+    { key = "fadeTitleBar",   label = "Same title bar fade on every widget",  valueLabel = "Fade title bars" },
+    { key = "fadeBackground", label = "Same background fade on every widget", valueLabel = "Fade backgrounds" },
+}
+
 local function GetSettingsOptionsTable()
-    return {
-        name = "Settings",
-        type = "group",
-        args = {
-            intro = {
-                order = 0.1,
-                type = "lead",
-                text = "Configure how the drawer looks and behaves on screen. Settings here apply to the active drawer.",
-            },
-            layoutHeader = {
-                order = 1,
-                type = "header",
-                name = "Layout",
-            },
-            side = {
-                order = 2,
-                type = "select",
-                name = "Screen Side",
-                desc = "Which edge of the screen the drawer slides out from.",
-                values = { right = "Right", left = "Left" },
-                get = function() return addon:GetSetting("side") or "right" end,
-                set = function(_, val)
-                    if addon.Drawer then addon.Drawer:SetSide(val) end
-                end,
-            },
-            width = {
-                order = 3,
-                type = "range",
-                name = "Drawer Width",
-                desc = "Width of the drawer. Docked widgets scale proportionally to fill this width.",
-                min = (addon.Drawer and addon.Drawer.MIN_WIDTH) or 120,
-                max = (addon.Drawer and addon.Drawer.MAX_WIDTH) or 400,
-                step = 2,
-                get = function()
-                    return addon:GetSetting("width")
-                        or (addon.Drawer and addon.Drawer.DEFAULT_WIDTH)
-                        or 222
-                end,
-                set = function(_, val)
-                    if addon.Drawer then addon.Drawer:SetWidth(val) end
-                end,
-            },
-            -- "Behavior" section dropped - "Toggle Drawer" wasn't a
-            -- setting but a one-shot action, available via /bwd toggle.
+    local args = {
+        layoutHeader = { order = 10, type = "header", name = "Layout" },
+        side = {
+            order = 11, type = "select", name = "Screen side",
+            values = { right = "Right", left = "Left" },
+            sorting = { "right", "left" },
+            get = function() return addon:GetSetting("side") or "right" end,
+            set = function(_, val)
+                if addon.Drawer then addon.Drawer:SetSide(val) end
+            end,
+        },
+        width = {
+            order = 12, type = "range", name = "Width",
+            desc = "Docked widgets scale to fill it.",
+            min = (addon.Drawer and addon.Drawer.MIN_WIDTH) or 120,
+            max = (addon.Drawer and addon.Drawer.MAX_WIDTH) or 400,
+            step = 2, format = "%d px",
+            get = function()
+                return addon:GetSetting("width")
+                    or (addon.Drawer and addon.Drawer.DEFAULT_WIDTH)
+                    or 222
+            end,
+            set = function(_, val)
+                if addon.Drawer then addon.Drawer:SetWidth(val) end
+            end,
+        },
 
-            appearanceHeader = {
-                order = 20,
-                type = "header",
-                name = "Appearance",
-            },
-            appearanceLockNote = {
-                order = 20.5,
-                type = "note",
-                style = "info",
-                text = "Appearance and fade settings are disabled while the drawer is locked. Click the padlock on the drawer's bottom bar to unlock.",
-            },
-            backgroundOpacity = {
-                order = 21,
-                type = "range",
-                name = "Background Opacity",
-                desc = "Alpha of the drawer's backdrop fill (the dark panel colour).",
-                min = 0, max = 1, step = 0.05,
-                get = function() return addon:GetSetting("backgroundOpacity") or 0.9 end,
-                set = function(_, val)
-                    addon:SetSetting("backgroundOpacity", val)
-                    if addon.Drawer then addon.Drawer:ApplyAppearance() end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            frameOpacity = {
-                order = 22,
-                type = "range",
-                name = "Frame Opacity",
-                desc = "Maximum alpha of the drawer's border and tab chrome when fully visible. Docked widgets always stay at full opacity.",
-                min = 0.2, max = 1, step = 0.05,
-                get = function() return addon:GetSetting("frameOpacity") or 1.0 end,
-                set = function(_, val)
-                    addon:SetSetting("frameOpacity", val)
-                    if addon.Drawer then addon.Drawer:EvaluateFade(true) end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
+        appearanceHeader = { order = 20, type = "header", name = "Appearance" },
+        lockedNote = {
+            order = 21, type = "description",
+            name = "The drawer is locked. Click the padlock on its bottom bar to change these.",
+            hidden = function() return not Locked() end,
+        },
+        backgroundOpacity = {
+            order = 22, type = "range", name = "Background opacity",
+            min = 0, max = 1, step = 0.05, isPercent = true,
+            get = function() return addon:GetSetting("backgroundOpacity") or 0.9 end,
+            set = function(_, val)
+                addon:SetSetting("backgroundOpacity", val)
+                if addon.Drawer then addon.Drawer:ApplyAppearance() end
+            end,
+            disabled = Locked,
+        },
+        frameOpacity = {
+            order = 23, type = "range", name = "Frame opacity",
+            desc = "The border and tab when fully shown. Widgets always stay solid.",
+            min = 0.2, max = 1, step = 0.05, isPercent = true,
+            get = function() return addon:GetSetting("frameOpacity") or 1.0 end,
+            set = function(_, val)
+                addon:SetSetting("frameOpacity", val)
+                if addon.Drawer then addon.Drawer:EvaluateFade(true) end
+            end,
+            disabled = Locked,
+        },
 
-            fadingHeader = {
-                order = 30,
-                type = "header",
-                name = "Fading",
-            },
-            fadingIntro = {
-                order = 30.5,
-                type = "note",
-                style = "tip",
-                text = "Set Faded Opacity to 0 for a fully invisible drawer when you're not hovering it. Widget content always stays at full opacity, even while the chrome is faded.",
-            },
-            fadeEnabled = {
-                order = 31,
-                type = "toggle",
-                name = "Enable Fade",
-                desc = "Fade the drawer's backdrop and tab when the mouse isn't over it. Docked widgets stay at full opacity so their content is always readable.",
-                get = function() return addon:GetSetting("fadeEnabled") ~= false end,
-                set = function(_, val)
-                    addon:SetSetting("fadeEnabled", val)
-                    if addon.Drawer then addon.Drawer:EvaluateFade(true) end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            fadedOpacity = {
-                order = 32,
-                type = "range",
-                name = "Faded Opacity",
-                desc = "Target alpha when the drawer is faded out.",
-                min = 0, max = 1, step = 0.05,
-                get = function() return addon:GetSetting("fadedOpacity") or 0.3 end,
-                set = function(_, val)
-                    addon:SetSetting("fadedOpacity", val)
-                    if addon.Drawer then addon.Drawer:EvaluateFade(true) end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            fadeDelay = {
-                order = 33,
-                type = "range",
-                name = "Fade Delay",
-                desc = "Seconds to wait after the mouse leaves before starting to fade.",
-                min = 0, max = 5, step = 0.1,
-                get = function() return addon:GetSetting("fadeDelay") or 1.0 end,
-                set = function(_, val) addon:SetSetting("fadeDelay", val) end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            fadeDuration = {
-                order = 34,
-                type = "range",
-                name = "Fade Duration",
-                desc = "Length of the fade animation in seconds.",
-                min = 0.05, max = 2, step = 0.05,
-                get = function() return addon:GetSetting("fadeDuration") or 0.3 end,
-                set = function(_, val) addon:SetSetting("fadeDuration", val) end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            edgeRevealPx = {
-                order = 35,
-                type = "range",
-                name = "Edge Reveal Distance",
-                desc = "Width of the invisible hot zone along the active screen edge. Moving the cursor anywhere inside this strip reveals the tab when the drawer is closed.",
-                min = 2, max = 50, step = 1,
-                get = function() return addon:GetSetting("edgeRevealPx") or 8 end,
-                set = function(_, val)
-                    addon:SetSetting("edgeRevealPx", val)
-                    if addon.Drawer and addon.Drawer.ApplyEdgeHotZone then
-                        addon.Drawer:ApplyEdgeHotZone()
-                    end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            fadeTabWhenClosed = {
-                order = 36,
-                type = "toggle",
-                name = "Fade Tab When Closed",
-                desc = "When off, the tab stays at full opacity while the drawer is collapsed (edge reveal no longer needed).",
-                get = function() return addon:GetSetting("fadeTabWhenClosed") ~= false end,
-                set = function(_, val)
-                    addon:SetSetting("fadeTabWhenClosed", val)
-                    if addon.Drawer then addon.Drawer:EvaluateFade(true) end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
-            alwaysShowInCombat = {
-                order = 37,
-                type = "toggle",
-                name = "Always Show In Combat",
-                desc = "Force the drawer to full opacity whenever you're in combat, ignoring fade settings.",
-                get = function() return addon:GetSetting("disableFadeInCombat") and true or false end,
-                set = function(_, val)
-                    addon:SetSetting("disableFadeInCombat", val)
-                    if addon.Drawer then addon.Drawer:EvaluateFade(true) end
-                end,
-                disabled = function() return addon:GetSetting("locked") and true or false end,
-            },
+        fadingHeader = { order = 30, type = "header", name = "Fading" },
+        fadeEnabled = {
+            order = 31, type = "toggle", name = "Fade when the cursor leaves",
+            desc = "The backdrop, border and tab fade; widget content stays readable.",
+            get = function() return addon:GetSetting("fadeEnabled") ~= false end,
+            set = function(_, val)
+                addon:SetSetting("fadeEnabled", val)
+                if addon.Drawer then addon.Drawer:EvaluateFade(true) end
+                Refresh(PAGE_GENERAL)
+            end,
+            disabled = Locked,
+        },
+        fadedOpacity = {
+            order = 32, type = "range", name = "Faded opacity",
+            desc = "0 makes the drawer invisible until you hover it.",
+            min = 0, max = 1, step = 0.05, isPercent = true,
+            get = function() return addon:GetSetting("fadedOpacity") or 0.3 end,
+            set = function(_, val)
+                addon:SetSetting("fadedOpacity", val)
+                if addon.Drawer then addon.Drawer:EvaluateFade(true) end
+            end,
+            disabled = Locked, hidden = FadeOff,
+        },
+        fadeDelay = {
+            order = 33, type = "range", name = "Fade after",
+            min = 0, max = 5, step = 0.1, format = "%.1f s",
+            get = function() return addon:GetSetting("fadeDelay") or 1.0 end,
+            set = function(_, val) addon:SetSetting("fadeDelay", val) end,
+            disabled = Locked, hidden = FadeOff,
+        },
+        fadeDuration = {
+            order = 34, type = "range", name = "Fade takes",
+            min = 0.05, max = 2, step = 0.05, format = "%.2f s",
+            get = function() return addon:GetSetting("fadeDuration") or 0.3 end,
+            set = function(_, val) addon:SetSetting("fadeDuration", val) end,
+            disabled = Locked, hidden = FadeOff,
+        },
+        alwaysShowInCombat = {
+            order = 35, type = "toggle", name = "Stay fully visible in combat",
+            get = function() return addon:GetSetting("disableFadeInCombat") and true or false end,
+            set = function(_, val)
+                addon:SetSetting("disableFadeInCombat", val)
+                if addon.Drawer then addon.Drawer:EvaluateFade(true) end
+            end,
+            disabled = Locked, hidden = FadeOff,
+        },
+        fadeTabWhenClosed = {
+            order = 36, type = "toggle", name = "Fade the tab while the drawer is closed",
+            desc = "Off keeps the pull-tab visible so you never have to find it.",
+            get = function() return addon:GetSetting("fadeTabWhenClosed") ~= false end,
+            set = function(_, val)
+                addon:SetSetting("fadeTabWhenClosed", val)
+                if addon.Drawer then addon.Drawer:EvaluateFade(true) end
+                Refresh(PAGE_GENERAL)
+            end,
+            disabled = Locked, hidden = FadeOff,
+        },
+        edgeRevealPx = {
+            order = 37, type = "range", name = "Reveal the tab within",
+            desc = "Moving the cursor this close to the screen edge brings the faded tab back.",
+            min = 2, max = 50, step = 1, format = "%d px",
+            get = function() return addon:GetSetting("edgeRevealPx") or 8 end,
+            set = function(_, val)
+                addon:SetSetting("edgeRevealPx", val)
+                if addon.Drawer and addon.Drawer.ApplyEdgeHotZone then
+                    addon.Drawer:ApplyEdgeHotZone()
+                end
+            end,
+            disabled = Locked,
+            hidden = function() return FadeOff() or addon:GetSetting("fadeTabWhenClosed") == false end,
+        },
+
+        widgetsHeader = { order = 40, type = "header", name = "All widgets" },
+        widgetsDesc = {
+            order = 41, type = "description",
+            name = "Force one value on every widget. A widget's own setting is greyed out while its override is on.",
         },
     }
+
+    for i, def in ipairs(WIDGET_OVERRIDES) do
+        local key = def.key
+        local function Override()
+            local o = addon:GetGlobalOverrides()
+            o[key] = o[key] or { enabled = false }
+            return o[key]
+        end
+        args["same_" .. key] = {
+            order = 41 + i * 2, type = "toggle", name = def.label,
+            get = function() return Override().enabled == true end,
+            set = function(_, val)
+                if Override().value == nil then addon:SetGlobalOverride(key, "value", true) end
+                addon:SetGlobalOverride(key, "enabled", val)
+                Refresh(PAGE_GENERAL)
+                Refresh(PAGE_WIDGETS)
+            end,
+        }
+        args["value_" .. key] = {
+            order = 42 + i * 2, type = "toggle", name = def.valueLabel,
+            hidden = function() return Override().enabled ~= true end,
+            get = function() return Override().value ~= false end,
+            set = function(_, val) addon:SetGlobalOverride(key, "value", val) end,
+        }
+    end
+
+    return { name = "General", type = "group", args = args }
 end
 
 ---------------------------------------------------------------------------
@@ -228,77 +237,56 @@ end
 -- Per-widget options group (built dynamically per widget)
 ---------------------------------------------------------------------------
 
-local function BuildWidgetGroup(widget, index, total)
+local function BuildWidgetGroup(widget, index)
     local id = widget.id
+    local function Floating() return addon:IsWidgetFloating(id) end
+    local function Overridden(key)
+        local o = addon:GetSetting("widgetGlobalOverrides")
+        return o and o[key] and o[key].enabled or false
+    end
+    local function OverrideDesc(key)
+        if Overridden(key) then return "Set for every widget under General." end
+    end
     local args = {
-        enabled = {
-            order = 0.05,
-            type = "toggle",
-            name = "Enabled",
-            desc = "Turn this widget on or off entirely. A disabled widget is hidden everywhere - not docked in any drawer, not floating, and any side-effects (e.g. durability-frame override for Repair) are restored to defaults.",
-            get = function() return addon:IsWidgetEnabled(id) end,
-            set = function(_, val)
-                if addon.WidgetHost and addon.WidgetHost.SetWidgetEnabled then
-                    addon.WidgetHost:SetWidgetEnabled(id, val)
-                else
-                    addon:SetWidgetEnabled(id, val)
-                end
-            end,
-        },
-        enabledNote = {
-            order = 0.06,
-            type = "note",
-            style = "info",
-            text = "Disabling a widget hides it everywhere - no drawer slot, no floating frame. Any side-effects (like the Repair widget's durability-frame override) are also restored to Blizzard defaults.",
-        },
-        -- Move Up/Down buttons removed - ordering is handled by
-        -- drag-to-reorder on the widget's title bar inside the drawer
-        -- (hold half a second > drag). Having the buttons here was
-        -- misleading since the order is global, not per-drawer.
-        dockingHeader = { order = 1, type = "header", name = "Docking" },
+        -- Ordering is by drag on the widget's title bar in the drawer
+        -- (hold half a second, then drag); it is global, not per drawer.
+        placementHeader = { order = 1, type = "header", name = "Placement" },
         floating = {
-            order = 2,
-            type = "toggle",
-            name = "Floating",
-            desc = "Detach this widget from the drawer and let it float freely. Use Edit Mode to drag the detached widget to wherever you want.",
-            get = function() return addon:IsWidgetFloating(id) end,
+            order = 2, type = "toggle", name = "Floating",
+            desc = "Detached from the drawer. Move it in Edit Mode.",
+            get = Floating,
             set = function(_, val)
                 if addon.WidgetHost and addon.WidgetHost.SetWidgetFloating then
                     addon.WidgetHost:SetWidgetFloating(id, val)
                 end
+                Refresh(PAGE_WIDGETS)
             end,
         },
         collapsed = {
-            order = 3,
-            type = "toggle",
-            name = "Collapsed",
-            desc = "Hide the widget's content, leaving only its title bar visible in the drawer.",
+            order = 3, type = "toggle", name = "Collapsed",
+            desc = "Only the title bar shows in the drawer.",
             get = function() return addon:IsWidgetCollapsed(id) end,
             set = function(_, val)
                 addon:SetWidgetCollapsed(id, val)
                 if addon.WidgetHost then addon.WidgetHost:Reflow() end
             end,
-            disabled = function() return addon:IsWidgetFloating(id) end,
+            disabled = Floating,
         },
         dockedToBottom = {
-            order = 4,
-            type = "toggle",
-            name = "Dock to Bottom",
-            desc = "Pin this widget to the drawer's bottom edge. Bottom-docked widgets stack upward from the drawer bottom and grow toward the middle as their content extends, instead of pushing the widgets below them down.",
+            order = 4, type = "toggle", name = "Pin to the bottom of the drawer",
+            desc = "Pinned widgets stack up from the bottom edge instead of pushing others down.",
             get = function() return addon:IsWidgetDockedToBottom(id) end,
             set = function(_, val)
                 addon:SetWidgetDockedToBottom(id, val)
                 if addon.WidgetHost then addon.WidgetHost:Reflow() end
             end,
-            disabled = function() return addon:IsWidgetFloating(id) end,
+            disabled = Floating,
         },
 
         fadeHeader = { order = 5, type = "header", name = "Fading" },
         fadeTitleBar = {
-            order = 6,
-            type = "toggle",
-            name = "Fade Title Bar",
-            desc = "Fade this widget's title bar with the drawer chrome.",
+            order = 6, type = "toggle", name = "Fade the title bar with the drawer",
+            desc = OverrideDesc("fadeTitleBar"),
             get = function()
                 return addon:GetWidgetEffectiveSetting(id, "fadeTitleBar", true) ~= false
             end,
@@ -306,16 +294,11 @@ local function BuildWidgetGroup(widget, index, total)
                 addon:SetWidgetSetting(id, "fadeTitleBar", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = function()
-                local o = addon:GetSetting("widgetGlobalOverrides")
-                return o and o.fadeTitleBar and o.fadeTitleBar.enabled or false
-            end,
+            disabled = function() return Overridden("fadeTitleBar") end,
         },
         fadeBackground = {
-            order = 7,
-            type = "toggle",
-            name = "Fade Background",
-            desc = "Fade this widget's background with the drawer chrome.",
+            order = 7, type = "toggle", name = "Fade the background with the drawer",
+            desc = OverrideDesc("fadeBackground"),
             get = function()
                 return addon:GetWidgetEffectiveSetting(id, "fadeBackground", true) ~= false
             end,
@@ -323,26 +306,21 @@ local function BuildWidgetGroup(widget, index, total)
                 addon:SetWidgetSetting(id, "fadeBackground", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = function()
-                local o = addon:GetSetting("widgetGlobalOverrides")
-                return o and o.fadeBackground and o.fadeBackground.enabled or false
-            end,
+            disabled = function() return Overridden("fadeBackground") end,
         },
-
     }
 
     -- Widgets can supply their own options via widget:GetOptionsArgs().
     -- Their internal order values (often 1..N) would collide with the
-    -- top-level Docking/Fading order slots, so we shift them all into
-    -- the 20+ range - preserving the widget's own relative ordering
-    -- while guaranteeing they sit after the "Widget Settings" header.
+    -- top-level order slots, so we shift them all into the 20+ range,
+    -- preserving the widget's own relative ordering under its header.
     if widget.GetOptionsArgs then
         local ok, extra = pcall(widget.GetOptionsArgs, widget)
         if ok and type(extra) == "table" and next(extra) then
             args.widgetSettingsHeader = {
                 order = 19,
                 type = "header",
-                name = "Widget Settings",
+                name = widget.label or "Widget settings",
             }
             local BASE = 20
             for key, opt in pairs(extra) do
@@ -381,9 +359,20 @@ local function BuildWidgetGroup(widget, index, total)
         order = index,
         type = "group",
         name = displayName,
-        desc = "Configure " .. (widget.label or id),
         source = source,
         args = args,
+        toggle = {
+            name = "Enabled",
+            get = function() return addon:IsWidgetEnabled(id) end,
+            set = function(_, val)
+                if addon.WidgetHost and addon.WidgetHost.SetWidgetEnabled then
+                    addon.WidgetHost:SetWidgetEnabled(id, val)
+                else
+                    addon:SetWidgetEnabled(id, val)
+                end
+                Refresh(PAGE_WIDGETS)
+            end,
+        },
     }
 end
 
@@ -427,22 +416,19 @@ local function GetWidgetsOptionsTable()
 
     local widgetArgs = {}
     for i, widget in ipairs(sorted) do
-        widgetArgs["widget_" .. widget.id] = BuildWidgetGroup(widget, i, #sorted)
+        widgetArgs["widget_" .. widget.id] = BuildWidgetGroup(widget, i)
     end
 
     return {
         name = "Widgets",
         type = "group",
         args = {
-            intro = {
-                order = -1,
-                type = "lead",
-                text = "Per-widget settings for every widget currently registered with BazUI Drawers. Use the Enabled toggle to turn a widget off entirely; use the Drawers page to choose which drawer(s) each widget appears in.",
-            },
             widgets = {
                 order = 1,
                 type = "group",
                 name = "",
+                pickerLabel = "Widget",
+                emptyText = "No widgets have registered yet.",
                 args = widgetArgs,
             },
         },
@@ -450,94 +436,33 @@ local function GetWidgetsOptionsTable()
 end
 
 ---------------------------------------------------------------------------
--- Global Options (applies to all widgets at once)
----------------------------------------------------------------------------
-
-local function GetGlobalOptionsTable()
-    local page = BazUI:CreateGlobalOptionsPage("Drawers", {
-        getOverrides = function() return addon:GetGlobalOverrides() end,
-        setOverride = function(key, field, value)
-            addon:SetGlobalOverride(key, field, value)
-        end,
-        overrides = {
-            { key = "fadeTitleBar",   label = "Fade Title Bar",   type = "toggle", default = true },
-            { key = "fadeBackground", label = "Fade Background",  type = "toggle", default = true },
-        },
-    })
-
-    -- Prepend a lead + note explaining how overrides cascade. The builder
-    -- already includes its own boilerplate description; we slot our lead
-    -- in above it so the page has a clear intro.
-    page.args = page.args or {}
-    page.args.intro = {
-        order = -1,
-        type = "lead",
-        text = "Overrides set here apply to every widget at once, regardless of each widget's individual setting.",
-    }
-    page.args.introNote = {
-        order = -0.5,
-        type = "note",
-        style = "info",
-        text = "Enable a specific override to force its value across all widgets. Disable the override to return each widget to its own per-widget setting.",
-    }
-    return page
-end
-
----------------------------------------------------------------------------
 -- Drawers subcategory (create/manage/configure drawer tabs)
 ---------------------------------------------------------------------------
 
-local AUTO_SWITCH_OPTIONS = {
-    { value = "",              label = "None (manual only)" },
-    { value = "openWorld",     label = "Open World / Questing" },
-    { value = "dungeon",      label = "Dungeon (5-man)" },
-    { value = "raid",         label = "Raid" },
-    { value = "challengeMode", label = "Mythic+ (Challenge Mode)" },
-    { value = "delve",        label = "Delve" },
-    { value = "battleground",  label = "Battleground" },
-    { value = "arena",        label = "Arena" },
-}
+local function DrawerIcon(drawerDef)
+    return drawerDef.icon or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
 
-local function BuildDrawerGroup(drawerDef, drawerId, index, total)
+local function BuildDrawerGroup(drawerDef, drawerId, index)
     local allWidgets = BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}
 
-    -- Build auto-switch dropdown values
-    local autoValues = {}
-    for _, opt in ipairs(AUTO_SWITCH_OPTIONS) do
-        autoValues[opt.value] = opt.label
-    end
-
     local args = {
-        identityHeader = {
-            order = 0,
-            type = "header",
-            name = "Identity",
-        },
+        identityHeader = { order = 1, type = "header", name = "Tab" },
         labelInput = {
-            order = 1,
-            type = "input",
-            name = "Drawer Name",
-            desc = "Display name shown in the tab tooltip.",
+            order = 2, type = "input", name = "Name",
+            desc = "Shown in the tab's tooltip.",
             get = function()
                 local def = addon:GetDrawer(drawerId)
                 return def and def.label or ""
             end,
             set = function(_, val)
                 addon:RenameDrawer(drawerId, val)
-                BazUI:RefreshOptions("BazUIDrawer-Drawers")
+                Refresh(PAGE_DRAWERS)
             end,
         },
-        labelSpacer = {
-            order = 1.5,
-            type = "spacer",
-            height = 8,
-        },
         chooseIcon = {
-            order = 2,
-            type = "execute",
-            name = "Choose Icon",
-            desc = "Pick an icon for this drawer's tab.",
-            width = "half",
+            order = 3, type = "execute", name = "Choose icon",
+            desc = "|T" .. DrawerIcon(drawerDef) .. ":18:18:0:0:64:64:4:60:4:60|t  The icon on this drawer's tab.",
             func = function()
                 BazUI:ShowIconPicker(function(iconId)
                     local drawers = addon:GetSetting("drawers") or {}
@@ -547,162 +472,75 @@ local function BuildDrawerGroup(drawerDef, drawerId, index, total)
                         if addon.Drawer and addon.Drawer.RefreshTabs then
                             addon.Drawer:RefreshTabs()
                         end
-                        BazUI:RefreshOptions("BazUIDrawer-Drawers")
+                        Refresh(PAGE_DRAWERS)
                     end
                 end, drawerDef.icon)
             end,
         },
-        iconPreview = {
-            order = 2.5,
-            type = "execute",
-            name = "|T" .. (drawerDef.icon or "Interface\\Icons\\INV_Misc_QuestionMark") .. ":32:32|t",
-            width = "half",
-            borderless = true,
-            func = function() end,  -- not clickable; Choose Icon button handles changes
-        },
 
-        autoHeader = { order = 10, type = "header", name = "Auto-Switch" },
-        autoSwitchEnabled = {
-            order = 11,
-            type = "toggle",
-            name = "Enable Auto-Switch",
-            desc = "Automatically switch to this drawer when entering the selected game context.",
-            get = function()
-                local def = addon:GetDrawer(drawerId)
-                return def and def.autoSwitchEnabled or false
-            end,
-            set = function(_, val)
-                local drawers = addon:GetSetting("drawers") or {}
-                if drawers[drawerId] then
-                    drawers[drawerId].autoSwitchEnabled = val
-                    addon:SetSetting("drawers", drawers)
-                end
-            end,
-        },
-        autoSwitchTrigger = {
-            order = 12,
-            type = "select",
-            name = "Trigger",
-            desc = "Game context that activates this drawer.",
-            values = autoValues,
-            get = function()
-                local def = addon:GetDrawer(drawerId)
-                return def and def.autoSwitch or ""
-            end,
-            set = function(_, val)
-                local drawers = addon:GetSetting("drawers") or {}
-                if drawers[drawerId] then
-                    drawers[drawerId].autoSwitch = (val ~= "") and val or nil
-                    addon:SetSetting("drawers", drawers)
-                end
-            end,
-            disabled = function()
-                local def = addon:GetDrawer(drawerId)
-                return not (def and def.autoSwitchEnabled)
-            end,
-        },
-
-        widgetHeader = { order = 20, type = "header", name = "Widgets" },
-        widgetDesc = {
-            order = 21,
-            type = "note",
-            style = "info",
-            text = "Check which widgets appear in this drawer. A widget can be in multiple drawers.",
-        },
+        widgetHeader = { order = 10, type = "header", name = "Widgets in this drawer" },
     }
 
-    -- Add a toggle for each available widget. Globally-disabled widgets
-    -- (toggled off on the Widgets subcategory) are filtered out entirely
-    -- so the per-drawer list only shows the widgets that can actually
-    -- appear anywhere - matches the user expectation that the drawer
-    -- "available widgets" reflects the enabled set, not the registered
-    -- set.
-    local widgetOrder = 22
+    -- One switch per enabled widget. Widgets turned off on the Widgets
+    -- page can't appear anywhere, so they are left out here.
+    local list = {}
+    local seen = {}
     for _, w in ipairs(allWidgets) do
-        local wid = w.id
-        if addon:IsWidgetEnabled(wid) then
-            args["widget_" .. wid] = {
-                order = widgetOrder,
-                type = "toggle",
-                name = WidgetDisplayName(wid, w),
-                get = function()
-                    return addon:IsWidgetInDrawer(drawerId, wid)
-                end,
-                set = function(_, val)
-                    if val then
-                        addon:AddWidgetToDrawer(drawerId, wid)
-                    else
-                        addon:RemoveWidgetFromDrawer(drawerId, wid)
-                    end
-                    -- No RefreshOptions here: the checkbox visual updates
-                    -- natively, and the drawer reflows via AddWidgetToDrawer.
-                    -- Avoiding the rebuild preserves scroll position.
-                end,
-            }
-            widgetOrder = widgetOrder + 1
+        if addon:IsWidgetEnabled(w.id) then
+            list[#list + 1] = { id = w.id, widget = w }
+            seen[w.id] = true
         end
     end
-
-    -- Also include dormant widgets (still filtered by global enable).
     local LBW = BazUI.Widgets
     if LBW and LBW.dormant then
-        local seen = {}
-        for _, w in ipairs(allWidgets) do seen[w.id] = true end
         for id, entry in pairs(LBW.dormant) do
             if not seen[id] and addon:IsWidgetEnabled(id) then
-                local wid = id
-                args["widget_" .. wid] = {
-                    order = widgetOrder,
-                    type = "toggle",
-                    name = WidgetDisplayName(wid, entry.widget),
-                    get = function()
-                        return addon:IsWidgetInDrawer(drawerId, wid)
-                    end,
-                    set = function(_, val)
-                        if val then
-                            addon:AddWidgetToDrawer(drawerId, wid)
-                        else
-                            addon:RemoveWidgetFromDrawer(drawerId, wid)
-                        end
-                    end,
-                }
-                widgetOrder = widgetOrder + 1
+                list[#list + 1] = { id = id, widget = entry.widget }
             end
         end
     end
+    table.sort(list, function(a, b)
+        local la = a.widget and a.widget.label or a.id
+        local lb = b.widget and b.widget.label or b.id
+        return la < lb
+    end)
 
-    -- Delete button (can't delete last drawer)
-    local drawerCount = 0
-    local drawers = addon:GetSetting("drawers") or {}
-    for _ in pairs(drawers) do drawerCount = drawerCount + 1 end
-
-    args.deleteHeader = { order = 100, type = "header", name = "Delete" }
-    args.deleteNote = {
-        order = 100.5,
-        type = "note",
-        style = "danger",
-        text = "Permanently removes this drawer tab. The widgets it contained are unaffected - they stay registered and can be assigned to other drawers.",
-    }
-    args.deleteDrawer = {
-        order = 101,
-        type = "execute",
-        name = "Delete This Drawer",
-        desc = "Permanently remove this drawer tab.",
-        func = function()
-            addon:DeleteDrawer(drawerId)
-            BazUI:RefreshOptions("BazUIDrawer-Drawers")
-        end,
-        disabled = function() return drawerCount <= 1 end,
-        confirm = true,
-        confirmText = "Are you sure you want to delete the '" .. (drawerDef.label or drawerId) .. "' drawer?",
-    }
+    for i, entry in ipairs(list) do
+        local wid = entry.id
+        args["widget_" .. wid] = {
+            order = 10 + i,
+            type = "toggle",
+            name = WidgetDisplayName(wid, entry.widget),
+            get = function() return addon:IsWidgetInDrawer(drawerId, wid) end,
+            set = function(_, val)
+                if val then
+                    addon:AddWidgetToDrawer(drawerId, wid)
+                else
+                    addon:RemoveWidgetFromDrawer(drawerId, wid)
+                end
+            end,
+        }
+    end
+    if #list == 0 then
+        args.noWidgets = {
+            order = 11, type = "description",
+            name = "Every widget is turned off. Enable some on the Widgets page first.",
+        }
+    end
 
     return {
         order = index,
         type = "group",
         name = drawerDef.label or drawerId,
         args = args,
+        _drawerId = drawerId,
     }
+end
+
+local function DrawerCount()
+    local n = 0
+    for _ in pairs(addon:GetSetting("drawers") or {}) do n = n + 1 end
+    return n
 end
 
 local function GetDrawersOptionsTable()
@@ -710,35 +548,47 @@ local function GetDrawersOptionsTable()
     local drawerArgs = {}
 
     for i, entry in ipairs(sorted) do
-        drawerArgs["drawer_" .. entry.id] = BuildDrawerGroup(entry.def, entry.id, i, #sorted)
+        drawerArgs["drawer_" .. entry.id] = BuildDrawerGroup(entry.def, entry.id, i)
     end
 
     return {
         name = "Drawers",
         type = "group",
         args = {
-            intro = {
-                order = -1,
-                type = "lead",
-                text = "Each drawer is its own preset of widgets, width, fade, and layout. Run multiple drawers for different game modes (questing / M+ / PvP) and switch between them via the tabs at the top of the drawer.",
-            },
             createDrawer = {
                 order = 0,
                 type = "execute",
-                name = "Create New Drawer",
+                name = "New drawer",
                 func = function()
-                    -- Generate a unique ID
                     local id = "drawer_" .. time()
                     addon:CreateDrawer(id, "New Drawer")
                     addon:SetActiveDrawer(id)
-                    BazUI:RefreshOptions("BazUIDrawer-Drawers")
+                    Refresh(PAGE_DRAWERS)
                 end,
             },
             drawers = {
                 order = 1,
                 type = "group",
                 name = "",
+                pickerLabel = "Drawer",
+                emptyText = "No drawers yet. Click New drawer to make one.",
                 args = drawerArgs,
+                itemActions = {
+                    {
+                        name = "Delete", style = "danger",
+                        confirm = true, confirmTitle = "Delete drawer?",
+                        confirmText = function(item)
+                            return string.format("Delete the %s drawer? Its widgets stay registered and can go in other drawers.",
+                                item and item.name or "selected")
+                        end,
+                        confirmStyle = "destructive", confirmAcceptLabel = "Delete", confirmCancelLabel = "Cancel",
+                        disabled = function() return DrawerCount() <= 1 end,
+                        func = function(item)
+                            addon:DeleteDrawer(item._drawerId)
+                            Refresh(PAGE_DRAWERS)
+                        end,
+                    },
+                },
             },
         },
     }
@@ -751,188 +601,23 @@ end
 BazUI:QueueForLogin(function()
     if not BazUI.RegisterOptionsTable then return end
 
-    -- Landing page (user manual)
+    -- The module entry itself never renders: its pages are tabs.
     BazUI:RegisterOptionsTable("Drawers", function()
-        return BazUI:CreateLandingPage("Drawers", {
-            subtitle = "Slide-out widget drawer for the Baz Suite",
-
-            description =
-                "Drawers is a full-height slide-out panel that docks " ..
-                "to either edge of your screen and hosts a vertical stack " ..
-                "of widgets: Quest Tracker, Minimap, Minimap Buttons, " ..
-                "Info Bar and Zone Text.\n\n" ..
-
-                "The drawer is built around three concepts:\n" ..
-                "* A persistent slide-out panel that fades to invisible " ..
-                "when you're not interacting with it and pops back on " ..
-                "hover.\n" ..
-                "* A pull-tab handle on the active edge for one-click " ..
-                "open/close, plus an invisible edge hot zone that re-" ..
-                "reveals the tab when collapsed.\n" ..
-                "* A widget host that uniformly scales each widget to " ..
-                "the drawer's width and stacks them vertically with " ..
-                "collapsible, draggable title bars.\n\n" ..
-
-                "Widgets come from BazUI's own modules and appear in the " ..
-                "drawer automatically. Widgets can also be dormant - they " ..
-                "register and unregister themselves based on game state.",
-
-            features =
-                "DRAWER\n" ..
-                "* Slide-out side panel with a metal pull-tab handle.\n" ..
-                "* Switchable side (left or right) with automatic flip.\n" ..
-                "* Configurable width with live re-scaling of all widgets.\n" ..
-                "* Edge hot zone for easy tab re-reveal when collapsed.\n" ..
-                "* Background and frame opacity sliders.\n\n" ..
-
-                "FADE SYSTEM\n" ..
-                "* Chrome fades as a single unit; widget content stays readable.\n" ..
-                "* Configurable delay, duration, and faded opacity (default 0 = invisible).\n" ..
-                "* Optional 'force full opacity in combat' mode.\n" ..
-                "* Lock icon fades in sync with drawer chrome.\n\n" ..
-
-                "LOCK SYSTEM\n" ..
-                "* Padlock icon on the bottom bar (appears on hover, fades with chrome).\n" ..
-                "* When locked: drawer stays open, all chrome is hidden, title bars collapse for a tight layout.\n\n" ..
-
-                "WIDGET HOST\n" ..
-                "* Per-widget title bars with collapse chevron and live status text.\n" ..
-                "* Drag-to-reorder: hold a title bar to grab it (turns green), drag to swap positions.\n" ..
-                "* Move Up / Move Down buttons in the settings panel (side by side at top).\n" ..
-                "* Floating mode: detach any widget and position it via Edit Mode.\n" ..
-                "* Per-widget enable/disable, per-widget settings, and global overrides.\n" ..
-                "* Dormant widgets: appear and disappear based on game conditions.\n\n" ..
-
-                "BUILT-IN WIDGETS\n" ..
-                "* Zone Text - zone name colored by PVP status.\n" ..
-                "* Minimap - reparents the real Blizzard minimap at a fixed scale.\n" ..
-                "* Minimap Buttons - adopts LibDBIcon buttons into a tidy grid.\n" ..
-                "* Quest Tracker - tracked quests with objectives, quest item buttons and completion text.\n" ..
-                "* Info Bar - clock, calendar, and tracking button in one row.",
-
-            guide = {
-                {
-                    "1. First Look",
-                    "On first login the drawer appears on the right edge " ..
-                    "with all built-in widgets stacked: Zone, Minimap, " ..
-                    "Minimap Buttons, Quest Tracker, and Info " ..
-                    "Bar. Hover over the drawer to see it appear, move " ..
-                    "away and it fades to invisible. The metal pull-tab " ..
-                    "on the drawer edge is your primary control - click " ..
-                    "to slide it off-screen, click again to bring it back.",
-                },
-                {
-                    "2. Opening and Closing",
-                    "Click the pull-tab to toggle the drawer. When " ..
-                    "collapsed, move your cursor to the screen edge and " ..
-                    "the tab fades back into view. Slash commands: " ..
-                    "/bwd toggle, /bwd show, or /bwd hide.",
-                },
-                {
-                    "3. Choosing a Side and Width",
-                    "Settings > Layout > Side switches left/right. " ..
-                    "Width scales all docked widgets proportionally - " ..
-                    "wider drawer means bigger widgets, not empty space.",
-                },
-                {
-                    "4. Fading",
-                    "The drawer chrome (backdrop, border, tab, bottom bar) " ..
-                    "fades as a unit. Widget content stays at full opacity. " ..
-                    "Default faded opacity is 0 (invisible). Tune via " ..
-                    "Settings > Fading: delay, duration, opacity target, " ..
-                    "combat override, and tab-when-closed behavior.",
-                },
-                {
-                    "5. The Lock",
-                    "Hover the drawer to see the padlock icon on the " ..
-                    "bottom bar. Click it to lock. When locked: the " ..
-                    "drawer stays open permanently, all chrome is hidden, " ..
-                    "title bars collapse for a tight layout, and the lock " ..
-                    "icon fades in/out with the same timing as the chrome.",
-                },
-                {
-                    "6. Reordering Widgets",
-                    "Two ways to reorder: (1) Hold-and-drag a title bar " ..
-                    "in the drawer - hold for half a second until it turns " ..
-                    "green, then drag up/down. (2) Use the Move Up / Move " ..
-                    "Down buttons at the top of each widget's settings " ..
-                    "page. Both methods work for dormant widgets too.",
-                },
-                {
-                    "7. Collapsing Widgets",
-                    "Click any title bar to collapse that widget's " ..
-                    "content, leaving only the title bar visible. Click " ..
-                    "again to expand. State is saved per profile.",
-                },
-                {
-                    "8. Floating a Widget",
-                    "On a widget's settings page, check Floating to " ..
-                    "detach it from the drawer. It becomes a free-floating " ..
-                    "frame you can position via Blizzard's Edit Mode. " ..
-                    "Uncheck to dock it back in its saved position.",
-                },
-                {
-                    "9. Dormant Widgets",
-                    "Some widgets are dormant - they only appear when " ..
-                    "relevant. For example, Dungeon Finder only shows " ..
-                    "when you're queued. Dormant widgets are marked with " ..
-                    "[D] in the Widgets settings list and can still be " ..
-                    "reordered and configured while dormant.",
-                },
-                {
-                    "10. Modules",
-                    "Modules lists every registered widget with an on/off " ..
-                    "toggle. Disabling a widget removes its slot entirely " ..
-                    "and stops its events. Re-enabling restores it.",
-                },
-                {
-                    "11. Global Options",
-                    "Global Options lets you set defaults that apply to " ..
-                    "all widgets at once (e.g. Fade Title Bar, Fade " ..
-                    "Background). Enabled globals override per-widget " ..
-                    "settings of the same key.",
-                },
-                {
-                    "12. Troubleshooting",
-                    "Drawer gone? Type /bwd show. Widget stuck floating " ..
-                    "off-screen? Toggle Floating off and on in its settings. " ..
-                    "Fade looks wrong? Hover and unhover to refresh. " ..
-                    "Setting won't change? Check if the drawer is locked.",
-                },
-            },
-
-            commands = {
-                { "/bwd toggle", "Open or close the drawer" },
-                { "/bwd show",   "Open the drawer" },
-                { "/bwd hide",   "Close the drawer" },
-            },
-        })
+        return { name = "Drawers", type = "group", args = {} }
     end)
     BazUI:AddToSettings("Drawers", "Drawers")
 
-    -- Settings subcategory
-    BazUI:RegisterOptionsTable("BazUIDrawer-Settings", GetSettingsOptionsTable)
-    BazUI:AddToSettings("BazUIDrawer-Settings", "General Settings", "Drawers")
+    BazUI:RegisterOptionsTable(PAGE_GENERAL, GetSettingsOptionsTable)
+    BazUI:AddToSettings(PAGE_GENERAL, "General", "Drawers")
 
-    -- Global Options subcategory (per-key overrides across all widgets)
-    BazUI:RegisterOptionsTable("BazUIDrawer-GlobalOptions", GetGlobalOptionsTable)
-    BazUI:AddToSettings("BazUIDrawer-GlobalOptions", "Global Settings", "Drawers")
+    BazUI:RegisterOptionsTable(PAGE_DRAWERS, GetDrawersOptionsTable)
+    BazUI:AddToSettings(PAGE_DRAWERS, "Drawers", "Drawers", 10)
 
-    -- Drawers subcategory (create/manage drawer tabs)
-    BazUI:RegisterOptionsTable("BazUIDrawer-Drawers", GetDrawersOptionsTable)
-    BazUI:AddToSettings("BazUIDrawer-Drawers", "Drawers", "Drawers")
+    BazUI:RegisterOptionsTable(PAGE_WIDGETS, GetWidgetsOptionsTable)
+    BazUI:AddToSettings(PAGE_WIDGETS, "Widgets", "Drawers", 20)
 
-    -- Widgets subcategory (list/detail - same shape as BazBars' Bar Options)
-    BazUI:RegisterOptionsTable("BazUIDrawer-Widgets", GetWidgetsOptionsTable)
-    BazUI:AddToSettings("BazUIDrawer-Widgets", "Widgets", "Drawers")
-
-    -- Broker Feeds subcategory (LibDataBroker widgets, Widgets/Broker.lua)
     if addon.Broker and addon.Broker.GetOptionsTable then
         BazUI:RegisterOptionsTable("BazUIDrawer-Broker", addon.Broker.GetOptionsTable)
-        BazUI:AddToSettings("BazUIDrawer-Broker", "Broker Feeds", "Drawers")
+        BazUI:AddToSettings("BazUIDrawer-Broker", "Broker Feeds", "Drawers", 30)
     end
-    -- Enable/Disable sub-category merged into the Widgets page - each
-    -- widget's detail panel now has an "Enabled" toggle at the top.
-    -- GetModulesOptionsTable is still defined but no longer exposed
-    -- as a separate sidebar entry.
 end)

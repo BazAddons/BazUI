@@ -53,7 +53,7 @@ BazUI:RegisterUserGuide("Drawers", {
                     "|cffffd700Width|r — 120–400 px; every docked widget rescales uniformly when you change this",
                     "|cffffd700Edge hot zone|r — invisible strip along the screen edge that re-reveals the tab when collapsed",
                 }},
-                { type = "note", style = "tip", text = "If the tab feels hard to find, widen the edge hot zone in Settings → BazUI Drawers → General Settings." },
+                { type = "note", style = "tip", text = "If the tab feels hard to find, raise |cffffd700Reveal the tab within|r under Drawers → General." },
             },
         },
 
@@ -194,14 +194,14 @@ BazUI:RegisterUserGuide("Drawers", {
         -- Global Options
         ---------------------------------------------------------------
         {
-            title = "Global Widget Options",
+            title = "The Same Fade on Every Widget",
             blocks = {
-                { type = "paragraph", text = "The |cffffd700Global Options|r sub-category lets you set a value once and have it cascade to every widget at the same time." },
+                { type = "paragraph", text = "The |cffffd700All widgets|r section under General sets a value once for every widget at the same time." },
                 { type = "list", items = {
-                    "|cffffd700Fade Title Bar|r — fade every widget's title bar with the drawer chrome",
-                    "|cffffd700Fade Background|r — fade every widget's background with the drawer chrome",
+                    "|cffffd700Same title bar fade on every widget|r — one switch for every widget's title bar",
+                    "|cffffd700Same background fade on every widget|r — one switch for every widget's background",
                 }},
-                { type = "note", style = "tip", text = "Enable a global override to force its value across all widgets, regardless of each widget's individual setting. Disable the override to return each widget to its own setting." },
+                { type = "note", style = "tip", text = "While a shared switch is on, that setting is greyed out on each widget's own page. Turn it off to return every widget to its own setting." },
             },
         },
 
