@@ -93,7 +93,7 @@ local function GetLandingPage()
         guide = {
             { "/bazmicro",       "Open these settings" },
             { "BazUI Edit Mode", "Drag the bar; size and spacing are in its popup too" },
-            { "/bazmicro reset", "Move the bar back to the bottom right" },
+            { "/bazmicro reset", "Move the bar back to the top centre" },
         },
     })
 end

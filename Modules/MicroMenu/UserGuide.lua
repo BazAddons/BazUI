@@ -36,7 +36,7 @@ BazUI:RegisterUserGuide("MicroMenu", {
                       { "|cffffd700Orientation|r",              "Lay the buttons out in a row or a column." },
                       { "|cffffd700Button size|r / |cffffd700Spacing|r", "Size of each round button and the gap between them." },
                       { "|cffffd700Show only on mouseover|r", "Fade the bar out until the cursor is over it. Faded opacity sets how much of it stays visible; 0 hides it completely. The bar always shows while Edit Mode is open." },
-                      { "|cffffd700Reset position|r",           "Move the bar back to the bottom right corner." },
+                      { "|cffffd700Reset position|r",           "Move the bar back to the top centre of the screen." },
                       { "|cffffd700Buttons|r",                  "One toggle per button." },
                   }},
             },

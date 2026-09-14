@@ -93,7 +93,7 @@ BazUI.StarterProfile = {
         buttonSize = 25,
         spacing = 4,
         mouseoverFade = true,
-        position = { point = "TOP", relPoint = "TOP", x = 0, y = -112 },
+        position = { point = "TOP", relPoint = "TOP", x = 0, y = -4 },
     },
 
     XPBar = { width = 470, height = 14, ticks = true },

@@ -33,7 +33,7 @@ A fresh install starts with the BazUI layout: player frame centred above the bar
 - `/bb` (or `/bazbars`) for bars: `create`, `delete`, `duplicate`, `export`, `import`, `scale`, `padding`, `reset`.
 - `/bazframes` opens the Unit Frames options; `/bazauras` opens the Auras options (`/bazauras reset` resets the layout).
 - `/bnc` toggles the notification panel; `/bnc dnd`, `/bnc clear`, `/bnc history`, `/bnc test`.
-- `/bazmicro` opens the Micro Menu options; `/bazmicro reset` moves the bar back to the bottom right.
+- `/bazmicro` opens the Micro Menu options; `/bazmicro reset` moves the bar back to the top centre.
 - `/bazchat` (or `/bc`) for chat: `copy`, `clear`, `lock`, `unlock`, `restoredefaults`; `/cc` clears the active tab.
 
 ## License

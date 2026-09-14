@@ -32,7 +32,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     defaultHandler = function() BazUI:OpenOptionsPanel(MODULE_NAME) end,
     commands = {
         reset = {
-            desc = "Move the micro menu back to the bottom right",
+            desc = "Move the micro menu back to the top centre",
             handler = function() addon:ResetPosition() end,
         },
         debug = {

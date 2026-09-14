@@ -209,7 +209,7 @@ local function ApplyPosition()
         local es = bar:GetEffectiveScale()
         bar:SetPoint("CENTER", UIParent, "CENTER", pos.x / es, pos.y / es)
     else
-        bar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 12)
+        bar:SetPoint("TOP", UIParent, "TOP", 0, -4)
     end
 end
 
