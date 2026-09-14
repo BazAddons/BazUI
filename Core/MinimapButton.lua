@@ -47,6 +47,9 @@ local function ShowMenu()
         for _, item in ipairs(sorted) do
             local entry = item.entry
             local label = entry.label or item.name
+            if entry.icon then
+                label = "|T" .. entry.icon .. ":18:18:0:0|t " .. label
+            end
             rootDescription:CreateButton(label, function()
                 if entry.onClick then
                     entry.onClick("LeftButton")

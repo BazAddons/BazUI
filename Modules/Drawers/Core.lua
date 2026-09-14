@@ -135,7 +135,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
     minimap = {
         label = "Drawers",
-        icon = 7416769,  -- Suramar Dresser (FileDataID)
+        icon = "Interface\\AddOns\\BazUI\\Modules\\Drawers\\Assets\\drawers_icon.tga",
     },
 
     onReady = function(self)

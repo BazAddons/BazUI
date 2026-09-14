@@ -473,7 +473,7 @@ function O.BuildTitleBar(parent, opts)
 
     local addonConfig = opts.addonName and BazUI.addons
         and BazUI.addons[opts.addonName] or nil
-    local iconTex = addonConfig and addonConfig.minimap and addonConfig.minimap.icon
+    local iconTex = addonConfig and (addonConfig.icon or (addonConfig.minimap and addonConfig.minimap.icon))
     if not iconTex and opts.addonName and C_AddOns and C_AddOns.GetAddOnMetadata then
         iconTex = C_AddOns.GetAddOnMetadata(opts.addonName, "IconTexture")
     end

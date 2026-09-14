@@ -107,7 +107,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
     minimap = {
         label = "Bags",
-        icon  = 5160585,  -- inv_misc_bag_horadricsatchel
+        icon  = "Interface\\AddOns\\BazUI\\Modules\\Bags\\Assets\\bag_icon.tga",
         onClick = function()
             if addon.Bag and addon.Bag.Toggle then
                 addon.Bag:Toggle()

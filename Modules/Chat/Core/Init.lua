@@ -374,7 +374,7 @@ local core = BazUI:RegisterModule(addonName, {
 
     minimap = {
         label = "Chat",
-        icon  = "Interface\\Icons\\INV_Misc_Note_01",
+        icon  = "Interface\\AddOns\\BazUI\\Modules\\Chat\\Assets\\chat_icon.tga",
     },
 
     onReady = function(self)
