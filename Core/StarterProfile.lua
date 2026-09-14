@@ -44,9 +44,10 @@ BazUI.StarterProfile = {
 
     Bars = {
         -- A 14-slot main bar centred along the bottom and a 6-slot bar on
-        -- each side of the player frame. Blizzard's own bar stays visible
-        -- until the player has moved their abilities across.
-        hideDefaultActionBar = false,
+        -- each side of the player frame. Blizzard's own bar is hidden:
+        -- BazUI's bars are the action bars, and the empty slots show
+        -- where abilities go.
+        hideDefaultActionBar = true,
         bars = {
             Bar(1, 14, 0.70,    0,  64.3),
             Bar(2,  6, 0.65, -219, 246.2),
