@@ -32,7 +32,7 @@ BazUI:RegisterUserGuide("Bags", {
                 }},
                 { type = "h2", text = "Where to start" },
                 { type = "paragraph", text = "Pick a topic on the left - the manual is ordered roughly from \"how do I open the bag?\" through \"how do I deeply customise it?\" Display Modes and Categories are the two big-picture concepts; the rest is tuning." },
-                { type = "note", style = "tip", text = "If you've used Bagnon, Baganator, or ArkInventory before, BazUI Bags will feel familiar. The default behaviour stays close to Blizzard's combined bag - categories and pinning are opt-in, not forced." },
+                { type = "note", style = "tip", text = "If you've used Bagnon, Baganator, or ArkInventory before, BazUI Bags will feel familiar. BazUI Bags opens in Categories mode; switch to Bags mode in the settings for a per-bag layout closer to Blizzard's. Pinning is opt-in either way." },
             },
         },
 
@@ -83,7 +83,7 @@ BazUI:RegisterUserGuide("Bags", {
             blocks = {
                 { type = "lead", text = "BazUI Bags has two ways of arranging your items: per-bag sections (Blizzard-style) or grouped by category (item-type-style). Switch any time in |cffffd700Options > AddOns > BazUI > Bags > General Settings > Grouping > Mode|r." },
                 { type = "h2", text = "Picking a mode" },
-                { type = "paragraph", text = "|cffffd700Bags mode|r is the conservative default - one collapsible section per bag type, with item slots arranged in their actual bag order. |cffffd700Categories mode|r is the modern take - items regroup by what they are (Equipment, Consumables, etc.) regardless of which bag holds them." },
+                { type = "paragraph", text = "|cffffd700Categories mode|r is the default - items regroup by what they are (Equipment, Consumables, etc.) regardless of which bag holds them. |cffffd700Bags mode|r is the conservative alternative - one collapsible section per bag type, with item slots arranged in their actual bag order." },
                 { type = "paragraph", text = "Pick whichever fits your inventory style. Switching modes is non-destructive - the underlying bag data is unchanged, only the rendering differs. You can switch back any time." },
                 { type = "note", style = "tip", text = "Drag-and-drop, click-to-use, shift-click to link in chat, and every other standard item interaction works identically in both modes. The slot button is the same Blizzard ContainerFrameItemButton template." },
             },

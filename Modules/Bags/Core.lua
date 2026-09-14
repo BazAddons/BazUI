@@ -26,12 +26,12 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                                 -- window (HIGH) by default. Picker in Settings > Layout.
 
         -- Grouping mode:
-        --   "bags"       (default) - Blizzard-style sections per bag/reagent
-        --   "categories"           - group items by category (Equipment,
+        --   "bags"                 - Blizzard-style sections per bag/reagent
+        --   "categories" (default) - group items by category (Equipment,
         --                            Consumables, etc.) regardless of bag,
         --                            with thin divider rows separating
         --                            each category's grid block
-        bagMode = "bags",
+        bagMode = "categories",
 
         -- Bags-mode sub-option. When true (default), bag mode renders
         -- one thin-divider section per equipped bag - Backpack, Bag 1
