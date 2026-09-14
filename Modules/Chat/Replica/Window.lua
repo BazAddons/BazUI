@@ -586,14 +586,28 @@ end
 -- the methods themselves).
 ---------------------------------------------------------------------------
 
+-- GameTooltip:SetHyperlink only understands game-object links (items,
+-- spells, quests, achievements, ...). Player, Battle.net, channel and
+-- URL links make it throw "Unknown link type", so those get no hover
+-- tooltip, and any other type it rejects is caught instead of raised.
+local NO_TOOLTIP_LINK = {
+    player = true, BNplayer = true, playerCommunity = true, channel = true,
+    url = true, garrmission = true, community = true, clubTicket = true,
+    clubFinder = true,
+}
+
 local function HookHyperlinks(f)
     f:SetHyperlinksEnabled(true)
     f:SetScript("OnHyperlinkClick", f.OnHyperlinkClick)
     f:SetScript("OnHyperlinkEnter", function(self, link)
-        ShowUIPanel(GameTooltip)
+        local linkType = link and link:match("^([^:|]+)")
+        if not linkType or NO_TOOLTIP_LINK[linkType] then return end
         GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-        GameTooltip:SetHyperlink(link)
-        GameTooltip:Show()
+        if pcall(GameTooltip.SetHyperlink, GameTooltip, link) then
+            GameTooltip:Show()
+        else
+            GameTooltip:Hide()
+        end
     end)
     f:SetScript("OnHyperlinkLeave", function() GameTooltip:Hide() end)
 end
