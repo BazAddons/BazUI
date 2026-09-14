@@ -86,14 +86,16 @@ local function ClickArea(box, suffix)
     button:SetScript("OnEnter", function(self)
         hoveredAreas[self] = true
         addon:UpdateValues()
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetUnit("target")
-        GameTooltip:Show()
+        if suffix == "PortraitButton" then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetUnit("target")
+            GameTooltip:Show()
+        end
     end)
     local function Leave(self)
         hoveredAreas[self] = nil
         addon:UpdateValues()
-        GameTooltip_Hide()
+        if suffix == "PortraitButton" then GameTooltip_Hide() end
     end
     button:SetScript("OnLeave", Leave)
     button:SetScript("OnHide", Leave)
@@ -123,12 +125,29 @@ function addon:UpdatePortrait()
         model:ClearModel()
         model:SetUnit("target")
         model:SetPortraitZoom(1)
-        model:SetCamDistanceScale(0.7)
+        model:SetCamDistanceScale(self:GetSetting("modelDistance") or 0.98)
     else
         model:Hide()
         portrait:Show()
         SetPortraitTexture(portrait, "target")
     end
+end
+
+function addon:ApplyPortraitPlacement()
+    if not model then return end
+    local size = math.max(0.5, math.min(2, tonumber(self:GetSetting("modelScale")) or 1))
+    local side = math.min(L.portrait.w, L.portrait.h) * RATIO * size
+    model:SetSize(side, side)
+    model:ClearAllPoints()
+    model:SetPoint("CENTER", portrait, "CENTER", self:GetSetting("modelX") or 0, self:GetSetting("modelY") or -5)
+    model:SetFrameLevel(root:GetFrameLevel() + (self:GetSetting("modelLayer") == "above" and 6 or 2))
+    model:SetCamDistanceScale(self:GetSetting("modelDistance") or 0.98)
+end
+
+function addon:PrintPortraitPlacement()
+    self:Print(string.format("Target portrait: layer=%s, scale=%.2f, x=%.1f, y=%.1f, camera=%.2f",
+        self:GetSetting("modelLayer") or "below", self:GetSetting("modelScale") or 1,
+        self:GetSetting("modelX") or 0, self:GetSetting("modelY") or -5, self:GetSetting("modelDistance") or 0.98))
 end
 
 local function FormatValue(current, maximum)
@@ -228,6 +247,7 @@ function addon:ApplySettings()
         visibilityRule = rule
     end
     SetStockHidden(active)
+    self:ApplyPortraitPlacement()
     self:UpdateValues()
     self:UpdatePortrait()
     self:RefreshMover()
@@ -251,6 +271,7 @@ function addon:Initialize()
     self.frame = root
     module.targetFrame = root
     health = CreateBar(L.health, "health")
+    health:SetReverseFill(true)
     power = CreateBar(L.power, "power")
 
     local portraitLayer = CreateFrame("Frame", nil, root)
@@ -265,24 +286,24 @@ function addon:Initialize()
     local flatLayer = CreateFrame("Frame", nil, root)
     flatLayer:SetAllPoints(root)
     flatLayer:SetFrameLevel(root:GetFrameLevel() + 3)
-    local flatBox = { x = 895, y = 286, w = 374, h = 375 }
+    local flatBox = L.portrait
     local flatMask = flatLayer:CreateMaskTexture()
     Place(flatMask, flatBox)
     flatMask:SetTexture(addon.ASSETS .. "targetFlatPortraitMask.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     portrait = flatLayer:CreateTexture(nil, "ARTWORK")
     portrait:SetPoint("CENTER", backdrop, "CENTER")
-    portrait:SetSize(374 * RATIO * 1.16, 375 * RATIO * 1.16)
+    portrait:SetSize(L.portrait.w * RATIO * 1.16, L.portrait.h * RATIO * 1.16)
     portrait:AddMaskTexture(flatMask)
 
     model = CreateFrame("PlayerModel", nil, root)
     model:SetFrameLevel(root:GetFrameLevel() + 2)
     -- Let the opaque outer ring cover the viewport's corners. Inscribing
     -- the viewport in the inner aperture made the head too small.
-    local side = math.min(L.portrait.w, L.portrait.h) * RATIO * 0.94
+    local side = math.min(L.portrait.w, L.portrait.h) * RATIO
     model:SetSize(side, side)
     model:SetPoint("CENTER", portrait, "CENTER")
     model:EnableMouse(false)
-    model:SetScript("OnModelLoaded", function(self) self:SetPortraitZoom(1); self:SetCamDistanceScale(0.7) end)
+    model:SetScript("OnModelLoaded", function(self) self:SetPortraitZoom(1); self:SetCamDistanceScale(addon:GetSetting("modelDistance") or 0.98) end)
     model:Hide()
 
     artLayer = CreateFrame("Frame", nil, root)
@@ -292,20 +313,21 @@ function addon:Initialize()
     artwork:SetAllPoints(root)
     artwork:SetTexture(self.ASSETS .. "targetFrameRuntime.tga")
     artwork:SetTexCoord(0, L.width / L.textureWidth, 0, L.height / L.textureHeight)
+    local namePlate = artLayer:CreateTexture(nil, "OVERLAY")
+    Place(namePlate, L.namePlate)
+    namePlate:SetTexture(BazUI.Skin.PLAYER_NAMEPLATE)
+    namePlate:SetTexCoord(0, 2110 / 4096, 0, 309 / 512)
+    namePlate:SetVertexColor(.75, .75, .75)
     nameText = artLayer:CreateFontString(nil, "OVERLAY")
     Place(nameText, L.name)
-    nameText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE")
+    nameText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
     nameText:SetTextColor(1, 0.84, 0.5)
     nameText:SetWordWrap(false)
     health.text, power.text = ValueText(health), ValueText(power)
-    -- The nameplate bevel projects into the center of the lower slot.
-    power.text:ClearAllPoints()
-    power.text:SetPoint("CENTER", root, "TOPLEFT", 420 * RATIO, -168 * RATIO)
-    health.text:ClearAllPoints()
-    health.text:SetPoint("CENTER", root, "TOPLEFT", 420 * RATIO, -(L.health.y + L.health.h / 2) * RATIO)
-    -- Both bars sit above the nameplate in the separate target artwork.
-    ClickArea({ x = 850, y = 285, w = 465, h = 415 }, "PortraitButton")
-    ClickArea({ x = 15, y = 10, w = 2135, h = 275 }, "BarsButton")
+    -- Separate hit areas preserve portrait-only tooltips on the new layout.
+    ClickArea({ x = L.namePlate.x, y = 20, w = L.namePlate.w, h = L.height - 20 }, "PortraitButton")
+    ClickArea(L.health, "BarsButton")
+    ClickArea(L.power, "PowerButton")
     mover = CreateFrame("Frame", "BazUITargetFrameMover", UIParent)
     mover:SetFrameStrata("DIALOG")
     mover:SetMovable(true)

@@ -2,9 +2,9 @@
 -- Generated from the supplied targetFrame.png; coordinates are source pixels.
 local addon = BazUI:GetModule("UnitFrames")
 addon.TargetLayout = {
-    width = 2166, height = 704, textureWidth = 4096, textureHeight = 1024,
-    health = { x = 70, y = 48, w = 2025, h = 67, tw = 2048, th = 128 },
-    power = { x = 78, y = 140, w = 2008, h = 56, tw = 2048, th = 64 },
-    portrait = { x = 916, y = 307, w = 332, h = 332, tw = 512, th = 512 },
-    name = { x = 735, y = 202, w = 690, h = 52 },
+    width = 1588, height = 312, textureWidth = 2048, textureHeight = 512,
+    health = { x = 74, y = 115, w = 609, h = 49, tw = 1024, th = 64 },
+    power = { x = 905, y = 115, w = 609, h = 49, tw = 1024, th = 64 },
+    portrait = { x = 692, y = 64, w = 205, h = 205, tw = 256, th = 256 },
+    namePlate = { x = 654, y = 241, w = 280, h = 56 }, name = { x = 682, y = 253, w = 224, h = 32 },
 }

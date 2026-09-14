@@ -320,9 +320,9 @@ end
 
 -- Two independent toggles:
 --
---   ART  - hide just the chrome (BorderArt + EndCaps gryphons /
---          wyverns). These are textures + a child frame; SetShown
---          handles them with no taint or combat restrictions.
+--   ART  - reparent the chrome to the hidden carrier too. Classic's
+--          MainMenuBarArtFrame is separate from MainActionBar, and
+--          Blizzard can Show its artwork again during layout updates.
 --
 --   BAR  - reparent the whole MainActionBar (containers + buttons +
 --          art) to a hidden carrier and unregister its events. This
@@ -334,13 +334,6 @@ end
 -- BAR-hide is a superset of ART-hide. When BAR is on, ART's value is
 -- moot (everything is invisible anyway).
 ---------------------------------------------------------------------------
-
-local function SetBlizzardArtShown(show)
-    local bar = _G.MainActionBar
-    if not bar then return end
-    if bar.BorderArt then bar.BorderArt:SetShown(show) end
-    if bar.EndCaps   then bar.EndCaps:SetShown(show)   end
-end
 
 local function HideOne(f, hidden)
     if not f then return end
@@ -357,6 +350,21 @@ local function RestoreOne(f)
     if f._bbWasShown then f:Show() else f:Hide() end
     f._bbOriginalParent = nil
     f._bbWasShown      = nil
+end
+
+local function SetBlizzardArtShown(show)
+    local function Apply(frame)
+        if show then RestoreOne(frame) else HideOne(frame, GetHiddenParent()) end
+    end
+    -- Era's decorative frame is a sibling of the action-button container.
+    -- Its textures (including both endcaps) stay hidden even when Show is
+    -- called on them; their parent remains beneath our hidden carrier.
+    Apply(_G.MainMenuBarArtFrame)
+    local bar = _G.MainActionBar
+    if bar then
+        Apply(bar.BorderArt)
+        Apply(bar.EndCaps)
+    end
 end
 
 local function HideMainActionBar(hidden)
@@ -392,8 +400,9 @@ function addon:ApplyDefaultBarVisibility()
     end
 
     if hideBar then
+        -- Capture the artwork's visible state before hiding its button parent.
+        SetBlizzardArtShown(false)
         HideMainActionBar(GetHiddenParent())
-        -- Art toggle is moot - bar is hidden so children are too.
     else
         local needsReload = ShowMainActionBar()
         -- Bar visible: apply art toggle independently.
@@ -507,6 +516,7 @@ addon:OnProfileChanged(function(newProfile, oldProfile)
 
     -- Recreate from new profile data
     addon.Bar:LoadAll()
+    addon:ApplyDefaultBarVisibility()
 
     -- Restore keybinds for new profile
     if addon.Keybinds then

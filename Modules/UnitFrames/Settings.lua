@@ -21,8 +21,23 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
         player = { label = "Player Frames", order = 1 },
         layout = { label = "Position", order = 2 },
         portraitAdjust = { label = "3D Portrait Placement", order = 3 },
+        casting = { label = "Portrait Casting", order = 4 },
     },
     entries = {
+        { key = "castEnabled", label = "Liquid portrait casting", type = "toggle", section = "casting", order = 1,
+          get = Get("castEnabled"), set = Set("castEnabled") },
+        { key = "castOpacity", label = "Liquid opacity", type = "slider", section = "casting", order = 2,
+          min = 0.05, max = 0.75, step = 0.01, format = "percent", get = Get("castOpacity"), set = Set("castOpacity") },
+        { key = "castSwirl", label = "Swirl intensity", type = "slider", section = "casting", order = 3,
+          min = 0, max = 1, step = 0.05, format = "percent", get = Get("castSwirl"), set = Set("castSwirl") },
+        { key = "castColor", label = "Liquid color", type = "select", section = "casting", order = 4,
+          values = {gold = "Arcane Gold", arcane = "Violet", frost = "Frost Blue", jade = "Jade"}, get = Get("castColor"), set = Set("castColor") },
+        { key = "castText", label = "Show spell name and countdown", type = "toggle", section = "casting", order = 5,
+          get = Get("castText"), set = Set("castText") },
+        { key = "castPreview", label = "Preview liquid casting", type = "execute", section = "casting", order = 6,
+          func = function() addon.Casting:Preview() end },
+        { key = "castHelp", type = "note", section = "casting", order = 7,
+          text = "Liquid rises while casting and drains while channeling. Interruptions flash red. Disabling portrait casting restores Blizzard's cast bar. New textures require restarting the game once after installation." },
         { key = "modelLayer", label = "3D portrait layer", type = "select", section = "portraitAdjust", order = 1, surfaces = both,
           values = { above = "Above Frame", below = "Below Frame" }, get = Get("modelLayer"), set = Set("modelLayer") },
         { key = "modelScale", label = "3D portrait size", type = "slider", section = "portraitAdjust", order = 2, surfaces = both,
@@ -86,8 +101,27 @@ local function TargetSet(key)
     end
 end
 BazUI:RegisterSettingsSpec("UnitFramesTarget", {
-    sections = { target = { label = "Target Frame", order = 1 }, layout = { label = "Position", order = 2 } },
+    sections = { target = { label = "Target Frame", order = 1 }, layout = { label = "Position", order = 2 },
+        portraitAdjust = { label = "3D Portrait Placement", order = 3 } },
     entries = {
+        { key = "targetModelLayer", label = "3D portrait layer", type = "select", section = "portraitAdjust", order = 1, surfaces = both,
+          values = { above = "Above Frame", below = "Below Frame" }, get = TargetGet("modelLayer"), set = TargetSet("modelLayer") },
+        { key = "targetModelScale", label = "3D portrait size", type = "slider", section = "portraitAdjust", order = 2, surfaces = both,
+          min = 0.5, max = 2, step = 0.01, format = "percent", get = TargetGet("modelScale"), set = TargetSet("modelScale") },
+        { key = "targetModelX", label = "Horizontal position", type = "slider", section = "portraitAdjust", order = 3, surfaces = both,
+          min = -100, max = 100, step = 1, get = TargetGet("modelX"), set = TargetSet("modelX") },
+        { key = "targetModelY", label = "Vertical position", type = "slider", section = "portraitAdjust", order = 4, surfaces = both,
+          min = -100, max = 100, step = 1, get = TargetGet("modelY"), set = TargetSet("modelY") },
+        { key = "targetModelDistance", label = "Camera distance (lower is closer)", type = "slider", section = "portraitAdjust", order = 5, surfaces = both,
+          min = 0.2, max = 2, step = 0.01, get = TargetGet("modelDistance"), set = TargetSet("modelDistance") },
+        { key = "targetPortraitReport", label = "Print portrait placement", type = "execute", section = "portraitAdjust", order = 6,
+          func = function() addon.Target:PrintPortraitPlacement() end },
+        { key = "targetPortraitReset", label = "Reset portrait placement", type = "execute", section = "portraitAdjust", order = 7,
+          func = function()
+              addon.Target:SetSetting("modelLayer", "below"); addon.Target:SetSetting("modelScale", 1)
+              addon.Target:SetSetting("modelX", 0); addon.Target:SetSetting("modelY", -5); addon.Target:SetSetting("modelDistance", 0.98)
+              addon.Target:ApplySettings()
+          end },
         { key = "targetEnabled", label = "Replace the stock target frame", type = "toggle", section = "target", order = 1,
           get = TargetGet("enabled"), set = TargetSet("enabled") },
         { key = "targetPortraitStyle", label = "Portrait", type = "select", section = "target", order = 2, surfaces = both,

@@ -73,14 +73,16 @@ local function ClickArea(box, suffix)
     button:SetScript("OnEnter", function(self)
         hoveredAreas[self] = true
         addon:UpdateValues()
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetUnit("player")
-        GameTooltip:Show()
+        if suffix == "PortraitButton" then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetUnit("player")
+            GameTooltip:Show()
+        end
     end)
     local function Leave(self)
         hoveredAreas[self] = nil
         addon:UpdateValues()
-        GameTooltip_Hide()
+        if suffix == "PortraitButton" then GameTooltip_Hide() end
     end
     button:SetScript("OnLeave", Leave)
     button:SetScript("OnHide", Leave)
@@ -224,6 +226,7 @@ function addon:ApplySettings()
     self:UpdateValues()
     self:UpdatePortrait()
     self:RefreshMover()
+    self.Casting:Apply()
 end
 
 function addon:Initialize()
@@ -243,6 +246,8 @@ function addon:Initialize()
     root:Hide()
     self.frame = root
     health = CreateBar(L.health, "health")
+    -- Keep remaining health next to the portrait as it drains inward.
+    health:SetReverseFill(true)
     power = CreateBar(L.power, "power")
 
     local portraitLayer = CreateFrame("Frame", nil, root)
@@ -284,11 +289,21 @@ function addon:Initialize()
     Place(artwork, { x = 0, y = 0, w = L.width, h = L.height })
     artwork:SetTexture(self.ASSETS .. "playerFrameRuntime.tga")
     artwork:SetTexCoord(0, L.width / L.textureWidth, 0, L.height / L.textureHeight)
-    nameText = artLayer:CreateFontString(nil, "OVERLAY")
+    -- Separate overlay keeps the plate in front of either model placement.
+    local nameLayer = CreateFrame("Frame", nil, root)
+    nameLayer:SetAllPoints(root)
+    nameLayer:SetFrameLevel(root:GetFrameLevel() + 7)
+    local namePlate = nameLayer:CreateTexture(nil, "ARTWORK")
+    Place(namePlate, L.namePlate)
+    namePlate:SetTexture(BazUI.Skin.PLAYER_NAMEPLATE)
+    namePlate:SetVertexColor(0.84, 0.84, 0.84)
+    namePlate:SetTexCoord(0, 2110 / 4096, 0, 309 / 512)
+    nameText = nameLayer:CreateFontString(nil, "OVERLAY")
     Place(nameText, L.name)
-    nameText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE")
+    nameText:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
     nameText:SetTextColor(1, 0.84, 0.5)
     nameText:SetWordWrap(false)
+    self.Casting:Create(root, nameText)
     health.text, power.text = ValueText(health), ValueText(power)
     -- Each value is centered in its separate left/right bar.
     ClickArea({ x = L.portrait.x - 30, y = 0, w = L.portrait.w + 60, h = L.height }, "PortraitButton")

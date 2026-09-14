@@ -32,3 +32,15 @@ BazUI.Skin = {
     BRAND = "3399ff",
     GOLD  = "ffd700",
 }
+
+-- Continuous XP fill: built-in texture, no segmented Classic artwork.
+BazUI.Skin.XP_FILL = "Interface\\TargetingFrame\\UI-StatusBar"
+
+-- Portrait casting: 256x256 RGBA procedural textures; circle + rising mask
+-- intersect to confine the liquid. The mask's top 5% carries the ripple.
+BazUI.Skin.CAST_SWIRL = "Interface\\AddOns\\BazUI\\Skin\\Assets\\castSwirl.tga"
+BazUI.Skin.CAST_LIQUID_MASK = "Interface\\AddOns\\BazUI\\Skin\\Assets\\castLiquidMask.tga"
+BazUI.Skin.CAST_CREST = "Interface\\AddOns\\BazUI\\Skin\\Assets\\castCrest.tga"
+
+-- User's 2110x309 RGBA nameplate, padded without resampling to 4096x512.
+BazUI.Skin.PLAYER_NAMEPLATE = "Interface\\AddOns\\BazUI\\Modules\\UnitFrames\\Assets\\namePlateRuntime.tga"

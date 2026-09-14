@@ -124,6 +124,7 @@ Modules\Bars\UserGuide.lua
 Modules\UnitFrames\Core.lua
 Modules\UnitFrames\Layout.lua
 Modules\UnitFrames\Settings.lua
+Modules\UnitFrames\Casting.lua
 Modules\UnitFrames\Player.lua
 Modules\UnitFrames\TargetLayout.lua
 Modules\UnitFrames\Target.lua
@@ -179,3 +180,7 @@ Modules\MicroMenu\Core.lua
 Modules\MicroMenu\Bar.lua
 Modules\MicroMenu\Settings.lua
 Modules\MicroMenu\UserGuide.lua
+
+Modules\XPBar\Core.lua
+Modules\XPBar\Settings.lua
+Modules\XPBar\Bar.lua
