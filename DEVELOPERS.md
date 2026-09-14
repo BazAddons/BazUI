@@ -77,6 +77,12 @@ Every texture and brand colour lives in `BazUI.Skin`. Modules reference `BazUI.S
 
 `Skin/Theme.lua` holds the shared look: the colour palette (`BazUI.Skin.Theme.colors`), the gold-edged panel backdrop (`Theme.ApplyPanel`), a flat inner backdrop, and the round ring-framed button treatment (`Theme.ApplyRoundButton`). New module UI should draw from it rather than define its own colours.
 
+### Tabs
+
+`BazUI.CreateTabStrip(name, parent, opts)` in `Core/TabStrip.lua` builds every row of tabs. It speaks the same API as Blizzard's `TabSystemTemplate`, which Classic ships in source but does not load: `AddTab`, `SetTab`, `SetTabSelectedCallback`, `SetTabVisuallySelected`, `ClearTabs`, `MarkDirty`, plus `tab.layoutIndex` so a drag placeholder can slot in. Two looks via `opts.style`: `"panel"` for tabs that sit above a page (the options canvas, the chat dock) and `"underline"` for tabs inside a panel (the notification centre). Colours come from the theme.
+
+The drawer's tab rail is deliberately not this. It is a vertical column of icon buttons on the drawer's edge whose click switches drawer or toggles the panel, and whose slots stay reserved when the drawer opens. It shares the idea of "one of these is current" and nothing else, so it stays its own component in `Modules/Drawers/Drawer.lua`.
+
 ### The shared face
 
 `Skin/Assets/DORISBR.TTF` (DorisPP) is the suite's font. Ask for `BazUI.Skin.Theme.FontFile()` anywhere you would have written `STANDARD_TEXT_FONT`; it returns the game's font when the user turns the face off under BazUI > General or when the client can't read the file. Fonts are read at client startup, so a newly added file needs a restart, not a `/reload`. Where code sets a font object rather than a file, ask for `BazUI.Skin.Theme.FontObject("GameFontNormal")`: it mirrors that Blizzard object in our face and is edited in place, so the switch changes it live. Chat sets its own face through a font object of its own because it also carries a size slider.
