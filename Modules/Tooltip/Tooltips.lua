@@ -68,7 +68,7 @@ function addon:Anchor(tip)
             x / scale + self:GetSetting("cursorX"), y / scale + self:GetSetting("cursorY"))
     else
         local point = self:GetSetting("point")
-        tip:SetPoint(origin or point, anchorFrame, "CENTER", 0, 0)
+        tip:SetPoint(origin or point, anchorFrame, origin or point, 0, 0)
     end
 end
 
