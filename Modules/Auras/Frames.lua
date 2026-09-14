@@ -129,13 +129,18 @@ local function UpdateButton(btn)
     end
 
     if not icon then
+        -- Nothing at this position (the unit died, or the header is a
+        -- step behind): show nothing rather than an empty rim. Alpha is
+        -- not protected, so this is safe in combat.
         btn.Icon:SetTexture(nil)
         btn.Count:SetText("")
         btn.Duration:SetText("")
         btn.expirationTime = nil
+        btn:SetAlpha(0)
         return
     end
 
+    btn:SetAlpha(1)
     btn.Icon:SetTexture(icon)
     if addon:GetSetting("showCount") ~= false and count and count > 1 then
         btn.Count:SetText(count)
@@ -582,16 +587,12 @@ function addon:ApplySettings()
     if demoActive then LayoutDemo() end
 end
 
--- Out of combat, rebuild the target headers straight away when the
--- target changes; the header also refreshes itself on the target's
--- UNIT_AURA, which covers combat.
-function addon:RefreshTarget()
-    if InCombatLockdown() or not _G.SecureAuraHeader_Update then return end
-    for _, key in ipairs({ "TARGET_HELPFUL", "TARGET_HARMFUL" }) do
-        local h = headers[key]
-        if h and h:IsVisible() then _G.SecureAuraHeader_Update(h) end
-    end
-end
+-- The headers refresh themselves, securely, on their unit's UNIT_AURA
+-- (which also fires with a full update when the target changes) and on
+-- any attribute change. Never call SecureAuraHeader_Update from addon
+-- code: buttons it creates during such a call are tainted, and every
+-- later secure update that touches them in combat is blocked, leaving
+-- stale icons frozen on screen.
 
 function addon:QueueApply()
     if applyQueued then return end
@@ -618,6 +619,12 @@ function addon:Initialize()
     CreateHeader("HARMFUL", "player", "HARMFUL", "BazUIAurasDebuffs")
     CreateHeader("TARGET_HELPFUL", "target", "HELPFUL", "BazUIAurasTargetBuffs")
     CreateHeader("TARGET_HARMFUL", "target", "HARMFUL", "BazUIAurasTargetDebuffs")
+    -- A secure nudge when the target dies or is revived: the attribute
+    -- change makes the header re-run its update, hiding a dead unit's
+    -- leftover buttons even if no aura event follows.
+    for _, key in ipairs({ "TARGET_HELPFUL", "TARGET_HARMFUL" }) do
+        RegisterAttributeDriver(headers[key], "state-targetdead", "[@target,dead] 1; 0")
+    end
 
     -- One ticker for every duration label.
     local ticker = CreateFrame("Frame")
@@ -644,10 +651,7 @@ function addon:Initialize()
     self:On("UNIT_AURA", function(_, unit)
         if unit == "player" or unit == "target" then self:QueueRefresh() end
     end)
-    self:On("PLAYER_TARGET_CHANGED", function()
-        self:RefreshTarget()
-        self:QueueRefresh()
-    end)
+    self:On("PLAYER_TARGET_CHANGED", function() self:QueueRefresh() end)
     self:On("UNIT_INVENTORY_CHANGED", function(_, unit)
         if unit == "player" then self:QueueRefresh() end
     end)
