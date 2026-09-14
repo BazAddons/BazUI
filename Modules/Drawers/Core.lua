@@ -26,6 +26,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     defaults = {
         side = "right",
         width = 222,
+        widgetSpacing = 6,            -- vertical gap between docked widgets
         widgetSettings = {},          -- [widgetId] = { [key] = value } for widget-specific options
         widgetGlobalOverrides = {},   -- [key] = { enabled = bool, value = <any> } (BazUI global page)
         widgetFloating = {},          -- [widgetId] = true when detached from the drawer into free Edit Mode

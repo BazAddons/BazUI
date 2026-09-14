@@ -66,6 +66,15 @@ local function GetSettingsOptionsTable()
                 if addon.Drawer then addon.Drawer:SetWidth(val) end
             end,
         },
+        widgetSpacing = {
+            order = 13, type = "range", name = "Space between widgets",
+            min = 0, max = 24, step = 1, format = "%d px",
+            get = function() return addon:GetSetting("widgetSpacing") or 6 end,
+            set = function(_, val)
+                addon:SetSetting("widgetSpacing", val)
+                if addon.WidgetHost and addon.WidgetHost.Reflow then addon.WidgetHost:Reflow() end
+            end,
+        },
 
         appearanceHeader = { order = 20, type = "header", name = "Appearance" },
         lockedNote = {

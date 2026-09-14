@@ -34,7 +34,7 @@ local addon = BazUI:GetModule("Drawers")
 local WidgetHost = {}
 addon.WidgetHost = WidgetHost
 
-local SLOT_SPACING = 6
+local DEFAULT_SLOT_SPACING = 6        -- vertical gap between docked widgets; the widgetSpacing setting overrides it
 local WIDGET_SIDE_INSET = 4           -- breathing room on each side of the widget inside its slot
 local TITLE_HEIGHT = 20
 local TITLE_CONTENT_GAP = 2
@@ -743,6 +743,7 @@ function WidgetHost:Reflow()
     local locked = addon:GetSetting("locked") and true or false
     local effectiveTitleH = locked and 0 or TITLE_HEIGHT
     local effectiveGap    = locked and 0 or TITLE_CONTENT_GAP
+    local slotSpacing     = tonumber(addon:GetSetting("widgetSpacing")) or DEFAULT_SLOT_SPACING
 
     local allWidgets = addon.GetSortedWidgets and addon:GetSortedWidgets()
         or (BazUI.GetDockableWidgets and BazUI:GetDockableWidgets())
@@ -865,7 +866,7 @@ function WidgetHost:Reflow()
         slot:SetPoint("TOPRIGHT", self.parent, "TOPRIGHT", 0, yOffset)
         slot:SetHeight(slotHeight)
         slot:Show()
-        yOffset = yOffset - slotHeight - SLOT_SPACING
+        yOffset = yOffset - slotHeight - slotSpacing
     end
 
     -- Bottom stack: walk in reverse so the LAST widget in saved order
@@ -881,7 +882,7 @@ function WidgetHost:Reflow()
         slot:SetPoint("BOTTOMRIGHT", self.parent, "BOTTOMRIGHT", 0, bottomY)
         slot:SetHeight(slotHeight)
         slot:Show()
-        bottomY = bottomY + slotHeight + SLOT_SPACING
+        bottomY = bottomY + slotHeight + slotSpacing
     end
 
     if addon.Drawer and addon.Drawer.SetWidgetCount then
