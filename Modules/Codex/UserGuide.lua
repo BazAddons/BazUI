@@ -30,10 +30,16 @@ BazUI:RegisterUserGuide("Codex", {
                 { type = "table",
                   columns = { "Block", "What it shows" },
                   rows = {
+                      { "|cffffd700Quests|r",          "The ones ready to hand in, and the ones you are furthest through. The rest stay in the quest log, where twenty titles belong." },
+                      { "|cffffd700Open to you|r",     "Instances you are attuned or keyed for, at level, and not already saved. A row says go, or says why not." },
                       { "|cffffd700Saved instances|r", "Every raid and dungeon you are locked to, how far through it you got, and when the lock lifts. Only live lockouts appear; an expired one is gone." },
-                      { "|cffffd700Resets|r", "How long until the daily and weekly rollovers." },
+                      { "|cffffd700Working towards|r", "Attunements and keys you have started and not finished. Hover a row for what is left." },
+                      { "|cffffd700Resets|r",          "How much of the day and the week have run, and how long is left of each." },
                   }},
                 { type = "note", style = "tip", text = "The server only sends lockout data when it is asked. The codex asks on login, so the list can take a moment to fill in the first time." },
+                { type = "h2", text = "Where attunements come from" },
+                { type = "paragraph", text = "Classic has no attunement API. Retail hands an addon a list of what you are eligible for; this client hands over nothing, because in 2004 the answer lived in the player's head. So the codex works it out from the questions the client will answer: a quest you completed, a key in your bags, a reputation standing, your level. Which of those guard which door is the one piece of knowledge in the module that did not come from the game." },
+                { type = "note", text = "Written-down knowledge can be wrong, so every entry checks itself: it carries the name it believes its quest or item number has, and an entry the client disagrees with is hidden rather than shown. A mistake in that list can only ever cost you a missing door, never a false one. Type |cffffd700/codex verify|r to see whether anything is being hidden and why." },
             },
         },
         {
