@@ -1,0 +1,351 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+local module = BazUI:GetModule("UnitFrames")
+local addon = { name = "UnitFramesTarget", ASSETS = module.ASSETS, Layout = module.TargetLayout }
+module.Target = addon
+-- Separate event ownership keeps target events from replacing player handlers.
+addon.On = BazUI.AddonMixin.On
+function addon:GetSetting(key)
+    return module:GetSetting("target" .. key:sub(1, 1):upper() .. key:sub(2))
+end
+function addon:SetSetting(key, value)
+    module:SetSetting("target" .. key:sub(1, 1):upper() .. key:sub(2), value)
+end
+function addon:Print(text) module:Print(text) end
+local L = addon.Layout
+local WIDTH = 640
+local RATIO = WIDTH / L.width
+local HEIGHT = L.height * RATIO
+local root, artLayer, portrait, model, health, power, nameText, mover, hiddenStock
+local stockParent
+local visibilityRule
+local active, pending, manualUnlocked = false, false, false
+local hoveredAreas = {}
+
+local function ShowValues()
+    local mode = addon:GetSetting("showValues")
+    -- Preserve existing profiles that saved the original boolean toggle.
+    if mode == false or mode == "never" then return false end
+    if mode == "hover" then return next(hoveredAreas) ~= nil end
+    return true
+end
+
+
+local function Place(region, box, parent)
+    region:ClearAllPoints()
+    region:SetPoint("TOPLEFT", parent or root, "TOPLEFT", box.x * RATIO, -box.y * RATIO)
+    region:SetSize(box.w * RATIO, box.h * RATIO)
+end
+
+local function Mask(parent, box, key)
+    local mask = parent:CreateMaskTexture()
+    Place(mask, box)
+    mask:SetTexture(addon.ASSETS .. "target" .. key .. "Mask.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    -- Masks use their full image; UV cropping works for artwork textures
+    -- but not for MaskTexture in the client.
+    return mask
+end
+
+local function CreateBar(box, key)
+    local bar = CreateFrame("StatusBar", nil, root)
+    Place(bar, box)
+    bar:SetFrameLevel(root:GetFrameLevel() + 1)
+    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(1)
+    bar.mask = Mask(bar, box, key)
+    bar:GetStatusBarTexture():AddMaskTexture(bar.mask)
+    bar.background = bar:CreateTexture(nil, "BACKGROUND")
+    bar.background:SetAllPoints(bar)
+    bar.background:SetColorTexture(0.045, 0.045, 0.055, 1)
+    bar.background:AddMaskTexture(bar.mask)
+    return bar
+end
+
+local function ValueText(bar)
+    local text = artLayer:CreateFontString(nil, "OVERLAY")
+    text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
+    text:SetPoint("CENTER", bar, "CENTER")
+    text:SetTextColor(1, 1, 1)
+    return text
+end
+
+local function UnitMenu(frame)
+    if not UnitExists("target") then return end
+    if TargetFrame and TargetFrame:GetAttribute("menu-function") then
+        TargetFrame:GetAttribute("menu-function")(frame, "target")
+    elseif ToggleDropDownMenu and TargetFrameDropDown then
+        ToggleDropDownMenu(1, nil, TargetFrameDropDown, frame, 0, 0)
+    end
+end
+
+local function ClickArea(box, suffix)
+    local button = CreateFrame("Button", "BazUITarget" .. suffix, root, "SecureUnitButtonTemplate")
+    Place(button, box)
+    button:SetFrameLevel(root:GetFrameLevel() + 8)
+    SecureUnitButton_OnLoad(button, "target", UnitMenu)
+    button:SetScript("OnEnter", function(self)
+        hoveredAreas[self] = true
+        addon:UpdateValues()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetUnit("target")
+        GameTooltip:Show()
+    end)
+    local function Leave(self)
+        hoveredAreas[self] = nil
+        addon:UpdateValues()
+        GameTooltip_Hide()
+    end
+    button:SetScript("OnLeave", Leave)
+    button:SetScript("OnHide", Leave)
+    return button
+end
+
+local function SetStockHidden(hide)
+    if not TargetFrame then return end
+    if hide and not stockParent then
+        stockParent = TargetFrame:GetParent()
+        TargetFrame:SetParent(hiddenStock)
+    elseif not hide and stockParent then
+        TargetFrame:SetParent(stockParent)
+        stockParent = nil
+    end
+end
+
+function addon:UpdatePortrait()
+    if not active then return end
+    if not UnitExists("target") then
+        model:Hide(); model:ClearModel(); portrait:Hide()
+        return
+    end
+    if self:GetSetting("portraitStyle") == "3d" then
+        portrait:Hide()
+        model:Show()
+        model:ClearModel()
+        model:SetUnit("target")
+        model:SetPortraitZoom(1)
+        model:SetCamDistanceScale(0.7)
+    else
+        model:Hide()
+        portrait:Show()
+        SetPortraitTexture(portrait, "target")
+    end
+end
+
+local function FormatValue(current, maximum)
+    return string.format("%d / %d", current, maximum)
+end
+
+function addon:UpdateValues()
+    if not active then return end
+    local maximum = math.max(1, UnitHealthMax("target") or 1)
+    local current = math.max(0, math.min(maximum, UnitHealth("target") or 0))
+    health:SetMinMaxValues(0, maximum)
+    health:SetValue(current)
+    -- Selection colors can be blue for friendly, unflagged players.
+    -- Health uses reaction colors so it stays distinct from mana.
+    local reaction = UnitReaction("target", "player")
+    local r, g, b = 1, 0.85, 0
+    if UnitIsUnit("target", "player") or (reaction and reaction >= 5) then
+        r, g, b = 0.1, 0.8, 0.15
+    elseif reaction and reaction <= 3 then
+        r, g, b = 0.8, 0.15, 0.1
+    end
+    if UnitIsTapDenied("target") then r, g, b = 0.5, 0.5, 0.5 end
+    if self:GetSetting("classColor") and UnitIsPlayer("target") then
+        local _, class = UnitClass("target")
+        local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+        if color then r, g, b = color.r, color.g, color.b end
+    end
+    health:SetStatusBarColor(r, g, b)
+    local powerType, token = UnitPowerType("target")
+    local maxPower = math.max(0, UnitPowerMax("target", powerType) or 0)
+    local currentPower = math.max(0, math.min(maxPower, UnitPower("target", powerType) or 0))
+    power:SetMinMaxValues(0, math.max(1, maxPower))
+    power:SetValue(currentPower)
+    local color = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
+    power:SetStatusBarColor(color and color.r or 0.1, color and color.g or 0.3, color and color.b or 1)
+    nameText:SetText(UnitName("target") or "")
+    if ShowValues() and UnitExists("target") then
+        health.text:SetText(UnitIsGhost("target") and "Ghost" or UnitIsDead("target") and "Dead" or FormatValue(current, maximum))
+        power.text:SetText(maxPower > 0 and FormatValue(currentPower, maxPower) or "")
+    else
+        health.text:SetText("")
+        power.text:SetText("")
+    end
+end
+
+-- The edit mover is deliberately independent of the secure unit buttons.
+-- BazUI may show its Edit Mode overlay during combat; moving this proxy
+-- never moves protected frames until ApplySettings can run safely.
+function addon:SavePosition()
+    local cx, cy = mover:GetCenter()
+    if not cx then return end
+    local factor = mover:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    self:SetSetting("position", { point = "CENTER", relPoint = "BOTTOMLEFT", x = cx * factor, y = cy * factor })
+    self:ApplySettings()
+end
+
+function addon:RefreshMover()
+    local editing = manualUnlocked or BazUI:IsEditMode()
+    local shown = active and editing and not InCombatLockdown()
+    mover:SetShown(shown)
+    if not shown then
+        mover:StopMovingOrSizing()
+        mover.isDragging = false
+        if mover._bazEditOverlay then mover._bazEditOverlay:SetScript("OnUpdate", nil) end
+    end
+end
+
+function addon:SetUnlocked(value)
+    if value and InCombatLockdown() then
+        self:Print("You can move the target frame after combat ends.")
+        return
+    end
+    manualUnlocked = value
+    if mover then self:RefreshMover() end
+end
+
+function addon:ApplySettings()
+    if not root then return end
+    if InCombatLockdown() then
+        pending = true
+        return
+    end
+    pending = false
+    local scale = math.max(0.5, math.min(2, tonumber(self:GetSetting("scale")) or 1))
+    local pos = self:GetSetting("position") or { point = "TOP", relPoint = "TOP", x = 0, y = -30 }
+    root:SetScale(scale)
+    root:ClearAllPoints()
+    root:SetPoint(pos.point, UIParent, pos.relPoint, (pos.x or 0) / scale, (pos.y or 0) / scale)
+    mover:ClearAllPoints()
+    mover:SetSize(WIDTH * scale, HEIGHT * scale)
+    mover:SetPoint(pos.point, UIParent, pos.relPoint, pos.x or 0, pos.y or 0)
+    active = self:GetSetting("enabled") ~= false
+    -- Secure visibility handles target acquisition/loss even during combat.
+    local rule = active and "[@target,exists] show; hide" or "hide"
+    if rule ~= visibilityRule then
+        RegisterStateDriver(root, "visibility", rule)
+        visibilityRule = rule
+    end
+    SetStockHidden(active)
+    self:UpdateValues()
+    self:UpdatePortrait()
+    self:RefreshMover()
+end
+
+function addon:Initialize()
+    if root then return end
+    -- Loading/reloading an addon in combat must not create secure buttons.
+    if InCombatLockdown() then
+        self:On("PLAYER_REGEN_ENABLED", function() self:Initialize() end)
+        return
+    end
+    hiddenStock = CreateFrame("Frame")
+    hiddenStock:Hide()
+    root = CreateFrame("Frame", "BazUITargetFrame", UIParent)
+    root:SetSize(WIDTH, HEIGHT)
+    root:SetFrameStrata("LOW")
+    root:SetFrameLevel(10)
+    root:SetClampedToScreen(true)
+    root:Hide()
+    self.frame = root
+    module.targetFrame = root
+    health = CreateBar(L.health, "health")
+    power = CreateBar(L.power, "power")
+
+    local portraitLayer = CreateFrame("Frame", nil, root)
+    portraitLayer:SetAllPoints(root)
+    portraitLayer:SetFrameLevel(root:GetFrameLevel() + 1)
+    local portraitMask = Mask(portraitLayer, L.portrait, "portrait")
+    local backdrop = portraitLayer:CreateTexture(nil, "BACKGROUND")
+    Place(backdrop, L.portrait)
+    backdrop:SetColorTexture(0.025, 0.04, 0.05, 1)
+    backdrop:AddMaskTexture(portraitMask)
+    -- Keep the enlarged portrait beneath the frame's metal and inner shading.
+    local flatLayer = CreateFrame("Frame", nil, root)
+    flatLayer:SetAllPoints(root)
+    flatLayer:SetFrameLevel(root:GetFrameLevel() + 3)
+    local flatBox = { x = 895, y = 286, w = 374, h = 375 }
+    local flatMask = flatLayer:CreateMaskTexture()
+    Place(flatMask, flatBox)
+    flatMask:SetTexture(addon.ASSETS .. "targetFlatPortraitMask.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    portrait = flatLayer:CreateTexture(nil, "ARTWORK")
+    portrait:SetPoint("CENTER", backdrop, "CENTER")
+    portrait:SetSize(374 * RATIO * 1.16, 375 * RATIO * 1.16)
+    portrait:AddMaskTexture(flatMask)
+
+    model = CreateFrame("PlayerModel", nil, root)
+    model:SetFrameLevel(root:GetFrameLevel() + 2)
+    -- Let the opaque outer ring cover the viewport's corners. Inscribing
+    -- the viewport in the inner aperture made the head too small.
+    local side = math.min(L.portrait.w, L.portrait.h) * RATIO * 0.94
+    model:SetSize(side, side)
+    model:SetPoint("CENTER", portrait, "CENTER")
+    model:EnableMouse(false)
+    model:SetScript("OnModelLoaded", function(self) self:SetPortraitZoom(1); self:SetCamDistanceScale(0.7) end)
+    model:Hide()
+
+    artLayer = CreateFrame("Frame", nil, root)
+    artLayer:SetAllPoints(root)
+    artLayer:SetFrameLevel(root:GetFrameLevel() + 4)
+    local artwork = artLayer:CreateTexture(nil, "ARTWORK")
+    artwork:SetAllPoints(root)
+    artwork:SetTexture(self.ASSETS .. "targetFrameRuntime.tga")
+    artwork:SetTexCoord(0, L.width / L.textureWidth, 0, L.height / L.textureHeight)
+    nameText = artLayer:CreateFontString(nil, "OVERLAY")
+    Place(nameText, L.name)
+    nameText:SetFont(STANDARD_TEXT_FONT, 15, "OUTLINE")
+    nameText:SetTextColor(1, 0.84, 0.5)
+    nameText:SetWordWrap(false)
+    health.text, power.text = ValueText(health), ValueText(power)
+    -- The nameplate bevel projects into the center of the lower slot.
+    power.text:ClearAllPoints()
+    power.text:SetPoint("CENTER", root, "TOPLEFT", 420 * RATIO, -168 * RATIO)
+    health.text:ClearAllPoints()
+    health.text:SetPoint("CENTER", root, "TOPLEFT", 420 * RATIO, -(L.health.y + L.health.h / 2) * RATIO)
+    -- Both bars sit above the nameplate in the separate target artwork.
+    ClickArea({ x = 850, y = 285, w = 465, h = 415 }, "PortraitButton")
+    ClickArea({ x = 15, y = 10, w = 2135, h = 275 }, "BarsButton")
+    mover = CreateFrame("Frame", "BazUITargetFrameMover", UIParent)
+    mover:SetFrameStrata("DIALOG")
+    mover:SetMovable(true)
+    mover:SetClampedToScreen(true)
+    mover:EnableMouse(true)
+    mover:RegisterForDrag("LeftButton")
+    local tint = mover:CreateTexture(nil, "BACKGROUND")
+    tint:SetAllPoints(mover); tint:SetColorTexture(0.1, 0.45, 0.8, 0.22)
+    local label = mover:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("CENTER"); label:SetText("Target Frame - drag to move")
+    mover:SetScript("OnDragStart", function(self)
+        if not InCombatLockdown() then self:SetMovable(true); self:StartMoving() end
+    end)
+    mover:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); addon:SavePosition() end)
+    BazUI:RegisterEditModeFrame(mover, {
+        label = "Target Frame", addonName = "UnitFrames", positionKey = false,
+        settings = BazUI:BuildEditModeArrayFromSpec("UnitFramesTarget"),
+        onPositionChanged = function() addon:SavePosition() end,
+        onEnter = function() addon:RefreshMover() end,
+        onExit = function() addon:RefreshMover() end,
+    })
+    self:On("BAZ_EDITMODE_EXIT", function() self:RefreshMover() end)
+    self:On("PLAYER_REGEN_DISABLED", function() self:RefreshMover() end)
+    self:On("PLAYER_REGEN_ENABLED", function()
+        if pending then self:ApplySettings() else self:RefreshMover() end
+    end)
+    self:On({ "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE", "UNIT_FLAGS", "UNIT_FACTION" }, function(_, unit)
+        if unit == "target" then self:UpdateValues() end
+    end)
+    self:On({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }, function(_, unit)
+        if unit == "target" then self:UpdatePortrait() end
+    end)
+    self:On({ "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED" }, function()
+        self:UpdateValues(); self:UpdatePortrait()
+    end)
+    self:ApplySettings()
+end
+
+function addon:ResetLayout()
+    self:SetSetting("scale", 1)
+    self:SetSetting("position", { point = "TOP", relPoint = "TOP", x = 0, y = -30 })
+    self:ApplySettings()
+end

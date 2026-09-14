@@ -118,3 +118,10 @@ Modules\Bars\Dialogs.lua
 Modules\Bars\Keybinds.lua
 Modules\Bars\Options.lua
 Modules\Bars\UserGuide.lua
+
+Modules\UnitFrames\Core.lua
+Modules\UnitFrames\Layout.lua
+Modules\UnitFrames\Settings.lua
+Modules\UnitFrames\Player.lua
+Modules\UnitFrames\TargetLayout.lua
+Modules\UnitFrames\Target.lua
