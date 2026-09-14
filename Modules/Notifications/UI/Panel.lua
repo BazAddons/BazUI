@@ -14,12 +14,7 @@ local CARD_SPACING = 4
 local CONTENT_WIDTH = PANEL_WIDTH - PANEL_PADDING * 2
 local HISTORY_PAGE_SIZE = 100
 
-local BACKDROP_PANEL = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-}
+local BACKDROP_PANEL = BazUI.Skin.Theme.BACKDROP_PANEL
 
 local BACKDROP_INPUT = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -152,7 +147,7 @@ local function CreateDropdown(parent, width, items, currentValue, onChange)
         edgeSize = 1,
         insets = { left = 1, right = 1, top = 1, bottom = 1 },
     })
-    dropdown:SetBackdropColor(0.08, 0.08, 0.1, 0.9)
+    dropdown:SetBackdropColor(unpack(Colors.cardBg))
     dropdown:SetBackdropBorderColor(unpack(Colors.cardBorder))
 
     dropdown.selectedValue = currentValue
@@ -183,7 +178,7 @@ local function CreateDropdown(parent, width, items, currentValue, onChange)
         edgeSize = 1,
         insets = { left = 1, right = 1, top = 1, bottom = 1 },
     })
-    dropdown.menu:SetBackdropColor(0.05, 0.05, 0.07, 0.95)
+    dropdown.menu:SetBackdropColor(unpack(Colors.panelBg))
     dropdown.menu:SetBackdropBorderColor(unpack(Colors.cardBorder))
     dropdown.menu:SetFrameStrata("TOOLTIP")
     dropdown.menu:SetFrameLevel(200)
@@ -406,7 +401,7 @@ local function CreatePanel()
 
     panel.titleText = panel.header:CreateFontString(nil, "OVERLAY")
     panel.titleText:SetFontObject(GameFontNormalLarge)
-    panel.titleText:SetTextColor(unpack(Colors.textPrimary))
+    panel.titleText:SetTextColor(unpack(Colors.accent))
     panel.titleText:SetText("Notifications")
 
     -- Settings gear button
@@ -597,7 +592,7 @@ local function CreatePanel()
     panel.histSearchBox:SetSize(CONTENT_WIDTH, 22)
     panel.histSearchBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -histSearchTop)
     panel.histSearchBox:SetBackdrop(BACKDROP_INPUT)
-    panel.histSearchBox:SetBackdropColor(0.06, 0.06, 0.08, 0.9)
+    panel.histSearchBox:SetBackdropColor(unpack(Colors.cardBg))
     panel.histSearchBox:SetBackdropBorderColor(unpack(Colors.cardBorder))
     panel.histSearchBox:SetFontObject(GameFontHighlightSmall)
     panel.histSearchBox:SetTextColor(unpack(Colors.textPrimary))

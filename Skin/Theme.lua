@@ -1,0 +1,113 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Skin: Theme
+--
+-- The suite's shared look: dark, warm panel interiors with a gold metal
+-- edge, gold headings, and round ring-framed buttons (the minimap ring,
+-- the portrait ring, the minimap buttons). Modules pull colours,
+-- backdrops and the round-button treatment from here so a panel in one
+-- module reads the same as a panel in another.
+---------------------------------------------------------------------------
+
+local Skin = BazUI.Skin
+local Theme = {}
+Skin.Theme = Theme
+
+Theme.colors = {
+    gold      = { 1.00, 0.82, 0.00, 1.00 },  -- headings, selected state (the |cffffd700 gold)
+    goldSoft  = { 1.00, 0.84, 0.50, 1.00 },  -- names and labels on artwork
+    goldDim   = { 0.62, 0.48, 0.20, 1.00 },  -- frame edges
+    divider   = { 0.55, 0.42, 0.18, 0.60 },
+    edge      = { 0.42, 0.33, 0.14, 0.60 },  -- one-pixel borders inside a panel
+
+    bg        = { 0.04, 0.035, 0.03, 0.92 }, -- panel and toast interiors
+    bgRaised  = { 0.10, 0.09, 0.07, 0.88 },  -- cards and rows
+    bgHover   = { 0.17, 0.14, 0.09, 0.94 },
+
+    text      = { 1.00, 0.96, 0.88, 1.00 },
+    textSoft  = { 0.82, 0.76, 0.62, 1.00 },
+    textMuted = { 0.60, 0.55, 0.45, 1.00 },
+
+    warn      = { 0.95, 0.50, 0.15, 1.00 },
+    danger    = { 0.85, 0.30, 0.30, 1.00 },
+}
+
+-- Blizzard's tooltip nine-slice tinted gold: the frame Bags and the
+-- Drawers already use, so panels and toasts belong to the same family.
+Theme.BACKDROP_PANEL = {
+    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 16,
+    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+}
+
+-- Flat one-pixel frame for elements that sit inside a panel.
+Theme.BACKDROP_FLAT = {
+    bgFile   = "Interface\\Buttons\\WHITE8x8",
+    edgeFile = "Interface\\Buttons\\WHITE8x8",
+    edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+}
+
+local function SetColor(fn, c)
+    fn(c[1], c[2], c[3], c[4] or 1)
+end
+
+-- Gold-edged panel backdrop. `frame` must inherit BackdropTemplate.
+function Theme.ApplyPanel(frame, bgColor)
+    frame:SetBackdrop(Theme.BACKDROP_PANEL)
+    SetColor(function(...) frame:SetBackdropColor(...) end, bgColor or Theme.colors.bg)
+    SetColor(function(...) frame:SetBackdropBorderColor(...) end, Theme.colors.goldDim)
+end
+
+---------------------------------------------------------------------------
+-- Round ring-framed button (the minimap-button treatment)
+--
+-- A dark disc, the icon masked to a circle inside the ring, and the gold
+-- ring on top. Crop the icon with SetTexCoord *before* calling this:
+-- a masked texture rejects SetTexCoord.
+---------------------------------------------------------------------------
+
+function Theme.ApplyRoundButton(button, icon, opts)
+    opts = opts or {}
+    local size  = opts.size or button:GetWidth()
+    local inner = size * (opts.innerRatio or Skin.BUTTON_RING_INNER_RATIO) + (opts.overlap or 2) * 2
+
+    if not button._bazRing then
+        local disc = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+        SetColor(function(...) disc:SetColorTexture(...) end, Skin.BUTTON_BACKDROP_COLOR)
+        local discMask = button:CreateMaskTexture()
+        discMask:SetTexture(Skin.ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        disc:AddMaskTexture(discMask)
+
+        local iconMask = button:CreateMaskTexture()
+        iconMask:SetTexture(Skin.ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        icon:AddMaskTexture(iconMask)
+
+        local ring = button:CreateTexture(nil, "OVERLAY", nil, 7)
+        ring:SetTexture(Skin.BUTTON_RING)
+
+        button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing = disc, discMask, iconMask, ring
+    end
+
+    button._bazRing:ClearAllPoints()
+    button._bazRing:SetPoint("CENTER")
+    button._bazRing:SetSize(size, size)
+
+    icon:ClearAllPoints()
+    icon:SetPoint("CENTER")
+    icon:SetSize(inner, inner)
+
+    button._bazDisc:ClearAllPoints()
+    button._bazDisc:SetPoint("CENTER")
+    button._bazDisc:SetSize(inner + 2, inner + 2)
+    button._bazDiscMask:SetAllPoints(button._bazDisc)
+    button._bazIconMask:SetAllPoints(icon)
+end
+
+-- Hover tint for a round button's disc; pass nil to restore.
+function Theme.SetRoundButtonHover(button, hovered)
+    if not button._bazDisc then return end
+    local c = hovered and Theme.colors.bgHover or Skin.BUTTON_BACKDROP_COLOR
+    button._bazDisc:SetColorTexture(c[1], c[2], c[3], 1)
+end

@@ -62,6 +62,8 @@ Differences from the old suite:
 
 Every texture and brand colour lives in `BazUI.Skin`. Modules reference `BazUI.Skin.MINIMAP_RING` and friends rather than paths. New assets go in `Skin/Assets` at power-of-two sizes; document their geometry (inner/outer ratios) next to the constant.
 
+`Skin/Theme.lua` holds the shared look: the colour palette (`BazUI.Skin.Theme.colors`), the gold-edged panel backdrop (`Theme.ApplyPanel`), a flat inner backdrop, and the round ring-framed button treatment (`Theme.ApplyRoundButton`). New module UI should draw from it rather than define its own colours.
+
 ## Flavour and compatibility
 
 Development happens on Classic Era 1.15 because Forever is built by the Classic team on the same client family. Keep every API touchpoint that might differ (quest log, containers, minimap frames, chat) behind small helpers so the Forever delta is a short edit. `Modules/Drawers/Compat.lua` holds third-party shims; a top-level `Compat.lua` is the place for client-version shims once the beta shows what differs.

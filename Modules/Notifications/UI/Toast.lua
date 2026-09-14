@@ -8,13 +8,6 @@ local TOAST_MIN_HEIGHT = 58
 local TOAST_SPACING = 4
 local MAX_TOASTS = 5
 
-local BACKDROP_TOAST = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-}
-
 local activeToasts = {}
 
 ---------------------------------------------------------------------------
@@ -32,9 +25,7 @@ local activeToasts = {}
 local function CreateToast(index)
     local toast = CreateFrame("Button", "BazUINotifToast" .. index, UIParent, "BackdropTemplate")
     toast:SetSize(TOAST_WIDTH, TOAST_MIN_HEIGHT)
-    toast:SetBackdrop(BACKDROP_TOAST)
-    toast:SetBackdropColor(unpack(Colors.toastBg))
-    toast:SetBackdropBorderColor(unpack(Colors.toastBorder))
+    BazUI.Skin.Theme.ApplyPanel(toast, Colors.toastBg)
     toast:SetFrameStrata("HIGH")
     toast:SetFrameLevel(5)
     toast:SetClampedToScreen(true)

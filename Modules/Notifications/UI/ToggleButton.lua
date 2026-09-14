@@ -9,19 +9,9 @@ local BADGE_SIZE = 16
 local button
 local badge
 
-local BACKDROP_BUTTON = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-}
-
 local function CreateToggleButton()
-    button = CreateFrame("Button", "BazUINotifToggleButton", UIParent, "BackdropTemplate")
+    button = CreateFrame("Button", "BazUINotifToggleButton", UIParent)
     button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-    button:SetBackdrop(BACKDROP_BUTTON)
-    button:SetBackdropColor(unpack(Colors.cardBg))
-    button:SetBackdropBorderColor(unpack(Colors.cardBorder))
     button:SetFrameStrata("HIGH")
     button:SetFrameLevel(100)
     button:SetClampedToScreen(true)
@@ -34,6 +24,8 @@ local function CreateToggleButton()
     button.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
     button.icon:SetTexture("Interface\\Icons\\INV_Misc_Bell_01")
     button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Round ring-framed button, the same treatment as the minimap buttons.
+    BazUI.Skin.Theme.ApplyRoundButton(button, button.icon)
 
     -- Badge
     badge = CreateFrame("Frame", nil, button, "BackdropTemplate")
@@ -46,7 +38,7 @@ local function CreateToggleButton()
         insets = { left = 1, right = 1, top = 1, bottom = 1 },
     })
     badge:SetBackdropColor(unpack(Colors.badge))
-    badge:SetBackdropBorderColor(unpack(Colors.badge))
+    badge:SetBackdropBorderColor(unpack(Colors.panelBorder))
     badge:SetFrameLevel(button:GetFrameLevel() + 2)
     badge:EnableMouse(false)
     badge:Hide()
@@ -68,7 +60,7 @@ local function CreateToggleButton()
 
     -- Hover + Tooltip
     button:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(unpack(Colors.cardHover))
+        BazUI.Skin.Theme.SetRoundButtonHover(self, true)
         GameTooltip:SetOwner(self, "ANCHOR_NONE")
 
         local anchorData = addon.GetAnchorData(addon.db.position)
@@ -90,7 +82,7 @@ local function CreateToggleButton()
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(unpack(Colors.cardBg))
+        BazUI.Skin.Theme.SetRoundButtonHover(self, false)
         GameTooltip:Hide()
     end)
 end

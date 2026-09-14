@@ -50,6 +50,7 @@ Core\IconPicker.lua
 
 # Skin - textures and colours shared by every module.
 Skin\Skin.lua
+Skin\Theme.lua
 
 # Modules
 Modules\Drawers\Core.lua
