@@ -79,7 +79,7 @@ Every texture and brand colour lives in `BazUI.Skin`. Modules reference `BazUI.S
 
 ### The shared face
 
-`Skin/Assets/DORISBR.TTF` (DorisPP) is the suite's font. Ask for `BazUI.Skin.Theme.FontFile()` anywhere you would have written `STANDARD_TEXT_FONT`; it returns the game's font when the user turns the face off under BazUI > General or when the client can't read the file. Fonts are read at client startup, so a newly added file needs a restart, not a `/reload`. Chat sets its own face through a font object because it also carries a size slider.
+`Skin/Assets/DORISBR.TTF` (DorisPP) is the suite's font. Ask for `BazUI.Skin.Theme.FontFile()` anywhere you would have written `STANDARD_TEXT_FONT`; it returns the game's font when the user turns the face off under BazUI > General or when the client can't read the file. Fonts are read at client startup, so a newly added file needs a restart, not a `/reload`. Where code sets a font object rather than a file, ask for `BazUI.Skin.Theme.FontObject("GameFontNormal")`: it mirrors that Blizzard object in our face and is edited in place, so the switch changes it live. Chat sets its own face through a font object of its own because it also carries a size slider.
 
 ## Flavour and compatibility
 

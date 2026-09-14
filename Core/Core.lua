@@ -449,6 +449,9 @@ BazUI:QueueForLogin(function()
                     get = function() return BazUIDB.useFont ~= false end,
                     set = function(_, val)
                         BazUIDB.useFont = val
+                        -- Mirrored font objects re-point in place, so
+                        -- everything drawn through one changes at once.
+                        BazUI.Skin.Theme.RefreshFontObjects()
                         -- Modules that set their fonts on every apply
                         -- change straight away; the rest draw their text
                         -- once, at login.

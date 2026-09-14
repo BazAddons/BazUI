@@ -44,7 +44,7 @@ local function CreateToggleButton()
     badge:Hide()
 
     badge.text = badge:CreateFontString(nil, "OVERLAY")
-    badge.text:SetFontObject(GameFontNormalSmall)
+    badge.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormalSmall"))
     badge.text:SetTextColor(unpack(Colors.badgeText))
     badge.text:SetPoint("CENTER", badge, "CENTER", 0, 0)
 

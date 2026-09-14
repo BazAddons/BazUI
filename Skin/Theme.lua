@@ -97,6 +97,44 @@ function Theme.FontFile()
     return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
+-- Blizzard's font objects, mirrored in our face.
+--
+-- Code that calls SetFontObject(GameFontNormal) can't take a file the
+-- way SetFont does, so ask for Theme.FontObject("GameFontNormal") and
+-- get an object with the same size, flags, colour and justification,
+-- drawn in the suite's face. The object is shared and edited in place,
+-- so every string using it follows when the switch changes: flipping
+-- it calls RefreshFontObjects and the text redraws with no reload.
+local fontObjects = {}
+
+function Theme.FontObject(blizzardName)
+    local base = _G[blizzardName]
+    if not base then return nil end
+
+    local obj = fontObjects[blizzardName]
+    if not obj then
+        obj = CreateFont("BazUI" .. blizzardName)
+        fontObjects[blizzardName] = obj
+    end
+
+    local baseFace, size, flags = base:GetFont()
+    local face = baseFace
+    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then face = Theme.FONT_FILE end
+    obj:SetFont(face, size or 12, flags or "")
+    obj:SetTextColor(base:GetTextColor())
+    obj:SetShadowColor(base:GetShadowColor())
+    obj:SetShadowOffset(base:GetShadowOffset())
+    local h, v = base:GetJustifyH(), base:GetJustifyV()
+    if h then obj:SetJustifyH(h) end
+    if v then obj:SetJustifyV(v) end
+    return obj
+end
+
+-- Re-point every mirrored object at the face now in force.
+function Theme.RefreshFontObjects()
+    for name in pairs(fontObjects) do Theme.FontObject(name) end
+end
+
 local function SetColor(fn, c)
     fn(c[1], c[2], c[3], c[4] or 1)
 end

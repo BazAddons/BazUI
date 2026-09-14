@@ -19,7 +19,7 @@ local function CreateGroupHeader(index)
 
     -- Module name
     header.label = header:CreateFontString(nil, "OVERLAY")
-    header.label:SetFontObject(GameFontNormalSmall)
+    header.label:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormalSmall"))
     header.label:SetTextColor(unpack(Colors.groupHeader))
     header.label:SetJustifyH("LEFT")
     header.label:SetPoint("LEFT", header.icon, "RIGHT", 4, 0)
@@ -30,7 +30,7 @@ local function CreateGroupHeader(index)
     header.clearBtn:SetPoint("RIGHT", header, "RIGHT", -HEADER_PADDING, 0)
 
     header.clearBtn.text = header.clearBtn:CreateFontString(nil, "OVERLAY")
-    header.clearBtn.text:SetFontObject(GameFontNormalSmall)
+    header.clearBtn.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormalSmall"))
     header.clearBtn.text:SetText("Clear")
     header.clearBtn.text:SetTextColor(unpack(Colors.textMuted))
     header.clearBtn.text:SetAllPoints()
