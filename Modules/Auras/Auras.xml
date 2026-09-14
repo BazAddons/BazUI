@@ -51,8 +51,11 @@
          (its "template" attribute) and stamps index, filter or target-slot
          on each; BazUI.Auras.* only reads those and paints.
          SecureAuraButtonTemplate brings the right-click cancel
-         (type2 = cancelaura). -->
-    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate, BazUIAuraVisualTemplate" virtual="true">
+         (type2 = cancelaura). It registers the press only; the secure
+         click handler acts on the press or the release depending on the
+         "cast on key down" setting, so both are registered here and the
+         handler fires the cancel exactly once either way. -->
+    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate, BazUIAuraVisualTemplate" registerForClicks="RightButtonDown, RightButtonUp" virtual="true">
         <Scripts>
             <OnLoad>BazUI.Auras.OnButtonLoad(self)</OnLoad>
             <OnAttributeChanged>BazUI.Auras.OnButtonAttributeChanged(self, name, value)</OnAttributeChanged>
