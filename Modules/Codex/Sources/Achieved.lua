@@ -11,7 +11,8 @@
 
 local Codex = BazUI.Codex
 
-local DONE = { 0.45, 0.78, 0.48, 1 }
+local Theme = BazUI.Skin.Theme
+local DONE = Theme.colors.success
 
 ---------------------------------------------------------------------------
 -- Titles
@@ -33,10 +34,11 @@ local function KnownTitles()
 end
 
 Codex:RegisterSection({
-    id    = "titles",
-    tab   = "achieved",
-    title = "Titles",
-    order = 10,
+    id     = "titles",
+    tab    = "achieved",
+    title  = "Titles",
+    order  = 10,
+    accent = Theme.colors.success,
     empty = "No titles earned yet.",
     events = { "KNOWN_TITLES_UPDATE", "PLAYER_ENTERING_WORLD" },
 
@@ -96,10 +98,11 @@ local function CompanionCount(kind)
 end
 
 Codex:RegisterSection({
-    id    = "mounts",
-    tab   = "achieved",
-    title = "Mounts",
-    order = 20,
+    id     = "mounts",
+    tab    = "achieved",
+    title  = "Mounts",
+    order  = 20,
+    accent = { 0.45, 0.68, 0.85, 1 },
     empty = "No mounts yet.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
@@ -110,10 +113,11 @@ Codex:RegisterSection({
 })
 
 Codex:RegisterSection({
-    id    = "pets",
-    tab   = "achieved",
-    title = "Pets",
-    order = 30,
+    id     = "pets",
+    tab    = "achieved",
+    title  = "Pets",
+    order  = 30,
+    accent = { 0.72, 0.55, 0.85, 1 },
     empty = "No pets yet.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
@@ -170,10 +174,11 @@ local function Factions()
 end
 
 Codex:RegisterSection({
-    id    = "reputation",
-    tab   = "achieved",
-    title = "Reputation",
-    order = 40,
+    id     = "reputation",
+    tab    = "achieved",
+    title  = "Reputation",
+    order  = 40,
+    accent = Theme.colors.caution,
     empty = "Nothing at revered yet.",
     events = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
 
@@ -197,7 +202,9 @@ Codex:RegisterSection({
                 -- Exalted is the end of the track, so it reads full
                 -- rather than as whatever fraction the client reports.
                 progress = (done or span > 0)
-                    and { value = done and 1 or (f.value - f.min), max = done and 1 or span }
+                    and { value = done and 1 or (f.value - f.min),
+                          max   = done and 1 or span,
+                          color = done and Theme.colors.success or Theme.colors.caution }
                     or nil,
             }
         end

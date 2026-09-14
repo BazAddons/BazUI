@@ -33,7 +33,7 @@ local GAP           = 12
 local SCROLLBAR_W   = 16
 
 local ROW_H         = 24
-local ROW_BAR_H     = 34   -- a row carrying its own progress bar
+local ROW_BAR_H     = 38   -- a row carrying its own progress bar
 local CARD_HEAD     = 26
 local CARD_PAD      = 8
 local CARD_GAP      = 10
@@ -48,12 +48,10 @@ local refreshQueued = false
 -- What a state means, in colour
 ---------------------------------------------------------------------------
 
-local DONE = { 0.45, 0.78, 0.48, 1 }
-
 local STATE_COLOR = {
     open   = Theme.colors.gold,
-    locked = Theme.colors.textMuted,
-    done   = DONE,
+    locked = Theme.colors.caution,
+    done   = Theme.colors.success,
 }
 
 Codex.STATE_COLOR = STATE_COLOR
@@ -124,9 +122,9 @@ end
 -- A row with a reading of its own gets a hairline bar beneath the label.
 local function RowBar(row)
     if not row.bar then
-        row.bar = Theme.CreateStatBar(row, { height = 4 })
-        row.bar:SetPoint("BOTTOMLEFT", 8, 5)
-        row.bar:SetPoint("BOTTOMRIGHT", -8, 5)
+        row.bar = Theme.CreateStatBar(row, { height = 8 })
+        row.bar:SetPoint("BOTTOMLEFT", 10, 4)
+        row.bar:SetPoint("BOTTOMRIGHT", -10, 4)
     end
     return row.bar
 end
@@ -208,12 +206,20 @@ local function AcquireCard()
     card.head.bg:SetAllPoints()
     card.head.bg:SetColorTexture(0, 0, 0, 0.25)
 
+    -- A band of the section's own colour down the left of the card, and
+    -- a wash of it behind the heading. This is what stops six cards of
+    -- identical chrome reading as one long list.
+    card.accent = card:CreateTexture(nil, "ARTWORK")
+    card.accent:SetWidth(3)
+    card.accent:SetPoint("TOPLEFT", 1, -1)
+    card.accent:SetPoint("BOTTOMLEFT", 1, 1)
+
     card.chevron = Theme.FontString(card.head, "OVERLAY", "GameFontNormalSmall")
-    card.chevron:SetPoint("LEFT", 9, 0)
+    card.chevron:SetPoint("LEFT", 12, 0)
     card.chevron:SetTextColor(unpack(Theme.colors.goldDim))
 
     card.title = Theme.FontString(card.head, "OVERLAY", "GameFontNormal")
-    card.title:SetPoint("LEFT", 24, 0)
+    card.title:SetPoint("LEFT", 27, 0)
     card.title:SetTextColor(unpack(Theme.colors.gold))
 
     card.count = Theme.FontString(card.head, "OVERLAY", "GameFontHighlightSmall")
@@ -229,16 +235,17 @@ local function AcquireCard()
     card.rule:SetColorTexture(Theme.colors.divider[1], Theme.colors.divider[2],
         Theme.colors.divider[3], Theme.colors.divider[4])
 
-    card.bar = Theme.CreateStatBar(card, { height = 8, labels = true })
+    card.bar = Theme.CreateStatBar(card, { height = 11, labels = true })
     card.bar:SetPoint("TOPLEFT", CARD_PAD + 1, -(CARD_HEAD + CARD_PAD))
     card.bar:SetPoint("TOPRIGHT", -(CARD_PAD + 1), -(CARD_HEAD + CARD_PAD))
 
     card.head:SetScript("OnEnter", function(self)
-        self.bg:SetColorTexture(Theme.colors.bgHover[1], Theme.colors.bgHover[2],
-            Theme.colors.bgHover[3], 0.5)
+        local a = self:GetParent()._accent or Theme.colors.gold
+        self.bg:SetColorTexture(a[1] * 0.55, a[2] * 0.55, a[3] * 0.55, 0.55)
     end)
     card.head:SetScript("OnLeave", function(self)
-        self.bg:SetColorTexture(0, 0, 0, 0.25)
+        local a = self:GetParent()._accent or Theme.colors.gold
+        self.bg:SetColorTexture(a[1] * 0.35, a[2] * 0.35, a[3] * 0.35, 0.40)
     end)
     card.head:SetScript("OnClick", function(self)
         local id = self:GetParent()._sectionID
@@ -288,7 +295,7 @@ local function AcquireTile()
     Theme.ApplyFlatPanel(tile, Theme.colors.bgRaised, Theme.colors.edge)
 
     tile.accent = tile:CreateTexture(nil, "ARTWORK")
-    tile.accent:SetWidth(2)
+    tile.accent:SetWidth(3)
     tile.accent:SetPoint("TOPLEFT", 1, -1)
     tile.accent:SetPoint("BOTTOMLEFT", 1, 1)
 
@@ -415,6 +422,14 @@ function Panel:Refresh()
         card:SetPoint("TOPLEFT", 0, -y)
         card:SetWidth(width)
         card.title:SetText(def.title or def.id)
+
+        local accent = def.accent or Theme.colors.gold
+        card._accent = accent
+        card.accent:SetColorTexture(accent[1], accent[2], accent[3], 0.85)
+        card.head.bg:SetColorTexture(accent[1] * 0.35, accent[2] * 0.35,
+            accent[3] * 0.35, 0.40)
+        card.title:SetTextColor(unpack(accent))
+        card.rule:SetColorTexture(accent[1], accent[2], accent[3], 0.45)
 
         local collapsed = Codex:IsCollapsed(def.id)
         card.chevron:SetText(collapsed and "+" or "-")

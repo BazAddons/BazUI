@@ -317,7 +317,7 @@ local function Render(content, width)
         local count = C_Item.GetItemCount(itemID, true) or 0
         if count > 0 then
             row.detail:SetText(count > 1 and ("got " .. count) or "got it")
-            row.detail:SetTextColor(0.45, 0.75, 0.45, 1)
+            row.detail:SetTextColor(unpack(Theme.colors.success))
         elseif entry.added > 0 then
             row.detail:SetText("wanted " .. BazUI:FormatSpan(time() - entry.added) .. " ago")
             row.detail:SetTextColor(unpack(Theme.colors.textMuted))
@@ -358,7 +358,7 @@ Codex.customTabs.wishlist = {
         return {
             { value = wanted - got, label = "still wanted" },
             { value = got, label = "already yours",
-              color = got > 0 and { 0.45, 0.78, 0.48, 1 } or nil },
+              color = got > 0 and Theme.colors.success or nil },
         }
     end,
 }

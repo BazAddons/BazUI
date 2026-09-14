@@ -42,10 +42,11 @@ local function Lockouts()
 end
 
 Codex:RegisterSection({
-    id    = "lockouts",
-    tab   = "today",
-    title = "Saved instances",
-    order = 10,
+    id     = "lockouts",
+    tab    = "today",
+    title  = "Saved instances",
+    order  = 10,
+    accent = BazUI.Skin.Theme.colors.caution,
     empty = "Nothing saved. Every raid is open to you.",
     events = { "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD", "BOSS_KILL" },
 
@@ -80,8 +81,11 @@ Codex:RegisterSection({
                 tip    = tip .. "|nResets in " .. Duration(lock.reset),
                 -- How much of the instance is already spent, which is
                 -- the part you actually weigh before going back in.
+                -- Green for what is already down: this is progress
+                -- through the instance, not time running out.
                 progress = lock.encounters > 0
-                    and { value = lock.defeated, max = lock.encounters } or nil,
+                    and { value = lock.defeated, max = lock.encounters,
+                          color = BazUI.Skin.Theme.colors.success } or nil,
             }
         end
         return rows
@@ -104,11 +108,31 @@ local function SecondsUntil(fn)
     return nil
 end
 
+-- One reset clock. The bar fills as the window runs out and warms from
+-- gold towards amber as it does, so a glance says how much of the day or
+-- the week is already spent without reading the number.
+local function ResetRow(label, remaining, period, tip)
+    local Theme = BazUI.Skin.Theme
+    local spent = (period - remaining) / period
+    return {
+        label    = label,
+        detail   = Duration(remaining) .. " left",
+        state    = "open",
+        tip      = tip,
+        progress = {
+            value = period - remaining,
+            max   = period,
+            color = Theme.Blend(Theme.colors.gold, Theme.colors.warn, spent),
+        },
+    }
+end
+
 Codex:RegisterSection({
-    id    = "resets",
-    tab   = "today",
-    title = "Resets",
-    order = 20,
+    id     = "resets",
+    tab    = "today",
+    title  = "Resets",
+    order  = 20,
+    accent = BazUI.Skin.Theme.colors.gold,
     empty = "This client reports no reset timers.",
     events = { "PLAYER_ENTERING_WORLD" },
 
@@ -122,19 +146,13 @@ Codex:RegisterSection({
         local rows = {}
         local daily = SecondsUntil("GetSecondsUntilDailyReset")
         if daily then
-            rows[#rows + 1] = {
-                label = "Daily", detail = Duration(daily), state = "open",
-                tip = "The daily rollover, when quests flagged daily come back.",
-                progress = { value = DAY - daily, max = DAY },
-            }
+            rows[#rows + 1] = ResetRow("Daily", daily, DAY,
+                "The daily rollover, when quests flagged daily come back.")
         end
         local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
         if weekly then
-            rows[#rows + 1] = {
-                label = "Weekly", detail = Duration(weekly), state = "open",
-                tip = "The weekly rollover, when raid lockouts clear.",
-                progress = { value = WEEK - weekly, max = WEEK },
-            }
+            rows[#rows + 1] = ResetRow("Weekly", weekly, WEEK,
+                "The weekly rollover, when raid lockouts clear.")
         end
         return rows
     end,

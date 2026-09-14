@@ -35,9 +35,26 @@ Theme.colors = {
     textSoft  = { 0.82, 0.76, 0.62, 1.00 },
     textMuted = { 0.60, 0.55, 0.45, 1.00 },
 
+    -- Readings that mean something. A bar or a number takes one of
+    -- these rather than a colour of its own, so green means finished
+    -- everywhere in the suite and amber always means running out.
+    success   = { 0.45, 0.78, 0.48, 1.00 },  -- done, earned, collected
+    caution   = { 0.95, 0.72, 0.20, 1.00 },  -- a window closing
     warn      = { 0.95, 0.50, 0.15, 1.00 },
     danger    = { 0.85, 0.30, 0.30, 1.00 },
 }
+
+-- Mix two colours. Used for readings that shift as they run: a reset
+-- clock warming from gold to amber as its window closes.
+function Theme.Blend(from, to, t)
+    t = math.max(0, math.min(1, tonumber(t) or 0))
+    return {
+        from[1] + (to[1] - from[1]) * t,
+        from[2] + (to[2] - from[2]) * t,
+        from[3] + (to[3] - from[3]) * t,
+        (from[4] or 1) + ((to[4] or 1) - (from[4] or 1)) * t,
+    }
+end
 
 -- Flat one-pixel frame for elements that sit inside a panel.
 Theme.BACKDROP_FLAT = {
