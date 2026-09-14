@@ -1,0 +1,216 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Unit Frames: the bar picker
+--
+-- The same page an action bar gets: a list of the bars you have made,
+-- New and Delete, and the selected one's own form underneath. Every
+-- choice about a bar lives on the bar, including where it docks, which
+-- is the difference between one dropdown per bar and a grid of them
+-- describing every combination.
+---------------------------------------------------------------------------
+
+local addon = BazUI:GetModule("UnitFrames")
+
+local Options = {}
+addon.BarOptions = Options
+
+local TEXT_MODES = { always = "Always", hover = "On Hover", never = "Never" }
+local FORMATS = {
+    ["current/max"] = "Current / Max",
+    current         = "Current",
+    percent         = "Percent",
+    name            = "Name",
+    namePercent     = "Name and percent",
+}
+local EDGES = { BOTTOM = "Below", TOP = "Above" }
+
+local function Bars()
+    return addon.UnitBars
+end
+
+-- Everywhere this bar could be sent. Its own entry is left out, and so
+-- is anything already hanging off it, which would be a loop.
+local function DockValues(def)
+    local UnitBars = Bars()
+    local values = { float = "Floating" }
+    local selfFrame = UnitBars.bars[def.id] and UnitBars.bars[def.id].frame
+
+    for _, host in ipairs(BazUI.Dock:GetHosts()) do
+        local frame = BazUI.Dock:GetHostFrame(host.id)
+        if frame and frame ~= selfFrame
+            and not (selfFrame and BazUI.Dock:Follows(frame, selfFrame)) then
+            values[host.id] = host.label
+        end
+    end
+    return values
+end
+
+local function Field(def, key, default)
+    return function()
+        local value = def[key]
+        if value == nil then return default end
+        return value
+    end
+end
+
+local function SetField(def, key, after)
+    return function(_, value)
+        if InCombatLockdown() then
+            addon:Print("Change the bars after combat ends.")
+            return
+        end
+        def[key] = value
+        Bars():Save()
+        local bar = Bars().bars[def.id]
+        if bar then Bars():Apply(bar) end
+        if after then after(def, value) end
+    end
+end
+
+---------------------------------------------------------------------------
+-- One bar's form
+---------------------------------------------------------------------------
+
+local function BarArgs(def)
+    local UnitBars = Bars()
+    return {
+        name = def.name or ("Bar " .. def.id),
+        type = "group",
+        _barId = def.id,
+        args = {
+            barName = {
+                order = 1, type = "input", name = "Name",
+                get = Field(def, "name", ""),
+                set = function(_, value)
+                    def.name = (value ~= "" and value) or UnitBars:DefaultName(def.kind, def.unit)
+                    UnitBars:Save()
+                    -- The name is also how this bar appears in every
+                    -- other bar's docking list.
+                    BazUI.Dock:RegisterHost(UnitBars:HostID(def.id),
+                        UnitBars.bars[def.id] and UnitBars.bars[def.id].frame, def.name, 30)
+                    local bar = UnitBars.bars[def.id]
+                    if bar then UnitBars:Apply(bar) end
+                end,
+            },
+            kind = {
+                order = 2, type = "select", name = "Reads",
+                values = UnitBars.KINDS,
+                get = Field(def, "kind", "health"),
+                set = SetField(def, "kind", function(d)
+                    local bar = UnitBars.bars[d.id]
+                    if bar then UnitBars:Update(bar) end
+                end),
+            },
+            unit = {
+                order = 3, type = "select", name = "Of",
+                values = UnitBars.UNITS,
+                hidden = function() return not UnitBars.IsUnitKind(def.kind) end,
+                get = Field(def, "unit", "player"),
+                set = SetField(def, "unit"),
+            },
+            dockHeader = { order = 10, type = "header", name = "Docking" },
+            dockHost = {
+                order = 11, type = "select", name = "Dock to",
+                desc = "Floating keeps it where you put it. Docking makes it take the width of whatever it is attached to.",
+                values = function() return DockValues(def) end,
+                get = function() return (def.dock and def.dock.host) or "float" end,
+                set = function(_, value)
+                    if InCombatLockdown() then
+                        addon:Print("Change the bars after combat ends.")
+                        return
+                    end
+                    def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
+                    UnitBars:Save()
+                    local bar = UnitBars.bars[def.id]
+                    if bar then UnitBars:Apply(bar) end
+                end,
+            },
+            dockEdge = {
+                order = 12, type = "select", name = "On the",
+                values = EDGES,
+                hidden = function() return not def.dock or def.dock.host == "float" end,
+                get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
+                set = function(_, value)
+                    def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
+                    UnitBars:Save()
+                    local bar = UnitBars.bars[def.id]
+                    if bar then UnitBars:Apply(bar) end
+                end,
+            },
+            lookHeader = { order = 20, type = "header", name = "Size and text" },
+            width = {
+                order = 21, type = "range", name = "Width",
+                min = 60, max = 1200, step = 5,
+                hidden = function() return def.dock and def.dock.host ~= "float" end,
+                desc = "A docked bar takes its host's width instead.",
+                get = Field(def, "width", 240), set = SetField(def, "width"),
+            },
+            height = {
+                order = 22, type = "range", name = "Height",
+                min = 8, max = 48, step = 1,
+                get = Field(def, "height", 20), set = SetField(def, "height"),
+            },
+            textMode = {
+                order = 23, type = "select", name = "Show text",
+                values = TEXT_MODES,
+                get = Field(def, "textMode", "always"), set = SetField(def, "textMode"),
+            },
+            textFormat = {
+                order = 24, type = "select", name = "Text says",
+                values = FORMATS,
+                get = Field(def, "textFormat", "namePercent"),
+                set = SetField(def, "textFormat"),
+            },
+        },
+    }
+end
+
+---------------------------------------------------------------------------
+-- The page
+---------------------------------------------------------------------------
+
+function Options:Build()
+    local UnitBars = Bars()
+    local bars = {}
+    for index, def in ipairs(UnitBars:Defs()) do
+        bars["bar" .. def.id] = BarArgs(def)
+        bars["bar" .. def.id].order = index
+    end
+
+    return {
+        name = "Bars",
+        type = "group",
+        args = {
+            newBar = {
+                order = 1, type = "execute", name = "New bar",
+                func = function()
+                    if InCombatLockdown() then
+                        addon:Print("Create bars after combat ends.")
+                        return
+                    end
+                    local def = UnitBars:Add("health", "player")
+                    if def then addon:Print("Created " .. (def.name or "a bar")) end
+                end,
+            },
+            bars = {
+                order = 10, type = "group", name = "",
+                pickerLabel = "Bar",
+                emptyText = "No bars yet. Click New bar to make one.",
+                args = bars,
+                itemActions = {
+                    {
+                        name = "Delete", style = "danger",
+                        confirm = true, confirmTitle = "Delete bar?",
+                        confirmText = function(item)
+                            return string.format("Delete %s? Anything docked to it goes back to floating.",
+                                item and item.name or "this bar")
+                        end,
+                        confirmStyle = "destructive",
+                        confirmAcceptLabel = "Delete", confirmCancelLabel = "Cancel",
+                        func = function(item) UnitBars:Remove(item._barId) end,
+                    },
+                },
+            },
+        },
+    }
+end

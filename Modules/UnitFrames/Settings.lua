@@ -20,114 +20,22 @@ local function SetBars(key)
     return function(_, value)
         addon:SetSetting(key, value)
         local UnitBars = addon.UnitBars
-        for unit in pairs(UnitBars and UnitBars.sets or {}) do
-            UnitBars:ApplySettings(unit)
-        end
+        if UnitBars then UnitBars:ApplyAll() end
     end
-end
-
--- The dropdown of places a bar can go, built from whatever the dock
--- knows about right now: floating, every action bar, and the other unit
--- bars. A bar never offers itself.
-local function DockValues(selfId)
-    local values = { float = "Floating" }
-    for _, host in ipairs(BazUI.Dock:GetHosts()) do
-        if host.id ~= selfId then values[host.id] = host.label end
-    end
-    return values
-end
-
-local EDGES = { BOTTOM = "Below", TOP = "Above" }
-
--- This file is read before UnitBars.lua, so the builder is looked up
--- when a control is used rather than captured while the page is being
--- described. Capturing it here reads nil and takes the settings page
--- down with it.
-local function Bars()
-    return addon.UnitBars
-end
-
-local function DockEntry(unit, key, label, order)
-    return {
-        key = "dock_" .. unit .. "_" .. key,
-        label = label, type = "select", section = "docking", order = order,
-        surfaces = both,
-        values = function()
-            local UnitBars = Bars()
-            return DockValues(UnitBars and UnitBars:HostID(unit, key))
-        end,
-        get = function()
-            local UnitBars = Bars()
-            if not UnitBars then return "float" end
-            local dock = UnitBars:GetDock(unit, key)
-            local host = dock.host or "float"
-            if host:find("^self:") then host = UnitBars:HostID(unit, host:sub(6)) end
-            return host
-        end,
-        set = function(_, value)
-            local UnitBars = Bars()
-            if not UnitBars then return end
-            local dock = UnitBars:GetDock(unit, key)
-            UnitBars:SetDock(unit, key,
-                { host = value, edge = dock.edge or "BOTTOM", reserve = dock.reserve })
-        end,
-    }
-end
-
-local function EdgeEntry(unit, key, label, order)
-    return {
-        key = "edge_" .. unit .. "_" .. key,
-        label = label, type = "select", section = "docking", order = order,
-        surfaces = both, values = EDGES,
-        get = function()
-            local UnitBars = Bars()
-            return UnitBars and UnitBars:GetDock(unit, key).edge or "BOTTOM"
-        end,
-        set = function(_, value)
-            local UnitBars = Bars()
-            if not UnitBars then return end
-            local dock = UnitBars:GetDock(unit, key)
-            UnitBars:SetDock(unit, key,
-                { host = dock.host, edge = value, reserve = dock.reserve })
-        end,
-    }
 end
 
 BazUI:RegisterSettingsSpec("UnitFrames", {
     sections = {
         bars = { label = "Bars", order = 0 },
-        docking = { label = "Docking", order = 1 },
         player = { label = "Player Frames", order = 1 },
         layout = { label = "Position", order = 2 },
         portraitAdjust = { label = "3D Portrait Placement", order = 3 },
         casting = { label = "Portrait Casting", order = 4 },
     },
     entries = {
-        DockEntry("player", "health", "Player health sits", 10),
-        EdgeEntry("player", "health", "Player health edge", 11),
-        DockEntry("player", "power",  "Player power sits",  12),
-        EdgeEntry("player", "power",  "Player power edge",  13),
-        DockEntry("player", "cast",   "Player cast sits",   14),
-        EdgeEntry("player", "cast",   "Player cast edge",   15),
-        DockEntry("target", "health", "Target health sits", 20),
-        EdgeEntry("target", "health", "Target health edge", 21),
-        DockEntry("target", "power",  "Target power sits",  22),
-        EdgeEntry("target", "power",  "Target power edge",  23),
-        DockEntry("target", "cast",   "Target cast sits",   24),
-        EdgeEntry("target", "cast",   "Target cast edge",   25),
         { key = "barMode", label = "Draw units as bars", type = "toggle", section = "bars", order = 1,
           desc = "The bars can float or dock to an action bar. Off returns the old portrait frames until they are retired.",
           get = Get("barMode"), set = SetBars("barMode") },
-        { key = "barWidth", label = "Width", type = "slider", section = "bars", order = 2, surfaces = both,
-          min = 80, max = 900, step = 5, get = Get("barWidth"), set = SetBars("barWidth") },
-        { key = "barHeight", label = "Height", type = "slider", section = "bars", order = 3, surfaces = both,
-          min = 10, max = 40, step = 1, get = Get("barHeight"), set = SetBars("barHeight") },
-        { key = "barText", label = "Show text", type = "select", section = "bars", order = 4, surfaces = both,
-          values = valueModes, get = Get("barText"), set = SetBars("barText") },
-        { key = "healthText", label = "Health bar says", type = "select", section = "bars", order = 5, surfaces = both,
-          values = { ["current/max"] = "Current / Max", current = "Current", percent = "Percent", name = "Name", namePercent = "Name and percent" }, get = Get("healthText"), set = SetBars("healthText") },
-        { key = "powerText", label = "Power bar says", type = "select", section = "bars", order = 6, surfaces = both,
-          values = { ["current/max"] = "Current / Max", current = "Current", percent = "Percent", name = "Name", namePercent = "Name and percent" }, get = Get("powerText"), set = SetBars("powerText") },
         { key = "unitTooltips", label = "Tooltip on hover", type = "toggle", section = "bars", order = 7,
           get = Get("unitTooltips"), set = SetBars("unitTooltips") },
         { key = "castEnabled", label = "Liquid portrait casting", type = "toggle", section = "casting", order = 1,
@@ -189,6 +97,12 @@ BazUI:QueueForLogin(function()
         return BazUI:BuildOptionsTableFromSpec("UnitFrames", { name = "Player Frames" })
     end)
     BazUI:AddToSettings("UnitFrames", "Unit Frames")
+    -- The bars you have made, each with its own form. A page rather than
+    -- a section, because the list can be any length.
+    BazUI:RegisterOptionsTable("UnitFrames-Bars", function()
+        return addon.BarOptions:Build()
+    end)
+    BazUI:AddToSettings("UnitFrames-Bars", "Bars", "UnitFrames")
     BazUI:RegisterOptionsTable("UnitFrames-Player", function()
         return BazUI:BuildOptionsTableFromSpec("UnitFrames", { name = "Player Frames" })
     end)

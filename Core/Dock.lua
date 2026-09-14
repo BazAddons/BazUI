@@ -102,6 +102,21 @@ function Dock:IsDocked(frame)
     return links[frame] ~= nil
 end
 
+-- Whether `frame` hangs off `possibleHost` anywhere up its chain. Docking
+-- something to its own follower would make a loop that resolves forever,
+-- so the question has to be asked before attaching.
+function Dock:Follows(frame, possibleHost)
+    local link = links[frame]
+    local depth = 0
+    while link and depth < 16 do
+        if link.host == possibleHost then return true end
+        frame = link.host
+        link = links[frame]
+        depth = depth + 1
+    end
+    return false
+end
+
 function Dock:GetFollowers(host)
     return followers[host]
 end

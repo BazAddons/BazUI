@@ -145,6 +145,7 @@ Modules\Bars\UserGuide.lua
 Modules\UnitFrames\Core.lua
 Modules\UnitFrames\Layout.lua
 Modules\UnitFrames\UnitBars.lua
+Modules\UnitFrames\BarOptions.lua
 Modules\UnitFrames\Settings.lua
 Modules\UnitFrames\Casting.lua
 Modules\UnitFrames\Nameplate.lua

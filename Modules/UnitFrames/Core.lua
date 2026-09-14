@@ -86,6 +86,39 @@ function addon:BarMode()
     return self:GetSetting("barMode") ~= false
 end
 
+-- The set a new profile starts with: the readings almost everyone wants,
+-- arranged the way they were before any of this was configurable. Making
+-- none would leave a blank screen and no clue where to begin.
+local STARTER_BARS = {
+    { kind = "health", unit = "player", y = -140 },
+    { kind = "power",  unit = "player", y = -164, dockPrevious = true },
+    { kind = "cast",   unit = "player", y = -188, dockPrevious = true },
+    { kind = "health", unit = "target", y = -140, x = 300 },
+    { kind = "power",  unit = "target", y = -164, x = 300, dockPrevious = true },
+}
+
+function addon:SeedBars()
+    local UnitBars = self.UnitBars
+    if #UnitBars:Defs() > 0 then return end
+
+    local previous
+    for _, seed in ipairs(STARTER_BARS) do
+        local def = UnitBars:Add(seed.kind, seed.unit)
+        if def then
+            if seed.dockPrevious and previous then
+                def.dock = { host = UnitBars:HostID(previous.id), edge = "BOTTOM" }
+            else
+                def.position = { point = "CENTER", relPoint = "CENTER",
+                    x = seed.x or -300, y = seed.y or -140 }
+                previous = def
+            end
+            if not seed.dockPrevious then previous = def end
+        end
+    end
+    UnitBars:Save()
+    UnitBars:ApplyAll()
+end
+
 function addon:InitializeBars()
     if not self:BarMode() then return end
     if InCombatLockdown() then
@@ -94,26 +127,18 @@ function addon:InitializeBars()
     end
 
     local UnitBars = self.UnitBars
-    for _, unit in ipairs({ "player", "target" }) do
-        if UnitBars:Create(unit) then
-            UnitBars:Watch(unit)
-            UnitBars:CreateMover(unit)
-            UnitBars:ApplySettings(unit)
-            UnitBars:SyncCast(unit)
-        end
-    end
+    UnitBars:BuildAll()
+    self:SeedBars()
+    UnitBars:WatchAll()
+    UnitBars:UpdateAll()
 
     -- Edit Mode may open or close at any time, and the movers are the
     -- only thing it is ever allowed to move.
-    local function EachUnit(fn)
-        return function()
-            for unit in pairs(UnitBars.sets) do fn(unit) end
-        end
-    end
-    self:On("BAZ_EDITMODE_ENTER", EachUnit(function(u) UnitBars:ShowMover(u) end))
-    self:On("BAZ_EDITMODE_EXIT",  EachUnit(function(u) UnitBars:ShowMover(u) end))
-    self:On("PLAYER_REGEN_ENABLED", EachUnit(function(u)
-        UnitBars:ApplySettings(u)
-        UnitBars:ShowMover(u)
-    end))
+    self:On("BAZ_EDITMODE_ENTER", function() UnitBars:ShowAllMovers() end)
+    self:On("BAZ_EDITMODE_EXIT",  function() UnitBars:ShowAllMovers() end)
+    self:On("PLAYER_REGEN_ENABLED", function()
+        UnitBars:BuildAll()
+        UnitBars:ApplyAll()
+        UnitBars:ShowAllMovers()
+    end)
 end
