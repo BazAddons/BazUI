@@ -154,6 +154,16 @@ local function CategoryOf(itemID)
     if classified[itemID] then return classified[itemID] end
     local cats = BagsCategories()
     if not (cats and cats.Classify) then return nil end
+
+    -- The classifier reads the item's type and quality, which the
+    -- client only has once the item is loaded. Classifying too early
+    -- lands everything in the catch-all, so wait and ask again rather
+    -- than cache a wrong answer for the session.
+    if not C_Item.GetItemInfo(itemID) then
+        if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
+        return nil
+    end
+
     local ok, key = pcall(cats.Classify, itemID)
     if not ok or not key then return nil end
     classified[itemID] = key
