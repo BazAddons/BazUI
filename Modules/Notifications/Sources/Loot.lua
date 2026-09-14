@@ -175,7 +175,17 @@ end
 local function OnLootOpened()
     if GetSetting("hideLootFrame") == false then return end
     if LootFrame and LootFrame:IsShown() then
-        LootFrame:Hide()
+        -- The loot window is a UI panel. Hiding it directly leaves the
+        -- panel manager believing its slot is still occupied, and the
+        -- next Escape press goes to "closing" that ghost panel instead
+        -- of clearing the target. HideUIPanel releases the slot.
+        if HideUIPanel and not InCombatLockdown() then
+            HideUIPanel(LootFrame)
+        else
+            -- HideUIPanel refuses in combat; a plain Hide still works and
+            -- the next CloseAllWindows releases the slot.
+            LootFrame:Hide()
+        end
     end
 end
 
