@@ -136,6 +136,9 @@ function Timestamps:ColumnWidth(chatFrame)
         probe:Hide()
         chatFrame._bcTSProbe = probe
     end
+    -- Measure in whatever face the chat is actually using.
+    local fontFile, fontSize, fontFlags = chatFrame:GetFont()
+    if fontFile then probe:SetFont(fontFile, fontSize, fontFlags or "") end
     -- Wide-sample for the user's current format. 23:59:59 maximizes the
     -- 24-hour cases; 12:59:59 PM (the same time formatted with %I/%p)
     -- maximizes the 12-hour cases. We pick whichever is wider, then
@@ -184,6 +187,8 @@ function Timestamps:Pad(text, chatFrame)
             probe:Hide()
             chatFrame._bcTSProbe = probe
         end
+        local fontFile, fontSize, fontFlags = chatFrame:GetFont()
+        if fontFile then probe:SetFont(fontFile, fontSize, fontFlags or "") end
         probe:SetText(NBSP)
         local nbspW = probe:GetStringWidth() or 4
         local n = math.ceil(colW / math.max(nbspW, 1))

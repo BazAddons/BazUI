@@ -77,6 +77,8 @@ local DEFAULTS = {
     --   indentedWordWrap second + later visual lines are indented to
     --                    the body's left edge, not the timestamp gutter
     --   messageSpacing   pixel gap applied via SMF:SetSpacing
+    --   customFont       BazUI's own chat face (DorisPP) instead of
+    --                    Blizzard's, at Blizzard's chat font size
     windows = {
         [1] = {
             label            = "General",
@@ -96,6 +98,7 @@ local DEFAULTS = {
             maxLines         = 500,
             indentedWordWrap = true,
             messageSpacing   = 3,
+            customFont       = true,
         },
         [2] = {
             label            = "Guild",

@@ -86,7 +86,35 @@ local FALLBACKS = {
     timeVisible      = 120,
     indentedWordWrap = true,
     messageSpacing   = 3,
+    customFont       = true,
 }
+
+---------------------------------------------------------------------------
+-- The chat face
+--
+-- BazUI ships DorisPP (Modules/Chat/Assets). It is applied at the size
+-- and outline of Blizzard's own chat font object, so the client's chat
+-- font-size setting keeps working and a size change flows through this
+-- same object. If the file can't be read the Blizzard object is used
+-- unchanged, so a missing font is never a blank chat.
+---------------------------------------------------------------------------
+
+local CHAT_FONT_FILE = "Interface\\AddOns\\BazUI\\Modules\\Chat\\Assets\\DORISBR.TTF"
+local customFont
+
+local function ChatFontObject(useCustom)
+    local blizzard = _G.ChatFontNormal
+    if not useCustom or not blizzard then return blizzard end
+    if not customFont then customFont = CreateFont("BazUIChatFont") end
+    local _, size, flags = blizzard:GetFont()
+    if not customFont:SetFont(CHAT_FONT_FILE, size or 14, flags or "") then
+        return blizzard
+    end
+    customFont:SetTextColor(blizzard:GetTextColor())
+    customFont:SetShadowColor(blizzard:GetShadowColor())
+    customFont:SetShadowOffset(blizzard:GetShadowOffset())
+    return customFont
+end
 
 -- Safe DB profile accessor. BazUI's onReady (which sets addon.db)
 -- runs AFTER QueueForLogin callbacks - so at the time Replica:Start
@@ -1015,7 +1043,8 @@ function Window:Create(index, opts)
     -- fade, scrollbar, fading, etc) all live in the DB and get applied
     -- below via Window:ApplySettings(). That way the Settings page and
     -- Edit Mode popup can both call ApplySettings to re-render live.
-    f:SetFontObject(_G[opts.fontObject or FALLBACKS.fontObject])
+    -- ApplySettings below owns the face from here on.
+    f:SetFontObject(ChatFontObject(opts.customFont ~= false))
     f:SetJustifyH("LEFT")
     -- DO NOT SetClipsChildren(true) here. The TabSystem is parented to
     -- this frame (so it follows the chat as it moves) but anchored above
@@ -1274,6 +1303,20 @@ function Window:ApplySettings(idx)
         addon.Chrome:SetAlpha(f, chrome.bgAlpha or FALLBACKS.bgAlpha)
     end
     f:SetScale(chrome.scale or FALLBACKS.scale)
+
+    -- The chat face, shared with the edit box. Swapping it changes the
+    -- text metrics, so the timestamp gutter has to be measured again.
+    local font = ChatFontObject(chrome.customFont ~= false)
+    if font and f:GetFontObject() ~= font then
+        f:SetFontObject(font)
+        if f.editBox then f.editBox:SetFontObject(font) end
+        if addon.Timestamps and addon.Timestamps.InvalidateLayout then
+            addon.Timestamps:InvalidateLayout(f)
+        end
+        if addon.TimestampOverlay and addon.TimestampOverlay.Refresh then
+            addon.TimestampOverlay:Refresh(f)
+        end
+    end
 
     -- Scrollbar + tab-strip visibility (mode-aware fade) live in
     -- Replica/AutoHide.lua. inEdit forces them visible regardless.

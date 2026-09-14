@@ -225,6 +225,9 @@ function TimestampOverlay:Refresh(f)
                 local colW = (addon.Timestamps and addon.Timestamps.ColumnWidth)
                     and addon.Timestamps:ColumnWidth(f) or 60
                 lbl:SetSize(colW - 4, 14)
+                -- Same face as the chat body, whatever it is set to.
+                local fontFile, fontSize, fontFlags = f:GetFont()
+                if fontFile then lbl.text:SetFont(fontFile, fontSize, fontFlags or "") end
                 lbl.text:SetText(addon.Timestamps:FormatGutter(ts))
                 lbl:SetAlpha(vline:GetAlpha() or 1)
                 lbl._bcCapturedTime = ts

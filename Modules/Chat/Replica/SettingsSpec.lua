@@ -131,6 +131,13 @@ local SPEC = {
           get = function() local s = W() return s and s.tabsAlpha or 1.0 end,
           set = function(_, v) local s = W() if s then s.tabsAlpha = v end; ApplyAll() end },
 
+        { key = "customFont", label = "Use the BazUI chat font", section = "appearance",
+          type = "toggle", order = 9,
+          desc = "DorisPP, the face BazUI ships, at the chat font size set in the game's own chat options. Off uses Blizzard's font.",
+          surfaces = { options = true, editMode = true },
+          get = function() local s = W() return not s or s.customFont ~= false end,
+          set = function(_, v) local s = W() if s then s.customFont = v end; ApplyAll() end },
+
         { key = "scale", label = "Window scale", section = "appearance",
           type = "slider", order = 13,
           desc = "Visual scale of the entire chat window (UI scale multiplier).",
