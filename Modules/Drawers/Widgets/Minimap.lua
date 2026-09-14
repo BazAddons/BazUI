@@ -74,6 +74,55 @@ local function AttachMinimap(parent)
 end
 
 ---------------------------------------------------------------------------
+-- Zooming with the wheel
+--
+-- Vanilla never wired the scroll wheel to the minimap; zoom is the + and
+-- - buttons and nothing else, which is a surprise on any modern client
+-- and a worse one once those buttons are hidden. So the widget adds it.
+--
+-- Where Blizzard's zoom buttons exist the wheel clicks them, which keeps
+-- the sound, the zoom limits and the buttons' own enabled states in
+-- Blizzard's hands. A click on a disabled button does nothing, so the
+-- ends of the range look after themselves. Clients that hang the buttons
+-- off the Minimap instead, or have none, fall back to setting the zoom
+-- with the same clamp.
+---------------------------------------------------------------------------
+
+local function ZoomButtons()
+    return MinimapZoomIn  or (Minimap and Minimap.ZoomIn),
+           MinimapZoomOut or (Minimap and Minimap.ZoomOut)
+end
+
+local function Zoom(delta)
+    if not Minimap then return end
+
+    local zoomIn, zoomOut = ZoomButtons()
+    local button = (delta > 0) and zoomIn or zoomOut
+    if button and button.Click then
+        -- A hidden button still clicks, so this works with the zoom
+        -- buttons turned off.
+        button:Click()
+        return
+    end
+
+    local levels = Minimap.GetZoomLevels and Minimap:GetZoomLevels()
+    local zoom   = Minimap.GetZoom and Minimap:GetZoom()
+    if not (levels and zoom) then return end
+
+    local wanted = math.max(0, math.min(levels - 1, zoom + (delta > 0 and 1 or -1)))
+    if wanted == zoom then return end
+    Minimap:SetZoom(wanted)
+    PlaySound(delta > 0 and SOUNDKIT.IG_MINIMAP_ZOOM_IN or SOUNDKIT.IG_MINIMAP_ZOOM_OUT)
+end
+
+local function EnableWheelZoom()
+    if not Minimap or Minimap._bazWheelZoom then return end
+    Minimap._bazWheelZoom = true
+    Minimap:EnableMouseWheel(true)
+    Minimap:SetScript("OnMouseWheel", function(_, delta) Zoom(delta) end)
+end
+
+---------------------------------------------------------------------------
 -- Hide the MinimapCluster shell so it doesn't occupy screen space
 -- alongside the reparented Minimap.
 ---------------------------------------------------------------------------
@@ -337,6 +386,7 @@ function MinimapWidget:Init()
     -- Parent the minimap right away so it's ready before the widget
     -- host's first reflow.
     AttachMinimap(wrapper)
+    EnableWheelZoom()
     self:ApplyFrameStyle()
     self:ApplyHideSettings()
 end
