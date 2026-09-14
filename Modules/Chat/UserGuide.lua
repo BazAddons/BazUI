@@ -34,7 +34,7 @@ BazUI:RegisterUserGuide("Chat", {
                     "|cffffd700Copy chat|r — small icon on every chat frame opens a copy dialog with the visible text pre-selected.",
                     "|cffffd700Auto-show tabs|r — hide tabs unless a context applies (in a city, in a raid, in combat, etc.).",
                     "|cffffd700Up/Down history|r in the chat box — scroll through your typed messages, not just the most recent one.",
-                    "|cffffd700The BazUI chat face|r (DorisPP), at the chat font size set in the game's own chat options. Turn it off under Appearance to go back to Blizzard's font.",
+                    "|cffffd700The BazUI chat face|r (DorisPP), with a text size slider. Both live under Appearance; turn the face off to go back to Blizzard's font.",
                 }},
 
                 { type = "h2", text = "Slash commands" },

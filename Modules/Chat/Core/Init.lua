@@ -79,6 +79,8 @@ local DEFAULTS = {
     --   messageSpacing   pixel gap applied via SMF:SetSpacing
     --   customFont       BazUI's own chat face (DorisPP) instead of
     --                    Blizzard's, at Blizzard's chat font size
+    --   fontScale        multiplies that size, so the game's own chat
+    --                    font-size option still leads
     windows = {
         [1] = {
             label            = "General",
@@ -99,6 +101,7 @@ local DEFAULTS = {
             indentedWordWrap = true,
             messageSpacing   = 3,
             customFont       = true,
+            fontScale        = 1.0,
         },
         [2] = {
             label            = "Guild",
@@ -254,7 +257,8 @@ local core = BazUI:RegisterModule(addonName, {
                 print("  setting on:", s.setting)
                 print("  file:", s.file)
                 print("  client can load it:", s.loadable)
-                print("  in use now:", tostring(s.inUse))
+                print("  size scale:", s.scale)
+                print("  in use now:", tostring(s.inUse), "at", tostring(s.inUseSize))
                 print("  Blizzard's:", tostring(s.blizzard))
                 if s.setting and not s.loadable then
                     print("  |cffffd700The client reads fonts at startup. Quit to the desktop and start the game again; a /reload is not enough.|r")

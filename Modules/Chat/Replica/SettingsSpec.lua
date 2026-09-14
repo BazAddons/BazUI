@@ -138,6 +138,14 @@ local SPEC = {
           get = function() local s = W() return not s or s.customFont ~= false end,
           set = function(_, v) local s = W() if s then s.customFont = v end; ApplyAll() end },
 
+        { key = "fontScale", label = "Text size", section = "appearance",
+          type = "slider", order = 9.5,
+          desc = "Scales the chat text relative to the size set in the game's own chat options. Affects the text only, not the window.",
+          surfaces = { options = true, editMode = true },
+          min = 0.5, max = 2, step = 0.05, format = "percent",
+          get = function() local s = W() return s and s.fontScale or 1.0 end,
+          set = function(_, v) local s = W() if s then s.fontScale = v end; ApplyAll() end },
+
         { key = "scale", label = "Window scale", section = "appearance",
           type = "slider", order = 13,
           desc = "Visual scale of the entire chat window (UI scale multiplier).",

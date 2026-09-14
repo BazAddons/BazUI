@@ -87,6 +87,7 @@ local FALLBACKS = {
     indentedWordWrap = true,
     messageSpacing   = 3,
     customFont       = true,
+    fontScale        = 1.0,
 }
 
 ---------------------------------------------------------------------------
@@ -103,21 +104,37 @@ local CHAT_FONT_FILE = "Interface\\AddOns\\BazUI\\Modules\\Chat\\Assets\\DORISBR
 local customFont
 local fontProbe
 
-local function ChatFontObject(useCustom)
+local MIN_FONT_SIZE, MAX_FONT_SIZE = 6, 32
+
+-- The face and size the chat should be drawn in. `scale` multiplies the
+-- size set in the game's own chat options, so that setting still leads
+-- and this only says how much bigger or smaller than it to draw.
+local function ChatFontObject(useCustom, scale)
     local blizzard = _G.ChatFontNormal
-    if not useCustom or not blizzard then return blizzard end
+    if not blizzard then return nil end
+    local blizzFace, blizzSize, flags = blizzard:GetFont()
+    blizzSize = blizzSize or 14
+    local size = math.floor(blizzSize * (tonumber(scale) or 1) + 0.5)
+    size = math.max(MIN_FONT_SIZE, math.min(MAX_FONT_SIZE, size))
+
+    -- Blizzard's own face at its own size: hand back its object.
+    if not useCustom and size == blizzSize then return blizzard end
+
     if not customFont then customFont = CreateFont("BazUIChatFont") end
-    local _, size, flags = blizzard:GetFont()
-    customFont:SetFont(CHAT_FONT_FILE, size or 14, flags or "")
+    customFont:SetFont(useCustom and CHAT_FONT_FILE or blizzFace, size, flags or "")
     -- A Font object's SetFont returns nothing (only the FontString and
     -- EditBox versions report success), so read the face back to find
     -- out whether the client could load the file. It can't when the
     -- file was added while the client was running: fonts are read at
     -- startup, so a new one needs a full restart, not a /reload.
     local applied = customFont:GetFont()
-    if not applied or applied:lower() ~= CHAT_FONT_FILE:lower() then
-        return blizzard
+    if useCustom and (not applied or applied:lower() ~= CHAT_FONT_FILE:lower()) then
+        -- The BazUI face is unreadable; keep the chosen size on
+        -- Blizzard's face so the size slider still works.
+        customFont:SetFont(blizzFace, size, flags or "")
+        applied = customFont:GetFont()
     end
+    if not applied then return blizzard end
     customFont:SetTextColor(blizzard:GetTextColor())
     customFont:SetShadowColor(blizzard:GetShadowColor())
     customFont:SetShadowOffset(blizzard:GetShadowOffset())
@@ -1053,7 +1070,7 @@ function Window:Create(index, opts)
     -- below via Window:ApplySettings(). That way the Settings page and
     -- Edit Mode popup can both call ApplySettings to re-render live.
     -- ApplySettings below owns the face from here on.
-    f:SetFontObject(ChatFontObject(opts.customFont ~= false))
+    f:SetFontObject(ChatFontObject(opts.customFont ~= false, opts.fontScale))
     f:SetJustifyH("LEFT")
     -- DO NOT SetClipsChildren(true) here. The TabSystem is parented to
     -- this frame (so it follows the chat as it moves) but anchored above
@@ -1313,17 +1330,24 @@ function Window:ApplySettings(idx)
     end
     f:SetScale(chrome.scale or FALLBACKS.scale)
 
-    -- The chat face, shared with the edit box. Swapping it changes the
-    -- text metrics, so the timestamp gutter has to be measured again.
-    local font = ChatFontObject(chrome.customFont ~= false)
-    if font and f:GetFontObject() ~= font then
-        f:SetFontObject(font)
-        if f.editBox then f.editBox:SetFontObject(font) end
-        if addon.Timestamps and addon.Timestamps.InvalidateLayout then
-            addon.Timestamps:InvalidateLayout(f)
-        end
-        if addon.TimestampOverlay and addon.TimestampOverlay.Refresh then
-            addon.TimestampOverlay:Refresh(f)
+    -- The chat face and size, shared with the edit box. Either one
+    -- changes the text metrics, so the timestamp gutter has to be
+    -- measured again. The face is a single shared object edited in
+    -- place, so compare what it resolves to, not its identity.
+    local font = ChatFontObject(chrome.customFont ~= false,
+        chrome.fontScale or FALLBACKS.fontScale)
+    if font then
+        local face, size = font:GetFont()
+        if f:GetFontObject() ~= font or f._bcFace ~= face or f._bcSize ~= size then
+            f:SetFontObject(font)
+            f._bcFace, f._bcSize = face, size
+            if f.editBox then f.editBox:SetFontObject(font) end
+            if addon.Timestamps and addon.Timestamps.InvalidateLayout then
+                addon.Timestamps:InvalidateLayout(f)
+            end
+            if addon.TimestampOverlay and addon.TimestampOverlay.Refresh then
+                addon.TimestampOverlay:Refresh(f)
+            end
         end
     end
 
@@ -1386,12 +1410,15 @@ function Window:FontStatus()
     fontProbe:SetFont(CHAT_FONT_FILE, 14, "")
     local loaded = fontProbe:GetFont()
     local f = windows[1]
-    local inUse = f and f:GetFont() or nil
+    local inUse, inUseSize
+    if f then inUse, inUseSize = f:GetFont() end
     return {
         file      = CHAT_FONT_FILE,
         loadable  = loaded and loaded:lower() == CHAT_FONT_FILE:lower() or false,
         setting   = (WindowDB(1) or {}).customFont ~= false,
+        scale     = (WindowDB(1) or {}).fontScale or FALLBACKS.fontScale,
         inUse     = inUse,
+        inUseSize = inUseSize,
         blizzard  = blizzard and blizzard:GetFont() or nil,
     }
 end
