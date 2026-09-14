@@ -112,6 +112,10 @@ function addon:UpdateAnchorMarker()
     anchorFrame.marker:SetShown(unlocked and Enabled() and self:GetSetting("anchor") == "fixed")
 end
 
+function addon:IsUnlocked()
+    return unlocked == true and Enabled() and self:GetSetting("anchor") == "fixed"
+end
+
 function addon:SetUnlocked(value)
     unlocked = value
     if value then self:SetSetting("anchor", "fixed") end
