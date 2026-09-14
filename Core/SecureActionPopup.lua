@@ -537,6 +537,12 @@ function BazUI:CreateSecureActionPopup(opts)
     end)
     popup:HookScript("OnShow", function(self)
         self:RegisterEvent("GLOBAL_MOUSE_UP")
+        -- The toggle that opens this runs in the secure environment and
+        -- never calls back into Lua, so opening the popup is the only
+        -- moment we get to notice that the world changed while it was
+        -- shut. Repaint the cells here or a stack count is whatever it
+        -- was the last time the grid was built.
+        ApplyCellContent(self)
     end)
     popup:HookScript("OnHide", function(self)
         self._hidePending = nil
