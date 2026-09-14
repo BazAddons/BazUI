@@ -43,10 +43,9 @@ local DEFAULTS = {
     dndAutoCombat = false,
     dndAutoInstance = false,
     soundHigh = 8959,
-    soundNormal = 618,
+    soundNormal = 3175,
     soundLow = 0,
     modules = {},
-    globalOverrides = {},
 }
 
 ---------------------------------------------------------------------------

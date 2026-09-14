@@ -31,7 +31,7 @@ local function OnAchievementEarned(event, achievementID, alreadyEarned)
         message = name,
         icon = icon and tostring(icon) or ICON_EARNED,
         priority = "high",
-        duration = GetSetting("earnedDuration") or 6,
+        duration = GetSetting("toastDuration") or 6,
         silent = GetSetting("earnedToasts") == false,
     })
 end
@@ -51,7 +51,7 @@ local function OnCriteriaEarned(event, achievementID, criteriaString)
         message = message,
         icon = achieveIcon and tostring(achieveIcon) or ICON_CRITERIA,
         priority = "normal",
-        duration = GetSetting("criteriaDuration") or 4,
+        duration = GetSetting("toastDuration") or 4,
         silent = GetSetting("criteriaToasts") == false,
     })
 end
@@ -87,7 +87,7 @@ local function OnTrackedAchievementUpdate(event, achievementID)
         message = message,
         icon = icon and tostring(icon) or ICON_CRITERIA,
         priority = "low",
-        duration = GetSetting("trackedDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("trackedToasts") == false,
     })
 end
@@ -108,7 +108,7 @@ local function OnGuildAchievement(event, achievementID, playerName)
         message = "Earned: " .. (name or "Achievement"),
         icon = ICON_GUILD_ACHIEVEMENT,
         priority = "low",
-        duration = GetSetting("guildDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("guildToasts") == false,
     })
 end
@@ -157,17 +157,10 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "hideDefaultPopup",     label = "Hide Default Achievement Popup", type = "toggle", default = true },
-    { key = "showEarned",           label = "Show Achievement Earned",       type = "toggle", default = true },
-    { key = "showCriteria",         label = "Show Criteria Completed",       type = "toggle", default = true },
-    { key = "showTrackedProgress",  label = "Show Tracked Progress",         type = "toggle", default = true },
-    { key = "showGuildAchievements",label = "Show Guild Member Achievements",type = "toggle", default = true },
-    { key = "earnedToasts",         label = "Toast on Achievement Earned",   type = "toggle", default = true },
-    { key = "criteriaToasts",       label = "Toast on Criteria Complete",    type = "toggle", default = true },
-    { key = "trackedToasts",        label = "Toast on Tracked Progress",     type = "toggle", default = true },
-    { key = "guildToasts",          label = "Toast on Guild Achievement",    type = "toggle", default = true },
-    { key = "earnedDuration",       label = "Earned Toast Duration",         type = "slider", default = 6, min = 1, max = 15, step = 1 },
-    { key = "criteriaDuration",     label = "Criteria Toast Duration",       type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "trackedDuration",      label = "Tracked Toast Duration",        type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "guildDuration",        label = "Guild Toast Duration",          type = "slider", default = 3, min = 1, max = 15, step = 1 },
+    { type = "event", key = "earned",   label = "Achievement earned",           show = "showEarned",            toast = "earnedToasts" },
+    { type = "event", key = "criteria", label = "Criteria completed",           show = "showCriteria",          toast = "criteriaToasts" },
+    { type = "event", key = "tracked",  label = "Tracked achievement progress", show = "showTrackedProgress",   toast = "trackedToasts" },
+    { type = "event", key = "guild",    label = "Guild member achievements",    show = "showGuildAchievements", toast = "guildToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
+    { key = "hideDefaultPopup", label = "Hide Blizzard's achievement popup", type = "toggle", default = true, section = "blizzard" },
 })

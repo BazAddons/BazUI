@@ -138,39 +138,40 @@ function BNC:Push(data)
     -- Notify UI
     addon.Events:Trigger("NOTIFICATION_ADDED", notification)
 
-    -- Check per-module overrides for toast and sound
+    -- A toast needs both the global switch and the source's own, and
+    -- so does a sound. A source may also pick its own sound, or none.
     local moduleSettings = addon.db and addon.db.modules[data.module]
-    local toastsEnabled = addon.db and addon.db.toastsEnabled
-    local soundEnabled = addon.db and addon.db.soundEnabled
-
-    -- Module-level overrides (if set) take priority over global
+    local toastsEnabled = not addon.db or addon.db.toastsEnabled ~= false
+    local soundEnabled  = not addon.db or addon.db.soundEnabled ~= false
+    local soundChoice   = "default"
     if moduleSettings then
-        if moduleSettings.toastsEnabled ~= nil then
-            toastsEnabled = moduleSettings.toastsEnabled
-        end
-        if moduleSettings.soundEnabled ~= nil then
-            soundEnabled = moduleSettings.soundEnabled
-        end
+        if moduleSettings.toastsEnabled == false then toastsEnabled = false end
+        if moduleSettings.soundEnabled == false then soundEnabled = false end
+        if moduleSettings.sound ~= nil then soundChoice = moduleSettings.sound end
     end
+    if soundChoice == 0 or soundChoice == "none" then soundEnabled = false end
 
     -- Do Not Disturb suppresses toasts and sounds (notifications still logged)
     local dnd = addon.IsDND and addon.IsDND()
 
-    -- Request toast if not silent and not in DND
     if not notification.silent and toastsEnabled and not dnd then
         addon.Events:Trigger("TOAST_REQUESTED", notification)
     end
 
-    -- Play priority-based sound if enabled (with cooldown)
+    -- The source's own sound, else one by priority, with a cooldown.
     if not notification.silent and soundEnabled and not dnd then
         local soundNow = GetTime()
         if not addon.lastSoundTime or (soundNow - addon.lastSoundTime) > 1.0 then
             addon.lastSoundTime = soundNow
-            local soundID = addon.db and addon.db.soundNormal or 618
-            if notification.priority == "high" then
+            local soundID
+            if type(soundChoice) == "number" then
+                soundID = soundChoice
+            elseif notification.priority == "high" then
                 soundID = addon.db and addon.db.soundHigh or 8959
             elseif notification.priority == "low" then
                 soundID = addon.db and addon.db.soundLow or 0
+            else
+                soundID = addon.db and addon.db.soundNormal or 3175
             end
             if soundID and soundID > 0 then
                 PlaySound(soundID, "SFX")

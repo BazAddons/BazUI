@@ -63,7 +63,7 @@ local function CheckBagSpace()
             message = message,
             icon = ICON_BAGS,
             priority = free == 0 and "high" or "normal",
-            duration = GetSetting("bagDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("bagToasts") == false,
         })
     end
@@ -85,7 +85,7 @@ local function CheckDurability()
             message = "Lowest item at " .. lowest .. "%",
             icon = ICON_DURABILITY,
             priority = lowest <= 10 and "high" or "normal",
-            duration = GetSetting("durabilityDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("durabilityToasts") == false,
         })
     elseif lowest > threshold then
@@ -104,7 +104,7 @@ local function OnRepairAll()
         message = "All items restored to full durability",
         icon = ICON_REPAIR,
         priority = "low",
-        duration = GetSetting("repairedDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("repairedToasts") == false,
     })
 end
@@ -156,15 +156,10 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showBagsFull",          label = "Show Bags Full Warning",       type = "toggle", default = true },
-    { key = "showDurability",        label = "Show Low Durability",          type = "toggle", default = true },
-    { key = "showRepaired",          label = "Show Equipment Repaired",      type = "toggle", default = true },
-    { key = "bagThreshold",          label = "Bag Warning Threshold (slots)",type = "slider", default = 3, min = 1, max = 20, step = 1 },
-    { key = "durabilityThreshold",   label = "Durability Warning (%)",       type = "slider", default = 20, min = 5, max = 50, step = 5 },
-    { key = "bagToasts",             label = "Toast on Bags Warning",        type = "toggle", default = true },
-    { key = "durabilityToasts",      label = "Toast on Durability Warning",  type = "toggle", default = true },
-    { key = "repairedToasts",        label = "Toast on Repair",              type = "toggle", default = true },
-    { key = "bagDuration",           label = "Bag Toast Duration",           type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "durabilityDuration",    label = "Durability Toast Duration",    type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "repairedDuration",      label = "Repair Toast Duration",        type = "slider", default = 3, min = 1, max = 15, step = 1 },
+    { type = "event", key = "bagsFull",   label = "Bags nearly full",   show = "showBagsFull",   toast = "bagToasts" },
+    { type = "event", key = "durability", label = "Low durability",     show = "showDurability", toast = "durabilityToasts" },
+    { type = "event", key = "repaired",   label = "Equipment repaired", show = "showRepaired",   toast = "repairedToasts" },
+    { key = "bagThreshold",        label = "Warn when free slots reach",        type = "slider", default = 3,  min = 1, max = 20, step = 1 },
+    { key = "durabilityThreshold", label = "Warn when durability falls below", type = "slider", default = 20, min = 5, max = 50, step = 5, format = "%d%%" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

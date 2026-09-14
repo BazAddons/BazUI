@@ -13,3 +13,5 @@ First development build of BazUI. Nothing is released yet.
 - Bags: one panel for every bag and the keyring, with per-bag or category grouping, pinning, search and gold display, plus an option to hide Blizzard's bag bar.
 - BazUI minimap ring and unified minimap button frames.
 - Profiles, Edit Mode and the options window shared by every module.
+- Options window written for its real size: one column of settings with the control on the right, sections under gold headers, and lists as a picker at the top of the page.
+- Notifications settings reorganized into General and Sources: one Off / History only / Toast choice per event, a duration and a named sound per source, and named sounds by priority instead of sound IDs.

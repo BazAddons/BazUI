@@ -1,443 +1,369 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BNC: Options Panel
--- Uses BazUI:RegisterOptionsTable() for consistent Baz Suite styling
+-- Notifications: options pages
+--
+-- General  - what applies to every notification: toasts, sounds, the
+--            history panel, Do Not Disturb, and the bell.
+-- Sources  - a picker of event sources (Loot, Quests, Mail ...). Each
+--            source's form: an Enabled switch on the picker row, one
+--            Off / History only / Toast choice per event, its toast
+--            duration and sound, and whatever extras it declares (see
+--            API/ModuleRegistry.lua for the definition shapes).
 ---------------------------------------------------------------------------
 local addon = BazUI.Notifications
 local BNC = addon.API
 
-local moduleSubCategories = {}
+local MODULE_KEY   = "Notifications"
+local PAGE_GENERAL = "Notifications-Settings"
+local PAGE_SOURCES = "Notifications-Sources"
 
 ---------------------------------------------------------------------------
--- Main Page: User Manual
+-- Sounds. Every ID is in the Classic Era sound kit table.
 ---------------------------------------------------------------------------
 
-local function GetMainOptionsTable()
-    return BazUI:CreateLandingPage("Notifications", {
-        subtitle = "Notification center",
-        description = "A modern, polished notification center for World of Warcraft. " ..
-            "Captures game events and displays them as toasts and in a browsable notification panel. " ..
-            "Fifteen built-in modules cover loot, mail, quests, reputation, and more.",
-        features = "Toast popups with priority-based sounds and auto-dismiss. " ..
-            "Notification panel with grouping, history, and search. " ..
-            "Do Not Disturb mode (manual or auto in combat/encounters). " ..
-            "Open plugin API - any addon can create notification modules.",
-        guide = {
-            { "Bell Icon", "Left-click to open the panel. Right-click to clear all" },
-            { "Toasts", "Brief popups appear for new events and auto-dismiss" },
-            { "History", "Switch to the History tab to browse past notifications" },
-            { "DND", "Use |cff00ff00/bnc dnd|r or enable auto-DND in Settings" },
-            { "Modules", "Enable or disable individual modules in the Modules tab" },
-        },
-        commands = {
-            { "/bnc", "Toggle notification panel" },
-            { "/bnc test", "Send a test notification" },
-            { "/bnc testall", "Test all active modules" },
-            { "/bnc dnd", "Toggle Do Not Disturb" },
-            { "/bnc clear", "Clear all notifications" },
-            { "/bnc history", "Open notification history" },
-            { "/bnc options", "Open settings" },
-            { "/bnc scaffold <name>", "Generate a module template" },
-        },
-    })
+local SOUNDS = {
+    { 0,     "None" },
+    { 8959,  "Raid warning" },
+    { 8960,  "Ready check" },
+    { 3175,  "Map ping" },
+    { 3081,  "Whisper" },
+    { 120,   "Coin drop" },
+    { 878,   "Quest complete" },
+    { 880,   "Player invite" },
+    { 5274,  "Auction window" },
+    { 7994,  "Item repaired" },
+    { 8458,  "PvP queue" },
+    { 12867, "Alarm clock" },
+}
+
+-- values + sorting for a sound dropdown. A saved ID outside the list
+-- is listed by number so the dropdown never shows a blank.
+local function SoundValues(current, withDefault)
+    local values, sorting = {}, {}
+    if withDefault then
+        values["default"] = "By priority"
+        sorting[#sorting + 1] = "default"
+    end
+    for _, s in ipairs(SOUNDS) do
+        values[s[1]] = s[2]
+        sorting[#sorting + 1] = s[1]
+    end
+    if type(current) == "number" and values[current] == nil then
+        values[current] = "Sound #" .. current
+        sorting[#sorting + 1] = current
+    end
+    return values, sorting
+end
+
+local function DB(key, default)
+    local v = addon.db and addon.db[key]
+    if v == nil then return default end
+    return v
+end
+
+local function Setter(key)
+    return function(_, val) addon.SetDBValue(key, val) end
+end
+
+local function Refresh(page)
+    if BazUI.RefreshOptions then BazUI:RefreshOptions(page) end
 end
 
 ---------------------------------------------------------------------------
--- Settings Subcategory
+-- General
 ---------------------------------------------------------------------------
 
-local function GetSettingsOptionsTable()
+local function GetGeneralOptionsTable()
+    local function soundsOff() return DB("soundEnabled", true) == false end
+    local function PrioritySound(order, label, key, default)
+        local function get() return DB(key, default) end
+        local values, sorting = SoundValues(get(), false)
+        return {
+            order = order, type = "select", name = label,
+            values = values, sorting = sorting,
+            get = get, set = Setter(key), disabled = soundsOff,
+        }
+    end
+
     return {
-        name = "Settings",
+        name = "General",
         type = "group",
         args = {
-            intro = {
-                order = 0.1,
-                type = "lead",
-                text = "Where notifications appear, how long they stay, and how the history panel behaves. Per-module on/off lives under Modules.",
-            },
-            positionHeader = {
-                order = 1,
-                type = "header",
-                name = "Bell Position",
-            },
-            positionNote = {
-                order = 2,
-                type = "note",
-                style = "info",
-                text = "Move the bell icon by entering Edit Mode. The notification panel and toasts always anchor to the bell, and the panel/toast growth direction is chosen automatically based on which screen corner the bell is closest to.",
-            },
-            resetBellTopLeft = {
-                order = 3,
-                type = "execute",
-                name = "Reset to Top Left",
-                desc = "Snap the bell back to the top-left corner.",
-                width = "half",
-                func = function()
-                    if addon.ResetBellPosition then addon.ResetBellPosition("TOPLEFT") end
-                end,
-            },
-            resetBellTopRight = {
-                order = 4,
-                type = "execute",
-                name = "Reset to Top Right",
-                desc = "Snap the bell back to the top-right corner.",
-                width = "half",
-                func = function()
-                    if addon.ResetBellPosition then addon.ResetBellPosition("TOPRIGHT") end
-                end,
-            },
-            displayHeader = {
-                order = 10,
-                type = "header",
-                name = "Display",
+            toastsHeader = { order = 10, type = "header", name = "Toasts" },
+            toastsEnabled = {
+                order = 11, type = "toggle", name = "Show toasts",
+                desc = "Off keeps every notification in the history panel only.",
+                get = function() return DB("toastsEnabled", true) ~= false end,
+                set = Setter("toastsEnabled"),
             },
             toastDuration = {
-                order = 11,
-                type = "range",
-                name = "Toast Duration (seconds)",
-                min = 1, max = 15, step = 1,
-                get = function() return addon.db and addon.db.toastDuration or 5 end,
-                set = function(_, val) addon.SetDBValue("toastDuration", val) end,
+                order = 12, type = "range", name = "Default duration",
+                desc = "For notifications sent by other addons. Each source sets its own.",
+                min = 1, max = 15, step = 1, format = "%d s",
+                get = function() return DB("toastDuration", 5) end,
+                set = Setter("toastDuration"),
             },
+            soundEnabled = {
+                order = 13, type = "toggle", name = "Play sounds",
+                get = function() return DB("soundEnabled", true) ~= false end,
+                set = function(_, val)
+                    addon.SetDBValue("soundEnabled", val)
+                    Refresh(PAGE_GENERAL)
+                end,
+            },
+            soundHigh   = PrioritySound(14, "High priority sound",   "soundHigh",   8959),
+            soundNormal = PrioritySound(15, "Normal priority sound", "soundNormal", 3175),
+            soundLow    = PrioritySound(16, "Low priority sound",    "soundLow",    0),
+
+            panelHeader = { order = 20, type = "header", name = "History panel" },
             panelOpacity = {
-                order = 12,
-                type = "range",
-                name = "Panel Opacity",
-                min = 0.5, max = 1.0, step = 0.05,
-                get = function() return addon.db and addon.db.panelOpacity or 0.85 end,
-                set = function(_, val) addon.SetDBValue("panelOpacity", val) end,
+                order = 21, type = "range", name = "Background opacity",
+                min = 0.5, max = 1, step = 0.05, isPercent = true,
+                get = function() return DB("panelOpacity", 0.85) end,
+                set = Setter("panelOpacity"),
             },
             scale = {
-                order = 13,
-                type = "range",
-                name = "Scale",
-                min = 0.5, max = 2.0, step = 0.1,
-                get = function() return addon.db and addon.db.scale or 1.0 end,
-                set = function(_, val) addon.SetDBValue("scale", val) end,
-            },
-            maxHistory = {
-                order = 14,
-                type = "range",
-                name = "Max Notifications",
-                min = 10, max = 999, step = 10,
-                get = function() return addon.db and addon.db.maxHistory or 999 end,
-                set = function(_, val) addon.SetDBValue("maxHistory", val) end,
+                order = 22, type = "range", name = "Scale",
+                desc = "Bell and panel.",
+                min = 0.5, max = 2, step = 0.1, format = "%.1f",
+                get = function() return DB("scale", 1) end,
+                set = Setter("scale"),
             },
             historyRetentionDays = {
-                order = 14.5,
-                type = "range",
-                name = "History Retention (Days)",
-                desc = "Persisted notification history older than this many days is pruned at login and after each new notification.",
-                min = 1, max = 90, step = 1,
-                get = function() return addon.db and addon.db.historyRetentionDays or 7 end,
+                order = 23, type = "range", name = "Keep history for",
+                min = 1, max = 90, step = 1, format = "%d days",
+                get = function() return DB("historyRetentionDays", 7) end,
                 set = function(_, val)
                     addon.SetDBValue("historyRetentionDays", val)
                     if addon.History_Trim then addon.History_Trim(val) end
                 end,
             },
-            toastsEnabled = {
-                order = 15,
-                type = "toggle",
-                name = "Enable Toast Popups",
-                get = function() return addon.db and addon.db.toastsEnabled ~= false end,
-                set = function(_, val) addon.SetDBValue("toastsEnabled", val) end,
-            },
-            soundEnabled = {
-                order = 16,
-                type = "toggle",
-                name = "Enable Sounds",
-                get = function() return addon.db and addon.db.soundEnabled ~= false end,
-                set = function(_, val) addon.SetDBValue("soundEnabled", val) end,
-            },
-            tomtomEnabled = {
-                order = 17,
-                type = "toggle",
-                name = "Enable TomTom Waypoints",
-                get = function() return addon.db and addon.db.tomtomEnabled ~= false end,
-                set = function(_, val) addon.SetDBValue("tomtomEnabled", val) end,
-            },
-            dndHeader = {
-                order = 20,
-                type = "header",
-                name = "Do Not Disturb",
-            },
-            dndIntro = {
-                order = 20.5,
-                type = "note",
-                style = "tip",
-                text = "DND mode silences toast popups and sounds without losing notifications - they still appear in the history panel for review.",
+
+            dndHeader = { order = 30, type = "header", name = "Do Not Disturb" },
+            dndDesc = {
+                order = 31, type = "description",
+                name = "Silences toasts and sounds. Notifications still land in the history panel.",
             },
             dndEnabled = {
-                order = 21,
-                type = "toggle",
-                name = "Enable DND (suppress toasts & sounds)",
-                get = function() return addon.db and addon.db.dndEnabled end,
-                set = function(_, val) addon.SetDBValue("dndEnabled", val) end,
+                order = 32, type = "toggle", name = "Do Not Disturb",
+                get = function() return DB("dndEnabled", false) == true end,
+                set = Setter("dndEnabled"),
             },
             dndAutoCombat = {
-                order = 22,
-                type = "toggle",
-                name = "Auto-enable in combat",
-                get = function() return addon.db and addon.db.dndAutoCombat end,
-                set = function(_, val) addon.SetDBValue("dndAutoCombat", val) end,
+                order = 33, type = "toggle", name = "Turn on in combat",
+                get = function() return DB("dndAutoCombat", false) == true end,
+                set = Setter("dndAutoCombat"),
             },
             dndAutoInstance = {
-                order = 23,
-                type = "toggle",
-                name = "Auto-enable during encounters",
-                get = function() return addon.db and addon.db.dndAutoInstance end,
-                set = function(_, val) addon.SetDBValue("dndAutoInstance", val) end,
+                order = 34, type = "toggle", name = "Turn on during boss encounters",
+                get = function() return DB("dndAutoInstance", false) == true end,
+                set = Setter("dndAutoInstance"),
             },
-            soundHeader = {
-                order = 30,
-                type = "header",
-                name = "Notification Sounds",
+
+            bellHeader = { order = 40, type = "header", name = "Bell" },
+            bellDesc = {
+                order = 41, type = "description",
+                name = "Drag the bell in Edit Mode. The panel and toasts follow it and grow away from the nearest screen corner.",
             },
-            soundHigh = {
-                order = 31,
-                type = "range",
-                name = "High Priority Sound ID (0 = silent)",
-                min = 0, max = 100000, step = 1,
-                get = function() return addon.db and addon.db.soundHigh or 8959 end,
-                set = function(_, val) addon.SetDBValue("soundHigh", val) end,
+            resetBellTopLeft = {
+                order = 42, type = "execute", name = "Reset to top left",
+                func = function()
+                    if addon.ResetBellPosition then addon.ResetBellPosition("TOPLEFT") end
+                end,
             },
-            soundNormal = {
-                order = 32,
-                type = "range",
-                name = "Normal Priority Sound ID (0 = silent)",
-                min = 0, max = 100000, step = 1,
-                get = function() return addon.db and addon.db.soundNormal or 618 end,
-                set = function(_, val) addon.SetDBValue("soundNormal", val) end,
-            },
-            soundLow = {
-                order = 33,
-                type = "range",
-                name = "Low Priority Sound ID (0 = silent)",
-                min = 0, max = 100000, step = 1,
-                get = function() return addon.db and addon.db.soundLow or 0 end,
-                set = function(_, val) addon.SetDBValue("soundLow", val) end,
+            resetBellTopRight = {
+                order = 43, type = "execute", name = "Reset to top right",
+                func = function()
+                    if addon.ResetBellPosition then addon.ResetBellPosition("TOPRIGHT") end
+                end,
             },
         },
     }
 end
 
 ---------------------------------------------------------------------------
--- Modules Subcategory - list/detail panel
--- One unified page with a list of modules on the left and the selected
--- module's enable toggle + settings on the right. Same shape BWD's
--- Drawers / Widgets sub-categories use.
+-- Sources
 ---------------------------------------------------------------------------
 
--- Build the args table for one module's detail panel: enable toggle on
--- top, then any module-specific options registered via the option-defs
--- system. Shared with the (now-deprecated) per-module pages below.
-local function BuildModuleArgs(moduleId)
-    local args = {
-        enabled = {
-            order = 1,
-            type = "toggle",
-            name = "Enable Module",
-            desc = "Toggle this module's notifications on or off.",
-            get = function()
-                if not addon.db then return true end
-                local settings = addon.db.modules[moduleId]
-                if not settings then return true end
-                return settings.enabled ~= false
-            end,
-            set = function(_, val)
-                if not addon.db.modules[moduleId] then
-                    addon.db.modules[moduleId] = {}
-                end
-                addon.db.modules[moduleId].enabled = val
-                addon.Events:Trigger("MODULE_TOGGLED", moduleId, val)
-            end,
-        },
-    }
+local CHOICES      = { toast = "Toast", history = "History only", off = "Off" }
+local CHOICE_ORDER = { "toast", "history", "off" }
 
-    local optDefs = addon.moduleOptionDefs and addon.moduleOptionDefs[moduleId]
-    if optDefs then
-        -- Header before the per-module options so it's visually grouped
-        args._optsHeader = {
-            order = 5,
-            type = "header",
-            name = "Module Settings",
-        }
-        for i, optDef in ipairs(optDefs) do
-            local key = optDef.key
-            local default = optDef.default
-            local disabledFunc = function()
-                return BNC:IsGlobalOverrideActive(key)
-            end
-            if optDef.type == "toggle" then
-                args[key] = {
-                    order = 10 + i,
-                    type = "toggle",
-                    name = optDef.label,
-                    get = function()
-                        local val = BNC:GetModuleSetting(moduleId, key)
-                        if val == nil then return default ~= false end
-                        return val ~= false
-                    end,
-                    set = function(_, val)
-                        BNC:SetModuleSetting(moduleId, key, val)
-                    end,
-                    disabled = disabledFunc,
-                }
-            elseif optDef.type == "slider" then
-                args[key] = {
-                    order = 10 + i,
-                    type = "range",
-                    name = optDef.label,
-                    min = optDef.min or 1,
-                    max = optDef.max or 15,
-                    step = optDef.step or 1,
-                    get = function()
-                        local val = BNC:GetModuleSetting(moduleId, key)
-                        if val == nil then return default or optDef.min or 1 end
-                        return val
-                    end,
-                    set = function(_, val)
-                        BNC:SetModuleSetting(moduleId, key, val)
-                    end,
-                    disabled = disabledFunc,
-                }
+-- Sections of a source's form, in display order.
+local SECTION_EVENTS, SECTION_OPTIONS, SECTION_TOASTS, SECTION_BLIZZARD = 1, 2, 3, 4
+local SECTION_NAMES = { "Events", "Options", "Toasts", "Blizzard UI" }
+local TOAST_KEYS    = { toastsEnabled = 1, toastDuration = 2, sound = 3 }
+
+local function SectionOf(def)
+    if def.type == "event" then return SECTION_EVENTS end
+    if TOAST_KEYS[def.key] then return SECTION_TOASTS end
+    if def.section == "blizzard" then return SECTION_BLIZZARD end
+    return SECTION_OPTIONS
+end
+
+local function BuildOption(moduleId, def, disabled)
+    local opt = { name = def.label or def.key, desc = def.desc, disabled = disabled }
+    local function Current(default)
+        local v = BNC:GetModuleSetting(moduleId, def.key)
+        if v == nil then return default end
+        return v
+    end
+
+    if def.type == "event" then
+        if def.toast then
+            opt.type, opt.values, opt.sorting = "select", CHOICES, CHOICE_ORDER
+            opt.get = function() return BNC:GetEventChoice(moduleId, def) end
+            opt.set = function(_, val) BNC:SetEventChoice(moduleId, def, val) end
+        else
+            opt.type = "toggle"
+            opt.get = function() return BNC:GetEventChoice(moduleId, def) ~= "off" end
+            opt.set = function(_, val) BNC:SetEventChoice(moduleId, def, val and "toast" or "off") end
+        end
+    elseif def.type == "toggle" then
+        opt.type = "toggle"
+        opt.get = function() return Current(def.default ~= false) ~= false end
+        opt.set = function(_, val)
+            BNC:SetModuleSetting(moduleId, def.key, val)
+            if def.key == "toastsEnabled" then Refresh(PAGE_SOURCES) end
+        end
+    elseif def.type == "slider" then
+        opt.type = "range"
+        opt.min, opt.max, opt.step = def.min or 1, def.max or 15, def.step or 1
+        opt.format = def.format or (def.key == "toastDuration" and "%d s") or nil
+        opt.get = function() return Current(def.default or opt.min) end
+        opt.set = function(_, val) BNC:SetModuleSetting(moduleId, def.key, val) end
+    elseif def.type == "select" then
+        opt.type, opt.values, opt.sorting = "select", def.values, def.sorting
+        opt.get = function() return Current(def.default) end
+        opt.set = function(_, val) BNC:SetModuleSetting(moduleId, def.key, val) end
+    elseif def.type == "sound" then
+        local function get() return Current("default") end
+        local values, sorting = SoundValues(get(), true)
+        opt.type, opt.values, opt.sorting = "select", values, sorting
+        opt.get = get
+        opt.set = function(_, val) BNC:SetModuleSetting(moduleId, def.key, val) end
+    else
+        return nil
+    end
+    return opt
+end
+
+local function BuildSourceArgs(moduleId)
+    local defs = addon.moduleOptionDefs[moduleId] or {}
+    local function disabled() return not BNC:IsModuleEnabled(moduleId) end
+
+    local hasToastChoice = false
+    for _, def in ipairs(defs) do
+        if def.type == "event" and def.toast then hasToastChoice = true end
+    end
+
+    local sections = { {}, {}, {}, {} }
+    for _, def in ipairs(defs) do
+        -- The source-wide toast switch is redundant once every event
+        -- offers Toast / History only itself.
+        if not (def.key == "toastsEnabled" and hasToastChoice) then
+            local list = sections[SectionOf(def)]
+            list[#list + 1] = def
+        end
+    end
+    table.sort(sections[SECTION_TOASTS], function(a, b)
+        return (TOAST_KEYS[a.key] or 9) < (TOAST_KEYS[b.key] or 9)
+    end)
+
+    local args, order = {}, 0
+    local function Add(key, opt)
+        if not opt then return end
+        order = order + 1
+        opt.order = order
+        args[key] = opt
+    end
+
+    for s = 1, #sections do
+        local list = sections[s]
+        if #list > 0 then
+            Add("hdr" .. s, { type = "header", name = SECTION_NAMES[s] })
+            for i, def in ipairs(list) do
+                Add(tostring(def.key or ("event" .. i)), BuildOption(moduleId, def, disabled))
             end
         end
     end
-
     return args
 end
 
-local function GetModulesOptionsTable()
-    -- Sort modules alphabetically
+local function GetSourcesOptionsTable()
     local sorted = {}
     for id, module in pairs(addon.modules) do
         if id ~= "_test" then
-            table.insert(sorted, { id = id, name = module.name })
+            sorted[#sorted + 1] = { id = id, name = module.name }
         end
     end
     table.sort(sorted, function(a, b) return a.name < b.name end)
 
-    -- Build one child group per module so BazUI's CreateTwoPanelLayout
-    -- renders a list/detail panel automatically.
-    local moduleGroups = {}
+    local groups = {}
     for i, info in ipairs(sorted) do
-        moduleGroups["mod_" .. info.id] = {
+        local id = info.id
+        groups["src_" .. id] = {
             order = i,
             type = "group",
             name = info.name,
-            args = BuildModuleArgs(info.id),
+            args = BuildSourceArgs(id),
+            toggle = {
+                name = "Enabled",
+                get = function() return BNC:IsModuleEnabled(id) end,
+                set = function(_, val)
+                    if not addon.db then return end
+                    addon.db.modules[id] = addon.db.modules[id] or {}
+                    addon.db.modules[id].enabled = val
+                    addon.Events:Trigger("MODULE_TOGGLED", id, val)
+                    Refresh(PAGE_SOURCES)
+                end,
+            },
         }
     end
 
     return {
-        name = "Modules",
+        name = "Sources",
         type = "group",
         args = {
-            intro = {
-                order = 0.1,
-                type = "lead",
-                text = "Pick a module on the left to enable/disable it and adjust its specific settings. Each module captures a different category of game events.",
-            },
-            modules = {
-                order = 10,
+            sources = {
+                order = 1,
                 type = "group",
                 name = "",
-                args = moduleGroups,
+                pickerLabel = "Source",
+                emptyText = "No sources have registered yet.",
+                args = groups,
             },
         },
     }
-end
-
----------------------------------------------------------------------------
--- Global Options Subcategory
----------------------------------------------------------------------------
-
-local function GetGlobalOptionsTable()
-    return BazUI:CreateGlobalOptionsPage("Notifications", {
-        getOverrides = function()
-            if not addon.db then return {} end
-            if not addon.db.globalOverrides then addon.db.globalOverrides = {} end
-            return addon.db.globalOverrides
-        end,
-        setOverride = function(key, field, value)
-            if not addon.db then return end
-            if not addon.db.globalOverrides then addon.db.globalOverrides = {} end
-            if not addon.db.globalOverrides[key] then
-                addon.db.globalOverrides[key] = { enabled = false, value = nil }
-            end
-            addon.db.globalOverrides[key][field] = value
-        end,
-        overrides = {
-            { key = "toastDuration",  label = "Toast Duration",  type = "slider",  default = 5, min = 1, max = 15, step = 1 },
-            { key = "soundEnabled",   label = "Play Sound",      type = "toggle",  default = true },
-            { key = "toastsEnabled",  label = "Enable Toasts",   type = "toggle",  default = true },
-        },
-    })
-end
-
----------------------------------------------------------------------------
--- Per-Module Settings Subcategory
----------------------------------------------------------------------------
-
--- Per-module sub-categories are no longer separate sidebar entries -
--- everything lives inside the unified Modules list/detail page now.
--- This stub stays so the "create on module register" event chain still
--- has something to call; it just refreshes the Modules page.
-local function CreateModuleOptionsPage(moduleId)
-    if not addon.modules[moduleId] then return end
-    moduleSubCategories[moduleId] = true
-    if BazUI.RefreshOptions then
-        BazUI:RefreshOptions("Notifications-Modules")
-    end
 end
 
 ---------------------------------------------------------------------------
 -- Registration
 ---------------------------------------------------------------------------
 
-local function TryCreateAllPendingPages()
-    for moduleId in pairs(addon.moduleOptionDefs) do
-        if not moduleSubCategories[moduleId] then
-            CreateModuleOptionsPage(moduleId)
-        end
-    end
+local function RefreshSources()
+    Refresh(PAGE_SOURCES)
 end
 
-local optionsReady = false
-
 addon.Events:Register("CORE_LOADED", function()
-    -- Main page (user manual) - must be first so parent category exists
-    BazUI:RegisterOptionsTable("Notifications", GetMainOptionsTable)
-    BazUI:AddToSettings("Notifications", "Notifications")
+    -- The module entry itself never renders: its pages are tabs.
+    BazUI:RegisterOptionsTable(MODULE_KEY, function()
+        return { name = "Notifications", type = "group", args = {} }
+    end)
+    BazUI:AddToSettings(MODULE_KEY, "Notifications")
 
-    -- Settings subcategory
-    BazUI:RegisterOptionsTable("Notifications-Settings", GetSettingsOptionsTable)
-    BazUI:AddToSettings("Notifications-Settings", "General Settings", "Notifications")
+    BazUI:RegisterOptionsTable(PAGE_GENERAL, GetGeneralOptionsTable)
+    BazUI:AddToSettings(PAGE_GENERAL, "General", MODULE_KEY)
 
-    -- Global Options subcategory
-    BazUI:RegisterOptionsTable("Notifications-GlobalOptions", GetGlobalOptionsTable)
-    BazUI:AddToSettings("Notifications-GlobalOptions", "Global Settings", "Notifications")
-
-    -- Modules subcategory
-    BazUI:RegisterOptionsTable("Notifications-Modules", GetModulesOptionsTable)
-    BazUI:AddToSettings("Notifications-Modules", "Modules", "Notifications")
-
-    -- Now safe to create per-module pages
-    optionsReady = true
-    TryCreateAllPendingPages()
+    BazUI:RegisterOptionsTable(PAGE_SOURCES, GetSourcesOptionsTable)
+    BazUI:AddToSettings(PAGE_SOURCES, "Sources", MODULE_KEY)
 end)
 
--- These fire before CORE_LOADED, so guard with optionsReady
-addon.Events:Register("MODULE_REGISTERED", function()
-    if optionsReady then TryCreateAllPendingPages() end
-end)
-addon.Events:Register("MODULE_OPTIONS_REGISTERED", function()
-    if optionsReady then TryCreateAllPendingPages() end
-end)
-addon.Events:Register("PLAYER_READY", TryCreateAllPendingPages)
+-- Sources register at load and again as their options arrive; keep the
+-- page current if it is on screen.
+addon.Events:Register("MODULE_REGISTERED", RefreshSources)
+addon.Events:Register("MODULE_OPTIONS_REGISTERED", RefreshSources)
+addon.Events:Register("PLAYER_READY", RefreshSources)
 
 function addon.OpenOptions()
-    BazUI:OpenOptionsPanel("Notifications")
+    BazUI:OpenOptionsPanel(MODULE_KEY)
 end

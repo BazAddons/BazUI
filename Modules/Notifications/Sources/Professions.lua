@@ -57,7 +57,7 @@ local function CheckSkillUps()
                         message = cached.level .. " -> " .. skillLevel .. " / " .. maxLevel,
                         icon = icon and tostring(icon) or ICON_SKILL,
                         priority = "normal",
-                        duration = GetSetting("skillUpDuration") or 4,
+                        duration = GetSetting("toastDuration") or 4,
                         silent = GetSetting("skillUpToasts") == false,
                     })
                 end
@@ -82,7 +82,7 @@ local function OnChatMsgLoot(event, msg)
         message = itemName,
         icon = itemTexture or ICON_CRAFT,
         priority = "low",
-        duration = GetSetting("craftDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("craftToasts") == false,
         itemLink = itemLink,
     })
@@ -121,10 +121,7 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showCrafts",       label = "Show Craft Completed",       type = "toggle", default = true },
-    { key = "showSkillUps",     label = "Show Skill Level Ups",       type = "toggle", default = true },
-    { key = "craftToasts",      label = "Toast on Craft",             type = "toggle", default = true },
-    { key = "skillUpToasts",    label = "Toast on Skill Up",          type = "toggle", default = true },
-    { key = "craftDuration",    label = "Craft Toast Duration",       type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "skillUpDuration",  label = "Skill Up Toast Duration",    type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { type = "event", key = "crafts",   label = "Crafts completed", show = "showCrafts",   toast = "craftToasts" },
+    { type = "event", key = "skillUps", label = "Skill level ups",  show = "showSkillUps", toast = "skillUpToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
 })

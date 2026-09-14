@@ -89,7 +89,7 @@ local function CheckObjectiveProgress(questID)
                         message = obj.text .. " (Complete!)",
                         icon = ICON_QUEST_COMPLETE,
                         priority = "normal",
-                        duration = GetSetting("progressDuration") or 3,
+                        duration = GetSetting("toastDuration") or 3,
                         silent = GetSetting("progressToasts") == false,
                     })
                 end
@@ -100,7 +100,7 @@ local function CheckObjectiveProgress(questID)
                     message = obj.text,
                     icon = ICON_QUEST_PROGRESS,
                     priority = "low",
-                    duration = GetSetting("progressDuration") or 3,
+                    duration = GetSetting("toastDuration") or 3,
                     silent = GetSetting("progressToasts") == false,
                 })
             end
@@ -135,7 +135,7 @@ local function OnQuestAccepted(event, questID)
         message = questTitle,
         icon = ICON_QUEST_ACCEPTED,
         priority = "normal",
-        duration = GetSetting("acceptedDuration") or 4,
+        duration = GetSetting("toastDuration") or 4,
         silent = GetSetting("acceptedToasts") == false,
     })
 end
@@ -159,7 +159,7 @@ local function OnQuestTurnedIn(event, questID)
         message = questTitle,
         icon = ICON_QUEST_COMPLETE,
         priority = "high",
-        duration = GetSetting("completedDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("completedToasts") == false,
     })
 end
@@ -249,15 +249,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "hideDefaultText",       label = "Hide Default Progress Text",    type = "toggle", default = true },
-    { key = "showAccepted",          label = "Show Quest Accepted",           type = "toggle", default = true },
-    { key = "showCompleted",         label = "Show Quest Completed",          type = "toggle", default = true },
-    { key = "showProgress",          label = "Show Objective Progress",       type = "toggle", default = true },
-    { key = "showObjectiveComplete", label = "Show Objective Completed",      type = "toggle", default = true },
-    { key = "acceptedToasts",        label = "Toast on Quest Accepted",       type = "toggle", default = true },
-    { key = "completedToasts",       label = "Toast on Quest Completed",      type = "toggle", default = true },
-    { key = "progressToasts",        label = "Toast on Progress Update",      type = "toggle", default = true },
-    { key = "acceptedDuration",      label = "Accepted Toast Duration",       type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "completedDuration",     label = "Completed Toast Duration",      type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "progressDuration",      label = "Progress Toast Duration",       type = "slider", default = 3, min = 1, max = 15, step = 1 },
+    { type = "event", key = "accepted",  label = "Quest accepted",     show = "showAccepted",  toast = "acceptedToasts" },
+    { type = "event", key = "completed", label = "Quest completed",    show = "showCompleted", toast = "completedToasts" },
+    { type = "event", key = "progress",  label = "Objective progress", show = { "showProgress", "showObjectiveComplete" }, toast = "progressToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { key = "hideDefaultText", label = "Hide Blizzard's progress text", type = "toggle", default = true, section = "blizzard" },
 })

@@ -56,7 +56,7 @@ local function CheckGroupChanges()
                 message = "joined the group",
                 icon = ICON_MEMBER_JOIN,
                 priority = "low",
-                duration = GetSetting("memberDuration") or 3,
+                duration = GetSetting("toastDuration") or 3,
                 silent = GetSetting("memberToasts") == false,
             })
         end
@@ -70,7 +70,7 @@ local function CheckGroupChanges()
                 message = "left the group",
                 icon = ICON_MEMBER_LEAVE,
                 priority = "low",
-                duration = GetSetting("memberDuration") or 3,
+                duration = GetSetting("toastDuration") or 3,
                 silent = GetSetting("memberToasts") == false,
             })
         end
@@ -88,7 +88,7 @@ local function OnLFGProposal()
         message = "A group has been found",
         icon = ICON_LFG,
         priority = "high",
-        duration = GetSetting("queueDuration") or 8,
+        duration = GetSetting("toastDuration") or 8,
         silent = GetSetting("queueToasts") == false,
     })
 end
@@ -102,7 +102,7 @@ local function OnRoleCheck()
         message = "Confirm your role",
         icon = ICON_ROLE,
         priority = "high",
-        duration = GetSetting("roleDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("roleToasts") == false,
     })
 end
@@ -116,7 +116,7 @@ local function OnCountdown(event, initiatedBy, timeRemaining)
         message = (initiatedBy or "Someone") .. " started a " .. (timeRemaining or "?") .. "s countdown",
         icon = ICON_COUNTDOWN,
         priority = "high",
-        duration = GetSetting("countdownDuration") or 4,
+        duration = GetSetting("toastDuration") or 4,
         silent = GetSetting("countdownToasts") == false,
     })
 end
@@ -151,16 +151,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showQueuePop",       label = "Show Queue Pop",                type = "toggle", default = true },
-    { key = "showMemberChanges",  label = "Show Member Join/Leave",        type = "toggle", default = true },
-    { key = "showRoleCheck",      label = "Show Role Check",               type = "toggle", default = true },
-    { key = "showCountdown",      label = "Show Pull Timer",               type = "toggle", default = true },
-    { key = "queueToasts",        label = "Toast on Queue Pop",            type = "toggle", default = true },
-    { key = "memberToasts",       label = "Toast on Member Changes",       type = "toggle", default = true },
-    { key = "roleToasts",         label = "Toast on Role Check",           type = "toggle", default = true },
-    { key = "countdownToasts",    label = "Toast on Pull Timer",           type = "toggle", default = true },
-    { key = "queueDuration",      label = "Queue Toast Duration",          type = "slider", default = 8, min = 1, max = 15, step = 1 },
-    { key = "memberDuration",     label = "Member Toast Duration",         type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "roleDuration",       label = "Role Check Toast Duration",     type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "countdownDuration",  label = "Countdown Toast Duration",      type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { type = "event", key = "queue",     label = "Queue pop",                   show = "showQueuePop",      toast = "queueToasts" },
+    { type = "event", key = "members",   label = "Members joining and leaving", show = "showMemberChanges", toast = "memberToasts" },
+    { type = "event", key = "roleCheck", label = "Role checks",                 show = "showRoleCheck",     toast = "roleToasts" },
+    { type = "event", key = "countdown", label = "Pull timers",                 show = "showCountdown",     toast = "countdownToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

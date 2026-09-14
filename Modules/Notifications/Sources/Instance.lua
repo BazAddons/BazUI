@@ -44,7 +44,7 @@ local function CheckInstanceChange()
                 message = instanceName,
                 icon = icon,
                 priority = "normal",
-                duration = GetSetting("enteredDuration") or 4,
+                duration = GetSetting("toastDuration") or 4,
                 silent = GetSetting("enteredToasts") == false,
             })
         end
@@ -58,7 +58,7 @@ local function CheckInstanceChange()
                 message = currentInstance,
                 icon = ICON_DUNGEON,
                 priority = "low",
-                duration = GetSetting("leftDuration") or 3,
+                duration = GetSetting("toastDuration") or 3,
                 silent = GetSetting("leftToasts") == false,
             })
         end
@@ -76,7 +76,7 @@ local function OnEncounterStart(event, encounterID, encounterName, difficultyID,
         message = encounterName or "Boss",
         icon = ICON_BOSS_KILL,
         priority = "normal",
-        duration = GetSetting("encounterDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("encounterToasts") == false,
     })
 end
@@ -100,7 +100,7 @@ local function OnEncounterEnd(event, encounterID, encounterName, difficultyID, g
             message = (encounterName or "Boss") .. elapsed,
             icon = ICON_BOSS_KILL,
             priority = "high",
-            duration = GetSetting("encounterDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("encounterToasts") == false,
         })
     else
@@ -110,7 +110,7 @@ local function OnEncounterEnd(event, encounterID, encounterName, difficultyID, g
             message = (encounterName or "Boss") .. elapsed,
             icon = ICON_WIPE,
             priority = "normal",
-            duration = GetSetting("encounterDuration") or 4,
+            duration = GetSetting("toastDuration") or 4,
             silent = GetSetting("encounterToasts") == false,
         })
     end
@@ -125,7 +125,7 @@ local function OnLFGProposalShow()
         message = "Your group has been found",
         icon = ICON_QUEUE,
         priority = "high",
-        duration = GetSetting("queueDuration") or 8,
+        duration = GetSetting("toastDuration") or 8,
         silent = GetSetting("queueToasts") == false,
     })
 end
@@ -157,16 +157,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showEntered",          label = "Show Instance Entered",       type = "toggle", default = true },
-    { key = "showLeft",             label = "Show Instance Left",          type = "toggle", default = true },
-    { key = "showEncounters",       label = "Show Boss Encounters",        type = "toggle", default = true },
-    { key = "showQueuePop",         label = "Show Queue Pop",              type = "toggle", default = true },
-    { key = "enteredToasts",        label = "Toast on Enter",              type = "toggle", default = true },
-    { key = "leftToasts",           label = "Toast on Leave",              type = "toggle", default = true },
-    { key = "encounterToasts",      label = "Toast on Encounter",          type = "toggle", default = true },
-    { key = "queueToasts",          label = "Toast on Queue Pop",          type = "toggle", default = true },
-    { key = "enteredDuration",      label = "Enter Toast Duration",        type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "leftDuration",         label = "Leave Toast Duration",        type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "encounterDuration",    label = "Encounter Toast Duration",    type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "queueDuration",        label = "Queue Toast Duration",        type = "slider", default = 8, min = 1, max = 15, step = 1 },
+    { type = "event", key = "entered",    label = "Entering an instance", show = "showEntered",    toast = "enteredToasts" },
+    { type = "event", key = "left",       label = "Leaving an instance",  show = "showLeft",       toast = "leftToasts" },
+    { type = "event", key = "encounters", label = "Boss encounters",      show = "showEncounters", toast = "encounterToasts" },
+    { type = "event", key = "queue",      label = "Queue pop",            show = "showQueuePop",   toast = "queueToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
 })

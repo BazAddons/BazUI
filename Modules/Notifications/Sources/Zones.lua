@@ -35,7 +35,7 @@ local function OnZoneChanged()
             message = message,
             icon = MODULE_ICON,
             priority = "normal",
-            duration = GetSetting("zoneDuration") or 4,
+            duration = GetSetting("toastDuration") or 4,
             silent = GetSetting("zoneToasts") == false,
         })
     end
@@ -54,7 +54,7 @@ local function OnSubZoneChanged()
             message = GetZoneText() or "",
             icon = MODULE_ICON,
             priority = "low",
-            duration = GetSetting("subzoneDuration") or 3,
+            duration = GetSetting("toastDuration") or 3,
             silent = GetSetting("subzoneToasts") == false,
         })
     end
@@ -81,12 +81,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showZones",      label = "Show Zone Changes",       type = "toggle", default = true },
-    { key = "showSubzones",   label = "Show Subzone Changes",    type = "toggle", default = true },
-    { key = "zoneToasts",     label = "Toast on Zone Change",    type = "toggle", default = true },
-    { key = "subzoneToasts",  label = "Toast on Subzone Change", type = "toggle", default = true },
-    { key = "zoneDuration",   label = "Zone Toast Duration",     type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "subzoneDuration",label = "Subzone Toast Duration",  type = "slider", default = 3, min = 1, max = 15, step = 1 },
+    { type = "event", key = "zones",    label = "Zone changes",    show = "showZones",    toast = "zoneToasts" },
+    { type = "event", key = "subzones", label = "Subzone changes", show = "showSubzones", toast = "subzoneToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
 })
 
 for _, frameName in ipairs(SUPPRESSED_FRAMES) do

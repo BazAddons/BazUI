@@ -39,7 +39,7 @@ local repAccumulator = BNC:CreateAccumulator(1.5, function(data)
                 message = sign .. amount .. " reputation",
                 icon = amount > 0 and ICON_REP_GAIN or ICON_REP_LOSS,
                 priority = "low",
-                duration = GetSetting("gainDuration") or 3,
+                duration = GetSetting("toastDuration") or 3,
                 silent = GetSetting("gainToasts") == false,
             })
         end
@@ -104,7 +104,7 @@ local function CheckStandingMilestones()
                         message = "Now " .. standingName .. "!",
                         icon = ICON_MILESTONE,
                         priority = "high",
-                        duration = GetSetting("milestoneDuration") or 6,
+                        duration = GetSetting("toastDuration") or 6,
                         silent = GetSetting("milestoneToasts") == false,
                     })
                 end
@@ -149,11 +149,7 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showGains",         label = "Show Reputation Gains",        type = "toggle", default = true },
-    { key = "showLosses",        label = "Show Reputation Losses",       type = "toggle", default = true },
-    { key = "showMilestones",    label = "Show Standing Milestones",     type = "toggle", default = true },
-    { key = "gainToasts",        label = "Toast on Rep Gain",            type = "toggle", default = true },
-    { key = "milestoneToasts",   label = "Toast on Milestone",           type = "toggle", default = true },
-    { key = "gainDuration",      label = "Gain Toast Duration",          type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "milestoneDuration", label = "Milestone Toast Duration",     type = "slider", default = 6, min = 1, max = 15, step = 1 },
+    { type = "event", key = "changes",    label = "Reputation gains and losses", show = { "showGains", "showLosses" }, toast = "gainToasts" },
+    { type = "event", key = "milestones", label = "Standing milestones",         show = "showMilestones",              toast = "milestoneToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
 })

@@ -17,6 +17,8 @@
 -- args are one sub-group per item (optionally tagged with `source` for
 -- grouped menus, with `_lazyDetailBuild` for deferred detail args), and
 -- an optional list of execute options rendered as buttons on the row.
+-- An item may carry `toggle = { name, get, set }`: an on/off switch for
+-- the item itself, drawn on the picker row next to the dropdown.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
@@ -115,6 +117,22 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
         local up   = AddButton("Up", 44, function() if groupOpt.onMoveUp then groupOpt.onMoveUp(selected) end end)
         if not idx or idx == 1 then up:Disable() end
         if not idx or idx == #children then down:Disable() end
+    end
+
+    -- The selected item's own on/off switch, if it has one.
+    if selected and type(selected.toggle) == "table" then
+        local tg = selected.toggle
+        local cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+        cb:SetSize(O.CHECK_W, O.CHECK_W)
+        cb:SetPoint("RIGHT", rightEdge, rightEdge == row and "RIGHT" or "LEFT", rightEdge == row and -O.ROW_PAD or -8, 0)
+        cb:SetChecked(tg.get and tg.get() or false)
+        cb:SetScript("OnClick", function(self)
+            if tg.set then tg.set(nil, self:GetChecked() and true or false) end
+        end)
+        local tl = row:CreateFontString(nil, "OVERLAY", O.LABEL_FONT)
+        tl:SetPoint("RIGHT", cb, "LEFT", -4, 0)
+        tl:SetText(tg.name or "Enabled")
+        rightEdge, rightX = tl, -12
     end
 
     -- The dropdown fills the space between the label and the buttons.

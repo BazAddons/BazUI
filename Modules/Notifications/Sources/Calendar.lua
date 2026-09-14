@@ -27,7 +27,7 @@ local function CheckPendingInvites()
             message = numInvites .. " pending invite" .. (numInvites ~= 1 and "s" or ""),
             icon = ICON_INVITE,
             priority = "normal",
-            duration = GetSetting("inviteDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("inviteToasts") == false,
         })
     end
@@ -64,7 +64,7 @@ local function CheckTodayEvents()
             message = message,
             icon = ICON_EVENT,
             priority = "normal",
-            duration = GetSetting("eventDuration") or 6,
+            duration = GetSetting("toastDuration") or 6,
             silent = GetSetting("eventToasts") == false,
         })
     end
@@ -90,7 +90,7 @@ local function CheckHolidays()
                     message = title,
                     icon = event.iconTexture and tostring(event.iconTexture) or ICON_HOLIDAY,
                     priority = "low",
-                    duration = GetSetting("holidayDuration") or 5,
+                    duration = GetSetting("toastDuration") or 5,
                     silent = GetSetting("holidayToasts") == false,
                 })
             end
@@ -121,7 +121,7 @@ local function ShowResetInfo()
         message = message,
         icon = ICON_RESET,
         priority = days <= 1 and "high" or "low",
-        duration = GetSetting("resetDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("resetToasts") == false,
     })
 end
@@ -135,7 +135,7 @@ local function OnCalendarInviteAdded()
         message = "You have a new calendar invitation",
         icon = ICON_INVITE,
         priority = "normal",
-        duration = GetSetting("inviteDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("inviteToasts") == false,
     })
 end
@@ -174,16 +174,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showTodayEvents",   label = "Show Today's Events on Login",  type = "toggle", default = true },
-    { key = "showHolidays",      label = "Show Active Holidays on Login", type = "toggle", default = true },
-    { key = "showInvites",       label = "Show Calendar Invites",         type = "toggle", default = true },
-    { key = "showReset",         label = "Show Weekly Reset Timer",       type = "toggle", default = true },
-    { key = "eventToasts",       label = "Toast on Events",               type = "toggle", default = true },
-    { key = "holidayToasts",     label = "Toast on Holidays",             type = "toggle", default = true },
-    { key = "inviteToasts",      label = "Toast on Invites",              type = "toggle", default = true },
-    { key = "resetToasts",       label = "Toast on Reset Info",           type = "toggle", default = true },
-    { key = "eventDuration",     label = "Event Toast Duration",          type = "slider", default = 6, min = 1, max = 15, step = 1 },
-    { key = "holidayDuration",   label = "Holiday Toast Duration",        type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "inviteDuration",    label = "Invite Toast Duration",         type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "resetDuration",     label = "Reset Toast Duration",          type = "slider", default = 5, min = 1, max = 15, step = 1 },
+    { type = "event", key = "events",   label = "Today's events at login", show = "showTodayEvents", toast = "eventToasts" },
+    { type = "event", key = "holidays", label = "Holidays at login",       show = "showHolidays",    toast = "holidayToasts" },
+    { type = "event", key = "invites",  label = "Calendar invites",        show = "showInvites",     toast = "inviteToasts" },
+    { type = "event", key = "reset",    label = "Weekly reset timer",      show = "showReset",       toast = "resetToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

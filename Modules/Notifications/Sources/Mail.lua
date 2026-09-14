@@ -30,7 +30,7 @@ local function OnNewMail()
         message = "You've got mail!",
         icon = ICON_MAIL,
         priority = "normal",
-        duration = GetSetting("mailDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("mailToasts") == false,
     })
 end
@@ -92,7 +92,7 @@ local function OnMailboxOpened()
                 message = message,
                 icon = icon,
                 priority = priority,
-                duration = GetSetting("detailDuration") or 4,
+                duration = GetSetting("toastDuration") or 4,
                 silent = GetSetting("detailToasts") == false,
             })
         end
@@ -154,10 +154,7 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showNewMail",     label = "Show New Mail Alert",          type = "toggle", default = true },
-    { key = "showMailDetails", label = "Show Mail Details on Open",    type = "toggle", default = true },
-    { key = "mailToasts",      label = "Toast on New Mail",            type = "toggle", default = true },
-    { key = "detailToasts",    label = "Toast Mail Details",           type = "toggle", default = true },
-    { key = "mailDuration",    label = "New Mail Toast Duration",      type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "detailDuration",  label = "Detail Toast Duration",        type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { type = "event", key = "newMail", label = "New mail",                  show = "showNewMail",     toast = "mailToasts" },
+    { type = "event", key = "details", label = "Mail contents when opened", show = "showMailDetails", toast = "detailToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

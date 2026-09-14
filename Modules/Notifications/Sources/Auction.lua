@@ -30,7 +30,7 @@ local function OnSystemMessage(event, msg)
             message = itemName,
             icon = ICON_SOLD,
             priority = "high",
-            duration = GetSetting("soldDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("soldToasts") == false,
         })
         return
@@ -47,7 +47,7 @@ local function OnSystemMessage(event, msg)
             message = itemName,
             icon = ICON_EXPIRED,
             priority = "low",
-            duration = GetSetting("expiredDuration") or 4,
+            duration = GetSetting("toastDuration") or 4,
             silent = GetSetting("expiredToasts") == false,
         })
         return
@@ -64,7 +64,7 @@ local function OnSystemMessage(event, msg)
             message = itemName,
             icon = ICON_OUTBID,
             priority = "normal",
-            duration = GetSetting("outbidDuration") or 5,
+            duration = GetSetting("toastDuration") or 5,
             silent = GetSetting("outbidToasts") == false,
         })
         return
@@ -81,7 +81,7 @@ local function OnSystemMessage(event, msg)
             message = itemName,
             icon = ICON_WON,
             priority = "normal",
-            duration = GetSetting("wonDuration") or 4,
+            duration = GetSetting("toastDuration") or 4,
             silent = GetSetting("wonToasts") == false,
         })
         return
@@ -107,16 +107,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showSold",        label = "Show Auction Sold",          type = "toggle", default = true },
-    { key = "showExpired",     label = "Show Auction Expired",       type = "toggle", default = true },
-    { key = "showOutbid",      label = "Show Outbid",                type = "toggle", default = true },
-    { key = "showWon",         label = "Show Auction Won",           type = "toggle", default = true },
-    { key = "soldToasts",      label = "Toast on Sold",              type = "toggle", default = true },
-    { key = "expiredToasts",   label = "Toast on Expired",           type = "toggle", default = true },
-    { key = "outbidToasts",    label = "Toast on Outbid",            type = "toggle", default = true },
-    { key = "wonToasts",       label = "Toast on Won",               type = "toggle", default = true },
-    { key = "soldDuration",    label = "Sold Toast Duration",        type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "expiredDuration", label = "Expired Toast Duration",     type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "outbidDuration",  label = "Outbid Toast Duration",      type = "slider", default = 5, min = 1, max = 15, step = 1 },
-    { key = "wonDuration",     label = "Won Toast Duration",         type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { type = "event", key = "sold",    label = "Auction sold",    show = "showSold",    toast = "soldToasts" },
+    { type = "event", key = "expired", label = "Auction expired", show = "showExpired", toast = "expiredToasts" },
+    { type = "event", key = "outbid",  label = "Outbid",          show = "showOutbid",  toast = "outbidToasts" },
+    { type = "event", key = "won",     label = "Auction won",     show = "showWon",     toast = "wonToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

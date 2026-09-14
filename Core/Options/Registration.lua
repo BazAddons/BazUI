@@ -45,25 +45,20 @@ local function GetPagesFor(parentName)
             children[#children + 1] = { key = name, label = entry.displayName }
         end
     end
-    -- Sort order:
-    --   1. "General Settings" (the page people come here for)
-    --   2. "User Manual"      (docs one tab over)
-    --   3. "Global Settings"  (overrides that apply to every module)
-    --   4. Custom sub-categories (alphabetical)
-    --   5. "Profiles" last
-    -- Old labels ("User Guide", "Settings", "Global Options") still
-    -- resolve to the same slot so addons that haven't been renamed
-    -- don't break their ordering.
+    -- Sort order: General first, the module's own pages next
+    -- (alphabetical), then Global Settings, Profiles, and the User
+    -- Manual last so docs sit at the end of every tab strip. Old labels
+    -- ("User Guide", "Settings", "Global Options") map to the same slots.
     local function Rank(label)
-        if label == "General Settings" or label == "Settings"
+        if label == "General" or label == "General Settings" or label == "Settings"
             then return 1 end
-        if label == "User Manual" or label == "User Guide"
-            then return 2 end
         if label == "Global Settings" or label == "Global Options"
-            then return 3 end
+            then return 600 end
         if label == "Profiles"
-            then return 999 end
-        return 500  -- custom sub-categories, sorted alphabetically among themselves
+            then return 800 end
+        if label == "User Manual" or label == "User Guide"
+            then return 900 end
+        return 500
     end
     table.sort(children, function(a, b)
         local ra, rb = Rank(a.label), Rank(b.label)

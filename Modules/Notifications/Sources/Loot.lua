@@ -64,7 +64,7 @@ local function OnPlayerMoney()
             message = FormatMoney(diff),
             icon = "Interface\\Icons\\INV_Misc_Coin_01",
             priority = "low",
-            duration = GetSetting("goldDuration") or 3,
+            duration = GetSetting("toastDuration") or 3,
             silent = GetSetting("goldToasts") == false,
         })
     end
@@ -141,7 +141,7 @@ local function OnLootReceived(event, msg, playerName, languageName, channelName,
         message = message,
         icon = itemTexture,
         priority = priority,
-        duration = GetSetting("itemDuration") or 4,
+        duration = GetSetting("toastDuration") or 4,
         silent = GetSetting("itemToasts") == false,
         itemLink = itemLink,
     })
@@ -162,7 +162,7 @@ local function OnCurrencyChanged(event, currencyType, quantity, quantityChange)
         message = "+" .. quantityChange,
         icon = info.iconFileID and tostring(info.iconFileID) or MODULE_ICON,
         priority = "low",
-        duration = GetSetting("currencyDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("currencyToasts") == false,
     })
 end
@@ -245,20 +245,15 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "autoLoot",        label = "Enable Auto-Loot",         type = "toggle", default = true },
-    { key = "hideLootFrame",   label = "Hide Loot Window",         type = "toggle", default = true },
-    { key = "hideLootAlerts",  label = "Hide Default Loot Popups", type = "toggle", default = true },
-    { key = "hideQuestItems",  label = "Skip Quest Items (handled by Quests module)", type = "toggle", default = true },
-    { key = "showItems",       label = "Show Item Loot",           type = "toggle", default = true },
-    { key = "showGold",        label = "Show Gold Gains",          type = "toggle", default = true },
-    { key = "showCurrency",    label = "Show Currency Gains",      type = "toggle", default = true },
-    { key = "minQuality",      label = "Minimum Item Quality (0=Poor, 4=Epic)", type = "slider", default = 0, min = 0, max = 5, step = 1 },
-    { key = "itemToasts",      label = "Toast on Item Loot",       type = "toggle", default = true },
-    { key = "goldToasts",      label = "Toast on Gold Gain",       type = "toggle", default = true },
-    { key = "currencyToasts",  label = "Toast on Currency Gain",   type = "toggle", default = true },
-    { key = "itemDuration",    label = "Item Toast Duration",      type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "goldDuration",    label = "Gold Toast Duration",      type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "currencyDuration",label = "Currency Toast Duration",  type = "slider", default = 3, min = 1, max = 15, step = 1 },
+    { type = "event", key = "items", label = "Item loot",  show = "showItems", toast = "itemToasts" },
+    { type = "event", key = "gold",  label = "Gold gains", show = "showGold",  toast = "goldToasts" },
+    { key = "minQuality",     label = "Minimum item quality", desc = "Items below this quality are skipped.", type = "select", default = 0,
+      values = { [0] = "Poor", [1] = "Common", [2] = "Uncommon", [3] = "Rare", [4] = "Epic" }, sorting = { 0, 1, 2, 3, 4 } },
+    { key = "hideQuestItems", label = "Skip quest items", desc = "Quests already reports these.", type = "toggle", default = true },
+    { key = "autoLoot",       label = "Auto-loot",        type = "toggle", default = true },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { key = "hideLootFrame",  label = "Hide the loot window",        type = "toggle", default = true, section = "blizzard" },
+    { key = "hideLootAlerts", label = "Hide Blizzard's loot popups", type = "toggle", default = true, section = "blizzard" },
 })
 
 for _, frameName in ipairs(SUPPRESSED_FRAMES) do

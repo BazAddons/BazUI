@@ -44,7 +44,7 @@ local function OnWhisperReceived(event, msg, sender)
         message = displayMsg,
         icon = ICON_WHISPER,
         priority = "high",
-        duration = GetSetting("whisperDuration") or 6,
+        duration = GetSetting("toastDuration") or 6,
         silent = GetSetting("whisperToasts") == false,
     })
 end
@@ -74,7 +74,7 @@ local function OnBNetWhisperReceived(event, msg, _, _, _, _, _, _, _, _, _, _, _
         message = displayMsg,
         icon = ICON_WHISPER,
         priority = "high",
-        duration = GetSetting("whisperDuration") or 6,
+        duration = GetSetting("toastDuration") or 6,
         silent = GetSetting("whisperToasts") == false,
     })
 end
@@ -119,7 +119,7 @@ local function CheckFriendChanges()
                         message = msg,
                         icon = ICON_FRIEND_ONLINE,
                         priority = "low",
-                        duration = GetSetting("friendDuration") or 4,
+                        duration = GetSetting("toastDuration") or 4,
                         silent = GetSetting("friendToasts") == false,
                     })
                 elseif not isOnline and showOffline then
@@ -129,7 +129,7 @@ local function CheckFriendChanges()
                         message = "Has gone offline",
                         icon = ICON_FRIEND_OFFLINE,
                         priority = "low",
-                        duration = GetSetting("friendDuration") or 3,
+                        duration = GetSetting("toastDuration") or 3,
                         silent = GetSetting("friendToasts") == false,
                     })
                 end
@@ -154,7 +154,7 @@ local function OnSystemMessage(event, msg)
                 message = "Has come online (Guild)",
                 icon = ICON_GUILD_MEMBER,
                 priority = "low",
-                duration = GetSetting("guildDuration") or 3,
+                duration = GetSetting("toastDuration") or 3,
                 silent = GetSetting("guildToasts") == false,
             })
         elseif status == "gone offline" and GetSetting("showGuildOffline") ~= false then
@@ -164,8 +164,8 @@ local function OnSystemMessage(event, msg)
                 message = "Has gone offline (Guild)",
                 icon = ICON_GUILD_MEMBER,
                 priority = "low",
-                duration = GetSetting("guildDuration") or 3,
-                silent = GetSetting("guildToasts") == false,
+                duration = GetSetting("toastDuration") or 3,
+                silent = GetSetting("guildOfflineToasts") == false,
             })
         end
     end
@@ -180,7 +180,7 @@ local function OnReadyCheck(event, initiator)
         message = (initiator or "Leader") .. " started a ready check!",
         icon = ICON_READY_CHECK,
         priority = "high",
-        duration = GetSetting("groupDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("groupToasts") == false,
     })
 end
@@ -194,7 +194,7 @@ local function OnGroupInvite(event, sender)
         message = (sender or "Someone") .. " has invited you to a group",
         icon = ICON_INVITE,
         priority = "high",
-        duration = GetSetting("groupDuration") or 6,
+        duration = GetSetting("toastDuration") or 6,
         silent = GetSetting("groupToasts") == false,
     })
 end
@@ -211,7 +211,7 @@ local function OnSummonConfirm(event)
         message = (summoner or "Someone") .. " is summoning you" .. (area and (" to " .. area) or ""),
         icon = ICON_SUMMON,
         priority = "high",
-        duration = GetSetting("groupDuration") or 8,
+        duration = GetSetting("toastDuration") or 8,
         silent = GetSetting("groupToasts") == false,
     })
 end
@@ -225,7 +225,7 @@ local function OnDuelRequest(event, sender)
         message = (sender or "Someone") .. " has challenged you to a duel",
         icon = ICON_DUEL,
         priority = "normal",
-        duration = GetSetting("groupDuration") or 5,
+        duration = GetSetting("toastDuration") or 5,
         silent = GetSetting("groupToasts") == false,
     })
 end
@@ -274,21 +274,11 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "showWhispers",      label = "Show Whispers",              type = "toggle", default = true },
-    { key = "whisperToasts",     label = "Toast on Whisper",           type = "toggle", default = true },
-    { key = "whisperDuration",   label = "Whisper Toast Duration",     type = "slider", default = 6, min = 1, max = 15, step = 1 },
-    { key = "showFriendOnline",  label = "Show Friend Online",        type = "toggle", default = true },
-    { key = "showFriendOffline", label = "Show Friend Offline",       type = "toggle", default = true },
-    { key = "friendToasts",      label = "Toast on Friend Status",    type = "toggle", default = true },
-    { key = "friendDuration",    label = "Friend Toast Duration",     type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "showGuildOnline",   label = "Show Guild Member Online",  type = "toggle", default = true },
-    { key = "showGuildOffline",  label = "Show Guild Member Offline", type = "toggle", default = false },
-    { key = "guildToasts",       label = "Toast on Guild Status",     type = "toggle", default = true },
-    { key = "guildDuration",     label = "Guild Toast Duration",      type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "showReadyCheck",    label = "Show Ready Checks",         type = "toggle", default = true },
-    { key = "showInvites",       label = "Show Group Invites",        type = "toggle", default = true },
-    { key = "showSummon",        label = "Show Summon Requests",      type = "toggle", default = true },
-    { key = "showDuels",         label = "Show Duel Requests",        type = "toggle", default = true },
-    { key = "groupToasts",       label = "Toast on Group Events",     type = "toggle", default = true },
-    { key = "groupDuration",     label = "Group Toast Duration",      type = "slider", default = 5, min = 1, max = 15, step = 1 },
+    { type = "event", key = "whispers",     label = "Whispers",                    show = "showWhispers",     toast = "whisperToasts" },
+    { type = "event", key = "friends",      label = "Friends online and offline",  show = { "showFriendOnline", "showFriendOffline" }, toast = "friendToasts" },
+    { type = "event", key = "guildOnline",  label = "Guild members coming online", show = "showGuildOnline",  toast = "guildToasts" },
+    { type = "event", key = "guildOffline", label = "Guild members going offline", show = "showGuildOffline", toast = "guildOfflineToasts", default = "off" },
+    { type = "event", key = "requests",     label = "Group requests", desc = "Ready checks, invites, summons and duels.",
+      show = { "showReadyCheck", "showInvites", "showSummon", "showDuels" }, toast = "groupToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 5, min = 1, max = 15, step = 1 },
 })

@@ -39,7 +39,7 @@ local function FlushXPGain()
         message = currentXP .. " / " .. maxXP .. " (" .. pct .. "%)",
         icon = ICON_XP,
         priority = "low",
-        duration = GetSetting("xpDuration") or 3,
+        duration = GetSetting("toastDuration") or 3,
         silent = GetSetting("xpToasts") == false,
     })
 
@@ -71,7 +71,7 @@ local function OnLevelUp(event, level, ...)
         message = "You reached level " .. level .. "!",
         icon = ICON_LEVEL,
         priority = "high",
-        duration = GetSetting("levelDuration") or 8,
+        duration = GetSetting("toastDuration") or 8,
         silent = GetSetting("levelToasts") == false,
     })
     lastXP = 0
@@ -92,7 +92,7 @@ local function CheckRestedXP()
             message = restedXP .. " bonus XP (" .. pct .. "% of level)",
             icon = ICON_RESTED,
             priority = "low",
-            duration = GetSetting("restedDuration") or 4,
+            duration = GetSetting("toastDuration") or 4,
             silent = GetSetting("restedToasts") == false,
         })
     end
@@ -132,14 +132,9 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { key = "hideDefaultLevelUp", label = "Hide Default Level-Up Display", type = "toggle", default = true },
-    { key = "showXPGains",     label = "Show XP Gains",                type = "toggle", default = true },
-    { key = "showLevelUp",     label = "Show Level Up",                type = "toggle", default = true },
-    { key = "showRested",      label = "Show Rested XP on Login",      type = "toggle", default = true },
-    { key = "xpToasts",        label = "Toast on XP Gain",             type = "toggle", default = true },
-    { key = "levelToasts",     label = "Toast on Level Up",            type = "toggle", default = true },
-    { key = "restedToasts",    label = "Toast on Rested XP",           type = "toggle", default = true },
-    { key = "xpDuration",      label = "XP Toast Duration",            type = "slider", default = 3, min = 1, max = 15, step = 1 },
-    { key = "levelDuration",   label = "Level Up Toast Duration",      type = "slider", default = 8, min = 1, max = 15, step = 1 },
-    { key = "restedDuration",  label = "Rested Toast Duration",        type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { type = "event", key = "gains",   label = "XP gains",           show = "showXPGains", toast = "xpToasts" },
+    { type = "event", key = "levelUp", label = "Level up",           show = "showLevelUp", toast = "levelToasts" },
+    { type = "event", key = "rested",  label = "Rested XP at login", show = "showRested",  toast = "restedToasts" },
+    { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
+    { key = "hideDefaultLevelUp", label = "Hide Blizzard's level-up display", type = "toggle", default = true, section = "blizzard" },
 })
