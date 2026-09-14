@@ -66,22 +66,26 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         verify = {
             desc = "Check the attunement and key list against the client",
             handler = function()
-                local Access = Codex.Access
-                if not (Access and Access.Validate) then
-                    BazUI:Print("Codex: no attunement data loaded.")
-                    return
+                local checked, wrong = 0, 0
+                for label, source in pairs({
+                    attunement = Codex.Access,
+                    goal       = Codex.Goals,
+                }) do
+                    if source and source.Validate then
+                        checked = checked + #source.entries
+                        for _, reason in pairs(source.Validate()) do
+                            BazUI:Print(("Codex (%s): %s"):format(label, reason))
+                            wrong = wrong + 1
+                        end
+                    end
                 end
-                local rejected = Access.Validate()
-                local count = 0
-                for _, reason in pairs(rejected) do
-                    BazUI:Print("Codex: " .. reason)
-                    count = count + 1
-                end
-                local total = #Access.entries
-                if count == 0 then
-                    BazUI:Print(("Codex: all %d attunement entries agree with the client."):format(total))
+
+                if checked == 0 then
+                    BazUI:Print("Codex: no written-down data loaded.")
+                elseif wrong == 0 then
+                    BazUI:Print(("Codex: all %d written-down entries agree with the client."):format(checked))
                 else
-                    BazUI:Print(("Codex: %d of %d entries are wrong and are being hidden."):format(count, total))
+                    BazUI:Print(("Codex: %d of %d entries are wrong and are being hidden."):format(wrong, checked))
                 end
             end,
         },

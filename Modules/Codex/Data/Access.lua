@@ -111,55 +111,17 @@ Access.entries = {
 }
 
 ---------------------------------------------------------------------------
--- Checking the table against the client
+-- Checking the table against the client, and reading the player's state
+--
+-- Both go through Data/Gates.lua, which is the one place that knows how
+-- to ask this client a question about a character. A goal and an
+-- attunement are the same shape underneath.
 ---------------------------------------------------------------------------
-
-local function Same(a, b)
-    if not (a and b) then return false end
-    return a:lower() == b:lower()
-end
-
--- Returns true when the client agrees, false when it disagrees, and nil
--- when it has not heard of the id yet. Only a flat disagreement counts
--- against a step: item and quest data arrive late and a missing answer
--- is not evidence of a wrong number. The second return is what the
--- client actually calls the id, which is the whole of the fix when a
--- number here is wrong.
-local function StepAgrees(step)
-    if step.kind == "quest" then
-        if not (C_QuestLog and C_QuestLog.GetQuestInfo) then return nil end
-        local title = C_QuestLog.GetQuestInfo(step.id)
-        if not title or title == "" then return nil end
-        return Same(title, step.name), title
-    end
-    if step.kind == "item" then
-        local itemName = C_Item.GetItemInfo(step.id)
-        if not itemName then
-            if C_Item.RequestLoadItemDataByID then
-                C_Item.RequestLoadItemDataByID(step.id)
-            end
-            return nil
-        end
-        return Same(itemName, step.name), itemName
-    end
-    return true   -- reputation and level steps carry no id to check
-end
 
 local rejected = {}
 
 function Access.Validate()
-    wipe(rejected)
-    for _, entry in ipairs(Access.entries) do
-        for _, step in ipairs(entry.steps) do
-            local agrees, actual = StepAgrees(step)
-            if agrees == false then
-                rejected[entry.id] = string.format(
-                    "%s: %s %d should be \"%s\" but the client calls it \"%s\"",
-                    entry.name, step.kind, step.id, step.name or "?", actual or "?")
-                break
-            end
-        end
-    end
+    rejected = Codex.Gates.Validate(Access.entries)
     return rejected
 end
 
@@ -171,42 +133,6 @@ function Access.Rejected()
     return rejected
 end
 
----------------------------------------------------------------------------
--- Reading the player's state
----------------------------------------------------------------------------
-
-local function StandingWith(factionName)
-    local count = (C_Reputation and C_Reputation.GetNumFactions
-        and C_Reputation.GetNumFactions()) or (GetNumFactions and GetNumFactions()) or 0
-    for i = 1, count do
-        local name, standing, isHeader
-        if C_Reputation and C_Reputation.GetFactionDataByIndex then
-            local data = C_Reputation.GetFactionDataByIndex(i)
-            if data then name, standing, isHeader = data.name, data.reaction, data.isHeader end
-        else
-            local n, _, s, _, _, _, _, _, header = GetFactionInfo(i)
-            name, standing, isHeader = n, s, header
-        end
-        if name and not isHeader and Same(name, factionName) then return standing or 0 end
-    end
-    return nil
-end
-
-local function StepMet(step)
-    if step.kind == "quest" then
-        if not (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) then return false end
-        return C_QuestLog.IsQuestFlaggedCompleted(step.id) and true or false
-    end
-    if step.kind == "item" then
-        return (C_Item.GetItemCount(step.id, true) or 0) > 0
-    end
-    if step.kind == "reputation" then
-        local standing = StandingWith(step.faction)
-        return (standing or 0) >= (step.standing or 8)
-    end
-    return false
-end
-
 -- Whether the instance's own lock is currently on you, which is the
 -- difference between "you could go" and "you already went".
 local function SavedTo(lockoutName)
@@ -214,39 +140,28 @@ local function SavedTo(lockoutName)
     local count = GetNumSavedInstances and GetNumSavedInstances() or 0
     for i = 1, count do
         local name, _, reset, _, locked, extended = GetSavedInstanceInfo(i)
-        if name and Same(name, lockoutName) and (locked or extended) then
+        if name and Codex.Gates.Same(name, lockoutName) and (locked or extended) then
             return true, reset
         end
     end
     return false, nil
 end
 
--- The whole state of one door.
+-- The whole state of one door: its gates, plus the two things a gate
+-- cannot express, your level and the lockout already on you.
 function Access.Evaluate(entry)
-    local done, missing = 0, {}
-    for _, step in ipairs(entry.steps) do
-        if StepMet(step) then
-            done = done + 1
-        else
-            missing[#missing + 1] = step.name or step.kind
-        end
-    end
+    local state = Codex.Gates.Evaluate(entry)
 
     local level = UnitLevel("player") or 1
     local underLevelled = entry.level and level < entry.level
     local saved, reset = SavedTo(entry.lockout)
 
-    return {
-        entry    = entry,
-        done     = done,
-        total    = #entry.steps,
-        missing  = missing,
-        ready    = (done == #entry.steps),
-        open     = (done == #entry.steps) and not saved and not underLevelled,
-        saved    = saved,
-        reset    = reset,
-        underLevelled = underLevelled,
-    }
+    state.ready = state.complete
+    state.open  = state.complete and not saved and not underLevelled
+    state.saved = saved
+    state.reset = reset
+    state.underLevelled = underLevelled
+    return state
 end
 
 -- Every door, minus the ones the client disagreed with, and minus the
