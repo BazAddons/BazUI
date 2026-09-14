@@ -177,14 +177,14 @@ BazUI:RegisterUserGuide("Bars", {
                   rows = {
                       { "|cffffd700Revert Changes|r",      "Undo every change made since selecting the bar" },
                       { "|cffffd700Reset Position|r",      "Snap the bar back to the centre of the screen" },
-                      { "|cffffd700BazUI Bars Settings|r",    "Jump to the full options panel for global settings" },
+                      { "|cffffd700BazUI Bars Settings|r",    "Jump to the full options panel" },
                       { "|cffffd700Export Bar Config|r",   "Copy the bar's complete layout + buttons + settings as a shareable string" },
                       { "|cffffd700Duplicate This Bar|r",  "Clone the bar with all its assignments in one click" },
                       { "|cffffd700Delete This Bar|r",     "Remove the bar permanently (asks for confirmation)" },
                   }},
                 { type = "h2", text = "The full Bar Customizer" },
                 ImageRow("bar-editor", "The Bar Customizer page. Same per-bar settings as the Edit Mode popup, just with all your bars visible at once.", {
-                    { type = "paragraph", text = "Same settings, fuller layout. Open via |cff00ff00/bb|r or |cffffd700Options > AddOns > BazUI > Bars > Bar Options|r — every bar listed in a sidebar so you can switch between them without leaving the page." },
+                    { type = "paragraph", text = "Same settings, fuller layout. Open via |cff00ff00/bb|r or |cffffd700Options > AddOns > BazUI > Bars > Bar Options|r — pick a bar from the dropdown at the top of the page, with New, Duplicate and Delete beside it. Values every bar should share live under General." },
                 }, "right"),
             },
         },

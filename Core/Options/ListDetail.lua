@@ -18,7 +18,11 @@
 -- grouped menus, with `_lazyDetailBuild` for deferred detail args), and
 -- an optional list of execute options rendered as buttons on the row.
 -- An item may carry `toggle = { name, get, set }`: an on/off switch for
--- the item itself, drawn on the picker row next to the dropdown.
+-- the item itself, drawn on the picker row next to the dropdown. The
+-- group may carry `itemActions`, a list of execute-shaped entries whose
+-- `func` receives the selected item (Duplicate, Delete ...); they render
+-- as buttons after the page's own actions. `confirmText` may be a
+-- function of the item.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
@@ -47,13 +51,16 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
         if c.source then hasSources = true break end
     end
 
-    local function FindByLabel(label)
+    -- Selection is remembered by the item's args key, so renaming an
+    -- item keeps it selected.
+    local function ItemKey(child) return child._key or ItemLabel(child) end
+    local function FindByKey(key)
         for _, c in ipairs(children) do
-            if ItemLabel(c) == label then return c end
+            if ItemKey(c) == key then return c end
         end
     end
-    local selected = FindByLabel(state.selected) or children[1]
-    state.selected = selected and ItemLabel(selected) or nil
+    local selected = FindByKey(state.selected) or children[1]
+    state.selected = selected and ItemKey(selected) or nil
 
     ------------------------------------------------------------------
     -- Picker row
@@ -86,28 +93,42 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
         return btn
     end
 
+    -- Page actions (Create, Reset ...) then the group's item actions,
+    -- which act on the selected item.
     local actions = {}
-    for _, exec in ipairs(executeArgs or {}) do actions[#actions + 1] = exec end
+    for _, exec in ipairs(executeArgs or {}) do actions[#actions + 1] = { exec = exec } end
+    for _, act in ipairs(groupOpt.itemActions or {}) do actions[#actions + 1] = { exec = act, item = true } end
     -- Rightmost button first, so actions read left to right in order.
     for i = #actions, 1, -1 do
-        local exec = actions[i]
+        local exec, forItem = actions[i].exec, actions[i].item
         local probe = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         probe:SetText(exec.name or "")
         local w = math.max(70, math.min(160, (probe:GetStringWidth() or 60) + 24))
         probe:Hide()
         local danger = exec.style == "danger" or exec.confirmStyle == "destructive"
-        AddButton((exec.name or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""), w, function()
-            if exec.confirm and BazUI.Confirm then
-                BazUI:Confirm({
-                    title = exec.confirmTitle or "Confirm", body = exec.confirmText or "Are you sure?",
-                    acceptLabel = exec.confirmAcceptLabel or "Yes", cancelLabel = exec.confirmCancelLabel or "No",
-                    acceptStyle = exec.confirmStyle or "primary",
-                    onAccept = function() if exec.func then exec.func() end end,
-                })
-            elseif exec.func then
+        local function Run()
+            if not exec.func then return end
+            if forItem then
+                if selected then exec.func(selected) end
+            else
                 exec.func()
             end
+        end
+        local btn = AddButton((exec.name or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""), w, function()
+            if exec.confirm and BazUI.Confirm then
+                local body = exec.confirmText
+                if type(body) == "function" then body = body(selected) end
+                BazUI:Confirm({
+                    title = exec.confirmTitle or "Confirm", body = body or "Are you sure?",
+                    acceptLabel = exec.confirmAcceptLabel or "Yes", cancelLabel = exec.confirmCancelLabel or "No",
+                    acceptStyle = exec.confirmStyle or "primary",
+                    onAccept = Run,
+                })
+            else
+                Run()
+            end
         end, danger)
+        if forItem and not selected then btn:Disable() end
     end
 
     if selected and (groupOpt.onMoveUp or groupOpt.onMoveDown) then
@@ -143,7 +164,7 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
     dd:SetDefaultText(selected and ItemLabel(selected) or "Nothing to show")
 
     local function Select(child)
-        state.selected = ItemLabel(child)
+        state.selected = ItemKey(child)
         -- Re-render the whole page so the form below reflects the pick.
         if stateHost._bazRefresh then stateHost._bazRefresh() end
     end

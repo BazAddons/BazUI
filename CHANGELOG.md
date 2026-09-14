@@ -15,3 +15,4 @@ First development build of BazUI. Nothing is released yet.
 - Profiles, Edit Mode and the options window shared by every module.
 - Options window written for its real size: one column of settings with the control on the right, sections under gold headers, and lists as a picker at the top of the page.
 - Notifications settings reorganized into General and Sources: one Off / History only / Toast choice per event, a duration and a named sound per source, and named sounds by priority instead of sound IDs.
+- Bars settings reorganized into General and Bar Options: Blizzard's bar, button text and tooltips, and "same on every bar" values under General; a bar picker with New, Duplicate and Delete above each bar's own form, now including endcaps and right-click self-cast.
