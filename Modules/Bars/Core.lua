@@ -602,17 +602,20 @@ addon.config.onReady = function(self)
     self:On({ "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS", "CURRENT_SPELL_CAST_CHANGED",
               "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT" },
         function() addon:UpdateAllChecked() end)
-    self:On("PLAYER_TARGET_CHANGED", function() addon:OnRangeEvent() end)
+    self:On("PLAYER_TARGET_CHANGED", function()
+        addon:OnRangeEvent()
+        addon:RefreshRangeTicker()
+    end)
 
     -- These are infrequent events - a full update pass is fine.
     self:On("BAG_UPDATE",               function() addon:QueueFullUpdate() end)
     self:On("PLAYER_EQUIPMENT_CHANGED", function() addon:QueueFullUpdate() end)
     self:On("ACTIONBAR_UPDATE_STATE",   function() addon:QueueFullUpdate() end)
 
-    -- Pause the range ticker when not in combat - no reason to poll
-    -- spell range every 0.2s while standing in town.
-    self:On("PLAYER_REGEN_DISABLED", function() addon:StartRangeTicker() end)
-    self:On("PLAYER_REGEN_ENABLED",  function() addon:StopRangeTicker() end)
+    -- The ticker follows the target, not combat; these just keep it
+    -- honest across a combat boundary.
+    self:On({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" },
+        function() addon:RefreshRangeTicker() end)
 
     self:SetupEditMode()
 
@@ -620,11 +623,8 @@ addon.config.onReady = function(self)
         addon:UpdateAllButtons()
         addon.Keybinds:RestoreAll()
         MaybeShowKeyDownWarning()
-        -- If we loaded mid-combat (e.g. /reload during a boss pull),
-        -- start the range ticker immediately.
-        if InCombatLockdown() then
-            addon:StartRangeTicker()
-        end
+        -- A /reload keeps the target, so pick the ticker back up.
+        addon:RefreshRangeTicker()
     end)
 end
 
@@ -755,16 +755,21 @@ function addon:QueueFullUpdate()
 end
 
 ---------------------------------------------------------------------------
--- Range ticker - polls spell range every 0.2s, but only while in
--- combat. Out-of-combat there's no target switching that matters for
--- range coloring, and the 5-times-per-second loop over every button
--- was burning CPU for no reason.
+-- Range ticker
+--
+-- Range is a distance, so it changes as either of you moves, with no
+-- event to announce it: the only way to keep the colour honest is to
+-- poll. It used to poll in combat only, which left the colour frozen
+-- at whatever it was when the target was picked - walk into range out
+-- of combat and the button stayed red, walk out of range and it stayed
+-- white. So it now runs whenever a target exists, in or out of combat,
+-- and sits idle the rest of the time.
 ---------------------------------------------------------------------------
 
 local rangeTimer = 0
 local RANGE_INTERVAL = 0.2
 local rangeFrame = CreateFrame("Frame")
-rangeFrame:Hide()  -- starts paused; enabled on PLAYER_REGEN_DISABLED
+rangeFrame:Hide()  -- starts paused; RefreshRangeTicker turns it on
 
 rangeFrame:SetScript("OnUpdate", function(self, elapsed)
     rangeTimer = rangeTimer + elapsed
@@ -783,9 +788,15 @@ function addon:StopRangeTicker()
     rangeFrame:Hide()
 end
 
--- Also kick the range ticker on target change (already registered
--- as a direct OnRangeEvent call above), and start it if we load
--- mid-combat.
+-- Run only while there is something to measure against.
+function addon:RefreshRangeTicker()
+    if UnitExists("target") then
+        if not rangeFrame:IsShown() then self:StartRangeTicker() end
+    else
+        self:StopRangeTicker()
+    end
+end
+
 addon.rangeFrame = rangeFrame
 
 ---------------------------------------------------------------------------

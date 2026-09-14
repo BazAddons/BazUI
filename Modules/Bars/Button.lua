@@ -120,13 +120,16 @@ end
 function Button:UpdateUsable(btn)
     if not btn.action then return end
 
-    -- Out of range takes priority
-    if btn._outOfRange then
-        if addon.db.profile.fullRangeColor ~= false then
-            btn.icon:SetVertexColor(0.8, 0.1, 0.1)
-            if btn.NormalTexture then btn.NormalTexture:SetVertexColor(0.8, 0.1, 0.1) end
-            if btn.Name then btn.Name:SetVertexColor(0.8, 0.1, 0.1) end
-        end
+    local outOfRange = btn._outOfRange and true or false
+    -- "Tint the whole button when out of range" off leaves the icon and
+    -- frame alone and reddens only the keybind text, so the usable
+    -- colours below still have to run in that case.
+    local tintAll = outOfRange and addon.db.profile.fullRangeColor ~= false
+
+    if tintAll then
+        btn.icon:SetVertexColor(0.8, 0.1, 0.1)
+        if btn.NormalTexture then btn.NormalTexture:SetVertexColor(0.8, 0.1, 0.1) end
+        if btn.Name then btn.Name:SetVertexColor(0.8, 0.1, 0.1) end
         if btn.HotKey then btn.HotKey:SetVertexColor(0.8, 0.1, 0.1) end
         return
     end
@@ -146,8 +149,14 @@ function Button:UpdateUsable(btn)
     end
 
     if btn.NormalTexture then btn.NormalTexture:SetVertexColor(1.0, 1.0, 1.0) end
-    if btn.HotKey then btn.HotKey:SetVertexColor(0.6, 0.6, 0.6) end
     if btn.Name then btn.Name:SetVertexColor(1.0, 1.0, 1.0) end
+    if btn.HotKey then
+        if outOfRange then
+            btn.HotKey:SetVertexColor(0.8, 0.1, 0.1)
+        else
+            btn.HotKey:SetVertexColor(0.6, 0.6, 0.6)
+        end
+    end
 end
 
 function Button:UpdateRange(btn)
