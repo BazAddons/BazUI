@@ -20,6 +20,10 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |
 | Micro Menu | new | Built (Blizzard's micro buttons on a movable bar as round ring-framed icons) |
 
+## First run
+
+A fresh install starts with the BazUI layout: player frame centred above the bars, target frame at the top, a 14-slot bar along the bottom with a 6-slot bar either side, bags docked right in categories mode, chat bottom-left, the micro menu top centre, and the minimap drawer on the right. Every piece can be moved in BazUI Edit Mode or changed in Options > AddOns > BazUI. Updating never changes existing settings.
+
 ## Commands
 
 - `/bazui` (or `/bui`) opens the options window.

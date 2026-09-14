@@ -187,12 +187,15 @@ function addon:Layout()
     if horizontal then bar:SetSize(length, size) else bar:SetSize(size, length) end
 end
 
--- Positions are stored the way BazUI Edit Mode saves them: the bar's
--- centre as a screen-pixel offset from the centre of UIParent.
+-- Two position shapes: the starter profile anchors the bar to a screen
+-- edge ({ point, relPoint, x, y }), and BazUI Edit Mode saves the bar's
+-- centre as a screen-pixel offset from the centre of UIParent ({ x, y }).
 local function ApplyPosition()
     bar:ClearAllPoints()
     local pos = addon:GetSetting("position")
-    if pos and pos.x and pos.y then
+    if pos and pos.point then
+        bar:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
+    elseif pos and pos.x and pos.y then
         local es = bar:GetEffectiveScale()
         bar:SetPoint("CENTER", UIParent, "CENTER", pos.x / es, pos.y / es)
     else

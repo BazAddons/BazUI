@@ -55,6 +55,10 @@ Differences from the old suite:
 - The options window shows one bottom tab per module. A module registers its pages with `BazUI:RegisterOptionsTable(key, fn)` and `BazUI:AddToSettings(key, label, parentKey)`, exactly as before.
 - The BazUI landing page lists modules by title; there are no per-module versions.
 
+## Starter profile
+
+`Core/StarterProfile.lua` is the layout a fresh install starts with: `BazUI.StarterProfile[moduleName]` is deep-merged over a module's coded defaults the first time that module's section is created in a profile (fresh install, new profile, or a module added to an existing install). Existing sections are never touched. Positions in it must be screen anchors (`{ point, relPoint, x, y }`), never absolute pixels, so they hold at any resolution; Bars offsets are in the bar's own scaled units. When a module renames a setting, update its starter entry too.
+
 ## Widgets
 
 `BazUI.Widgets` holds the dockable-widget registry with the LibBazWidget method names (`RegisterWidget`, `GetWidgets`, `RegisterCallback`, `RegisterDormantWidget`, ...). The `BazUI:RegisterDockableWidget` family forwards to it. Widgets are internal now; there is no third-party publishing path.

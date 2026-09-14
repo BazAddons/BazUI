@@ -50,13 +50,37 @@ local function FillAddonDefaults(profileSection, defaults)
     end
 end
 
+-- Starter profile: BazUI.StarterProfile (Core/StarterProfile.lua) holds
+-- the shipped layout. It is laid over a module's coded defaults only when
+-- that module's section has just been created, so a fresh install, a new
+-- profile, or a module added to an old install all start with the BazUI
+-- layout, while nobody's existing settings ever change.
+local function DeepMerge(dst, src)
+    for k, v in pairs(src) do
+        if type(v) == "table" and type(dst[k]) == "table" then
+            DeepMerge(dst[k], v)
+        elseif type(v) == "table" then
+            dst[k] = CopyTable(v)
+        else
+            dst[k] = v
+        end
+    end
+end
+
+local function ApplyStarter(addonName, section)
+    local starter = BazUI.StarterProfile and BazUI.StarterProfile[addonName]
+    if starter then DeepMerge(section, starter) end
+end
+
 local function FillAllAddonDefaults(profile)
     for addonName, config in pairs(BazUI.addons) do
         if config.profiles and config.defaults then
-            if not profile[addonName] then
+            local fresh = profile[addonName] == nil
+            if fresh then
                 profile[addonName] = {}
             end
             FillAddonDefaults(profile[addonName], config.defaults)
+            if fresh then ApplyStarter(addonName, profile[addonName]) end
         end
     end
 end
@@ -120,13 +144,15 @@ function BazUI:InitAddonProfile(addonName, config)
     local profile = sv.profiles[profileName]
     if not profile then return end
 
-    -- Ensure addon section exists
-    if not profile[addonName] then
+    -- Ensure addon section exists; a brand-new one also gets the starter layout
+    local fresh = profile[addonName] == nil
+    if fresh then
         profile[addonName] = {}
     end
 
     -- Fill defaults
     FillAddonDefaults(profile[addonName], config.defaults)
+    if fresh then ApplyStarter(addonName, profile[addonName]) end
 end
 
 ---------------------------------------------------------------------------
