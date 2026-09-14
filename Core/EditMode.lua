@@ -1064,6 +1064,18 @@ function BazUI:RegisterEditModeFrame(frame, config)
     end
 end
 
+-- Replace a frame's settings without re-registering it, which would
+-- build a second overlay on top of the first. Used by anything whose
+-- choices depend on what else exists, like a list of things to dock to.
+function BazUI:UpdateEditModeSettings(frame, settings)
+    local config = registeredFrames[frame]
+    if not config then return end
+    config.settings = settings
+    if settingsPopup and settingsPopup:IsShown() and selectedFrame == frame then
+        PopulatePopup(frame, config)
+    end
+end
+
 function BazUI:UpdateEditModeLabel(frame, newLabel)
     local config = registeredFrames[frame]
     if config then

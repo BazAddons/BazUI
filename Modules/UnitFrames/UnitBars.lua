@@ -645,6 +645,92 @@ function UnitBars:RefreshMover(bar)
     mover:SetPoint("CENTER", bar.frame, "CENTER", 0, 0)
 end
 
+
+---------------------------------------------------------------------------
+-- The Edit Mode panel for one bar
+--
+-- Selecting a bar in Edit Mode should offer the same choices its options
+-- page does, since that is where you are when you want them. Edit Mode
+-- takes an array of widgets with their own get and set, which suits a
+-- per-bar setting exactly: there is no module-wide key to point at.
+---------------------------------------------------------------------------
+
+local function ValuesArray(map)
+    local out = {}
+    for value, label in pairs(map) do
+        out[#out + 1] = { label = label, value = value }
+    end
+    table.sort(out, function(a, b) return tostring(a.label) < tostring(b.label) end)
+    return out
+end
+
+local TEXT_MODES = { always = "Always", hover = "On Hover", never = "Never" }
+local TEXT_FORMATS = {
+    ["current/max"] = "Current / Max",
+    current         = "Current",
+    percent         = "Percent",
+    name            = "Name",
+    namePercent     = "Name and percent",
+}
+local EDGES = { BOTTOM = "Below", TOP = "Above" }
+
+function UnitBars:EditSettings(bar)
+    local def = bar.def
+
+    local function Refresh()
+        UnitBars:Save()
+        UnitBars:Apply(bar)
+    end
+
+    -- Rebuilt each time the panel opens, so the list of things to dock
+    -- to is whatever exists right now.
+    local dockOptions = { { label = "Floating", value = "float" } }
+    for _, host in ipairs(BazUI.Dock:GetHosts()) do
+        local frame = BazUI.Dock:GetHostFrame(host.id)
+        if frame and frame ~= bar.frame
+            and not BazUI.Dock:Follows(frame, bar.frame) then
+            dockOptions[#dockOptions + 1] = { label = host.label, value = host.id }
+        end
+    end
+
+    return {
+        { type = "dropdown", section = "Docking", label = "Dock to",
+          options = dockOptions,
+          get = function() return (def.dock and def.dock.host) or "float" end,
+          set = function(value)
+              def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
+              Refresh()
+          end },
+        { type = "dropdown", section = "Docking", label = "On the",
+          options = ValuesArray(EDGES),
+          get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
+          set = function(value)
+              def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
+              Refresh()
+          end },
+
+        { type = "slider", section = "Size", label = "Width",
+          min = 60, max = 1200, step = 5,
+          get = function() return def.width or 240 end,
+          set = function(value) def.width = value Refresh() end },
+        { type = "slider", section = "Size", label = "Height",
+          min = 8, max = 48, step = 1,
+          get = function() return def.height or 20 end,
+          set = function(value) def.height = value Refresh() end },
+
+        { type = "dropdown", section = "Text", label = "Show text",
+          options = ValuesArray(TEXT_MODES),
+          get = function() return def.textMode or "always" end,
+          set = function(value) def.textMode = value Refresh() end },
+        { type = "dropdown", section = "Text", label = "Text says",
+          options = ValuesArray(TEXT_FORMATS),
+          get = function() return def.textFormat or "namePercent" end,
+          set = function(value) def.textFormat = value Refresh() end },
+
+        { type = "nudge", section = "Position" },
+    }
+end
+
 function UnitBars:CreateMover(bar)
     if bar.mover then return bar.mover end
     local def = bar.def
@@ -716,10 +802,19 @@ function UnitBars:CreateMover(bar)
 
     bar.mover = mover
 
+    -- The handle is a picture of the bar, so it tracks the bar itself
+    -- rather than waiting to be told. A bar resized by its host, at any
+    -- depth of the chain, drags its handle along without every caller
+    -- having to remember to refresh it.
+    bar.frame:HookScript("OnSizeChanged", function()
+        UnitBars:RefreshMover(bar)
+    end)
+
     BazUI:RegisterEditModeFrame(mover, {
         label = def.name or ("Bar " .. def.id),
         addonName = "UnitFrames",
         positionKey = false,
+        settings = UnitBars:EditSettings(bar),
         onPositionChanged = function()
             if mover.ShowSnap then mover:ShowSnap(nil) end
             UnitBars:SavePosition(bar)
@@ -740,6 +835,17 @@ end
 
 function UnitBars:ShowAllMovers()
     for _, bar in pairs(self.bars) do self:ShowMover(bar) end
+end
+
+-- The list of things a bar can dock to is whatever exists at the moment
+-- you look, so every bar's panel is rebuilt when Edit Mode opens and
+-- whenever a bar is made or removed.
+function UnitBars:RefreshEditSettings()
+    for _, bar in pairs(self.bars) do
+        if bar.mover then
+            BazUI:UpdateEditModeSettings(bar.mover, self:EditSettings(bar))
+        end
+    end
 end
 
 ---------------------------------------------------------------------------

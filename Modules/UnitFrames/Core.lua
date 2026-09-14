@@ -135,7 +135,10 @@ function addon:InitializeBars()
 
     -- Edit Mode may open or close at any time, and the movers are the
     -- only thing it is ever allowed to move.
-    self:On("BAZ_EDITMODE_ENTER", function() UnitBars:ShowAllMovers() end)
+    self:On("BAZ_EDITMODE_ENTER", function()
+        UnitBars:RefreshEditSettings()
+        UnitBars:ShowAllMovers()
+    end)
     self:On("BAZ_EDITMODE_EXIT",  function() UnitBars:ShowAllMovers() end)
     self:On("PLAYER_REGEN_ENABLED", function()
         UnitBars:BuildAll()
