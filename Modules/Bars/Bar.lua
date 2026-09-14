@@ -102,8 +102,13 @@ function Bar:CreateSingleButton(frame, barData, r, c)
     -- when the cursor has contents, the way Blizzard's action buttons do.
     -- We intercept the click: PreClick clears the type attribute to prevent
     -- the secure cast, and PostClick manually triggers the drop handling.
+    -- A flyout being moved between slots rides on our own carry rather
+    -- than the game's cursor, since the cursor cannot hold one. It
+    -- counts as an incoming drop all the same.
     local function HasIncomingDrop()
-        return GetCursorInfo() ~= nil
+        if GetCursorInfo() ~= nil then return true end
+        local Flyout = addon.FlyoutHandler
+        return (Flyout and Flyout.HasPending and Flyout.HasPending()) or false
     end
 
     btn:HookScript("PreClick", function(self)

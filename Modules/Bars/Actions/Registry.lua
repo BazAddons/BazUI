@@ -85,10 +85,14 @@ local BUTTON_ATTRS = {
     "type", "type2",
     "spell", "spell2",
     "item", "item2",
-    "macro", "macrotext",
+    "macro", "macrotext", "macrotext2",
     "toy",
     "unit2",
     "shift-type1", "shift-type2",
+    -- A flyout points right-click at a hidden proxy button. Left behind,
+    -- these would keep a stale popup wired to a slot that has since
+    -- become an ordinary spell.
+    "clickbutton", "clickbutton2",
 }
 
 function Actions:ClearButtonAttributes(button)

@@ -93,15 +93,38 @@ end
 -- Bars and slots
 ---------------------------------------------------------------------------
 
+-- Every spell an action puts on the bar. A flyout is one slot holding
+-- several, and each of them is as placed as any other: autofill must
+-- not drop a second copy of a spell just because it is tucked inside
+-- one.
+local function SpellsIn(action)
+    if not (action and action.type) then return {} end
+    if action.type == "spell" then
+        local id = action.data and action.data.id
+        return id and { id } or {}
+    end
+    if action.type == "flyout" then
+        local Flyout = addon.FlyoutHandler
+        if not (Flyout and Flyout.ResolveCells) then return {} end
+        local ids = {}
+        for _, cell in pairs(Flyout.ResolveCells(action.data) or {}) do
+            if cell.type == "spell" and cell.data and cell.data.id then
+                ids[#ids + 1] = cell.data.id
+            end
+        end
+        return ids
+    end
+    return {}
+end
+
 -- Names already on any bar, so nothing is placed twice.
 local function PlacedNames()
     local names = {}
     for _, frame in pairs(addon.Bar:GetAll()) do
         for _, row in pairs(frame.buttons or {}) do
             for _, btn in pairs(row) do
-                local a = btn.action
-                if a and a.type == "spell" and a.data and a.data.id then
-                    local n = SpellName(a.data.id)
+                for _, spellID in ipairs(SpellsIn(btn.action)) do
+                    local n = SpellName(spellID)
                     if n then names[n] = true end
                 end
             end
@@ -205,6 +228,11 @@ function AutoFill:PruneUnknown()
     for _, frame in pairs(addon.Bar:GetAll()) do
         for _, row in pairs(frame.buttons or {}) do
             for _, btn in pairs(row) do
+                -- Only plain spell slots are pruned. A flyout is cleaned
+                -- up from the inside instead: its own deserialize drops
+                -- cells whose spells are gone, and it reports itself
+                -- empty only when nothing is left, so one unlearned
+                -- spell can never delete the whole arrangement.
                 local a = btn.action
                 if a and a.type == "spell" and a.data and a.data.id then
                     total = total + 1

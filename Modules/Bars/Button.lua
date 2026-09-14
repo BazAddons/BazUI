@@ -258,6 +258,55 @@ end
 -- Full button update (called on events)
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- Flyout arrow
+--
+-- The small arrow marking a slot that opens into more, pointing the way
+-- the popup will open. Blizzard's own flyout art ships on this client
+-- even though the client has no flyouts of its own, so the arrow
+-- matches the one players know from the spellbook.
+---------------------------------------------------------------------------
+
+local FLYOUT_ARROW = "Interface\\Buttons\\ActionBarFlyoutButton"
+
+-- The strip of the sheet holding the arrow. Up and down are the same
+-- art with the vertical coordinates swapped; the sideways pair rotate
+-- it a quarter turn, which is why they swap width and height too.
+local FLYOUT_ARROW_LOOK = {
+    UP    = { point = "TOP",    x =  0, y =  3, w = 23, h = 11, rotation = 0,
+              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
+    DOWN  = { point = "BOTTOM", x =  0, y = -3, w = 23, h = 11, rotation = 0,
+              coords = { 0.625, 0.984375, 0.828125, 0.7421875 } },
+    LEFT  = { point = "LEFT",   x = -3, y =  0, w = 11, h = 23, rotation = math.pi / 2,
+              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
+    RIGHT = { point = "RIGHT",  x =  3, y =  0, w = 11, h = 23, rotation = -math.pi / 2,
+              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
+}
+
+function Button:UpdateFlyoutArrow(btn)
+    local isFlyout = btn.action and btn.action.type == "flyout"
+    if not isFlyout then
+        if btn.bbFlyoutArrow then btn.bbFlyoutArrow:Hide() end
+        return
+    end
+
+    local look = FLYOUT_ARROW_LOOK[btn.action.data and btn.action.data.direction or "UP"]
+        or FLYOUT_ARROW_LOOK.UP
+
+    local arrow = btn.bbFlyoutArrow
+    if not arrow then
+        arrow = btn:CreateTexture(nil, "OVERLAY")
+        arrow:SetTexture(FLYOUT_ARROW)
+        btn.bbFlyoutArrow = arrow
+    end
+    arrow:SetSize(look.w, look.h)
+    arrow:SetTexCoord(unpack(look.coords))
+    arrow:SetRotation(look.rotation)
+    arrow:ClearAllPoints()
+    arrow:SetPoint(look.point, btn, look.point, look.x, look.y)
+    arrow:Show()
+end
+
 function Button:UpdateButton(btn)
     Button:UpdateTexture(btn)
     Button:UpdateCooldown(btn)
@@ -267,6 +316,7 @@ function Button:UpdateButton(btn)
     Button:UpdateChecked(btn)
     Button:UpdateEquipped(btn)
     Button:UpdateMacroName(btn)
+    Button:UpdateFlyoutArrow(btn)
 end
 
 ---------------------------------------------------------------------------
@@ -321,6 +371,13 @@ end
 
 -- Apply a handler-based action to a button.
 function Button:SetActionFromHandler(btn, handler, data)
+    -- Leaving a flyout behind: take its popup wiring off the slot before
+    -- the new action sets its own attributes.
+    if btn.action and btn.action.type == "flyout" and handler.type ~= "flyout"
+        and addon.FlyoutPopup then
+        addon.FlyoutPopup:DetachFrom(btn)
+    end
+
     btn.action = { type = handler.type, data = data }
 
     local selfCast = btn.bbBarData and btn.bbBarData.rightClickSelfCast
@@ -331,6 +388,7 @@ function Button:SetActionFromHandler(btn, handler, data)
 end
 
 function Button:ClearAction(btn)
+    if addon.FlyoutPopup then addon.FlyoutPopup:DetachFrom(btn) end
     btn.action = nil
     BazBars.Actions:ClearButtonAttributes(btn)
     Button:UpdateButton(btn)
@@ -436,18 +494,93 @@ end
 -- nothing to offer.
 ---------------------------------------------------------------------------
 
-local function GetBarSlotSection(ctx)
-    if not ctx or not ctx.button or not ctx.action then return end
-    local btn = ctx.button
+-- The shape of a flyout is small enough to live in the menu, which
+-- saves a dialog and means every way of changing a slot is in the one
+-- place you already right-click.
+local DIRECTION_LABELS = { UP = "Up", DOWN = "Down", LEFT = "Left", RIGHT = "Right" }
+local DIRECTION_ORDER  = { "UP", "DOWN", "LEFT", "RIGHT" }
+
+local function FlyoutShapeItems(btn, data)
+    local Flyout = addon.FlyoutHandler
+    if not Flyout then return {} end
+
+    local directions = {}
+    for _, key in ipairs(DIRECTION_ORDER) do
+        directions[#directions + 1] = {
+            label = DIRECTION_LABELS[key] .. ((data.direction or "UP") == key and "  *" or ""),
+            onClick = function() Flyout:SetShape(btn, "direction", key) end,
+        }
+    end
+
+    local function CountItems(key, upTo, current)
+        local items = {}
+        for n = 1, upTo do
+            items[#items + 1] = {
+                label = tostring(n) .. (current == n and "  *" or ""),
+                onClick = function() Flyout:SetShape(btn, key, n) end,
+            }
+        end
+        return items
+    end
+
     return {
+        { label = "Opens towards", submenu = directions },
+        { label = "Rows",    submenu = CountItems("rows", 4, data.rows or 1) },
+        { label = "Columns", submenu = CountItems("cols", 8, data.cols or 3) },
         {
-            label = "Clear button",
+            label = (data.mode == "specific")
+                and "Button casts: the pinned action"
+                or  "Button casts: whatever you used last",
             onClick = function()
                 if InCombatLockdown() then return end
-                Button:ClearAction(btn)
+                Flyout:SetShape(btn, "mode",
+                    data.mode == "specific" and "lastUsed" or "specific")
             end,
         },
     }
+end
+
+local function GetBarSlotSection(ctx)
+    if not ctx or not ctx.button then return end
+    local btn = ctx.button
+    local Flyout = addon.FlyoutHandler
+
+    -- An empty slot has one useful thing to offer.
+    if not ctx.action then
+        if not Flyout then return end
+        return {
+            {
+                label = "Create a flyout here",
+                onClick = function()
+                    if InCombatLockdown() then return end
+                    local handler = BazBars.Actions:Get("flyout")
+                    if not handler then return end
+                    Button:SetActionFromHandler(btn, handler, Flyout.MakeDefault())
+                    -- Open it straight away: an empty flyout is the one
+                    -- thing you always want to fill in immediately.
+                    local popup = btn._bazFlyoutPopup
+                    if popup then popup:Show() end
+                end,
+            },
+        }
+    end
+
+    local items = {}
+    if ctx.action.type == "flyout" and Flyout then
+        for _, item in ipairs(FlyoutShapeItems(btn, ctx.action.data)) do
+            items[#items + 1] = item
+        end
+        items[#items + 1] = { divider = true }
+    end
+
+    items[#items + 1] = {
+        label = "Clear button",
+        onClick = function()
+            if InCombatLockdown() then return end
+            Button:ClearAction(btn)
+        end,
+    }
+    return items
 end
 
 if BazUI.RegisterContextMenuSection then

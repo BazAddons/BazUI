@@ -129,8 +129,10 @@ Modules\Bars\Actions\Mount.lua
 Modules\Bars\Actions\Macro.lua
 Modules\Bars\Actions\EquipmentSet.lua
 Modules\Bars\Actions\Item.lua
+Modules\Bars\Actions\Flyout.lua
 Modules\Bars\Bars.xml
 Modules\Bars\Button.lua
+Modules\Bars\FlyoutPopup.lua
 Modules\Bars\Bar.lua
 Modules\Bars\AutoFill.lua
 Modules\Bars\Dialogs.lua
