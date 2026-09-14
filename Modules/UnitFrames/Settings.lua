@@ -25,15 +25,77 @@ local function SetBars(key)
     end
 end
 
+-- The dropdown of places a bar can go, built from whatever the dock
+-- knows about right now: floating, every action bar, and the other unit
+-- bars. A bar never offers itself.
+local function DockValues(selfId)
+    local values = { float = "Floating" }
+    for _, host in ipairs(BazUI.Dock:GetHosts()) do
+        if host.id ~= selfId then values[host.id] = host.label end
+    end
+    return values
+end
+
+local EDGES = { BOTTOM = "Below", TOP = "Above" }
+
+local function DockEntry(unit, key, label, order)
+    local UnitBars = addon.UnitBars
+    return {
+        key = "dock_" .. unit .. "_" .. key,
+        label = label, type = "select", section = "docking", order = order,
+        surfaces = both,
+        values = function() return DockValues(UnitBars:HostID(unit, key)) end,
+        get = function()
+            local dock = UnitBars:GetDock(unit, key)
+            local host = dock.host or "float"
+            if host:find("^self:") then host = UnitBars:HostID(unit, host:sub(6)) end
+            return host
+        end,
+        set = function(_, value)
+            local dock = UnitBars:GetDock(unit, key)
+            UnitBars:SetDock(unit, key,
+                { host = value, edge = dock.edge or "BOTTOM", reserve = dock.reserve })
+        end,
+    }
+end
+
+local function EdgeEntry(unit, key, label, order)
+    local UnitBars = addon.UnitBars
+    return {
+        key = "edge_" .. unit .. "_" .. key,
+        label = label, type = "select", section = "docking", order = order,
+        surfaces = both, values = EDGES,
+        get = function() return UnitBars:GetDock(unit, key).edge or "BOTTOM" end,
+        set = function(_, value)
+            local dock = UnitBars:GetDock(unit, key)
+            UnitBars:SetDock(unit, key,
+                { host = dock.host, edge = value, reserve = dock.reserve })
+        end,
+    }
+end
+
 BazUI:RegisterSettingsSpec("UnitFrames", {
     sections = {
         bars = { label = "Bars", order = 0 },
+        docking = { label = "Docking", order = 1 },
         player = { label = "Player Frames", order = 1 },
         layout = { label = "Position", order = 2 },
         portraitAdjust = { label = "3D Portrait Placement", order = 3 },
         casting = { label = "Portrait Casting", order = 4 },
     },
     entries = {
+        DockEntry("player", "health", "Player health sits", 10),
+        EdgeEntry("player", "health", "Player health edge", 11),
+        DockEntry("player", "power",  "Player power sits",  12),
+        EdgeEntry("player", "power",  "Player power edge",  13),
+        DockEntry("player", "cast",   "Player cast sits",   14),
+        EdgeEntry("player", "cast",   "Player cast edge",   15),
+        DockEntry("target", "health", "Target health sits", 20),
+        EdgeEntry("target", "health", "Target health edge", 21),
+        DockEntry("target", "power",  "Target power sits",  22),
+        EdgeEntry("target", "power",  "Target power edge",  23),
+        DockEntry("target", "cast",   "Target cast sits",   24),
+        EdgeEntry("target", "cast",   "Target cast edge",   25),
         { key = "barMode", label = "Draw units as bars", type = "toggle", section = "bars", order = 1,
           desc = "The bars can float or dock to an action bar. Off returns the old portrait frames until they are retired.",
           get = Get("barMode"), set = SetBars("barMode") },

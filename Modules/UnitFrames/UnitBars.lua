@@ -269,14 +269,81 @@ function UnitBars:Create(unit)
     }
     self.sets[unit] = set
 
-    -- Power follows health, cast follows power: a chain, so losing the
-    -- unit takes the whole stack rather than leaving orphans behind.
-    BazUI.Dock:Attach(set.power, set.health, { edge = "BOTTOM", order = 10 })
-    BazUI.Dock:Attach(set.cast,  set.power,  { edge = "BOTTOM", order = 10, reserve = true })
+    -- Each bar is its own dockable and can be sent anywhere. They
+    -- register as hosts too, which is what lets them chain to each
+    -- other; the default arrangement below is only a default.
+    for _, key in ipairs({ "health", "power", "cast" }) do
+        BazUI.Dock:RegisterHost(self:HostID(unit, key), set[key],
+            self:HostLabel(unit, key), unit == "player" and 30 or 40)
+    end
 
     set.cast:SetScript("OnUpdate", function(self) CastTick(self) end)
     BazUI.Dock:SetShown(set.cast, false)
+    self:ApplyDock(unit)
     return set
+end
+
+---------------------------------------------------------------------------
+-- Where each bar sits
+--
+-- A bar remembers a host by name rather than by frame, because frames do
+-- not survive a reload and action bars are built after this is. The dock
+-- keeps a request for a host that has not appeared yet and honours it
+-- when it does.
+---------------------------------------------------------------------------
+
+local CHAIN_DEFAULT = {
+    health = { host = "float" },
+    power  = { host = "self:health", edge = "BOTTOM" },
+    cast   = { host = "self:power",  edge = "BOTTOM", reserve = true },
+}
+
+function UnitBars:HostID(unit, key)
+    return "unit:" .. unit .. ":" .. key
+end
+
+function UnitBars:HostLabel(unit, key)
+    local who = unit == "target" and "Target" or "Player"
+    return who .. " " .. key
+end
+
+function UnitBars:DockSettingKey(unit, key)
+    return "dock_" .. unit .. "_" .. key
+end
+
+function UnitBars:GetDock(unit, key)
+    local saved = addon:GetSetting(self:DockSettingKey(unit, key))
+    if type(saved) == "table" and saved.host then return saved end
+    return CHAIN_DEFAULT[key] or { host = "float" }
+end
+
+function UnitBars:SetDock(unit, key, dock)
+    addon:SetSetting(self:DockSettingKey(unit, key), dock)
+    self:ApplyDock(unit)
+end
+
+function UnitBars:ApplyDock(unit)
+    local set = self.sets[unit]
+    if not set or InCombatLockdown() then return end
+
+    for _, key in ipairs({ "health", "power", "cast" }) do
+        local dock = self:GetDock(unit, key)
+        local host = dock.host
+
+        -- "self:power" means this unit's own power bar, so one saved
+        -- default reads correctly for the player and the target both.
+        if type(host) == "string" and host:find("^self:") then
+            host = self:HostID(unit, host:sub(6))
+        end
+
+        BazUI.Dock:AttachTo(set[key], host, {
+            edge    = dock.edge or "BOTTOM",
+            mode    = "stretch",
+            order   = dock.order or 10,
+            reserve = dock.reserve or (key == "cast"),
+        })
+    end
+    self:ApplyPosition(unit)
 end
 
 
@@ -302,10 +369,15 @@ end
 function UnitBars:ApplyPosition(unit)
     local set = self.sets[unit]
     if not set or InCombatLockdown() then return end
-    local pos = addon:GetSetting(self:PositionKey(unit))
-        or { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 }
-    set.health:ClearAllPoints()
-    set.health:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+
+    -- A docked bar is placed by its host, so the saved position only
+    -- applies to one that is floating.
+    if not BazUI.Dock:IsDocked(set.health) then
+        local pos = addon:GetSetting(self:PositionKey(unit))
+            or { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 }
+        set.health:ClearAllPoints()
+        set.health:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    end
     BazUI.Dock:Relayout(set.health)
 end
 

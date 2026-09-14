@@ -106,6 +106,78 @@ function Dock:GetFollowers(host)
     return followers[host]
 end
 
+
+---------------------------------------------------------------------------
+-- Hosts you can pick from
+--
+-- Docking is a setting, so the thing a bar docks to has to survive a
+-- reload. Frames do not, so a host registers under a name and a stable
+-- id, and a follower stores the id. Anything can be a host, including
+-- another follower, which is what makes a chain.
+---------------------------------------------------------------------------
+
+local hosts = {}        -- [id] = { frame, label, order }
+
+function Dock:RegisterHost(id, frame, label, order)
+    if not (id and frame) then return end
+    hosts[id] = { frame = frame, label = label or id, order = order or 100 }
+    self:WatchHost(frame)
+    self:ResolvePending(id)
+end
+
+function Dock:UnregisterHost(id)
+    hosts[id] = nil
+end
+
+function Dock:GetHostFrame(id)
+    local entry = hosts[id]
+    return entry and entry.frame or nil
+end
+
+-- Every host a bar could be attached to, for a settings dropdown.
+function Dock:GetHosts()
+    local out = {}
+    for id, entry in pairs(hosts) do
+        out[#out + 1] = { id = id, label = entry.label, order = entry.order }
+    end
+    table.sort(out, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.label < b.label
+    end)
+    return out
+end
+
+-- A follower can ask for a host that does not exist yet, because action
+-- bars are built after the thing docking to them. The request is kept
+-- and honoured when the host turns up.
+local waiting = {}
+
+function Dock:AttachTo(frame, hostId, opts)
+    if not frame then return end
+    if not hostId or hostId == "" or hostId == "float" then
+        waiting[frame] = nil
+        self:Detach(frame)
+        return
+    end
+
+    local host = self:GetHostFrame(hostId)
+    if not host then
+        waiting[frame] = { hostId = hostId, opts = opts }
+        return
+    end
+    waiting[frame] = nil
+    self:Attach(frame, host, opts)
+end
+
+function Dock:ResolvePending(hostId)
+    for frame, request in pairs(waiting) do
+        if request.hostId == hostId then
+            waiting[frame] = nil
+            self:Attach(frame, self:GetHostFrame(hostId), request.opts)
+        end
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Visibility
 --

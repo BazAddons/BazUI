@@ -66,6 +66,13 @@ function Bar:Create(barData)
     bars[id] = frame
     frame:Show()
 
+    -- Anything can dock to an action bar: a health bar under it, a cast
+    -- bar under that. The dock only needs a stable name for it.
+    if BazUI.Dock then
+        BazUI.Dock:RegisterHost("bar:" .. id, frame,
+            barData.name or ("Bar " .. id), 10 + id)
+    end
+
     return frame
 end
 
@@ -694,6 +701,7 @@ function Bar:Destroy(id)
     frame:Hide()
     frame:SetParent(nil)
     bars[id] = nil
+    if BazUI.Dock then BazUI.Dock:UnregisterHost("bar:" .. id) end
 
     return true
 end

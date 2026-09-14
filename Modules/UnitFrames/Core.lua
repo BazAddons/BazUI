@@ -94,22 +94,26 @@ function addon:InitializeBars()
     end
 
     local UnitBars = self.UnitBars
-    local set = UnitBars:Create("player")
-    if not set then return end
-    UnitBars:Watch("player")
+    for _, unit in ipairs({ "player", "target" }) do
+        if UnitBars:Create(unit) then
+            UnitBars:Watch(unit)
+            UnitBars:CreateMover(unit)
+            UnitBars:ApplySettings(unit)
+            UnitBars:SyncCast(unit)
+        end
+    end
 
-    -- Floating for now: the dock's other hosts, the action bars, get
-    -- their handles in the next step.
-    UnitBars:CreateMover("player")
-    UnitBars:ApplySettings("player")
-    UnitBars:SyncCast("player")
-
-    -- Edit Mode may open or close at any time, and the mover is the only
-    -- thing it is ever allowed to move.
-    self:On("BAZ_EDITMODE_ENTER", function() UnitBars:ShowMover("player") end)
-    self:On("BAZ_EDITMODE_EXIT",  function() UnitBars:ShowMover("player") end)
-    self:On("PLAYER_REGEN_ENABLED", function()
-        UnitBars:ApplySettings("player")
-        UnitBars:ShowMover("player")
-    end)
+    -- Edit Mode may open or close at any time, and the movers are the
+    -- only thing it is ever allowed to move.
+    local function EachUnit(fn)
+        return function()
+            for unit in pairs(UnitBars.sets) do fn(unit) end
+        end
+    end
+    self:On("BAZ_EDITMODE_ENTER", EachUnit(function(u) UnitBars:ShowMover(u) end))
+    self:On("BAZ_EDITMODE_EXIT",  EachUnit(function(u) UnitBars:ShowMover(u) end))
+    self:On("PLAYER_REGEN_ENABLED", EachUnit(function(u)
+        UnitBars:ApplySettings(u)
+        UnitBars:ShowMover(u)
+    end))
 end
