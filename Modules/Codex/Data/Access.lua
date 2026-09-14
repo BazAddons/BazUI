@@ -122,13 +122,15 @@ end
 -- Returns true when the client agrees, false when it disagrees, and nil
 -- when it has not heard of the id yet. Only a flat disagreement counts
 -- against a step: item and quest data arrive late and a missing answer
--- is not evidence of a wrong number.
+-- is not evidence of a wrong number. The second return is what the
+-- client actually calls the id, which is the whole of the fix when a
+-- number here is wrong.
 local function StepAgrees(step)
     if step.kind == "quest" then
         if not (C_QuestLog and C_QuestLog.GetQuestInfo) then return nil end
         local title = C_QuestLog.GetQuestInfo(step.id)
         if not title or title == "" then return nil end
-        return Same(title, step.name)
+        return Same(title, step.name), title
     end
     if step.kind == "item" then
         local itemName = C_Item.GetItemInfo(step.id)
@@ -138,7 +140,7 @@ local function StepAgrees(step)
             end
             return nil
         end
-        return Same(itemName, step.name)
+        return Same(itemName, step.name), itemName
     end
     return true   -- reputation and level steps carry no id to check
 end
@@ -149,10 +151,11 @@ function Access.Validate()
     wipe(rejected)
     for _, entry in ipairs(Access.entries) do
         for _, step in ipairs(entry.steps) do
-            if StepAgrees(step) == false then
+            local agrees, actual = StepAgrees(step)
+            if agrees == false then
                 rejected[entry.id] = string.format(
-                    "%s: the client calls %s %d something else",
-                    entry.name, step.kind, step.id)
+                    "%s: %s %d should be \"%s\" but the client calls it \"%s\"",
+                    entry.name, step.kind, step.id, step.name or "?", actual or "?")
                 break
             end
         end
