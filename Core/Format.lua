@@ -62,45 +62,6 @@ function BazUI:FormatTime(seconds)
 end
 
 ---------------------------------------------------------------------------
--- Estimate Formatting
--- Approximate time display (~5m, ~1h30m)
----------------------------------------------------------------------------
-
-function BazUI:FormatEstimate(seconds)
-    if not seconds or seconds <= 0 then return "N/A" end
-    local m = math.ceil(seconds / 60)
-    if m >= 60 then
-        return string.format("~%dh%dm", floor(m / 60), m % 60)
-    end
-    return string.format("~%dm", m)
-end
-
----------------------------------------------------------------------------
--- Duration Formatting
--- Human-readable duration (2d 5h 30m, 45s, etc.)
----------------------------------------------------------------------------
-
-function BazUI:FormatDuration(seconds)
-    if not seconds or seconds <= 0 then return "0s" end
-    seconds = floor(seconds)
-
-    local days = floor(seconds / 86400)
-    local hours = floor((seconds % 86400) / 3600)
-    local mins = floor((seconds % 3600) / 60)
-    local secs = seconds % 60
-
-    if days > 0 then
-        return string.format("%dd %dh %dm", days, hours, mins)
-    elseif hours > 0 then
-        return string.format("%dh %dm", hours, mins)
-    elseif mins > 0 then
-        return string.format("%dm %ds", mins, secs)
-    else
-        return string.format("%ds", secs)
-    end
-end
-
----------------------------------------------------------------------------
 -- Number Formatting
 -- Adds thousand separators (1,234,567)
 ---------------------------------------------------------------------------
@@ -150,25 +111,23 @@ function BazUI:TruncateText(text, maxLen, suffix)
 end
 
 ---------------------------------------------------------------------------
--- Percentage Formatting
----------------------------------------------------------------------------
-
-function BazUI:FormatPercent(value, decimals)
-    decimals = decimals or 0
-    if not value then return "0%" end
-    return string.format("%." .. decimals .. "f%%", value * 100)
-end
-
----------------------------------------------------------------------------
 -- Safe String Utilities
 -- Midnight (12.0) marks some strings as "secret values" which can't be
 -- indexed or matched directly. These helpers convert to plain strings first.
 ---------------------------------------------------------------------------
 
 function BazUI:SafeString(str)
-    if not str then return nil end
+    if str == nil then return nil end
+    -- string.format("%s", value) forces a fresh allocation, which strips
+    -- a secret string's taint; tostring alone does not. The two
+    -- fallbacks cover plainly tainted strings that are not secret.
     local ok, result = pcall(string.format, "%s", str)
-    if ok then return result end
+    if ok and result then return result end
+    if forceinsecure then forceinsecure() end
+    ok, result = pcall(tostring, str)
+    if ok and result then return result end
+    ok, result = pcall(securecallfunction, tostring, str)
+    if ok and result then return result end
     return nil
 end
 
@@ -204,26 +163,4 @@ function BazUI:SafeNumber(num)
     end
     if not ok or not str then return nil end
     return tonumber(str)
-end
-
----------------------------------------------------------------------------
--- Safe Bool Utility
--- Midnight (12.0) extends secret-taint to booleans returned from certain
--- API surfaces - notably LuaDurationObject:IsZero() on cooldown duration
--- objects when the underlying spell data flows through tainted events.
--- Boolean tests (`if x then`, `not x`) on a tainted bool throw
--- ADDON_ACTION_BLOCKED. Round-trip through "%s" string formatting to
--- launder, then compare against the canonical "true" string.
---
--- Usage: prefer the duration object's :HasSecretValues() (documented
--- ReturnsNeverSecret) where available - that's a free taint check
--- without round-tripping. Use SafeBool when you have a value of
--- unknown taint and need to test it.
----------------------------------------------------------------------------
-
-function BazUI:SafeBool(b)
-    if b == nil then return nil end
-    local ok, str = pcall(string.format, "%s", b)
-    if not ok or not str then return nil end
-    return str == "true"
 end

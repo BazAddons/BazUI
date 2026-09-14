@@ -67,18 +67,7 @@ local function OnMailboxOpened()
             -- Gold attached likely means AH proceeds
             if money and money > 0 then
                 icon = ICON_MAIL_AH
-                local gold = math.floor(money / 10000)
-                local silver = math.floor((money % 10000) / 100)
-                local moneyStr = ""
-                if gold > 0 then
-                    moneyStr = "|cffffd700" .. gold .. "|rg"
-                end
-                if silver > 0 then
-                    moneyStr = moneyStr .. (moneyStr ~= "" and " " or "") .. "|cffc7c7cf" .. silver .. "|rs"
-                end
-                if moneyStr ~= "" then
-                    message = message .. " (" .. moneyStr .. ")"
-                end
+                message = message .. " (" .. BazUI:FormatMoney(money) .. ")"
                 priority = "normal"
             end
 

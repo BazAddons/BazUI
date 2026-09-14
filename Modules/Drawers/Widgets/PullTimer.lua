@@ -23,17 +23,6 @@ addon.PullTimerWidget = Pull
 local inCombat = false
 local combatStart = 0
 
-local function FormatElapsed(seconds)
-    seconds = math.max(0, math.floor(seconds or 0))
-    local m = math.floor(seconds / 60)
-    local s = seconds % 60
-    if m >= 60 then
-        local h = math.floor(m / 60)
-        m = m % 60
-        return string.format("%d:%02d:%02d", h, m, s)
-    end
-    return string.format("%d:%02d", m, s)
-end
 
 ---------------------------------------------------------------------------
 -- Frame
@@ -84,7 +73,7 @@ end
 function Pull:Refresh()
     if not frame then return end
     local elapsed = inCombat and (GetTime() - combatStart) or 0
-    frame.time:SetText(FormatElapsed(elapsed))
+    frame.time:SetText(BazUI:FormatTime(elapsed))
     if addon.WidgetHost and addon.WidgetHost.UpdateWidgetStatus then
         addon.WidgetHost:UpdateWidgetStatus(WIDGET_ID)
     end
@@ -98,7 +87,7 @@ function Pull:GetDesiredHeight() return DESIGN_HEIGHT end
 
 function Pull:GetStatusText()
     if inCombat then
-        return FormatElapsed(GetTime() - combatStart), unpack(CLR_SWORDS)
+        return BazUI:FormatTime(GetTime() - combatStart), unpack(CLR_SWORDS)
     end
     return ""
 end

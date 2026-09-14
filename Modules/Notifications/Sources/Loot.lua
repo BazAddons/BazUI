@@ -30,23 +30,6 @@ local function GetMinQuality()
     return GetSetting("minQuality") or 1
 end
 
-local function FormatMoney(copper)
-    local gold = math.floor(copper / 10000)
-    local silver = math.floor((copper % 10000) / 100)
-    local cop = copper % 100
-
-    local parts = {}
-    if gold > 0 then
-        table.insert(parts, string.format("|cffffd700%d|rg", gold))
-    end
-    if silver > 0 then
-        table.insert(parts, string.format("|cffc7c7cf%d|rs", silver))
-    end
-    if cop > 0 or #parts == 0 then
-        table.insert(parts, string.format("|cffeda55f%d|rc", cop))
-    end
-    return table.concat(parts, " ")
-end
 
 local lastMoney = 0
 
@@ -61,7 +44,7 @@ local function OnPlayerMoney()
         BNC:Push({
             module = MODULE_ID,
             title = "Gold Received",
-            message = FormatMoney(diff),
+            message = BazUI:FormatMoney(diff),
             icon = "Interface\\Icons\\INV_Misc_Coin_01",
             priority = "low",
             duration = GetSetting("toastDuration") or 3,

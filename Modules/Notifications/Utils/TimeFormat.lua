@@ -22,9 +22,3 @@ function addon.FormatCardTimestamp(realTime)
     if not realTime then return "" end
     return date("%H:%M", realTime)
 end
-
--- Format a real timestamp for toasts (short)
-function addon.FormatToastTimestamp(realTime)
-    if not realTime then return "" end
-    return date("%H:%M", realTime)
-end

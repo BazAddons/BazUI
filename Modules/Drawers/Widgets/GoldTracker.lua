@@ -17,16 +17,6 @@ local GoldWidget = {}
 local sessionStart = 0
 local frame
 
--- Group an integer with thousands separators: 244340 -> "244,340"
-local function WithCommas(n)
-    local s = tostring(math.floor(n or 0))
-    while true do
-        local replaced
-        s, replaced = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
-        if replaced == 0 then break end
-    end
-    return s
-end
 
 -- Settings helpers
 local function GetShowSilver()
@@ -44,7 +34,7 @@ local function FormatGold(copper)
     local showCopper = GetShowCopper()
 
     if g > 0 then
-        local out = string.format("%s|cffffd700g|r", WithCommas(g))
+        local out = string.format("%s|cffffd700g|r", BazUI:FormatNumber(g))
         if showSilver then out = out .. string.format(" %d|cffc7c7cfs|r", s) end
         if showCopper then out = out .. string.format(" %d|cffeda55fc|r", c) end
         return out
@@ -57,13 +47,7 @@ local function FormatGold(copper)
 end
 
 local function FormatGoldShort(copper)
-    local g = math.floor(copper / 10000)
-    if g >= 1000000 then
-        return string.format("%.1fM|cffffd700g|r", g / 1000000)
-    elseif g >= 1000 then
-        return string.format("%.1fk|cffffd700g|r", g / 1000)
-    end
-    return g .. "|cffffd700g|r"
+    return BazUI:FormatShortNumber(math.floor(copper / 10000)) .. "|cffffd700g|r"
 end
 
 function GoldWidget:Build()

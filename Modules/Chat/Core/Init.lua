@@ -371,8 +371,7 @@ local core = BazUI:RegisterModule(addonName, {
                     -- because these are messages the player typed
                     -- themselves - never secret strings.
                     for i = math.max(1, n - 2), n do
-                        local s = list[i] or ""
-                        if #s > 50 then s = s:sub(1, 50) .. "..." end
+                        local s = BazUI:TruncateText(list[i] or "", 50)
                         addon.core:Print(string.format("  [%d] %s", i, s))
                     end
                 end

@@ -13,21 +13,11 @@ local BNC = BazUI.Notifications.API
 -- If that fails, we fall back to pcall which swallows the taint error.
 -- ---------------------------------------------------------------------------
 
+-- BazUI:SafeString does the laundering for the whole suite; these stay
+-- as BNC.* because thirty call sites across the sources use that name,
+-- and the sub/len/lower/gsub wrappers below have no core counterpart.
 local function Detaint(str)
-    if str == nil then return nil end
-    -- The Midnight-correct pattern: string.format("%s", val) forces a
-    -- fresh allocation that strips secret-string taint. tostring alone
-    -- does NOT strip it. pcall guards against any residual error path.
-    local ok, result = pcall(string.format, "%s", str)
-    if ok and result then return result end
-    -- Fallback for non-secret tainted strings
-    if forceinsecure then forceinsecure() end
-    ok, result = pcall(tostring, str)
-    if ok and result then return result end
-    -- Final resort
-    ok, result = pcall(securecallfunction, tostring, str)
-    if ok and result then return result end
-    return nil
+    return BazUI:SafeString(str)
 end
 
 -- ---------------------------------------------------------------------------

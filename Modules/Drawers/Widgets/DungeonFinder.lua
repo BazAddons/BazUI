@@ -111,15 +111,6 @@ local function UpdateQueue()
     end
 end
 
-local function FormatTime(seconds)
-    if not seconds or seconds <= 0 then return "0:00" end
-    seconds = math.floor(seconds)
-    if seconds >= 3600 then
-        return string.format("%d:%02d:%02d", math.floor(seconds / 3600),
-            math.floor((seconds % 3600) / 60), seconds % 60)
-    end
-    return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
-end
 
 local function FormatEstimate(seconds)
     if not seconds or seconds <= 0 then return "N/A" end
@@ -284,7 +275,7 @@ function DFWidget:Refresh()
     frame.avgWaitLabel:SetText("Avg Wait: |cffffffff" .. FormatEstimate(waitTime) .. "|r")
 
     -- Queue time
-    frame.queueLabel:SetText("In Queue: |cff66ccff" .. FormatTime(Q.queuedTime) .. "|r")
+    frame.queueLabel:SetText("In Queue: |cff66ccff" .. BazUI:FormatTime(Q.queuedTime) .. "|r")
 
     self._desiredHeight = DESIGN_HEIGHT
 end
@@ -298,7 +289,7 @@ function DFWidget:GetDesiredHeight()
 end
 
 function DFWidget:GetStatusText()
-    return FormatTime(Q.queuedTime), unpack(CLR_ACCENT)
+    return BazUI:FormatTime(Q.queuedTime), unpack(CLR_ACCENT)
 end
 
 ---------------------------------------------------------------------------
