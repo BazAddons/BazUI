@@ -7,6 +7,9 @@
 -- flyouts, intended to be reused by any future Baz addon that needs a
 -- popup whose cells cast spells / use items / fire macros.
 --
+-- Nothing calls CreateSecureActionPopup yet: custom flyouts are not back in Bars
+-- yet, and this is the plumbing they will use. Keep it.
+--
 -- The primitive is domain-agnostic: it knows nothing about flyouts,
 -- spells, or BazBars' Action registry. Consumers pass cell *data* (an
 -- opaque list) plus callbacks for "apply this cell's secure attributes",
