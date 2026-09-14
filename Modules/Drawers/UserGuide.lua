@@ -206,6 +206,120 @@ BazUI:RegisterUserGuide("Drawers", {
         },
 
         ---------------------------------------------------------------
+        -- Widget pack (from BazWidgets)
+        ---------------------------------------------------------------
+        {
+            title = "Widgets: Activity",
+            blocks = {
+                { type = "lead", text = "Twenty more widgets ship with Drawers. Turn any of them on under Drawers > Widgets; dormant ones only take a slot while they have something to show." },
+                { type = "h2", text = "Dungeon Finder" },
+                { type = "lead", text = "Dormant queue status panel - appears when you queue through the group finder." },
+                { type = "list", items = {
+                    "Role fill indicators (tank / healer / DPS) with colour-coded counts",
+                    "Average wait time estimate and a live queue timer in the title bar",
+                    "Dungeon name subtitle and a Leave Queue button",
+                    "Title turns green on Group Found",
+                }},
+                { type = "h2", text = "Pull Timer" },
+                { type = "lead", text = "Dormant combat-duration tracker - shows when you enter combat, disappears when it ends." },
+                { type = "list", items = {
+                    "Live elapsed time in a large gold display",
+                    "Title-bar status mirrors the time so it reads even with the body collapsed",
+                }},
+                { type = "h2", text = "Hearthstone Cooldown" },
+                { type = "list", items = {
+                    "Dormant - appears while your Hearthstone is on cooldown",
+                    "Live countdown to ready; hides the moment it clears",
+                }},
+                { type = "h2", text = "Reset Timers" },
+                { type = "list", items = {
+                    "Countdown to the next daily and weekly reset",
+                    "Colour shifts from green to yellow to red as the deadline approaches",
+                }},
+            },
+        },
+        {
+            title = "Widgets: Character & Gear",
+            blocks = {
+                { type = "h2", text = "Repair" },
+                { type = "list", items = {
+                    "Durability display: paper doll, damaged-slot list and durability percent",
+                    "Worst-damaged slots first, colour-graded green to red; average durability in the title bar",
+                    "Three paper-doll modes: icon grid, Blizzard's DurabilityFrame, or none",
+                    "Optional suppression of Blizzard's default durability figure",
+                }},
+                { type = "h2", text = "Stats" },
+                { type = "list", items = {
+                    "Item level header with statue icon",
+                    "Melee crit, spell crit (lowest school, as the character pane shows it), dodge and parry",
+                    "Live updates on equipment and rating changes",
+                }},
+                { type = "h2", text = "Item Level" },
+                { type = "list", items = {
+                    "Headline equipped item level with your overall average as a sub-label",
+                    "Headline tints yellow when better gear is sitting in your bags",
+                }},
+                { type = "h2", text = "Trinket Tracker" },
+                { type = "list", items = {
+                    "Both equipped trinkets side by side with live cooldown sweeps",
+                    "Click a trinket to use it out of combat",
+                }},
+                { type = "h2", text = "Free Bag Slots" },
+                { type = "list", items = {
+                    "Empty inventory slots remaining, green when comfortable and red when nearly full",
+                }},
+                { type = "h2", text = "Tooltip" },
+                { type = "list", items = {
+                    "A docked slot that anchors the game tooltip, so item, unit and spell hovers appear inside the drawer",
+                    "Sits at the drawer's bottom edge and grows upward with the tooltip",
+                }},
+                { type = "note", style = "info", text = "The Tooltip widget only redirects |cffffd700default-anchored|r tooltips. Addons that hardcode their own anchor keep it." },
+            },
+        },
+        {
+            title = "Widgets: Economy & Navigation",
+            blocks = {
+                { type = "h2", text = "Gold Tracker" },
+                { type = "list", items = {
+                    "Coin icon with formatted gold, silver and copper",
+                    "Session change in green for gains and red for losses; compact value in the title bar",
+                }},
+                { type = "h2", text = "Tracked Reputation" },
+                { type = "list", items = {
+                    "One faction of your choice: name, standing and progress to the next level",
+                    "Pick the faction in the widget's settings; the list shows every faction visible in your reputation pane",
+                }},
+                { type = "h2", text = "Coordinates" },
+                { type = "list", items = {
+                    "Live X/Y coordinates with the zone name below; compact coordinates in the title bar",
+                }},
+                { type = "h2", text = "Speed Monitor" },
+                { type = "list", items = {
+                    "Movement speed as a percentage with a progress bar",
+                    "Green above 100%, white at 100%, red when slowed",
+                }},
+            },
+        },
+        {
+            title = "Widgets: Utilities",
+            blocks = {
+                { type = "h2", text = "Note Pad" },
+                { type = "list", items = { "Text area saved per character, up to 2000 characters" } },
+                { type = "h2", text = "Stopwatch" },
+                { type = "list", items = { "Large gold time display with Start/Pause, Reset and -1m buttons; live time in the title bar" } },
+                { type = "h2", text = "To-Do List" },
+                { type = "list", items = { "Type and Enter to add a task, tick to complete, X to delete; saved per character" } },
+                { type = "h2", text = "Calculator" },
+                { type = "list", items = { "A 5x4 calculator with colour-coded operators, equals and function keys" } },
+                { type = "h2", text = "Performance and FPS" },
+                { type = "list", items = {
+                    "Performance: frame rate plus home and world latency, colour-coded",
+                    "FPS: frame rate only, with a rolling one-minute low and high",
+                }},
+            },
+        },
+
+        ---------------------------------------------------------------
         -- Profiles
         ---------------------------------------------------------------
         {

@@ -2,7 +2,7 @@
 
 First development build of BazUI. Nothing is released yet.
 
-- Drawers: slide-out drawer with the Minimap, Minimap Buttons, Info Bar, Zone Text and Quest Tracker widgets.
+- Drawers: slide-out drawer with the Minimap, Minimap Buttons, Info Bar, Zone Text and Quest Tracker widgets, plus twenty more: Dungeon Finder, Pull Timer, Hearthstone Cooldown, Reset Timers, Repair, Stats, Item Level, Trinket Tracker, Free Bag Slots, Tooltip, Gold Tracker, Tracked Reputation, Coordinates, Speed Monitor, Note Pad, Stopwatch, To-Do List, Calculator, Performance and FPS.
 - Bars: custom action bars with spells, items, macros, mounts and equipment sets, quick keybinds, Edit Mode integration and import/export.
 - Unit Frames: player and target frames in the BazUI style with 3D or flat portraits.
 - Auras: your buffs above the player frame's health bar and debuffs above its power bar, eight per row, with timers, stack counts and right-click to cancel.
