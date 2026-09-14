@@ -144,10 +144,10 @@ Modules\Bars\UserGuide.lua
 
 Modules\UnitFrames\Core.lua
 Modules\UnitFrames\Layout.lua
+Modules\UnitFrames\UnitBars.lua
 Modules\UnitFrames\Settings.lua
 Modules\UnitFrames\Casting.lua
 Modules\UnitFrames\Nameplate.lua
-Modules\UnitFrames\UnitBars.lua
 Modules\UnitFrames\Player.lua
 Modules\UnitFrames\TargetLayout.lua
 Modules\UnitFrames\Target.lua

@@ -19,8 +19,9 @@ local function Get(key) return function() return addon:GetSetting(key) end end
 local function SetBars(key)
     return function(_, value)
         addon:SetSetting(key, value)
-        for unit in pairs(addon.UnitBars and addon.UnitBars.sets or {}) do
-            addon.UnitBars:ApplySettings(unit)
+        local UnitBars = addon.UnitBars
+        for unit in pairs(UnitBars and UnitBars.sets or {}) do
+            UnitBars:ApplySettings(unit)
         end
     end
 end
@@ -38,20 +39,34 @@ end
 
 local EDGES = { BOTTOM = "Below", TOP = "Above" }
 
+-- This file is read before UnitBars.lua, so the builder is looked up
+-- when a control is used rather than captured while the page is being
+-- described. Capturing it here reads nil and takes the settings page
+-- down with it.
+local function Bars()
+    return addon.UnitBars
+end
+
 local function DockEntry(unit, key, label, order)
-    local UnitBars = addon.UnitBars
     return {
         key = "dock_" .. unit .. "_" .. key,
         label = label, type = "select", section = "docking", order = order,
         surfaces = both,
-        values = function() return DockValues(UnitBars:HostID(unit, key)) end,
+        values = function()
+            local UnitBars = Bars()
+            return DockValues(UnitBars and UnitBars:HostID(unit, key))
+        end,
         get = function()
+            local UnitBars = Bars()
+            if not UnitBars then return "float" end
             local dock = UnitBars:GetDock(unit, key)
             local host = dock.host or "float"
             if host:find("^self:") then host = UnitBars:HostID(unit, host:sub(6)) end
             return host
         end,
         set = function(_, value)
+            local UnitBars = Bars()
+            if not UnitBars then return end
             local dock = UnitBars:GetDock(unit, key)
             UnitBars:SetDock(unit, key,
                 { host = value, edge = dock.edge or "BOTTOM", reserve = dock.reserve })
@@ -60,13 +75,17 @@ local function DockEntry(unit, key, label, order)
 end
 
 local function EdgeEntry(unit, key, label, order)
-    local UnitBars = addon.UnitBars
     return {
         key = "edge_" .. unit .. "_" .. key,
         label = label, type = "select", section = "docking", order = order,
         surfaces = both, values = EDGES,
-        get = function() return UnitBars:GetDock(unit, key).edge or "BOTTOM" end,
+        get = function()
+            local UnitBars = Bars()
+            return UnitBars and UnitBars:GetDock(unit, key).edge or "BOTTOM"
+        end,
         set = function(_, value)
+            local UnitBars = Bars()
+            if not UnitBars then return end
             local dock = UnitBars:GetDock(unit, key)
             UnitBars:SetDock(unit, key,
                 { host = dock.host, edge = value, reserve = dock.reserve })
