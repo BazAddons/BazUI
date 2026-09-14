@@ -54,7 +54,7 @@ Access.entries = {
         id = "onyxia", name = "Onyxia's Lair", kind = "raid", level = 60,
         lockout = "Onyxia's Lair",
         steps = {
-            { kind = "item", id = 13628, name = "Drakefire Amulet" },
+            { kind = "item", id = 16309, name = "Drakefire Amulet" },
         },
     },
     {
