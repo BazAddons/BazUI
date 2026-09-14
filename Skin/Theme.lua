@@ -144,3 +144,34 @@ end
 Theme.nameplate = {
     width = 2110, height = 309, textureWidth = 4096, textureHeight = 512, capPixels = 220,
 }
+
+-- Quiet tooltip chrome: no stretched artwork, bright ornament or glow.
+function Theme.ApplyTooltipFrame(tooltip, opacity)
+    if not tooltip._bazTooltipArt then
+        local art = {}
+        local function Texture(color, alpha)
+            local t = tooltip:CreateTexture(nil, "BACKGROUND", nil, -7)
+            t:SetColorTexture(color[1], color[2], color[3], alpha or color[4] or 1)
+            art[#art + 1] = t
+            return t
+        end
+        local bg = Texture(Theme.colors.bg)
+        bg:SetAllPoints(tooltip)
+        for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+            local edge = Texture(Theme.colors.goldDim, .8)
+            if side == "TOP" or side == "BOTTOM" then
+                edge:SetPoint(side .. "LEFT", tooltip, side .. "LEFT")
+                edge:SetPoint(side .. "RIGHT", tooltip, side .. "RIGHT")
+                edge:SetHeight(1)
+            else
+                edge:SetPoint("TOP" .. side, tooltip, "TOP" .. side, 0, -1)
+                edge:SetPoint("BOTTOM" .. side, tooltip, "BOTTOM" .. side, 0, 1)
+                edge:SetWidth(1)
+            end
+        end
+        tooltip._bazTooltipArt = art
+    end
+    local bg = Theme.colors.bg
+    tooltip._bazTooltipArt[1]:SetColorTexture(bg[1], bg[2], bg[3], opacity or .96)
+    for _, t in ipairs(tooltip._bazTooltipArt) do t:Show() end
+end

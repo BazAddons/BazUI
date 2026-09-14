@@ -158,6 +158,8 @@ end
 
 local function ApplyAnchorTo(tooltip)
     if not frame then return end
+    local module = BazUI:GetModule("Tooltip")
+    if module and module:OverridesAnchor() then return end
     -- Skip when the slot itself isn't visible. This covers two cases
     -- with one check: (a) the user disabled the widget via the
     -- standard Enabled toggle, which calls widget.frame:Hide(); and
@@ -222,6 +224,8 @@ local function InstallHooks()
     -- but the slot can still grow for content that arrives late.
     GameTooltip:HookScript("OnSizeChanged", function(self)
         if not frame or not frame:IsVisible() then return end
+        local _, anchor = self:GetPoint(1)
+        if anchor ~= frame then return end
 
         ApplyScaleMonotonic(self, ComputeFitScale(self))
 

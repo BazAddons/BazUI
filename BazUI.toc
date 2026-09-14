@@ -208,3 +208,8 @@ Modules\MicroMenu\UserGuide.lua
 Modules\XPBar\Core.lua
 Modules\XPBar\Settings.lua
 Modules\XPBar\Bar.lua
+
+Modules\Tooltip\Core.lua
+Modules\Tooltip\Tooltips.lua
+Modules\Tooltip\Settings.lua
+Modules\Tooltip\UserGuide.lua
