@@ -119,8 +119,8 @@ local FRAME_STYLES = {
 -- studs reach ~94%. Sized so the inner edge overlaps the map edge by a
 -- few pixels to hide the mask's anti-aliasing.
 local BAZUI_RING_FILE        = BazUI.Skin.MINIMAP_RING
-local BAZUI_RING_INNER_RATIO = 0.75
-local BAZUI_RING_OVERLAP     = 3
+local BAZUI_RING_INNER_RATIO = BazUI.Skin.MINIMAP_RING_INNER_RATIO
+local BAZUI_RING_OVERLAP     = BazUI.Skin.Theme.minimapRingOverlap
 
 local ringTexture
 

@@ -13,6 +13,9 @@ local Skin = BazUI.Skin
 local Theme = {}
 Skin.Theme = Theme
 
+-- Map surface extends beneath the ring to cover its antialiased inner edge.
+Theme.minimapRingOverlap = 5
+
 Theme.colors = {
     gold      = { 1.00, 0.82, 0.00, 1.00 },  -- headings, selected state (the |cffffd700 gold)
     goldSoft  = { 1.00, 0.84, 0.50, 1.00 },  -- names and labels on artwork
