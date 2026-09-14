@@ -488,21 +488,26 @@ end
 
 ---------------------------------------------------------------------------
 -- Notification Bridge
--- Routes to BazNotificationCenter if installed, nil otherwise.
+-- Routes to the Notifications module when it is loaded, nil otherwise.
 --
 -- Baz Suite addons that want to push notifications call:
 --   BazUI:RegisterNotificationModule("BazBars", { icon = ..., label = ... })
 -- and then:
 --   BazUI:PushNotification({ module = "BazBars", title = "...", ... })
 --
--- If BNC isn't installed, both calls silently do nothing so addons don't
--- need to guard against missing BNC themselves.
+-- If the module is absent, both calls silently do nothing so callers don't
+-- need to guard themselves.
 ---------------------------------------------------------------------------
 
 local registeredNotificationModules = {}
 
+local function NotificationAPI()
+    return BazUI.Notifications and BazUI.Notifications.API
+end
+
 local function TryRegisterModule(moduleId, info)
-    if not BazNotificationCenter or not BNC or not BNC.RegisterModule then return end
+    local BNC = NotificationAPI()
+    if not BNC or not BNC.RegisterModule then return end
     if registeredNotificationModules[moduleId] then return end
     BNC:RegisterModule({
         id = moduleId,
@@ -523,13 +528,14 @@ function BazUI:RegisterNotificationModule(moduleId, info)
 end
 
 function BazUI:PushNotification(data)
-    if not BazNotificationCenter or not BazNotificationCenter.Push then return end
+    local BNC = NotificationAPI()
+    if not BNC or not BNC.Push then return end
     if data and data.module and not registeredNotificationModules[data.module] then
         -- Lazy-register on first push if caller forgot to register explicitly
         local info = registeredNotificationModules[data.module .. "_info"] or {}
         TryRegisterModule(data.module, info)
     end
-    return BazNotificationCenter:Push(data)
+    return BNC:Push(data)
 end
 
 -- Auto-register the BazUI internal module for things like profile-change
@@ -611,7 +617,7 @@ end)
 ---------------------------------------------------------------------------
 BazUI:QueueForLogin(function()
     local clash = {}
-    for _, name in ipairs({ "BazCore", "BazWidgetDrawers", "LibBazWidget", "BazWidgets", "BazChat", "BazBags", "BazBars" }) do
+    for _, name in ipairs({ "BazCore", "BazWidgetDrawers", "LibBazWidget", "BazWidgets", "BazChat", "BazBags", "BazBars", "BazNotificationCenter" }) do
         if C_AddOns.IsAddOnLoaded(name) then clash[#clash + 1] = name end
     end
     if #clash > 0 then
