@@ -519,13 +519,43 @@ end
 -- Table block
 ---------------------------------------------------------------------------
 
+-- Cells wrap, and each row is as tall as its tallest cell, so long
+-- descriptions read in full instead of being cut off with an ellipsis.
+-- Column widths: opt.columnWidths as fractions of the content width;
+-- otherwise a two-column table gives the first (label) column 38% and
+-- wider tables split evenly.
+local MIN_ROW_H = 22
+local CELL_PAD  = 5
+
+local function ColumnWidths(opt, nCols, contentWidth)
+    local fractions = opt.columnWidths
+    if not fractions then
+        if nCols == 2 then
+            fractions = { 0.38, 0.62 }
+        else
+            fractions = {}
+            for i = 1, nCols do fractions[i] = 1 / nCols end
+        end
+    end
+    local widths, x = {}, {}
+    local left = 0
+    for i = 1, nCols do
+        x[i] = left
+        widths[i] = math.floor(contentWidth * (fractions[i] or (1 / nCols)))
+        left = left + widths[i]
+    end
+    return widths, x
+end
+
 local function CreateTableWidget(parent, opt, contentWidth)
     local frame = CreateFrame("Frame", nil, parent)
     local cols = opt.columns or {}
     local rows = opt.rows or {}
     local nCols = math.max(#cols, 1)
-    local colW = math.floor(contentWidth / nCols)
-    local rowH = 22
+    for _, row in ipairs(rows) do
+        if #row > nCols then nCols = #row end
+    end
+    local colW, colX = ColumnWidths(opt, nCols, contentWidth)
     local headerH = 24
 
     -- Header row
@@ -538,31 +568,39 @@ local function CreateTableWidget(parent, opt, contentWidth)
 
         for i, col in ipairs(cols) do
             local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("TOPLEFT", (i - 1) * colW + 8, -6)
-            fs:SetWidth(colW - 12)
+            fs:SetPoint("TOPLEFT", colX[i] + 8, -6)
+            fs:SetWidth(colW[i] - 12)
             fs:SetJustifyH("LEFT")
             fs:SetText(col)
             fs:SetTextColor(unpack(O.GOLD))
         end
     end
 
-    local y = -(headerH + 2)
+    local y = #cols > 0 and -(headerH + 2) or 0
     for r, row in ipairs(rows) do
+        local cells, rowH = {}, MIN_ROW_H
+        for c, cell in ipairs(row) do
+            local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            fs:SetPoint("TOPLEFT", colX[c] + 8, y - CELL_PAD)
+            fs:SetWidth(colW[c] - 12)
+            fs:SetJustifyH("LEFT")
+            fs:SetJustifyV("TOP")
+            fs:SetWordWrap(true)
+            fs:SetNonSpaceWrap(true)
+            fs:SetText(tostring(cell or ""))
+            fs:SetTextColor(unpack(O.TEXT_NORMAL))
+            cells[c] = fs
+            rowH = math.max(rowH, math.ceil(fs:GetStringHeight() or 0) + CELL_PAD * 2)
+        end
+        for _, fs in ipairs(cells) do
+            fs:SetHeight(rowH - CELL_PAD * 2)
+        end
         if r % 2 == 0 then
             local bg = frame:CreateTexture(nil, "BACKGROUND")
             bg:SetHeight(rowH)
             bg:SetPoint("TOPLEFT", 0, y)
             bg:SetPoint("TOPRIGHT", 0, y)
             bg:SetColorTexture(unpack(O.TABLE_ROW_ALT))
-        end
-        for c, cell in ipairs(row) do
-            local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            fs:SetPoint("TOPLEFT", (c - 1) * colW + 8, y - 4)
-            fs:SetWidth(colW - 12)
-            fs:SetJustifyH("LEFT")
-            fs:SetText(tostring(cell or ""))
-            fs:SetTextColor(unpack(O.TEXT_NORMAL))
-            fs:SetWordWrap(false)
         end
         y = y - rowH
     end

@@ -86,9 +86,31 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     },
 })
 
+-- The module's root entry is a landing page; it stays hidden while the
+-- module has child pages (the User Manual and General Settings tabs),
+-- which is the same shape Bags and Chat use.
+local function GetLandingPage()
+    return BazUI:CreateLandingPage(MODULE_NAME, {
+        subtitle    = "Buffs and debuffs on the player frame",
+        description = "Your buffs sit above the health bar of the BazUI player frame and your " ..
+            "debuffs above the power bar, eight to a row, with more rows stacking upward as needed.",
+        features = "Right-click to cancel a buff, in or out of combat. Time remaining and stack " ..
+            "counts on the icons. Debuff rims coloured by type. Weapon enchants shown with the " ..
+            "buffs. Blizzard's own buff and debuff frames parked while BazUI auras are shown.",
+        guide = {
+            { "/bazauras",           "Open these settings" },
+            { "Right-click an icon", "Cancel that buff or remove a weapon enchant" },
+            { "Layout tab",          "Icons per row, size, spacing and fill direction" },
+        },
+    })
+end
+
 BazUI:QueueForLogin(function()
-    BazUI:RegisterOptionsTable(MODULE_NAME, function()
-        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "Auras" })
-    end)
+    BazUI:RegisterOptionsTable(MODULE_NAME, GetLandingPage)
     BazUI:AddToSettings(MODULE_NAME, "Auras")
+
+    BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", function()
+        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General Settings" })
+    end)
+    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General Settings", MODULE_NAME)
 end)
