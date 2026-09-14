@@ -150,4 +150,4 @@ BazUI:QueueForLogin(function()
     if not addon.core then return end
     if not addon.core:GetSetting("enabled") then return end
     Replica:Start()
-end, "BazUIChat:Replica:Start")
+end)

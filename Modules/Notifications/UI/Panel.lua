@@ -467,52 +467,20 @@ local function CreatePanel()
     panel.tabRow:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -HEADER_HEIGHT)
     panel.tabRow:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PANEL_PADDING, -HEADER_HEIGHT)
 
-    local function CreateTab(label, tabKey, xAnchor)
-        local tab = CreateFrame("Button", nil, panel.tabRow)
-        tab:SetSize(label:len() * 7 + 16, TAB_HEIGHT)
-
-        tab.text = tab:CreateFontString(nil, "OVERLAY")
-        tab.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormal"))
-        tab.text:SetText(label)
-        tab.text:SetAllPoints()
-
-        tab.underline = tab:CreateTexture(nil, "ARTWORK")
-        tab.underline:SetHeight(2)
-        tab.underline:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
-        tab.underline:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", 0, 0)
-        tab.underline:SetColorTexture(unpack(Colors.accent))
-        tab.underline:Hide()
-
-        function tab:SetActive(active)
-            if active then
-                self.text:SetTextColor(unpack(Colors.textPrimary))
-                self.underline:Show()
-            else
-                self.text:SetTextColor(unpack(Colors.textMuted))
-                self.underline:Hide()
-            end
-        end
-
-        tab:SetScript("OnClick", function()
-            addon.SwitchTab(tabKey)
-        end)
-        tab:SetScript("OnEnter", function(self)
-            if currentTab ~= tabKey then
-                self.text:SetTextColor(unpack(Colors.accent))
-            end
-        end)
-        tab:SetScript("OnLeave", function(self)
-            self:SetActive(currentTab == tabKey)
-        end)
-
-        return tab
-    end
-
-    panel.notifTab = CreateTab("Notifications", "notifications")
-    panel.notifTab:SetPoint("LEFT", panel.tabRow, "LEFT", 0, 0)
-
-    panel.historyTab = CreateTab("History", "history")
-    panel.historyTab:SetPoint("LEFT", panel.notifTab, "RIGHT", 8, 0)
+    -- The suite's tab strip (Core/TabStrip.lua) in its underline style:
+    -- text alone, the open tab bright over a gold rule.
+    local TAB_KEYS = { "notifications", "history" }
+    panel.tabStrip = BazUI.CreateTabStrip(nil, panel.tabRow, {
+        style = "underline", tabHeight = TAB_HEIGHT, spacing = 8,
+    })
+    panel.tabStrip:SetPoint("BOTTOMLEFT", panel.tabRow, "BOTTOMLEFT", 0, 0)
+    panel.tabStrip:SetTabSelectedCallback(function(tabID, isUserAction)
+        if isUserAction then addon.SwitchTab(TAB_KEYS[tabID]) end
+    end)
+    panel.tabStrip:AddTab("Notifications")
+    panel.tabStrip:AddTab("History")
+    panel.tabStrip:Layout()
+    panel.tabIDs = { notifications = 1, history = 2 }
 
     -- Tab divider
     local tDiv = panel.tabRow:CreateTexture(nil, "ARTWORK")
@@ -860,8 +828,11 @@ function addon.SwitchTab(tabKey)
 
     currentTab = tabKey
 
-    panel.notifTab:SetActive(tabKey == "notifications")
-    panel.historyTab:SetActive(tabKey == "history")
+    local tabID = panel.tabIDs and panel.tabIDs[tabKey]
+    if tabID then
+        panel.tabStrip:SetTabVisuallySelected(tabID)
+        panel.tabStrip.selectedTabID = tabID
+    end
 
     if tabKey == "notifications" then
         panel.actionBtn.text:SetText("Clear all")

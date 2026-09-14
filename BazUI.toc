@@ -28,6 +28,11 @@ Core\ButtonGlow.lua
 Core\EditMode.lua
 Core\Serialization.lua
 Core\Widgets.lua
+# Skin - textures and colours shared by every module.
+Skin\Skin.lua
+Skin\Theme.lua
+Skin\Nameplate.lua
+
 Core\TabStrip.lua
 Core\Options\Constants.lua
 Core\Options\WidgetFactories.lua
@@ -43,11 +48,6 @@ Core\Popup.lua
 Core\SecureActionPopup.lua
 Core\AddonListButton.lua
 Core\IconPicker.lua
-
-# Skin - textures and colours shared by every module.
-Skin\Skin.lua
-Skin\Theme.lua
-Skin\Nameplate.lua
 
 # Modules
 Modules\Drawers\Core.lua

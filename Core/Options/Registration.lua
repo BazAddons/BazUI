@@ -23,7 +23,6 @@ local optionsTables = BazUI._optionsTables or {}
 BazUI._optionsTables = optionsTables
 
 local ROOT_KEY         = "BazUI"
-local TAB_STRIP_HEIGHT = 30
 local TAB_GAP          = 2
 
 local rootCategory      -- Blizzard category object for BazUI
@@ -240,12 +239,10 @@ local function RenderPage(canvas, key)
     if not entry then return end
     canvas.activeKey = key
 
-    for pageKey, tab in pairs(canvas.tabs) do
-        if pageKey == key then
-            PanelTemplates_SelectTab(tab)
-        else
-            PanelTemplates_DeselectTab(tab)
-        end
+    local tabID = canvas.tabIDs and canvas.tabIDs[key]
+    if tabID and canvas.tabStrip.selectedTabID ~= tabID then
+        canvas.tabStrip:SetTabVisuallySelected(tabID)
+        canvas.tabStrip.selectedTabID = tabID
     end
 
     O.ClearChildren(canvas.content)
@@ -266,10 +263,11 @@ end
 
 local function RebuildTabs(canvas)
     local pages = GetPagesFor(canvas.moduleKey)
-    for _, tab in pairs(canvas.tabs) do tab:Hide() end
-    canvas.tabs = {}
-
     local strip = canvas.tabStrip
+    strip:ClearTabs()
+    canvas.tabIDs  = {}
+    canvas.tabKeys = {}
+
     if #pages <= 1 then
         -- Nothing to switch between: give the page the whole canvas.
         strip:Hide()
@@ -277,27 +275,12 @@ local function RebuildTabs(canvas)
     else
         strip:Show()
         canvas.content:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -6)
-        local x = 4
-        for i, page in ipairs(pages) do
-            local tab = canvas.tabPool[i]
-            if not tab then
-                tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
-                canvas.tabPool[i] = tab
-            end
-            tab:SetID(i)
-            tab:SetText(page.label)
-            tab:ClearAllPoints()
-            tab:SetPoint("BOTTOMLEFT", strip, "BOTTOMLEFT", x, 0)
-            PanelTemplates_TabResize(tab, 0)
-            local pageKey = page.key
-            tab:SetScript("OnClick", function()
-                PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
-                RenderPage(canvas, pageKey)
-            end)
-            tab:Show()
-            canvas.tabs[pageKey] = tab
-            x = x + (tab:GetWidth() or 0) + TAB_GAP
+        for _, page in ipairs(pages) do
+            local tabID = strip:AddTab(page.label)
+            canvas.tabIDs[page.key] = tabID
+            canvas.tabKeys[tabID]   = page.key
         end
+        strip:Layout()
     end
 
     -- Keep a valid active page; default to the first.
@@ -317,13 +300,21 @@ local function CreateCanvas(moduleKey)
     local canvas = CreateFrame("Frame")
     canvas:Hide()
     canvas.moduleKey = moduleKey
-    canvas.tabs      = {}
-    canvas.tabPool   = {}
+    canvas.tabIDs    = {}
+    canvas.tabKeys   = {}
 
-    local strip = CreateFrame("Frame", nil, canvas)
+    -- The suite's tab strip (Core/TabStrip.lua), the same one the chat
+    -- dock uses. It sizes itself to its tabs, so only the anchor is set.
+    local strip = BazUI.CreateTabStrip(nil, canvas, {
+        inset = 4,
+        spacing = TAB_GAP,
+        tabSelectSound = SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB,
+    })
     strip:SetPoint("TOPLEFT", 0, 0)
-    strip:SetPoint("TOPRIGHT", 0, 0)
-    strip:SetHeight(TAB_STRIP_HEIGHT)
+    strip:SetTabSelectedCallback(function(tabID, isUserAction)
+        local key = canvas.tabKeys and canvas.tabKeys[tabID]
+        if key and isUserAction then RenderPage(canvas, key) end
+    end)
     canvas.tabStrip = strip
 
     local content = CreateFrame("Frame", nil, canvas)

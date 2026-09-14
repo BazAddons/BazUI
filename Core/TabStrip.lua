@@ -2,89 +2,168 @@
 ---------------------------------------------------------------------------
 -- BazUI: TabStrip
 --
--- A horizontal row of tabs with the same API surface as Blizzard's
--- TabSystemTemplate, which Classic-family clients ship in source but do
--- not load. Modules written against the TabSystem (Chat's tab strip)
--- work unchanged against this:
+-- Every row of tabs in the addon. One API, the same one Blizzard's
+-- TabSystemTemplate exposes, which Classic-family clients ship in source
+-- but do not load; code written against either works against this:
 --
 --   strip:AddTab(label) -> tabID          strip.tabs[tabID]
 --   strip:SetTab(tabID, isUserAction)     strip.selectedTabID
 --   strip:SetTabSelectedCallback(fn)      fn(tabID, isUserAction)
 --   strip:SetTabVisuallySelected(tabID)   strip:MarkDirty()
+--   strip:ClearTabs()                     strip:GetTab(tabID)
 --   strip.minTabWidth / strip.maxTabWidth
 --   tab:Init(tabID, text)  tab:SetTabSelected(bool)  tab.isSelected
 --   tab:GetTabID()         tab.layoutIndex  tab.ignoreInLayout
 --
 -- Layout follows HorizontalLayoutFrame rules: every shown child with a
--- layoutIndex is placed left to right in that order (so a drag
--- placeholder frame slots in like a tab), children flagged
--- ignoreInLayout are skipped, and the strip sizes itself to its content.
+-- layoutIndex is placed in that order (so a drag placeholder frame slots
+-- in like a tab), children flagged ignoreInLayout are skipped, and the
+-- strip sizes itself to its content.
 --
--- Tabs use Blizzard's MinimalTabTemplate (the flat gold tabs the Settings
--- panel uses) when the client has it, else the classic panel top tab.
+-- Two looks, chosen with opts.style:
+--
+--   "panel"      Blizzard's tab art over a dark panel with a gold accent
+--                along the top of the selected tab. Tabs that sit above
+--                a page: the options canvas, the chat dock.
+--   "underline"  Text alone, the selected one bright over a gold rule.
+--                Tabs inside a panel: the notification centre.
+--
+-- Colours come from the shared theme, so a tab reads like everything
+-- else in the suite.
 ---------------------------------------------------------------------------
 
-local TAB_SPACING = 2
-local TEXT_PAD    = 40   -- MinimalTab's own text-to-edge padding
+local Theme = BazUI.Skin.Theme
+
+local DEFAULT_SPACING = 2
+local TEXT_PAD        = 40   -- MinimalTab's own text-to-edge padding
+local UNDERLINE_PAD   = 16
+local UNDERLINE_H     = 2
 
 local function HasTemplate(name)
     return C_XMLUtil and C_XMLUtil.GetTemplateInfo and C_XMLUtil.GetTemplateInfo(name) ~= nil
 end
 
----------------------------------------------------------------------------
--- Tab buttons
----------------------------------------------------------------------------
+local function SetTexColor(tex, c)
+    tex:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
+end
 
+---------------------------------------------------------------------------
+-- The "panel" look
+--
 -- MinimalTab's own art is a faint translucent shape that all but
--- vanishes over the game world, so each tab gets a solid dark panel
--- behind it with a gold accent along the top of the selected tab.
-local BG_SELECTED   = { 0.10, 0.09, 0.07, 0.95 }
-local BG_UNSELECTED = { 0.04, 0.04, 0.05, 0.85 }
-local EDGE_SELECTED   = { 1.00, 0.82, 0.00, 0.95 }
-local EDGE_UNSELECTED = { 0.55, 0.45, 0.15, 0.60 }
+-- vanishes over the game world, so each tab gets a solid panel behind it
+-- and the selected one is capped with gold.
+---------------------------------------------------------------------------
 
-local function AddBackdrop(tab)
-    local bg = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
-    if tab.Left and tab.Right then
-        bg:SetPoint("TOPLEFT",     tab.Left,  "TOPLEFT",     1, 0)
-        bg:SetPoint("BOTTOMRIGHT", tab.Right, "BOTTOMRIGHT", -1, 0)
+local Panel = {}
+
+function Panel.Create(strip)
+    local tab
+    if HasTemplate("MinimalTabTemplate") then
+        tab = CreateFrame("Button", nil, strip, "MinimalTabTemplate")
+        tab._bazMinimal = true
+
+        local bg = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+        if tab.Left and tab.Right then
+            bg:SetPoint("TOPLEFT",     tab.Left,  "TOPLEFT",      1, 0)
+            bg:SetPoint("BOTTOMRIGHT", tab.Right, "BOTTOMRIGHT", -1, 0)
+        else
+            bg:SetPoint("TOPLEFT", 1, -6)
+            bg:SetPoint("BOTTOMRIGHT", -1, 0)
+        end
+        local edge = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
+        edge:SetPoint("TOPLEFT",  bg, "TOPLEFT",  0, 0)
+        edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)
+        edge:SetHeight(2)
+        tab._bazBg, tab._bazEdge = bg, edge
     else
-        bg:SetPoint("TOPLEFT", 1, -6)
-        bg:SetPoint("BOTTOMRIGHT", -1, 0)
+        tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
     end
-    local edge = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
-    edge:SetPoint("TOPLEFT",  bg, "TOPLEFT",  0, 0)
-    edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)
-    edge:SetHeight(2)
-    tab._bazBg, tab._bazEdge = bg, edge
+    return tab
 end
 
-local function UpdateBackdrop(tab, selected)
-    if not tab._bazBg then return end
-    local bg   = selected and BG_SELECTED   or BG_UNSELECTED
-    local edge = selected and EDGE_SELECTED or EDGE_UNSELECTED
-    tab._bazBg:SetColorTexture(bg[1], bg[2], bg[3], bg[4])
-    tab._bazEdge:SetColorTexture(edge[1], edge[2], edge[3], edge[4])
+function Panel.Init(tab, text, strip)
+    if tab.Text then tab.Text:SetText(text or "") else tab:SetText(text or "") end
+    local minW = strip.minTabWidth or 60
+    local maxW = strip.maxTabWidth or 120
+    if tab._bazMinimal then
+        local w = (tab.Text and tab.Text:GetStringWidth() or 0) + TEXT_PAD
+        tab:SetWidth(math.max(minW, math.min(maxW, w)))
+    else
+        PanelTemplates_TabResize(tab, 0, nil, minW, maxW)
+    end
 end
+
+function Panel.SetSelected(tab, selected)
+    if tab._bazMinimal then
+        if tab.SetSelected then
+            tab:SetSelected(selected)
+        elseif tab.OnSelected then
+            tab:OnSelected(selected)
+        end
+        if tab._bazBg then
+            SetTexColor(tab._bazBg, selected and Theme.colors.bgRaised or Theme.colors.bg)
+            SetTexColor(tab._bazEdge, selected and Theme.colors.gold or Theme.colors.divider)
+        end
+    else
+        if selected then PanelTemplates_SelectTab(tab) else PanelTemplates_DeselectTab(tab) end
+    end
+end
+
+---------------------------------------------------------------------------
+-- The "underline" look
+---------------------------------------------------------------------------
+
+local Underline = {}
+
+function Underline.Create(strip)
+    local tab = CreateFrame("Button", nil, strip)
+    tab:SetHeight(strip.tabHeight or 24)
+
+    tab.Text = Theme.FontString(tab, "OVERLAY", "GameFontNormal")
+    tab.Text:SetAllPoints()
+
+    tab.underline = tab:CreateTexture(nil, "ARTWORK")
+    tab.underline:SetHeight(UNDERLINE_H)
+    tab.underline:SetPoint("BOTTOMLEFT")
+    tab.underline:SetPoint("BOTTOMRIGHT")
+    SetTexColor(tab.underline, Theme.colors.gold)
+    tab.underline:Hide()
+
+    -- Hover previews the selected colour without moving the rule.
+    tab:HookScript("OnEnter", function(self)
+        if not self.isSelected then self.Text:SetTextColor(unpack(Theme.colors.gold)) end
+    end)
+    tab:HookScript("OnLeave", function(self)
+        Underline.SetSelected(self, self.isSelected)
+    end)
+    return tab
+end
+
+function Underline.Init(tab, text, strip)
+    tab.Text:SetText(text or "")
+    local w = (tab.Text:GetStringWidth() or 0) + UNDERLINE_PAD
+    tab:SetWidth(math.max(strip.minTabWidth or 1, math.min(strip.maxTabWidth or 400, w)))
+    tab:SetHeight(strip.tabHeight or 24)
+end
+
+function Underline.SetSelected(tab, selected)
+    tab.Text:SetTextColor(unpack(selected and Theme.colors.text or Theme.colors.textMuted))
+    tab.underline:SetShown(selected and true or false)
+end
+
+local STYLES = { panel = Panel, underline = Underline }
+
+---------------------------------------------------------------------------
+-- Tabs
+---------------------------------------------------------------------------
 
 local TabMixin = {}
 
 function TabMixin:Init(tabID, text)
     self.tabID = tabID
-    if self.Text then
-        self.Text:SetText(text or "")
-    else
-        self:SetText(text or "")
-    end
     local strip = self:GetParent()
-    local minW = (strip and strip.minTabWidth) or 60
-    local maxW = (strip and strip.maxTabWidth) or 120
-    if self._bazMinimal then
-        local w = (self.Text and self.Text:GetStringWidth() or 0) + TEXT_PAD
-        self:SetWidth(math.max(minW, math.min(maxW, w)))
-    else
-        PanelTemplates_TabResize(self, 0, nil, minW, maxW)
-    end
+    self._bazStyle.Init(self, text, strip)
     if strip and strip.MarkDirty then strip:MarkDirty() end
 end
 
@@ -95,27 +174,13 @@ end
 function TabMixin:SetTabSelected(selected)
     selected = selected and true or false
     self.isSelected = selected
-    if self._bazMinimal then
-        if self.SetSelected then
-            self:SetSelected(selected)
-        elseif self.OnSelected then
-            self:OnSelected(selected)
-        end
-        UpdateBackdrop(self, selected)
-    else
-        if selected then PanelTemplates_SelectTab(self) else PanelTemplates_DeselectTab(self) end
-    end
+    self._bazStyle.SetSelected(self, selected)
 end
 
 local function CreateTab(strip)
-    local tab
-    if HasTemplate("MinimalTabTemplate") then
-        tab = CreateFrame("Button", nil, strip, "MinimalTabTemplate")
-        tab._bazMinimal = true
-        AddBackdrop(tab)
-    else
-        tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
-    end
+    local style = STYLES[strip.tabStyle] or Panel
+    local tab = style.Create(strip)
+    tab._bazStyle = style
     Mixin(tab, TabMixin)
     -- Left click selects. Right click is left to OnMouseUp hooks (Chat
     -- opens its tab menu there), so it must not change the selection.
@@ -140,7 +205,7 @@ end
 
 function StripMixin:AddTab(label)
     local tabID = #self.tabs + 1
-    local tab = CreateTab(self)
+    local tab = table.remove(self._pool) or CreateTab(self)
     self.tabs[tabID] = tab
     tab.layoutIndex = tabID
     tab:Init(tabID, label)
@@ -148,6 +213,22 @@ function StripMixin:AddTab(label)
     tab:Show()
     self:MarkDirty()
     return tabID
+end
+
+-- Empty the strip, keeping the tab frames for the next build. Frames
+-- can't be destroyed, so a strip that rebuilds often (the options
+-- canvas, once per module) reuses them instead of leaking one set per
+-- rebuild.
+function StripMixin:ClearTabs()
+    for _, tab in ipairs(self.tabs) do
+        tab:Hide()
+        tab.layoutIndex = nil
+        tab.isSelected = false
+        self._pool[#self._pool + 1] = tab
+    end
+    self.tabs = {}
+    self.selectedTabID = nil
+    self:MarkDirty()
 end
 
 function StripMixin:SetTabVisuallySelected(tabID)
@@ -191,11 +272,11 @@ function StripMixin:Layout()
         return a.layoutIndex < b.layoutIndex
     end)
 
-    local x, maxH = 0, 0
+    local x, maxH = self.tabInset or 0, 0
     for i, child in ipairs(items) do
         child:ClearAllPoints()
         child:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", x, 0)
-        x = x + (child:GetWidth() or 0) + (i < #items and TAB_SPACING or 0)
+        x = x + (child:GetWidth() or 0) + (i < #items and self.tabSpacing or 0)
         maxH = math.max(maxH, child:GetHeight() or 0)
     end
     self:SetSize(math.max(x, 1), math.max(maxH, 1))
@@ -206,15 +287,25 @@ end
 ---------------------------------------------------------------------------
 
 -- BazUI.CreateTabStrip(name, parent, opts)
---   opts.minTabWidth / opts.maxTabWidth  clamp tab widths (default 60 / 120)
---   opts.tabSelectSound                  SOUNDKIT id played on user clicks
+--   opts.style           "panel" (default) or "underline"
+--   opts.minTabWidth     clamp tab widths (default 60 / 120)
+--   opts.maxTabWidth
+--   opts.tabHeight       underline tabs only (default 24)
+--   opts.spacing         gap between tabs (default 2)
+--   opts.inset           gap before the first tab (default 0)
+--   opts.tabSelectSound  SOUNDKIT id played on user clicks
 function BazUI.CreateTabStrip(name, parent, opts)
     opts = opts or {}
     local strip = CreateFrame("Frame", name, parent or UIParent)
     Mixin(strip, StripMixin)
     strip.tabs           = {}
+    strip._pool          = {}
+    strip.tabStyle       = opts.style or "panel"
     strip.minTabWidth    = opts.minTabWidth or 60
     strip.maxTabWidth    = opts.maxTabWidth or 120
+    strip.tabHeight      = opts.tabHeight
+    strip.tabSpacing     = opts.spacing or DEFAULT_SPACING
+    strip.tabInset       = opts.inset or 0
     strip.tabSelectSound = opts.tabSelectSound
     strip:SetSize(1, 1)
     strip:SetScript("OnUpdate", function(self)

@@ -12,10 +12,9 @@ local ASSETS = "Interface\\AddOns\\BazUI\\Skin\\Assets\\"
 BazUI.Skin = {
     ASSETS = ASSETS,
 
-    -- Minimap ring. 1024x1024, ring centred; inner edge at 75% of the
-    -- texture, outer edge at 92%, N tag and studs reach ~94%.
+    -- Minimap ring. 1024x1024, ring centred; the theme carries the
+    -- inner-edge ratios.
     MINIMAP_RING             = ASSETS .. "BazUI_Frame.png",
-    MINIMAP_RING_INNER_RATIO = 0.75,
 
     -- Minimap button ring. 128x128, ring centred; inner edge at 70%, the
     -- outer edge touches the texture edge.
@@ -29,8 +28,6 @@ BazUI.Skin = {
     BUTTON_BACKDROP_COLOR = { 0.07, 0.07, 0.09, 1 },
 
     -- Brand colours (hex, for |cff.. escapes)
-    BRAND = "3399ff",
-    GOLD  = "ffd700",
 }
 
 -- Continuous XP fill: built-in texture, no segmented Classic artwork.
