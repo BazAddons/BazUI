@@ -168,6 +168,12 @@ local function GetGeneralOptionsTable()
                 end
             end,
         },
+        dragRequiresShift = {
+            order = 23.5, type = "toggle", name = "Drag buttons only while Shift is held",
+            desc = "A plain drag does nothing, so a slip can't pull an ability off a bar. Dropping onto a bar still works.",
+            get = function() return p.dragRequiresShift == true end,
+            set = function(_, val) p.dragRequiresShift = val end,
+        },
         showTooltips = {
             order = 24, type = "toggle", name = "Show tooltips",
             get = function() return p.showTooltips ~= false end,

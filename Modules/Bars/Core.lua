@@ -45,6 +45,9 @@ addon = BazUI:RegisterModule("Bars", {
         -- first login, and newly learned spells take the first empty slot.
         autoFill = true,
         autoPlaceNew = true,
+        -- Buttons can be dragged only while Shift is held, so a slip
+        -- never pulls an ability off a bar. Dropping onto a bar still works.
+        dragRequiresShift = false,
     },
 
     -- Slash commands

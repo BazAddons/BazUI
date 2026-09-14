@@ -287,6 +287,10 @@ function Button:StartDrag(btn)
     -- Locked bars don't allow dragging.
     if btn.bbBarData and btn.bbBarData.locked then return end
 
+    -- With the General setting on, only a Shift-drag picks a button up;
+    -- a plain drag does nothing and the click still casts on release.
+    if addon.db.profile.dragRequiresShift and not IsShiftKeyDown() then return end
+
     if not btn.action then return end
 
     local handler = BazBars.Actions:Get(btn.action.type)
