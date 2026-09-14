@@ -1,0 +1,60 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
+    <!-- One aura icon. The secure aura header creates these itself (its
+         "template" attribute), so everything visual lives here and
+         BazUI.Auras.* only reads the attributes the header sets (index,
+         filter, target-slot) and paints. SecureAuraButtonTemplate brings
+         the right-click cancel (type2 = cancelaura). -->
+    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate" virtual="true">
+        <Size x="26" y="26"/>
+        <Layers>
+            <Layer level="BACKGROUND" textureSubLevel="-1">
+                <!-- Rim: a rounded square two pixels larger than the icon,
+                     dark for buffs, coloured by dispel type for debuffs. -->
+                <Texture parentKey="Border">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" x="-2" y="2"/>
+                        <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
+                    </Anchors>
+                    <Color r="0.08" g="0.08" b="0.10" a="1"/>
+                </Texture>
+                <MaskTexture parentKey="BorderMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeKey="$parent.Border"/>
+                        <Anchor point="BOTTOMRIGHT" relativeKey="$parent.Border"/>
+                    </Anchors>
+                    <MaskedTextures>
+                        <MaskedTexture childKey="Border"/>
+                    </MaskedTextures>
+                </MaskTexture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <Texture parentKey="Icon" setAllPoints="true"/>
+                <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE" setAllPoints="true">
+                    <MaskedTextures>
+                        <MaskedTexture childKey="Icon"/>
+                    </MaskedTextures>
+                </MaskTexture>
+            </Layer>
+            <Layer level="OVERLAY">
+                <FontString parentKey="Count" inherits="NumberFontNormalSmall" justifyH="RIGHT">
+                    <Anchors>
+                        <Anchor point="BOTTOMRIGHT" x="-1" y="1"/>
+                    </Anchors>
+                </FontString>
+                <FontString parentKey="Duration" inherits="GameFontHighlightSmallOutline" justifyH="CENTER">
+                    <Anchors>
+                        <Anchor point="CENTER" x="0" y="0"/>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnLoad>BazUI.Auras.OnButtonLoad(self)</OnLoad>
+            <OnAttributeChanged>BazUI.Auras.OnButtonAttributeChanged(self, name, value)</OnAttributeChanged>
+            <OnShow>BazUI.Auras.OnButtonShow(self)</OnShow>
+            <OnHide>BazUI.Auras.OnButtonHide(self)</OnHide>
+            <OnEnter>BazUI.Auras.OnButtonEnter(self)</OnEnter>
+            <OnLeave>BazUI.Auras.OnButtonLeave(self)</OnLeave>
+        </Scripts>
+    </Button>
+</Ui>

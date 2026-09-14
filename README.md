@@ -15,6 +15,8 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Chat | BazChat | Ported (tabbed chat replacement: channels per tab, timestamps, history, copy, combat log) |
 | Bags | BazBags | Ported (Classic bags plus keyring; categories, pinning, search) |
 | Bars | BazBars | Ported (bars, spells, items, macros, mounts, equipment sets, keybinds; no toys, pets or flyouts) |
+| Unit Frames | new (written by Codex) | In progress (player and target frames from the BazUI artwork) |
+| Auras | new | Built (buffs and debuffs on the player frame, secure right-click cancel) |
 
 ## Commands
 
@@ -23,6 +25,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 - `/bwd toggle|show|hide|open <name>|list` drives the drawer.
 - `/bbg` (or `/bazbags`) toggles the bag panel; `/bbg sort`, `/bbg categorize`.
 - `/bb` (or `/bazbars`) for bars: `create`, `delete`, `duplicate`, `export`, `import`, `scale`, `padding`, `reset`.
+- `/bazframes` opens the Unit Frames options; `/bazauras` opens the Auras options (`/bazauras reset` resets the layout).
 - `/bazchat` (or `/bc`) for chat: `copy`, `clear`, `lock`, `unlock`, `restoredefaults`; `/cc` clears the active tab.
 
 ## License

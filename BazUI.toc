@@ -125,3 +125,9 @@ Modules\UnitFrames\Settings.lua
 Modules\UnitFrames\Player.lua
 Modules\UnitFrames\TargetLayout.lua
 Modules\UnitFrames\Target.lua
+
+Modules\Auras\Core.lua
+Modules\Auras\Auras.xml
+Modules\Auras\Frames.lua
+Modules\Auras\Settings.lua
+Modules\Auras\UserGuide.lua

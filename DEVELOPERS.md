@@ -21,6 +21,8 @@ BazUI/
     Chat/              from BazChat; BazUI.Chat is its private namespace, BazUI.Chat.API the old BazChat global
     Bags/              from BazBags; Classic slot template, keyring section, no currency strip
     Bars/              from BazBars; BazUI.Bars is its namespace; toys, pets, flyouts dropped
+    UnitFrames/        written by Codex; player and target frames, BazUIPlayerFrame root
+    Auras/             new; SecureAuraHeaderTemplate headers anchored to BazUIPlayerFrame
 ```
 
 ## The module system
