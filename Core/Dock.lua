@@ -133,16 +133,35 @@ function Dock:ShouldShow(frame)
     return HostChainShown(frame)
 end
 
+local pendingShow = {}
+
 -- A follower says whether it wants to be seen; the chain decides the
 -- rest. Callers use this instead of Show and Hide so the stack can
 -- reflow around them.
+--
+-- Showing and hiding a protected frame is itself protected, even when it
+-- is already in the state you are asking for, so a secure bar is left
+-- alone during combat and caught up when it ends. A bar that has to
+-- appear mid-fight, which means any bar tied to whether a unit exists,
+-- should be handed to RegisterUnitWatch instead: the game does it in the
+-- secure environment and never needs us.
 function Dock:SetShown(frame, wanted)
-    frame._dockWanted = wanted and true or false
-    local link = links[frame]
-    if link then
-        self:Relayout(link.host)
-    else
-        frame:SetShown(frame._dockWanted)
+    wanted = wanted and true or false
+    frame._dockWanted = wanted
+
+    if frame:IsProtected() and InCombatLockdown() then
+        pendingShow[frame] = true
+        return
+    end
+
+    frame:SetShown(wanted and HostChainShown(frame))
+
+    -- Position is a separate question, and one that has to wait: moving
+    -- anything is protected too. A bar that reserves its slot is already
+    -- in the right place, which is what lets a cast bar appear mid-cast.
+    if not InCombatLockdown() then
+        local link = links[frame]
+        if link then self:Relayout(link.host) end
     end
 end
 
@@ -247,5 +266,11 @@ end
 BazUI:QueueForLogin(function()
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    frame:SetScript("OnEvent", function() Dock:Relayout() end)
+    frame:SetScript("OnEvent", function()
+        for follower in pairs(pendingShow) do
+            follower:SetShown(follower._dockWanted and HostChainShown(follower))
+        end
+        wipe(pendingShow)
+        Dock:Relayout()
+    end)
 end)

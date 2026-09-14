@@ -73,11 +73,10 @@ function UnitBars:UpdateHealth(unit)
     if not (set and set.health) then return end
     local bar = set.health
 
-    if not UnitExists(unit) then
-        BazUI.Dock:SetShown(bar, false)
-        return
-    end
-    BazUI.Dock:SetShown(bar, true)
+    -- Whether this is on screen at all is RegisterUnitWatch's business;
+    -- it runs in the secure environment and works in combat, which no
+    -- amount of Lua here could. We only fill it in.
+    if not UnitExists(unit) then return end
 
     local maximum = math.max(1, UnitHealthMax(unit) or 1)
     local current = math.max(0, math.min(maximum, UnitHealth(unit) or 0))
@@ -100,13 +99,17 @@ function UnitBars:UpdatePower(unit)
     if not (set and set.power) then return end
     local bar = set.power
 
+    if not UnitExists(unit) then return end
+
     local powerType = UnitPowerType(unit)
     local maximum = math.max(0, UnitPowerMax(unit, powerType) or 0)
-    if not UnitExists(unit) or maximum <= 0 then
-        BazUI.Dock:SetShown(bar, false)
+    -- A unit with no power keeps its slot but fades out. Hiding it would
+    -- be protected; alpha is not, so this still works mid-fight.
+    bar:SetAlpha(maximum > 0 and 1 or 0)
+    if maximum <= 0 then
+        bar:SetText("")
         return
     end
-    BazUI.Dock:SetShown(bar, true)
 
     local current = math.max(0, math.min(maximum, UnitPower(unit, powerType) or 0))
     bar:SetValue(current / maximum)
@@ -226,6 +229,9 @@ local function MakeBar(unit, key, opts)
             _G.SecureUnitButton_OnLoad(bar, unit, UnitMenu)
         end
         bar:RegisterForClicks("AnyUp")
+        -- The game shows and hides it as the unit comes and goes, in the
+        -- secure environment, so it keeps working during a fight.
+        if _G.RegisterUnitWatch then _G.RegisterUnitWatch(bar) end
         bar:SetScript("OnEnter", function(self)
             self._hovered = true
             self:_RefreshText()
