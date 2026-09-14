@@ -294,6 +294,10 @@ local function BarEdge(bar, point)
     return bar.x + bar.w
 end
 
+-- Source pixels the target auras keep clear of the name plate's edge;
+-- the plate's wings reach a little past its box.
+local PLATE_MARGIN = 16
+
 local function AnchorTargetHeaders(buffPoint, debuffPoint)
     local buffs, debuffs = headers.TARGET_HELPFUL, headers.TARGET_HARMFUL
     buffs:ClearAllPoints()
@@ -301,16 +305,43 @@ local function AnchorTargetHeaders(buffPoint, debuffPoint)
     local root, L = TargetRoot()
     if not root then return false end
 
-    local gap = addon:GetSetting("targetGap") or 12
+    local gap     = addon:GetSetting("targetGap") or 12
+    local size    = addon:GetSetting("iconSize") or 26
+    local spacing = addon:GetSetting("spacing") or 3
+    local perRow  = addon:GetSetting("perRow") or 8
+    local step    = size + spacing
     local R = root:GetWidth() / L.width
-    local level = root:GetFrameLevel() + 6
+    local level = root:GetFrameLevel() + 10
     buffs:SetParent(root)
     debuffs:SetParent(root)
     buffs:SetFrameLevel(level)
     debuffs:SetFrameLevel(level)
+
+    -- Below the bars the name plate sits between them, so the inner end
+    -- of each side is the plate's edge, not the bar's. Each side runs
+    -- from the bar's outer end to that edge.
+    local plate = L.namePlate
+    local buffInner   = math.min(L.health.x + L.health.w, plate.x - PLATE_MARGIN)
+    local debuffInner = math.max(L.power.x, plate.x + plate.w + PLATE_MARGIN)
+    local bx = buffPoint:find("LEFT", 1, true) and L.health.x or buffInner
+    local px = debuffPoint:find("LEFT", 1, true) and debuffInner or (L.power.x + L.power.w)
+
+    -- A row that starts at the outer end and fills inward must stop
+    -- before the plate; one that starts at the plate may run off the
+    -- frame's edge, which is harmless.
+    local function Fit(h, point, avail)
+        local fits = math.max(1, math.floor((avail * R + spacing) / step))
+        local outward = (point:find("LEFT", 1, true) ~= nil) == (h == debuffs)
+        local cols = outward and perRow or math.min(perRow, fits)
+        h:SetAttribute("wrapAfter", cols)
+        h:SetAttribute("minWidth", cols * step - spacing)
+    end
+    Fit(buffs, buffPoint, buffInner - L.health.x)
+    Fit(debuffs, debuffPoint, (L.power.x + L.power.w) - debuffInner)
+
     -- First row hangs from the bottom of the bars; later rows stack down.
-    buffs:SetPoint(buffPoint, root, "TOPLEFT", BarEdge(L.health, buffPoint) * R, -((L.health.y + L.health.h) * R) - gap)
-    debuffs:SetPoint(debuffPoint, root, "TOPLEFT", BarEdge(L.power, debuffPoint) * R, -((L.power.y + L.power.h) * R) - gap)
+    buffs:SetPoint(buffPoint, root, "TOPLEFT", bx * R, -((L.health.y + L.health.h) * R) - gap)
+    debuffs:SetPoint(debuffPoint, root, "TOPLEFT", px * R, -((L.power.y + L.power.h) * R) - gap)
     return true
 end
 
