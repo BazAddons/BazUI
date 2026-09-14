@@ -91,7 +91,7 @@ Goals.entries = {
         id = "lokdelar", name = "Lok'delar", kind = "weapon",
         class = "HUNTER", level = 58,
         steps = {
-            { kind = "item", id = 18714, name = "Lok'delar, Stave of the Ancient Keepers",
+            { kind = "item", id = 18715, name = "Lok'delar, Stave of the Ancient Keepers",
               label = "Claim Lok'delar" },
         },
     },
