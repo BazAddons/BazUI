@@ -39,15 +39,6 @@ Theme.colors = {
     danger    = { 0.85, 0.30, 0.30, 1.00 },
 }
 
--- Blizzard's tooltip nine-slice tinted gold: the frame Bags and the
--- Drawers already use, so panels and toasts belong to the same family.
-Theme.BACKDROP_PANEL = {
-    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
-
 -- Flat one-pixel frame for elements that sit inside a panel.
 Theme.BACKDROP_FLAT = {
     bgFile   = "Interface\\Buttons\\WHITE8x8",
@@ -148,13 +139,6 @@ local function SetColor(fn, c)
     fn(c[1], c[2], c[3], c[4] or 1)
 end
 
--- Gold-edged panel backdrop. `frame` must inherit BackdropTemplate.
-function Theme.ApplyPanel(frame, bgColor)
-    frame:SetBackdrop(Theme.BACKDROP_PANEL)
-    SetColor(function(...) frame:SetBackdropColor(...) end, bgColor or Theme.colors.bg)
-    SetColor(function(...) frame:SetBackdropBorderColor(...) end, Theme.colors.goldDim)
-end
-
 ---------------------------------------------------------------------------
 -- Flat panel (the tooltip treatment)
 --
@@ -189,13 +173,11 @@ function Theme.ApplyFlatPanel(frame, bgColor, edgeColor)
         frame._bazFlatPanel = art
     end
 
-    local c = edgeColor or Theme.colors.goldDim
-    for _, edge in ipairs(art.edges) do
-        edge:SetColorTexture(c[1], c[2], c[3], c[4] or 0.8)
-        edge:Show()
-    end
-    Theme.SetFlatPanelColor(frame, bgColor)
+    art.bgColor   = bgColor or Theme.colors.bg
+    art.edgeColor = edgeColor or Theme.colors.goldDim
+    Theme.SetFlatPanelAlpha(frame)
     art.bg:Show()
+    for _, edge in ipairs(art.edges) do edge:Show() end
 end
 
 -- Recolour a flat panel's interior without rebuilding it (hover states,
@@ -205,7 +187,21 @@ function Theme.SetFlatPanelColor(frame, bgColor, alpha)
     local art = frame._bazFlatPanel
     if not art then return end
     local c = bgColor or Theme.colors.bg
-    art.bg:SetColorTexture(c[1], c[2], c[3], alpha or c[4] or 1)
+    art.bgColor = { c[1], c[2], c[3], alpha or c[4] or 1 }
+    Theme.SetFlatPanelAlpha(frame)
+end
+
+-- Fade the interior and the edge independently, keeping both colours.
+-- Pass nothing to redraw at the colours' own alpha; the drawer tweens
+-- these two as it fades in and out.
+function Theme.SetFlatPanelAlpha(frame, bgAlpha, edgeAlpha)
+    local art = frame._bazFlatPanel
+    if not art then return end
+    local b, e = art.bgColor or Theme.colors.bg, art.edgeColor or Theme.colors.goldDim
+    art.bg:SetColorTexture(b[1], b[2], b[3], bgAlpha or b[4] or 1)
+    for _, edge in ipairs(art.edges) do
+        edge:SetColorTexture(e[1], e[2], e[3], edgeAlpha or e[4] or 0.8)
+    end
 end
 
 ---------------------------------------------------------------------------

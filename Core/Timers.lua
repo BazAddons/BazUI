@@ -38,17 +38,6 @@ function AddonMixin:After(delay, fn)
 end
 
 -- Repeating ticker
-function AddonMixin:Every(interval, fn)
-    local timers = addonTimers[self.name]
-    if not timers then
-        timers = {}
-        addonTimers[self.name] = timers
-    end
-
-    local ticker = C_Timer.NewTicker(interval, fn)
-    table.insert(timers, ticker)
-    return ticker
-end
 
 -- Cancel all timers for this addon
 function AddonMixin:CancelAllTimers()
@@ -68,46 +57,16 @@ function BazUI:After(delay, fn)
     return C_Timer.NewTimer(delay, fn)
 end
 
-function BazUI:Every(interval, fn)
-    return C_Timer.NewTicker(interval, fn)
-end
 
 ---------------------------------------------------------------------------
 -- Throttle
 -- Returns a function that executes at most once per interval.
 -- Calls during the cooldown are silently dropped.
----------------------------------------------------------------------------
-
-function BazUI:Throttle(interval, fn)
-    local lastCall = 0
-    return function(...)
-        local now = GetTime()
-        if now - lastCall >= interval then
-            lastCall = now
-            return fn(...)
-        end
-    end
-end
 
 ---------------------------------------------------------------------------
 -- Debounce
 -- Returns a function that delays execution until no calls have been
 -- made for the specified delay. Each call resets the timer.
----------------------------------------------------------------------------
-
-function BazUI:Debounce(delay, fn)
-    local timer = nil
-    return function(...)
-        local args = { ... }
-        if timer then
-            timer:Cancel()
-        end
-        timer = C_Timer.NewTimer(delay, function()
-            timer = nil
-            fn(unpack(args))
-        end)
-    end
-end
 
 ---------------------------------------------------------------------------
 -- Cooldown

@@ -178,14 +178,8 @@ function CalcWidget:Build()
     f.displayBg:SetPoint("TOPLEFT", PAD, -PAD)
     f.displayBg:SetPoint("TOPRIGHT", -PAD, -PAD)
     f.displayBg:SetHeight(DISPLAY_H)
-    f.displayBg:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    f.displayBg:SetBackdropColor(0.05, 0.05, 0.08, 0.9)
-    f.displayBg:SetBackdropBorderColor(0.3, 0.25, 0.15, 0.6)
+    BazUI.Skin.Theme.ApplyFlatPanel(f.displayBg, BazUI.Skin.Theme.colors.bg,
+        BazUI.Skin.Theme.colors.edge)
 
     f.display = BazUI.Skin.Theme.FontString(f.displayBg, "OVERLAY", "GameFontNormalLarge")
     f.display:SetPoint("RIGHT", -8, 0)

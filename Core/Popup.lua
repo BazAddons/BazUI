@@ -20,7 +20,7 @@
 --
 -- Visual primitives match the rest of BazUI - UIPanelButtonTemplate,
 -- InputBoxTemplate, UICheckButtonTemplate, UIPanelCloseButton, the
--- LIST_BACKDROP backdrop with PANEL_BG/PANEL_BORDER colors, fonts
+-- the shared flat chrome with DIALOG_BG/DIALOG_BORDER colours, fonts
 -- from O.HEADER_FONT/O.LABEL_FONT - so popups feel native to the
 -- BazUI options window, not bolted on.
 --
@@ -141,13 +141,11 @@ local function CreatePopupFrame()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop",  f.StopMovingOrSizing)
     f:SetClampedToScreen(true)
-    f:SetBackdrop(O.LIST_BACKDROP)
     -- DIALOG_* tones rather than the inline PANEL_* tones - this is a
     -- floating dialog so the border needs to read clearly against
     -- arbitrary game content behind it, and the bg should be solid
     -- enough to feel modal rather than translucent over the world.
-    f:SetBackdropColor(unpack(O.DIALOG_BG))
-    f:SetBackdropBorderColor(unpack(O.DIALOG_BORDER))
+    BazUI.Skin.Theme.ApplyFlatPanel(f, O.DIALOG_BG, O.DIALOG_BORDER)
     f:SetPoint("CENTER")
     f:Hide()
 

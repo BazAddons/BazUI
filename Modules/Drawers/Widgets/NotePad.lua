@@ -37,12 +37,7 @@ function NoteWidget:Build()
     f.border = CreateFrame("Frame", nil, f, "BackdropTemplate")
     f.border:SetPoint("TOPLEFT", PAD - 1, -PAD + 1)
     f.border:SetPoint("BOTTOMRIGHT", -PAD + 1, PAD - 1)
-    f.border:SetBackdrop({
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    f.border:SetBackdropBorderColor(0.3, 0.25, 0.15, 0.7)
+    BazUI.Skin.Theme.ApplyFlatPanel(f.border, { 0, 0, 0, 0 }, BazUI.Skin.Theme.colors.edge)
 
     -- Scroll frame for the edit box
     f.scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")

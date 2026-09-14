@@ -20,12 +20,6 @@ BazBars.MIN_SCALE = 0.5
 BazBars.MAX_SCALE = 2.5
 
 -- Visual
-BazBars.BAR_BACKDROP = {
-    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    edgeSize = 12,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
-}
 BazBars.BAR_BG_COLOR = { r = 0.1, g = 0.1, b = 0.1, a = 0.6 }
 BazBars.BAR_BORDER_COLOR = { r = 0.3, g = 0.3, b = 0.3, a = 0.8 }
 BazBars.BAR_BG_UNLOCKED = { r = 0.15, g = 0.15, b = 0.3, a = 0.7 }

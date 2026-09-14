@@ -32,17 +32,6 @@ local function RegisterHandler(owner, event, handler)
     handlers[event][owner] = handler
 end
 
-local function UnregisterHandler(owner, event)
-    local list = handlers[event]
-    if not list then return end
-    list[owner] = nil
-    -- If no handlers remain, unregister from frame
-    if not next(list) then
-        pcall(eventFrame.UnregisterEvent, eventFrame, event)
-        handlers[event] = nil
-    end
-end
-
 local function UnregisterAll(owner)
     -- Collect events to clean up first, then modify (safe iteration)
     local toRemove = {}
@@ -75,15 +64,6 @@ function BazUI:On(event, handler)
     end
 end
 
-function BazUI:Off(event)
-    if type(event) == "table" then
-        for _, e in ipairs(event) do
-            UnregisterHandler("BazUI", e)
-        end
-    else
-        UnregisterHandler("BazUI", event)
-    end
-end
 
 -- Fire a custom event to all listeners
 function BazUI:Fire(event, ...)
@@ -122,15 +102,6 @@ function AddonMixin:On(event, handler)
     RegisterHandler(self.name, event, handler)
 end
 
-function AddonMixin:Off(event)
-    if type(event) == "table" then
-        for _, e in ipairs(event) do
-            UnregisterHandler(self.name, e)
-        end
-    else
-        UnregisterHandler(self.name, event)
-    end
-end
 
 -- Unregister all events for this addon
 function AddonMixin:OffAll()

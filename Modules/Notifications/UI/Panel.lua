@@ -26,12 +26,7 @@ local BACKDROP_INPUT = {
 -- allocated on every CreateHistoryCard AND every ResetHistoryCard
 -- call; with a busy history this was several hundred wasted tables
 -- per session.
-local BACKDROP_HISTORY_CARD = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-}
+local BACKDROP_HISTORY_CARD = BazUI.Skin.Theme.BACKDROP_FLAT
 
 -- State
 local panel
@@ -140,12 +135,7 @@ local function CreateDropdown(parent, width, items, currentValue, onChange)
 
     local dropdown = CreateFrame("Frame", name, parent, "BackdropTemplate")
     dropdown:SetSize(width, 22)
-    dropdown:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    })
+    dropdown:SetBackdrop(BazUI.Skin.Theme.BACKDROP_FLAT)
     dropdown:SetBackdropColor(unpack(Colors.cardBg))
     dropdown:SetBackdropBorderColor(unpack(Colors.cardBorder))
 
@@ -171,12 +161,7 @@ local function CreateDropdown(parent, width, items, currentValue, onChange)
 
     -- Menu frame (hidden by default)
     dropdown.menu = CreateFrame("Frame", name .. "Menu", dropdown, "BackdropTemplate")
-    dropdown.menu:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    })
+    dropdown.menu:SetBackdrop(BazUI.Skin.Theme.BACKDROP_FLAT)
     dropdown.menu:SetBackdropColor(unpack(Colors.panelBg))
     dropdown.menu:SetBackdropBorderColor(unpack(Colors.cardBorder))
     dropdown.menu:SetFrameStrata("TOOLTIP")

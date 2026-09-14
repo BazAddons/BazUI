@@ -39,16 +39,9 @@ Drawer.MIN_WIDTH = MIN_WIDTH
 Drawer.MAX_WIDTH = MAX_WIDTH
 Drawer.DEFAULT_WIDTH = DEFAULT_WIDTH
 
-local BACKDROP = {
-    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
-
--- Pixels the visible backdrop border sits inside the frame's logical edge.
--- We push the toggle tab inward by this much so it butts against the
--- border instead of hanging in a small gap.
+-- Pixels the visible edge sits inside the frame's logical edge. The tab
+-- is pushed inward by this much so it butts against the edge instead of
+-- hanging in a small gap.
 local TAB_BORDER_INSET = 2
 
 ---------------------------------------------------------------------------
@@ -102,9 +95,8 @@ function Drawer:Build()
         f:EnableMouseMotion(true)
     end
 
-    f:SetBackdrop(BACKDROP)
-    f:SetBackdropColor(0, 0, 0, addon:GetSetting("backgroundOpacity") or 0.9)
-    f:SetBackdropBorderColor(1, 1, 1, 1)
+    BazUI.Skin.Theme.ApplyFlatPanel(f)
+    BazUI.Skin.Theme.SetFlatPanelAlpha(f, addon:GetSetting("backgroundOpacity") or 0.9, 1)
 
     -- Display frame - holds all content (hidden when collapsed)
     local display = CreateFrame("Frame", "BazUIDrawerDisplayFrame", f)
@@ -783,8 +775,8 @@ function Drawer:ApplyEdgeHotZone()
 end
 
 ---------------------------------------------------------------------------
--- Custom backdrop tween (alpha is not a property of SetBackdropColor, so
--- we can't use UIFrameFade for it - we interpolate manually)
+-- Chrome tween. The frame's own alpha would take the widgets with it,
+-- so the interior and the edge are faded on their own instead.
 ---------------------------------------------------------------------------
 
 local function Lerp(a, b, t)
@@ -804,8 +796,7 @@ function Drawer:InitBackdropTween()
         if f then
             local bg = Lerp(self._fromBg, self._toBg, t)
             local border = Lerp(self._fromBorder, self._toBorder, t)
-            f:SetBackdropColor(0, 0, 0, bg)
-            f:SetBackdropBorderColor(1, 1, 1, border)
+            BazUI.Skin.Theme.SetFlatPanelAlpha(f, bg, border)
         end
         if t >= 1 then self:Hide() end
     end)

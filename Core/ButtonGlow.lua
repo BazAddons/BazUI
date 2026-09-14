@@ -142,7 +142,3 @@ function BazUI:HideGlow(btn)
     })
 end
 
-function BazUI:HasGlow(btn)
-    local glow = activeGlows[btn]
-    return glow and glow:IsShown() or false
-end

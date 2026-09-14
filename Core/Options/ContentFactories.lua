@@ -423,14 +423,7 @@ local function CreateNoteWidget(parent, opt, contentWidth)
 
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetWidth(contentWidth)
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    frame:SetBackdropColor(unpack(bgColor))
-    frame:SetBackdropBorderColor(unpack(borderColor))
+    BazUI.Skin.Theme.ApplyFlatPanel(frame, bgColor, borderColor)
 
     -- Left accent strip in border color
     local strip = frame:CreateTexture(nil, "ARTWORK")
@@ -466,14 +459,7 @@ end
 local function CreateCodeWidget(parent, opt, contentWidth)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetWidth(contentWidth)
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 8,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    frame:SetBackdropColor(unpack(O.CODE_BG))
-    frame:SetBackdropBorderColor(unpack(O.CODE_BORDER))
+    BazUI.Skin.Theme.ApplyFlatPanel(frame, O.CODE_BG, O.CODE_BORDER)
 
     local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     fs:SetPoint("TOPLEFT", 10, -8)

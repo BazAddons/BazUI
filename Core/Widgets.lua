@@ -133,7 +133,6 @@ end
 ---------------------------------------------------------------------------
 
 function BazUI:RegisterDockableWidget(widget)      Widgets:RegisterWidget(widget)   end
-function BazUI:UnregisterDockableWidget(id)        Widgets:UnregisterWidget(id)     end
 function BazUI:GetDockableWidgets()                return Widgets:GetWidgets()      end
 function BazUI:GetDockableWidget(id)               return Widgets:GetWidget(id)     end
 function BazUI:RegisterDockableWidgetCallback(fn)  Widgets:RegisterCallback(fn)     end

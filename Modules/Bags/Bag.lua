@@ -766,14 +766,7 @@ local function BuildBagChangePopup()
     p:SetSize(PAD * 2 + slotCount * POPUP_SLOT + (slotCount - 1) * SLOT_GAP,
               PAD * 2 + POPUP_SLOT + 18)
     p:SetFrameStrata("DIALOG")
-    p:SetBackdrop({
-        bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile     = true, tileSize = 16, edgeSize = 16,
-        insets   = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-    p:SetBackdropColor(0, 0, 0, 0.92)
-    p:SetBackdropBorderColor(0.6, 0.5, 0.2)
+    BazUI.Skin.Theme.ApplyFlatPanel(p)
     p:Hide()
 
     -- Position is set per-Show in PositionBagPopup so we adapt to the

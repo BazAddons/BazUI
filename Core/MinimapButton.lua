@@ -191,6 +191,3 @@ function BazUI:HideMinimapButton()
     if button then button:Hide() end
 end
 
-function BazUI:ToggleMinimapButton()
-    if button then button:SetShown(not button:IsShown()) end
-end

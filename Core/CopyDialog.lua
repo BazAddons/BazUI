@@ -78,14 +78,7 @@ local function CreateDialog()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile     = true, tileSize = 16, edgeSize = 16,
-        insets   = { left = 5, right = 5, top = 5, bottom = 5 },
-    })
-    f:SetBackdropColor(0.04, 0.04, 0.06, 0.95)
-    f:SetBackdropBorderColor(0.4, 0.35, 0.2, 0.95)
+    BazUI.Skin.Theme.ApplyFlatPanel(f)
     f:Hide()
 
     local close = HookClose(f)
@@ -121,14 +114,7 @@ local function CreateDialog()
     local editBg = CreateFrame("Frame", nil, f, "BackdropTemplate")
     editBg:SetPoint("TOPLEFT", 16, -56)
     editBg:SetPoint("BOTTOMRIGHT", -22, 50)
-    editBg:SetBackdrop({
-        bgFile   = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile     = false, edgeSize = 8,
-        insets   = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    editBg:SetBackdropColor(0.03, 0.03, 0.05, 0.6)
-    editBg:SetBackdropBorderColor(0.25, 0.25, 0.3, 0.6)
+    BazUI.Skin.Theme.ApplyFlatPanel(editBg, { 0.03, 0.03, 0.05, 0.6 }, BazUI.Skin.Theme.colors.edge)
     f.editBg = editBg
 
     local scroll = CreateFrame("ScrollFrame", nil, f)
@@ -280,7 +266,3 @@ function BazUI:OpenCopyDialog(opts)
     return dialog
 end
 
--- Convenience: close any open copy dialog.
-function BazUI:CloseCopyDialog()
-    if dialog and dialog._close then dialog._close() end
-end

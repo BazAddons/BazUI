@@ -662,14 +662,7 @@ local function EnsurePopup()
     -- readability; matches the 0.8 tab strip scale closely enough that
     -- the popup feels visually attached to the tab.
     popup:SetScale(0.85)
-    popup:SetBackdrop({
-        bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile     = true, tileSize = 16, edgeSize = 16,
-        insets   = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-    popup:SetBackdropColor(0, 0, 0, 0.95)
-    popup:SetBackdropBorderColor(1, 0.82, 0)
+    BazUI.Skin.Theme.ApplyFlatPanel(popup)
     popup:EnableMouse(true)
     popup:Hide()
 

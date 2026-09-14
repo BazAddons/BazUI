@@ -17,12 +17,7 @@ local CARD_WIDTH = 290
 local CARD_MIN_HEIGHT = 48
 local TIMESTAMP_RESERVED_WIDTH = 90  -- right-side space reserved for timestamp column
 
-local BACKDROP_CARD = {
-    bgFile = "Interface\\Buttons\\WHITE8x8",
-    edgeFile = "Interface\\Buttons\\WHITE8x8",
-    edgeSize = 1,
-    insets = { left = 1, right = 1, top = 1, bottom = 1 },
-}
+local BACKDROP_CARD = BazUI.Skin.Theme.BACKDROP_FLAT
 
 ---------------------------------------------------------------------------
 -- Shared notification body factory

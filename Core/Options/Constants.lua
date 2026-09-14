@@ -74,12 +74,6 @@ O.DIALOG_BORDER  = { 0.4,  0.35, 0.2,  0.95 }
 ---------------------------------------------------------------------------
 
 
-O.LIST_BACKDROP = {
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    edgeSize = 8,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
-}
 
 ---------------------------------------------------------------------------
 -- Helpers

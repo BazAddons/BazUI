@@ -72,14 +72,7 @@ local function CreateMacrotextFrame()
     local bg = CreateFrame("Frame", nil, scrollFrame, "BackdropTemplate")
     bg:SetPoint("TOPLEFT", -4, 4)
     bg:SetPoint("BOTTOMRIGHT", 4, -4)
-    bg:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 12,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    bg:SetBackdropColor(0.08, 0.08, 0.1, 1.0)
-    bg:SetBackdropBorderColor(0.4, 0.4, 0.4, 1.0)
+    BazUI.Skin.Theme.ApplyFlatPanel(bg, { 0.08, 0.08, 0.1, 1.0 }, BazUI.Skin.Theme.colors.edge)
     bg:SetFrameLevel(scrollFrame:GetFrameLevel() - 1)
 
     local saveBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")

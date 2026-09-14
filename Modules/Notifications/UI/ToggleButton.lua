@@ -31,12 +31,7 @@ local function CreateToggleButton()
     badge = CreateFrame("Frame", nil, button, "BackdropTemplate")
     badge:SetSize(BADGE_SIZE, BADGE_SIZE)
     badge:SetPoint("TOPRIGHT", button, "TOPRIGHT", 4, 4)
-    badge:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 },
-    })
+    badge:SetBackdrop(BazUI.Skin.Theme.BACKDROP_FLAT)
     badge:SetBackdropColor(unpack(Colors.badge))
     badge:SetBackdropBorderColor(unpack(Colors.panelBorder))
     badge:SetFrameLevel(button:GetFrameLevel() + 2)

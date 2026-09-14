@@ -300,14 +300,7 @@ local function BuildPicker()
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:SetFrameLevel(200)
-    f:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.08, 0.95)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.4, 1)
+    BazUI.Skin.Theme.ApplyFlatPanel(f)
     f:EnableMouse(true)
     f:SetMovable(true)
     f:RegisterForDrag("LeftButton")
@@ -448,8 +441,3 @@ function BazUI:ShowIconPicker(callback, selectedIcon)
     f:Raise()
 end
 
-function BazUI:HideIconPicker()
-    if pickerFrame then
-        pickerFrame:Hide()
-    end
-end
