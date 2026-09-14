@@ -120,6 +120,8 @@ BazUI:RegisterUserGuide("Bars", {
                     "|cffffd700Shift+Right-Click|r to clear it in place",
                 }},
                 { type = "note", style = "warning", text = "If you have Blizzard's |cffffd700Cast on Key Down|r option enabled, plain click-drag will fire the ability before the drag starts. Use |cffffd700Shift+drag|r to rearrange buttons in that mode." },
+                { type = "h2", text = "Filled for you" },
+                { type = "paragraph", text = "A new character logs in with its abilities already on the bars: forms, stances, auras and stealth on the first side bar, everything else on the main bar. Each spell you learn afterwards takes the first empty slot, and a new rank of a spell you already have just starts casting from the same button. Blizzard's stance bar is hidden, since your stances are here; both behaviours and the stance bar have switches under |cffffd700Bars > General|r, and |cffffd700Fill empty slots|r there does the same pass for an existing character." },
             },
         },
 

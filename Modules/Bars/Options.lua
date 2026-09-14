@@ -118,6 +118,15 @@ local function GetGeneralOptionsTable()
             end,
             disabled = function() return p.hideDefaultActionBar == true end,
         },
+        hideStanceBar = {
+            order = 13, type = "toggle", name = "Hide Blizzard's stance bar",
+            desc = "Stances and forms live on a BazUI bar instead; a new character's are placed there for you.",
+            get = function() return p.hideStanceBar ~= false end,
+            set = function(_, val)
+                p.hideStanceBar = val
+                if addon.ApplyDefaultBarVisibility then addon:ApplyDefaultBarVisibility() end
+            end,
+        },
 
         buttonsHeader = { order = 20, type = "header", name = "Buttons" },
         fullRangeColor = {
@@ -180,6 +189,30 @@ local function GetGeneralOptionsTable()
         allBarsDesc = {
             order = 31, type = "description",
             name = "Force one value on every bar. A bar's own setting is greyed out while its override is on.",
+        },
+
+        abilitiesHeader = { order = 44, type = "header", name = "Abilities" },
+        autoFill = {
+            order = 45, type = "toggle", name = "Put a new character's abilities on the bars",
+            desc = "On its first login: forms and stances on the first side bar, everything else on the main bar.",
+            get = function() return p.autoFill ~= false end,
+            set = function(_, val) p.autoFill = val end,
+        },
+        autoPlaceNew = {
+            order = 46, type = "toggle", name = "Add newly learned spells to the first empty slot",
+            get = function() return p.autoPlaceNew ~= false end,
+            set = function(_, val) p.autoPlaceNew = val end,
+        },
+        fillNow = {
+            order = 47, type = "execute", name = "Fill empty slots with my unplaced abilities",
+            func = function()
+                if InCombatLockdown() then
+                    addon:Print("Wait until combat ends to fill the bars.")
+                    return
+                end
+                local n = addon.AutoFill and addon.AutoFill:Fill() or 0
+                addon:Print(n > 0 and ("Placed %d abilities."):format(n) or "Everything you know is already on a bar, or there are no empty slots.")
+            end,
         },
 
         combatHeader = { order = 50, type = "header", name = "Combat" },

@@ -138,6 +138,7 @@ Modules\Bars\Actions\Item.lua
 Modules\Bars\Bars.xml
 Modules\Bars\Button.lua
 Modules\Bars\Bar.lua
+Modules\Bars\AutoFill.lua
 Modules\Bars\Dialogs.lua
 Modules\Bars\Keybinds.lua
 Modules\Bars\Options.lua

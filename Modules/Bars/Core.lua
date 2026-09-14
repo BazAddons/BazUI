@@ -38,6 +38,13 @@ addon = BazUI:RegisterModule("Bars", {
         -- visible and functional. Independent of hideDefaultActionBar
         -- (bar-hide is a superset that wins automatically).
         hideDefaultActionBarArt = false,
+        -- Blizzard's stance bar is hidden; stances live on a BazUI bar
+        -- (a new character's are placed there, see AutoFill.lua).
+        hideStanceBar = true,
+        -- AutoFill.lua: a new character's abilities go onto its bars on
+        -- first login, and newly learned spells take the first empty slot.
+        autoFill = true,
+        autoPlaceNew = true,
     },
 
     -- Slash commands
@@ -251,6 +258,26 @@ function addon:ClearCharBarButtons(barID)
     if bucket then bucket[barID] = nil end
 end
 
+-- Per-character, per-profile bookkeeping that is not a bar payload
+-- (AutoFill's "already filled" mark). Lives beside the bar tables under
+-- a string key, which the numeric barID lookups never touch.
+function addon:GetCharBarState(create)
+    local bucket = CharBucket(create)
+    if not bucket then return nil end
+    if create then bucket._state = bucket._state or {} end
+    return bucket._state
+end
+
+-- True when any bar of this character and profile holds a button.
+function addon:HasAnyButtons()
+    local bucket = CharBucket(false)
+    if not bucket then return false end
+    for key, buttons in pairs(bucket) do
+        if type(key) == "number" and type(buttons) == "table" and next(buttons) then return true end
+    end
+    return false
+end
+
 -- One-shot migration: walks profile.bars[*].buttons and moves each
 -- payload to the current character's bucket. Per-profile sentinel so
 -- subsequent characters using the same profile DON'T inherit (which
@@ -411,6 +438,13 @@ function addon:ApplyDefaultBarVisibility()
             self:Print("Default action bar restored. /reload to fully restore Blizzard's bar event handling.")
         end
     end
+
+    -- Blizzard's stance bar keeps running its own show/hide logic; parked
+    -- under the hidden carrier none of it is visible.
+    local stance = _G.StanceBar
+    if stance then
+        if p.hideStanceBar ~= false then HideOne(stance, GetHiddenParent()) else RestoreOne(stance) end
+    end
     return true
 end
 
@@ -454,6 +488,20 @@ end
 addon.config.onReady = function(self)
     self.Bar:LoadAll()
     self:HideDefaultActionBar()   -- no-op unless the option is set
+
+    -- A new character's abilities, and each new spell after that
+    -- (AutoFill.lua). The spellbook is complete once the world is
+    -- entered; the first login pass waits for that.
+    if self.AutoFill then
+        local firstWorld = true
+        self:On("PLAYER_ENTERING_WORLD", function()
+            if not firstWorld then return end
+            firstWorld = false
+            C_Timer.After(1.5, function() addon.AutoFill:OnFirstLogin() end)
+        end)
+        self:On("LEARNED_SPELL_IN_SKILL_LINE", function(_, spellID) addon.AutoFill:OnLearned(spellID) end)
+        self:On("PLAYER_REGEN_ENABLED", function() addon.AutoFill:PlacePending() end)
+    end
     -- Re-apply any pending default-bar visibility toggle once combat
     -- ends. Setter just stashes the desired state if called in combat.
     self:On("PLAYER_REGEN_ENABLED", function()
