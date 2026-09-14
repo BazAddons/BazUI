@@ -5,6 +5,7 @@ local WIDTH = 640
 local RATIO = WIDTH / L.width
 local HEIGHT = (L.height + 50) * RATIO
 local root, artLayer, portrait, model, health, power, nameText, mover, hiddenStock
+local updateNameplate
 local stockParent, petParent, petDetached
 local active, pending, manualUnlocked = false, false, false
 local hoveredAreas = {}
@@ -163,7 +164,7 @@ function addon:UpdateValues()
     power:SetValue(currentPower)
     local color = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
     power:SetStatusBarColor(color and color.r or 0.1, color and color.g or 0.3, color and color.b or 1)
-    nameText:SetText(UnitName("player") or "")
+    updateNameplate(UnitName("player") or "")
     if ShowValues() then
         health.text:SetText(UnitIsGhost("player") and "Ghost" or UnitIsDead("player") and "Dead" or FormatValue(current, maximum))
         power.text:SetText(maxPower > 0 and FormatValue(currentPower, maxPower) or "")
@@ -293,16 +294,7 @@ function addon:Initialize()
     local nameLayer = CreateFrame("Frame", nil, root)
     nameLayer:SetAllPoints(root)
     nameLayer:SetFrameLevel(root:GetFrameLevel() + 7)
-    local namePlate = nameLayer:CreateTexture(nil, "ARTWORK")
-    Place(namePlate, L.namePlate)
-    namePlate:SetTexture(BazUI.Skin.PLAYER_NAMEPLATE)
-    namePlate:SetVertexColor(0.84, 0.84, 0.84)
-    namePlate:SetTexCoord(0, 2110 / 4096, 0, 309 / 512)
-    nameText = nameLayer:CreateFontString(nil, "OVERLAY")
-    Place(nameText, L.name)
-    nameText:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
-    nameText:SetTextColor(1, 0.84, 0.5)
-    nameText:SetWordWrap(false)
+    nameText, updateNameplate = addon:CreateNameplate(nameLayer, root, L, RATIO, 14, .84)
     self.Casting:Create(root, nameText)
     health.text, power.text = ValueText(health), ValueText(power)
     -- Each value is centered in its separate left/right bar.

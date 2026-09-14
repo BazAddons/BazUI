@@ -15,7 +15,8 @@ local L = addon.Layout
 local WIDTH = 640
 local RATIO = WIDTH / L.width
 local HEIGHT = L.height * RATIO
-local root, artLayer, portrait, model, health, power, nameText, mover, hiddenStock
+local root, artLayer, portrait, model, health, power, mover, hiddenStock
+local updateNameplate
 local stockParent
 local visibilityRule
 local active, pending, manualUnlocked = false, false, false
@@ -183,7 +184,7 @@ function addon:UpdateValues()
     power:SetValue(currentPower)
     local color = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
     power:SetStatusBarColor(color and color.r or 0.1, color and color.g or 0.3, color and color.b or 1)
-    nameText:SetText(UnitName("target") or "")
+    updateNameplate(UnitName("target") or "")
     if ShowValues() and UnitExists("target") then
         health.text:SetText(UnitIsGhost("target") and "Ghost" or UnitIsDead("target") and "Dead" or FormatValue(current, maximum))
         power.text:SetText(maxPower > 0 and FormatValue(currentPower, maxPower) or "")
@@ -313,16 +314,10 @@ function addon:Initialize()
     artwork:SetAllPoints(root)
     artwork:SetTexture(self.ASSETS .. "targetFrameRuntime.tga")
     artwork:SetTexCoord(0, L.width / L.textureWidth, 0, L.height / L.textureHeight)
-    local namePlate = artLayer:CreateTexture(nil, "OVERLAY")
-    Place(namePlate, L.namePlate)
-    namePlate:SetTexture(BazUI.Skin.PLAYER_NAMEPLATE)
-    namePlate:SetTexCoord(0, 2110 / 4096, 0, 309 / 512)
-    namePlate:SetVertexColor(.75, .75, .75)
-    nameText = artLayer:CreateFontString(nil, "OVERLAY")
-    Place(nameText, L.name)
-    nameText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
-    nameText:SetTextColor(1, 0.84, 0.5)
-    nameText:SetWordWrap(false)
+    local nameLayer = CreateFrame("Frame", nil, root)
+    nameLayer:SetAllPoints(root)
+    nameLayer:SetFrameLevel(root:GetFrameLevel() + 7)
+    updateNameplate = select(2, module:CreateNameplate(nameLayer, root, L, RATIO, 12, .75))
     health.text, power.text = ValueText(health), ValueText(power)
     -- Separate hit areas preserve portrait-only tooltips on the new layout.
     ClickArea({ x = L.namePlate.x, y = 20, w = L.namePlate.w, h = L.height - 20 }, "PortraitButton")

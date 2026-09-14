@@ -139,3 +139,8 @@ function Theme.SetRoundButtonHover(button, hovered)
     local c = hovered and Theme.colors.bgHover or Skin.BUTTON_BACKDROP_COLOR
     button._bazDisc:SetColorTexture(c[1], c[2], c[3], 1)
 end
+
+-- Three slices of the padded unit-name artwork; end caps never stretch.
+Theme.nameplate = {
+    width = 2110, height = 309, textureWidth = 4096, textureHeight = 512, capPixels = 220,
+}
