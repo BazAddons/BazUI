@@ -16,16 +16,15 @@
 -- "icon for cell N", "cell N was clicked", and "something was dropped
 -- on cell N". The popup handles:
 --
---   * 9-slice chrome around the grid (Blizzard tooltip atlas by default,
---     overridable per-popup)
+--   * The suite's flat chrome around the grid (colours overridable
+--     per-popup)
 --   * Grid layout from rows × cols, with extra cells filling remaining
 --     positions in row-major order
 --   * Direction-aware anchoring relative to the trigger button (UP /
 --     DOWN / LEFT / RIGHT - the popup pops out *away* from the trigger
 --     in the given direction)
---   * Secure right-click toggle on the trigger via SecureHandlerClick-
---     Template (the trigger MUST inherit it; consumers using SAB-only
---     templates need to re-template-mix on creation)
+--   * Secure right-click toggle on the trigger, through a hidden
+--     proxy button, so the trigger needs no template of its own
 --   * Auto-hide when the cursor leaves both trigger and popup
 --   * Combat-safe: cells stay shown if they're already shown when
 --     combat starts, and any rebuilds defer until PLAYER_REGEN_ENABLED
@@ -46,9 +45,15 @@
 -- opts shape:
 --   {
 --     parent       = <Button>,         -- the trigger button (REQUIRED).
---                                      -- Must inherit SecureHandlerClick-
---                                      -- Template if you want shift+
---                                      -- right-click toggle wiring.
+--                                      -- No template requirement: the
+--                                      -- toggle goes through a hidden
+--                                      -- proxy and the trigger's own
+--                                      -- type2/clickbutton2, because
+--                                      -- mixing SecureHandlerClick-
+--                                      -- Template into a SecureAction-
+--                                      -- Button would override its
+--                                      -- OnClick and break every cast
+--                                      -- on the bar. See WireSecureToggle.
 --     toggleButton = "RightButton",    -- which mouse button on trigger
 --                                      -- toggles the popup. nil disables
 --                                      -- secure auto-toggle (consumer
@@ -75,12 +80,9 @@
 --                                      -- fires from OnReceiveDrag.
 --     emptyIcon    = textureID,        -- shown for cells with nil data
 --     hideOnCast   = true,             -- auto-hide popup after a click
---     chrome       = {                 -- backdrop overrides; nil uses
---       bgFile  = "...",               -- Blizzard tooltip-style defaults
---       edgeFile = "...",
---       edgeSize = 12,
---       insets   = { l, r, t, b },
---       bgColor  = { r, g, b, a },
+--     chrome       = {                 -- colour overrides; omit for the
+--       bgColor   = { r, g, b, a },    -- suite's own panel colours
+--       edgeColor = { r, g, b, a },
 --     },
 --   }
 ---------------------------------------------------------------------------
@@ -116,15 +118,11 @@ local GetOrCreateProxy
 -- auto-hide-on-leave fired the moment the cursor crossed the gap from
 -- trigger to popup, which read as "the popup closed instantly".
 
-local DEFAULT_CHROME = {
-    bgFile   = "Interface/Tooltips/UI-Tooltip-Background",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    edgeSize = 14,
-    tile     = true,
-    tileSize = 14,
-    insets   = { left = 4, right = 4, top = 4, bottom = 4 },
-    bgColor  = { 0.05, 0.05, 0.07, 0.92 },
-}
+-- The popup wears the suite's flat chrome, the same interior and
+-- one-pixel gold edge as the tooltips and every panel. Consumers can
+-- override either colour; there is no nine-slice to swap because the
+-- theme draws the frame itself.
+local Theme = BazUI.Skin and BazUI.Skin.Theme
 
 ---------------------------------------------------------------------------
 -- Direction helpers
@@ -314,17 +312,10 @@ local function LayoutCells(popup)
 end
 
 local function ApplyChrome(popup)
-    local chrome = popup._opts.chrome or DEFAULT_CHROME
-    popup:SetBackdrop({
-        bgFile   = chrome.bgFile   or DEFAULT_CHROME.bgFile,
-        edgeFile = chrome.edgeFile or DEFAULT_CHROME.edgeFile,
-        edgeSize = chrome.edgeSize or DEFAULT_CHROME.edgeSize,
-        tile     = chrome.tile     ~= false,
-        tileSize = chrome.tileSize or DEFAULT_CHROME.tileSize,
-        insets   = chrome.insets   or DEFAULT_CHROME.insets,
-    })
-    local bg = chrome.bgColor or DEFAULT_CHROME.bgColor
-    popup:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] or 1)
+    local theme = Theme or (BazUI.Skin and BazUI.Skin.Theme)
+    if not (theme and theme.ApplyFlatPanel) then return end
+    local chrome = popup._opts.chrome or {}
+    theme.ApplyFlatPanel(popup, chrome.bgColor, chrome.edgeColor)
 end
 
 local function ApplyAnchor(popup)
