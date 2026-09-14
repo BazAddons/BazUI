@@ -369,7 +369,7 @@ end
 -- Usage:
 --   local f = BazUI:CreatePortraitWindow("BazFooFrame", {
 --       title          = "Foo",
---       portrait       = 5160585,            -- texture path or fileID
+--       portrait       = "Interface\\Icons\\INV_Misc_Bag_08",  -- texture path (or a fileID the client ships)
 --       width          = 360,
 --       height         = 400,
 --       savedAddon     = addon,              -- BazUI addon handle for persistence

@@ -483,7 +483,9 @@ local function BuildFrame()
     -- Anything bag-specific (search, sort, money, slots) we add ourselves.
     frame = BazUI:CreatePortraitWindow("BazUIBagsFrame", {
         title          = "Bags",
-        portrait       = 5160585,  -- inv_misc_bag_horadricsatchel
+        -- The module's own icon, shared with the minimap entry and the
+        -- options panel. (A Retail-only file ID here drew green on Era.)
+        portrait       = addon.config.minimap.icon,
         width          = panelW,
         height         = 400,
         savedAddon     = addon,
