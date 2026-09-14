@@ -281,52 +281,40 @@ end
 ---------------------------------------------------------------------------
 -- Stat bar
 --
--- A progress bar in the suite's chrome: a sunken track, a one-pixel
--- edge, a fill with a light line along its top so it reads as lit
--- rather than painted, and optional notches at the points that matter.
--- Panels that show progress ask for this instead of assembling a
--- StatusBar and three textures of their own.
+-- The panel-sized bar: a reading inside a card or a row, drawn with the
+-- flat one-pixel edge rather than the drop shadow a bar on the screen
+-- wears. It is Core/StatusBar.lua in its "panel" dress, plus the labels
+-- and breakpoints a panel row wants, so there is one bar in the suite
+-- and not two drifting apart.
 --
 --   local bar = Theme.CreateStatBar(parent, { height = 10, labels = true })
---   bar:SetPoint(...)
---   bar:SetBreakpoints({ 2, 4, 8 })
+--   bar:SetBreakpoints({ 2, 4, 8 }, 8)
 --   bar:SetValues(6, 8, "6 of 8")
---
--- SetValues takes the value, the maximum, and optionally the text for
--- the right-hand label; the left label is set once with SetLabel. The
--- bar colours itself gold, and SetBarColor overrides that for the
--- readings that carry their own meaning.
 ---------------------------------------------------------------------------
 
 function Theme.CreateStatBar(parent, opts)
     opts = opts or {}
     local height = opts.height or 10
 
-    local bar = CreateFrame("Frame", nil, parent)
+    local bar = BazUI.CreateStatusBar(nil, parent, {
+        style      = "panel",
+        height     = height,
+        width      = opts.width or 100,
+        color      = opts.color,
+        trackColor = opts.trackColor or { 0.02, 0.02, 0.02, 0.85 },
+        rimColor   = opts.edgeColor or Theme.colors.edge,
+        overlay    = false,
+        text       = false,
+    })
     bar:SetHeight(height + (opts.labels and 16 or 0))
 
-    local track = CreateFrame("Frame", nil, bar)
-    track:SetHeight(height)
-    track:SetPoint("BOTTOMLEFT")
-    track:SetPoint("BOTTOMRIGHT")
-    Theme.ApplyFlatPanel(track, opts.trackColor or { 0.02, 0.02, 0.02, 0.85 },
-        opts.edgeColor or Theme.colors.edge)
-    bar.track = track
-
-    local fill = CreateFrame("StatusBar", nil, track)
-    fill:SetPoint("TOPLEFT", 1, -1)
-    fill:SetPoint("BOTTOMRIGHT", -1, 1)
-    fill:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
-    fill:SetMinMaxValues(0, 1)
-    fill:SetValue(0)
-    bar.fill = fill
-
-    local sheen = fill:CreateTexture(nil, "OVERLAY")
-    sheen:SetColorTexture(1, 1, 1, 0.14)
-    sheen:SetHeight(1)
-    sheen:SetPoint("TOPLEFT", fill:GetStatusBarTexture(), "TOPLEFT")
-    sheen:SetPoint("TOPRIGHT", fill:GetStatusBarTexture(), "TOPRIGHT")
-    bar.sheen = sheen
+    -- The fill sits at the bottom so the labels can have the space above
+    -- it, which is the one way a panel row differs from a screen bar.
+    bar.fill:ClearAllPoints()
+    bar.fill:SetPoint("BOTTOMLEFT", 1, 1)
+    bar.fill:SetPoint("BOTTOMRIGHT", -1, 1)
+    bar.fill:SetHeight(height - 2)
+    bar.track = bar
 
     if opts.labels then
         bar.left = Theme.FontString(bar, "OVERLAY", "GameFontHighlightSmall")
@@ -343,36 +331,34 @@ function Theme.CreateStatBar(parent, opts)
     bar.pips = {}
 
     function bar:SetBarColor(c)
-        c = c or Theme.colors.gold
-        self.fill:SetStatusBarColor(c[1], c[2], c[3], c[4] or 1)
+        self:SetFillColor(c or Theme.colors.gold)
     end
 
     function bar:SetLabel(text)
         if self.left then self.left:SetText(text or "") end
     end
 
-    -- Notches along the track: the counts at which something changes,
-    -- drawn on top of the fill so a passed one still reads.
+    -- Notches at the counts where something changes, drawn over the fill
+    -- so a passed one still reads. A bar sized by its anchors has no
+    -- width until it is drawn, so the request is kept and replayed.
     function bar:SetBreakpoints(points, maximum)
-        -- A bar sized by its anchors has no width until the frame is
-        -- drawn, so the request is kept and replayed when it gets one.
         self._pipPoints, self._pipMax = points, maximum
         for _, pip in ipairs(self.pips) do pip:Hide() end
         if not points or not maximum or maximum <= 0 then return end
-        local span = self.track:GetWidth() - 2
+        local span = self:GetWidth() - 2
         for i, at in ipairs(points) do
             if at > 0 and at < maximum and span > 0 then
                 local pip = self.pips[i]
                 if not pip then
-                    pip = self.track:CreateTexture(nil, "OVERLAY")
+                    pip = self:CreateTexture(nil, "OVERLAY")
                     pip:SetWidth(1)
                     pip:SetColorTexture(0, 0, 0, 0.55)
                     self.pips[i] = pip
                 end
                 local x = math.floor(span * (at / maximum)) + 1
                 pip:ClearAllPoints()
-                pip:SetPoint("TOPLEFT", self.track, "TOPLEFT", x, -1)
-                pip:SetPoint("BOTTOMLEFT", self.track, "BOTTOMLEFT", x, 1)
+                pip:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", x, 1)
+                pip:SetHeight(height - 2)
                 pip:Show()
             end
         end
@@ -381,14 +367,14 @@ function Theme.CreateStatBar(parent, opts)
     function bar:SetValues(value, maximum, rightText)
         value, maximum = tonumber(value) or 0, tonumber(maximum) or 0
         local pct = maximum > 0 and math.min(1, math.max(0, value / maximum)) or 0
-        self.fill:SetValue(pct)
+        self:SetValue(pct)
         self.fill:SetShown(pct > 0)
         if self.right then self.right:SetText(rightText or "") end
         return pct
     end
 
-    track:SetScript("OnSizeChanged", function()
-        if bar._pipPoints then bar:SetBreakpoints(bar._pipPoints, bar._pipMax) end
+    bar:HookScript("OnSizeChanged", function(self)
+        if self._pipPoints then self:SetBreakpoints(self._pipPoints, self._pipMax) end
     end)
 
     bar:SetBarColor(opts.color)

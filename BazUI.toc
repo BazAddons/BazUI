@@ -33,6 +33,8 @@ Skin\Skin.lua
 Skin\Theme.lua
 Skin\Nameplate.lua
 
+Core\StatusBar.lua
+Core\Dock.lua
 Core\TabStrip.lua
 Core\Options\Constants.lua
 Core\Options\WidgetFactories.lua
