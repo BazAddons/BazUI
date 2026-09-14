@@ -32,6 +32,12 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         widgetPositions = {},         -- [widgetId] = { point, relPoint, x, y } for floating widgets
         widgetEnabled = {},           -- [widgetId] = false to disable the widget entirely (default true)
         widgetDockedToBottom = {},    -- [widgetId] = true to dock at the drawer's bottom edge (stacks upward)
+        broker = {                    -- LibDataBroker feed widgets (Widgets/Broker.lua)
+            showIcon      = true,
+            showLabel     = true,
+            emptyText     = "-",
+            autoEnableNew = true,
+        },
 
         -- Appearance
         backgroundOpacity = 0.9,   -- alpha of the drawer's backdrop fill
@@ -57,6 +63,13 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
     slash = { "/bwd" },
     commands = {
+        feeds = {
+            desc = "LibDataBroker feeds: /bwd feeds (list) or /bwd feeds rescan",
+            handler = function(args)
+                if not addon.Broker then return end
+                if args == "rescan" then addon.Broker:Rescan(true) else addon.Broker:PrintList() end
+            end,
+        },
         toggle = {
             desc = "Toggle the drawer open/closed",
             handler = function()

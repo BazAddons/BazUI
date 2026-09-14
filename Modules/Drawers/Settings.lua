@@ -925,6 +925,12 @@ BazUI:QueueForLogin(function()
     -- Widgets subcategory (list/detail - same shape as BazBars' Bar Options)
     BazUI:RegisterOptionsTable("BazUIDrawer-Widgets", GetWidgetsOptionsTable)
     BazUI:AddToSettings("BazUIDrawer-Widgets", "Widgets", "Drawers")
+
+    -- Broker Feeds subcategory (LibDataBroker widgets, Widgets/Broker.lua)
+    if addon.Broker and addon.Broker.GetOptionsTable then
+        BazUI:RegisterOptionsTable("BazUIDrawer-Broker", addon.Broker.GetOptionsTable)
+        BazUI:AddToSettings("BazUIDrawer-Broker", "Broker Feeds", "Drawers")
+    end
     -- Enable/Disable sub-category merged into the Widgets page - each
     -- widget's detail panel now has an "Enabled" toggle at the top.
     -- GetModulesOptionsTable is still defined but no longer exposed

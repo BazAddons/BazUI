@@ -91,6 +91,7 @@ Modules\Drawers\Widgets\NotePad.lua
 Modules\Drawers\Widgets\Stopwatch.lua
 Modules\Drawers\Widgets\TodoList.lua
 Modules\Drawers\Widgets\Calculator.lua
+Modules\Drawers\Widgets\Broker.lua
 Modules\Drawers\UserGuide.lua
 
 Modules\Bags\Core.lua

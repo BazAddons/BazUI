@@ -318,6 +318,24 @@ BazUI:RegisterUserGuide("Drawers", {
                 }},
             },
         },
+        {
+            title = "Widgets: Broker Feeds",
+            blocks = {
+                { type = "lead", text = "Any addon that publishes a LibDataBroker feed shows up as its own drawer widget: a small icon, label and value. Bagnon, Recount, Skada, BugSack and most addons with a minimap data button qualify." },
+                { type = "h2", text = "What is LibDataBroker?" },
+                { type = "paragraph", text = "A shared library addons use to publish a value, a status string or an icon without deciding how it is displayed. Display addons such as Bazooka, ChocolateBar or Titan Panel arrange those feeds in bars; Drawers does the same inside the drawer." },
+                { type = "h2", text = "Using feeds" },
+                { type = "list", items = {
+                    "Feeds appear on the Widgets page in the LibDataBroker group, named after the addon that publishes them",
+                    "Enable, reorder or float them like any other widget",
+                    "Click a feed widget to run the feed's own action, such as opening that addon; hover for its tooltip",
+                    "Feeds that register after login are added as they appear, no reload needed",
+                }},
+                { type = "h2", text = "Settings" },
+                { type = "paragraph", text = "|cffffd700Drawers > Broker Feeds|r has the icon and label toggles, the placeholder shown before a feed has a value, and whether newly seen feeds start enabled. |cffffd700/bwd feeds|r lists every registered feed; |cffffd700/bwd feeds rescan|r rebuilds any that were missed." },
+                { type = "note", style = "info", text = "BazUI does not include LibDataBroker itself. Feeds exist only when another addon publishes them, and that addon brings the library along." },
+            },
+        },
 
         ---------------------------------------------------------------
         -- Profiles

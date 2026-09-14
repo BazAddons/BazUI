@@ -17,7 +17,7 @@ BazUI/
     Skin.lua           BazUI.Skin: texture paths, ratios, brand colours
     Assets/            power-of-two PNGs
   Modules/
-    Drawers/           from BazWidgetDrawers (Era file set); Widgets/ also holds the BazWidgets pack (bazdrawer_ ids)
+    Drawers/           from BazWidgetDrawers (Era file set); Widgets/ also holds the BazWidgets pack (bazdrawer_ ids) and Broker.lua (LibDataBroker feeds, bazdrawer_ldb_ ids; library not embedded)
     Chat/              from BazChat; BazUI.Chat is its private namespace, BazUI.Chat.API the old BazChat global
     Bags/              from BazBags; Classic slot template, keyring section, no currency strip
     Bars/              from BazBars; BazUI.Bars is its namespace; toys, pets, flyouts dropped
