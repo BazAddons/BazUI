@@ -273,7 +273,11 @@ local function PlaceOneEdge(host, edge)
     local list = SortedFollowers(host, edge)
     if #list == 0 then return end
 
-    local hostWidth = host:GetWidth() or 0
+    -- A frame reports its width in its own scale, so copying the number
+    -- straight across makes a follower the wrong size whenever the host
+    -- has been scaled: an action bar at 130% would leave its bars short.
+    -- Convert through screen pixels, which is the space they share.
+    local hostWidth = (host:GetWidth() or 0) * (host:GetEffectiveScale() or 1)
     local offset = 0        -- how far from the host's edge we have got
     local down = (edge == "BOTTOM")
 
@@ -289,10 +293,11 @@ local function PlaceOneEdge(host, edge)
 
             frame:ClearAllPoints()
             if link.mode == "stretch" then
+                local width = hostWidth / (frame:GetEffectiveScale() or 1)
                 if frame.SetBarSize then
-                    frame:SetBarSize(hostWidth, frame:GetHeight())
+                    frame:SetBarSize(width, frame:GetHeight())
                 else
-                    frame:SetWidth(hostWidth)
+                    frame:SetWidth(width)
                 end
                 frame:SetPoint(down and "TOP" or "BOTTOM", host,
                     down and "BOTTOM" or "TOP", 0, down and -offset or offset)
@@ -348,6 +353,11 @@ function Dock:WatchHost(host)
     host:HookScript("OnSizeChanged", function(self) Dock:HostChanged(self) end)
     host:HookScript("OnShow",        function(self) Dock:HostChanged(self) end)
     host:HookScript("OnHide",        function(self) Dock:HostChanged(self) end)
+
+    -- Scaling a frame does not count as resizing it, so it raises no
+    -- size event and nothing docked to it would ever hear about it.
+    -- Hooking the call itself is the only notice we get.
+    hooksecurefunc(host, "SetScale", function(self) Dock:HostChanged(self) end)
 end
 
 BazUI:QueueForLogin(function()
