@@ -127,6 +127,39 @@ BazUI:RegisterUserGuide("Bars", {
         },
 
         ----------------------------------------------------------------
+        -- Flyouts
+        ----------------------------------------------------------------
+        {
+            title = "Flyouts",
+            blocks = {
+                { type = "lead", text = "One slot that holds several actions. Left-click casts one of them, right-click opens the rest." },
+                { type = "paragraph", text = "A flyout is for the group of abilities you want near at hand but not spread across six slots: portals and teleports, aspects, summons, totems, your stack of conjured food and water. The slot shows whichever action it is currently set to cast, with a small arrow marking the way the grid opens." },
+                { type = "h2", text = "Making one" },
+                { type = "list", items = {
+                    "|cffffd700Shift+Right-Click|r an empty slot and choose to create a flyout there",
+                    "The grid opens straight away; drag spells, items or macros into its squares",
+                    "|cffffd700Right-click|r the slot any time to open or close the grid",
+                }},
+                { type = "paragraph", text = "Anything a bar slot understands can go in a flyout, not just spells. Where you drop something is where it stays, so you can leave a square empty to group things the way you think of them." },
+                { type = "h2", text = "What the button casts" },
+                { type = "table",
+                  columns = { "You do this", "The button does this" },
+                  rows = {
+                      { "|cffffd700Left-click|r the slot",      "Casts its current action" },
+                      { "|cffffd700Left-click|r a square",      "Casts that action, and the slot switches to it" },
+                      { "|cffffd700Right-click|r a square",     "Pins it, so the slot always casts that one" },
+                      { "|cffffd700Right-click|r it again",     "Unpins, back to whatever you used last" },
+                      { "|cffffd700Drag|r a square out",        "Takes that action off the grid" },
+                  },
+                },
+                { type = "h2", text = "Shape" },
+                { type = "paragraph", text = "|cffffd700Shift+Right-Click|r the slot for its menu: which way the grid opens, how many rows and columns it has, and whether the button casts the pinned action or the last one you used. The same menu clears the slot." },
+                { type = "note", style = "tip", text = "A flyout near the bottom of the screen wants to open upwards, one near the right edge wants to open left. The arrow on the slot always shows which way it will go." },
+                { type = "note", text = "A spell you no longer know is dropped from the grid and the rest of the flyout is left alone, so respeccing or unlearning one ability never costs you the whole arrangement. If nothing usable is left, the slot clears itself." },
+            },
+        },
+
+        ----------------------------------------------------------------
         -- Editing a Bar
         ----------------------------------------------------------------
         {

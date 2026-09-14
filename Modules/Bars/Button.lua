@@ -267,21 +267,21 @@ end
 -- matches the one players know from the spellbook.
 ---------------------------------------------------------------------------
 
-local FLYOUT_ARROW = "Interface\\Buttons\\ActionBarFlyoutButton"
+-- Blizzard's flyout arrow is a wide, short strip, and rotating one of
+-- those a quarter turn stretches it: the rotation is applied in the
+-- texture's own space, so it only comes out true on a square. This art
+-- is square and points right, which means all four directions are the
+-- same texture at four rotations, with nothing distorted.
+local FLYOUT_ARROW = "Interface\\ChatFrame\\ChatFrameExpandArrow"
 
--- The strip of the sheet holding the arrow. Up and down are the same
--- art with the vertical coordinates swapped; the sideways pair rotate
--- it a quarter turn, which is why they swap width and height too.
 local FLYOUT_ARROW_LOOK = {
-    UP    = { point = "TOP",    x =  0, y =  3, w = 23, h = 11, rotation = 0,
-              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
-    DOWN  = { point = "BOTTOM", x =  0, y = -3, w = 23, h = 11, rotation = 0,
-              coords = { 0.625, 0.984375, 0.828125, 0.7421875 } },
-    LEFT  = { point = "LEFT",   x = -3, y =  0, w = 11, h = 23, rotation = math.pi / 2,
-              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
-    RIGHT = { point = "RIGHT",  x =  3, y =  0, w = 11, h = 23, rotation = -math.pi / 2,
-              coords = { 0.625, 0.984375, 0.7421875, 0.828125 } },
+    RIGHT = { point = "RIGHT",  x =  5, y =  0, rotation = 0 },
+    UP    = { point = "TOP",    x =  0, y =  5, rotation = math.pi / 2 },
+    LEFT  = { point = "LEFT",   x = -5, y =  0, rotation = math.pi },
+    DOWN  = { point = "BOTTOM", x =  0, y = -5, rotation = -math.pi / 2 },
 }
+
+local FLYOUT_ARROW_SIZE = 14
 
 function Button:UpdateFlyoutArrow(btn)
     local isFlyout = btn.action and btn.action.type == "flyout"
@@ -297,10 +297,10 @@ function Button:UpdateFlyoutArrow(btn)
     if not arrow then
         arrow = btn:CreateTexture(nil, "OVERLAY")
         arrow:SetTexture(FLYOUT_ARROW)
+        arrow:SetSize(FLYOUT_ARROW_SIZE, FLYOUT_ARROW_SIZE)
+        arrow:SetVertexColor(unpack(BazUI.Skin.Theme.colors.goldSoft))
         btn.bbFlyoutArrow = arrow
     end
-    arrow:SetSize(look.w, look.h)
-    arrow:SetTexCoord(unpack(look.coords))
     arrow:SetRotation(look.rotation)
     arrow:ClearAllPoints()
     arrow:SetPoint(look.point, btn, look.point, look.x, look.y)

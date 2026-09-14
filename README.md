@@ -14,7 +14,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Drawers | BazWidgetDrawers + BazWidgets + BazBrokerWidget | Ported (Minimap, Minimap Buttons, Info Bar, Zone Text, Quest Tracker, 20 pack widgets, LibDataBroker feeds as widgets; delve, Great Vault, currency and pet-journal widgets dropped) |
 | Chat | BazChat | Ported (tabbed chat replacement: channels per tab, timestamps, history, copy, combat log) |
 | Bags | BazBags | Ported (Classic bags plus keyring; categories, pinning, search) |
-| Bars | BazBars | Ported (bars, spells, items, macros, mounts, equipment sets, keybinds; no toys, pets or flyouts) |
+| Bars | BazBars | Ported (bars, spells, items, macros, mounts, equipment sets, flyouts, keybinds; no toys or pets) |
 | Unit Frames | new (written by Codex) | In progress (player and target frames from the BazUI artwork) |
 | Auras | new | Built (buffs and debuffs on the player and target frames, secure right-click cancel) |
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |

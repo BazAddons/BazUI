@@ -20,7 +20,7 @@ BazUI/
     Drawers/           from BazWidgetDrawers (Era file set); Widgets/ also holds the BazWidgets pack (bazdrawer_ ids) and Broker.lua (LibDataBroker feeds, bazdrawer_ldb_ ids; library not embedded)
     Chat/              from BazChat; BazUI.Chat is its private namespace, BazUI.Chat.API the old BazChat global
     Bags/              from BazBags; Classic slot template, keyring section, no currency strip
-    Bars/              from BazBars; BazUI.Bars is its namespace; toys, pets, flyouts dropped
+    Bars/              from BazBars; BazUI.Bars is its namespace; toys and pets dropped
     UnitFrames/        written by Codex; player and target frames, BazUIPlayerFrame root
     Auras/             new; SecureAuraHeaderTemplate headers anchored to BazUIPlayerFrame
     Notifications/     from BazNotificationCenter; BazUI.Notifications, API in BazUI.Notifications.API; Sources/ are its event modules
