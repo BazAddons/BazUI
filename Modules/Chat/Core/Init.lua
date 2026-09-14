@@ -7,7 +7,6 @@
 -- of Blizzard chat infrastructure keeps working untouched.
 --
 -- Each feature is its own self-contained module under Modules/. They
--- register themselves with BazChat:RegisterModule() and the loader in
 -- Core/Modules.lua wires them up at PLAYER_LOGIN.
 ---------------------------------------------------------------------------
 
@@ -21,7 +20,6 @@ local BazChat = addon.API
 
 addon.name    = addonName
 addon.VERSION = BazUI.VERSION
-addon.modules = {}
 addon.db      = nil   -- proxied by BazUI once profiles init
 
 ---------------------------------------------------------------------------
@@ -272,7 +270,6 @@ local core = BazUI:RegisterModule(addonName, {
                 local new = not addon.core:GetSetting("enabled")
                 addon.core:SetSetting("enabled", new)
                 addon.core:Print("BazUIChat is " .. (new and "|cff00ff00ON|r" or "|cffff4444OFF|r"))
-                if BazChat.RefreshAll then BazChat:RefreshAll() end
             end,
         },
 
@@ -408,9 +405,6 @@ local core = BazUI:RegisterModule(addonName, {
     onReady = function(self)
         addon.db   = self.db
         addon.core = self           -- expose BazUI addon obj for modules
-        if BazChat.InitModules then
-            BazChat:InitModules()
-        end
     end,
 })
 

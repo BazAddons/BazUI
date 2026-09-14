@@ -23,12 +23,8 @@ Core\UI.lua
 Core\Timers.lua
 Core\ObjectPool.lua
 Core\Format.lua
-Core\Locale.lua
-Core\Menu.lua
-Core\Animations.lua
 Core\MinimapButton.lua
 Core\ButtonGlow.lua
-Core\Keybinds.lua
 Core\EditMode.lua
 Core\Serialization.lua
 Core\Widgets.lua
@@ -42,7 +38,6 @@ Core\Options\ContentFactories.lua
 Core\Options\Registration.lua
 Core\Options\SettingsSpec.lua
 Core\Options\UserGuide.lua
-Core\OptionsPanel.lua
 Core\CopyDialog.lua
 Core\Popup.lua
 Core\SecureActionPopup.lua
@@ -103,7 +98,6 @@ Modules\Bags\CategoriesPage.lua
 Modules\Bags\UserGuide.lua
 
 Modules\Chat\Core\Init.lua
-Modules\Chat\Core\Modules.lua
 Modules\Chat\Core\Frames.lua
 Modules\Chat\Replica\HideDefault.lua
 Modules\Chat\Replica\Chat.xml

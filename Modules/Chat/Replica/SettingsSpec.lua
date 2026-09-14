@@ -28,7 +28,6 @@
 ---------------------------------------------------------------------------
 
 local addon     = BazUI.Chat          -- Chat's private namespace
-local BazChat   = addon.API           -- module API (the old BazChat global)
 local addonName = addon.MODULE_NAME
 
 -- Profile accessors used by every entry's get/set. Wrapped here so we
@@ -100,7 +99,6 @@ local SPEC = {
           set = function(_, v)
               if not addon.core then return end
               addon.core:SetSetting("enabled", v)
-              if BazChat.RefreshAll then BazChat:RefreshAll() end
           end },
 
         -----------------------------------------------------------------
