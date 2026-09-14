@@ -24,6 +24,7 @@ BazUI/
     UnitFrames/        written by Codex; player and target frames, BazUIPlayerFrame root
     Auras/             new; SecureAuraHeaderTemplate headers anchored to BazUIPlayerFrame
     Notifications/     from BazNotificationCenter; BazUI.Notifications, API in BazUI.Notifications.API; Sources/ are its event modules
+    MicroMenu/         new; adopts Blizzard's micro buttons onto BazUIMicroMenu and skins them with Skin.Theme
 ```
 
 ## The module system

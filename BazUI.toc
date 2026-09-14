@@ -173,3 +173,8 @@ Modules\Notifications\Sources\System.lua
 Modules\Notifications\Sources\XP.lua
 Modules\Notifications\Sources\Zones.lua
 Modules\Notifications\UserGuide.lua
+
+Modules\MicroMenu\Core.lua
+Modules\MicroMenu\Bar.lua
+Modules\MicroMenu\Settings.lua
+Modules\MicroMenu\UserGuide.lua

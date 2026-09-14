@@ -18,6 +18,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Unit Frames | new (written by Codex) | In progress (player and target frames from the BazUI artwork) |
 | Auras | new | Built (buffs and debuffs on the player frame, secure right-click cancel) |
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |
+| Micro Menu | new | Built (Blizzard's micro buttons on a movable bar as round ring-framed icons) |
 
 ## Commands
 
@@ -28,6 +29,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 - `/bb` (or `/bazbars`) for bars: `create`, `delete`, `duplicate`, `export`, `import`, `scale`, `padding`, `reset`.
 - `/bazframes` opens the Unit Frames options; `/bazauras` opens the Auras options (`/bazauras reset` resets the layout).
 - `/bnc` toggles the notification panel; `/bnc dnd`, `/bnc clear`, `/bnc history`, `/bnc test`.
+- `/bazmicro` opens the Micro Menu options; `/bazmicro reset` moves the bar back to the bottom right.
 - `/bazchat` (or `/bc`) for chat: `copy`, `clear`, `lock`, `unlock`, `restoredefaults`; `/cc` clears the active tab.
 
 ## License
