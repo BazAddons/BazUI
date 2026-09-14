@@ -201,6 +201,12 @@ local function Build(parent)
     page.note:SetJustifyH("LEFT")
     page.note:SetTextColor(unpack(Theme.colors.textMuted))
 
+    -- The list sits in the same card the rest of the codex draws.
+    page.card = CreateFrame("Frame", nil, page)
+    page.card:SetPoint("TOPLEFT", 0, -HEAD_H)
+    page.card:SetPoint("TOPRIGHT", 0, -HEAD_H)
+    Theme.ApplyFlatPanel(page.card, Theme.colors.bgRaised, Theme.colors.edge)
+
     return page
 end
 
@@ -237,7 +243,7 @@ local function Render(content, width)
         p.note:SetTextColor(unpack(Theme.colors.textMuted))
     end
 
-    local y = HEAD_H
+    local y = 6
     for _, entry in ipairs(entries) do
         local itemID = entry.itemID
         local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID)
@@ -245,10 +251,10 @@ local function Render(content, width)
             C_Item.RequestLoadItemDataByID(itemID)
         end
 
-        local row = AcquireRow(p)
+        local row = AcquireRow(p.card)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -y)
-        row:SetPoint("TOPRIGHT", 0, -y)
+        row:SetPoint("TOPLEFT", 1, -y)
+        row:SetPoint("TOPRIGHT", -1, -y)
         row.itemID = itemID
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
@@ -279,8 +285,13 @@ local function Render(content, width)
         y = y + ROW_H
     end
 
-    p:SetHeight(math.max(y, 1))
-    Codex.customTabs.wishlist.height = y
+    local cardHeight = math.max(y + 6, 28)
+    p.card:SetHeight(cardHeight)
+    p.card:SetShown(#entries > 0)
+
+    local total = HEAD_H + (#entries > 0 and cardHeight or 0)
+    p:SetHeight(math.max(total, 1))
+    Codex.customTabs.wishlist.height = total
 end
 
 Codex.customTabs.wishlist = {
@@ -289,6 +300,18 @@ Codex.customTabs.wishlist = {
     Render = Render,
     Hide   = function() if page then page:Hide() end end,
     height = 1,
+    GetHighlights = function()
+        local wanted, got = 0, 0
+        for itemID in pairs(List()) do
+            wanted = wanted + 1
+            if (C_Item.GetItemCount(itemID, true) or 0) > 0 then got = got + 1 end
+        end
+        return {
+            { value = wanted - got, label = "still wanted" },
+            { value = got, label = "already yours",
+              color = got > 0 and { 0.45, 0.78, 0.48, 1 } or nil },
+        }
+    end,
 }
 
 -- Picking something up off the list is worth noticing.

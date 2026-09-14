@@ -253,6 +253,13 @@ local function Build(parent)
     page.note:SetJustifyH("LEFT")
     page.note:SetTextColor(unpack(Theme.colors.textMuted))
 
+    -- Results live in the same card the rest of the codex draws, so a
+    -- lookup and a lockout read as pages of one book.
+    page.card = CreateFrame("Frame", nil, page)
+    page.card:SetPoint("TOPLEFT", 0, -HEAD_H)
+    page.card:SetPoint("TOPRIGHT", 0, -HEAD_H)
+    Theme.ApplyFlatPanel(page.card, Theme.colors.bgRaised, Theme.colors.edge)
+
     return page
 end
 
@@ -265,7 +272,7 @@ local function Render(content, width)
     ReleaseRows()
 
     local hits, note = Resolve(query)
-    local y = HEAD_H
+    local y = 6
 
     if note then
         p.note:SetText(note)
@@ -286,10 +293,10 @@ local function Render(content, width)
             name = Index()[itemID] or ("Item " .. itemID)
         end
 
-        local row = AcquireRow(p)
+        local row = AcquireRow(p.card)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -y)
-        row:SetPoint("TOPRIGHT", 0, -y)
+        row:SetPoint("TOPLEFT", 1, -y)
+        row:SetPoint("TOPRIGHT", -1, -y)
         row.itemID = itemID
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
@@ -309,8 +316,13 @@ local function Render(content, width)
         y = y + ROW_H
     end
 
-    p:SetHeight(math.max(y, 1))
-    Codex.customTabs.items.height = y
+    local cardHeight = math.max(y + 6, 28)
+    p.card:SetHeight(cardHeight)
+    p.card:SetShown(#hits > 0)
+
+    local total = HEAD_H + (#hits > 0 and cardHeight or 0)
+    p:SetHeight(math.max(total, 1))
+    Codex.customTabs.items.height = total
 end
 
 Codex.customTabs.items = {
@@ -319,6 +331,11 @@ Codex.customTabs.items = {
     Render = Render,
     Hide   = function() if page then page:Hide() end end,
     height = 1,
+    GetHighlights = function()
+        return {
+            { value = IndexSize(), label = "items this character has met" },
+        }
+    end,
 }
 
 ---------------------------------------------------------------------------

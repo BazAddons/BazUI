@@ -8,6 +8,9 @@
 
 local Codex = BazUI.Codex
 
+local DAY  = 86400
+local WEEK = 604800
+
 -- Lockouts and resets are measured in days, which a clock reads badly;
 -- the suite's own span format is what everything here shows.
 local function Duration(seconds)
@@ -18,6 +21,26 @@ end
 -- Saved instances
 ---------------------------------------------------------------------------
 
+local function Lockouts()
+    local out = {}
+    local count = GetNumSavedInstances and GetNumSavedInstances() or 0
+    for i = 1, count do
+        local name, _, reset, _, locked, extended, _, isRaid, maxPlayers,
+              difficultyName, numEncounters, encounterProgress = GetSavedInstanceInfo(i)
+        -- An expired lockout stays in the list until the server drops
+        -- it; showing it would be a lie.
+        if name and (locked or extended) then
+            out[#out + 1] = {
+                name = name, reset = reset or 0, isRaid = isRaid,
+                maxPlayers = maxPlayers, difficultyName = difficultyName,
+                encounters = numEncounters or 0, defeated = encounterProgress or 0,
+            }
+        end
+    end
+    table.sort(out, function(a, b) return a.name < b.name end)
+    return out
+end
+
 Codex:RegisterSection({
     id    = "lockouts",
     tab   = "today",
@@ -25,44 +48,61 @@ Codex:RegisterSection({
     order = 10,
     empty = "Nothing saved. Every raid is open to you.",
     events = { "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD", "BOSS_KILL" },
+
+    GetHighlight = function()
+        local locks = Lockouts()
+        return {
+            value = #locks,
+            label = #locks == 1 and "instance saved" or "instances saved",
+            color = #locks > 0 and Codex.STATE_COLOR.locked or nil,
+        }
+    end,
+
     GetRows = function()
         local rows = {}
-        local count = GetNumSavedInstances and GetNumSavedInstances() or 0
-        for i = 1, count do
-            local name, _, reset, _, locked, extended, _, isRaid, maxPlayers,
-                  difficultyName, numEncounters, encounterProgress = GetSavedInstanceInfo(i)
-            -- An expired lockout stays in the list until the server drops
-            -- it; showing it would be a lie.
-            if name and (locked or extended) then
-                local detail = Duration(reset)
-                local tip = name
-                if numEncounters and numEncounters > 0 then
-                    tip = string.format("%s%s%d of %d defeated", name, "|n",
-                        encounterProgress or 0, numEncounters)
-                end
-                if difficultyName and difficultyName ~= "" then
-                    tip = tip .. "|n" .. difficultyName
-                elseif isRaid and maxPlayers then
-                    tip = tip .. "|n" .. maxPlayers .. " player raid"
-                end
-                rows[#rows + 1] = {
-                    label  = name,
-                    detail = (numEncounters and numEncounters > 0)
-                        and string.format("%d/%d  %s", encounterProgress or 0, numEncounters, detail)
-                        or detail,
-                    state  = "locked",
-                    tip    = tip .. "|nResets in " .. Duration(reset),
-                }
+        for _, lock in ipairs(Lockouts()) do
+            local tip = lock.name
+            if lock.encounters > 0 then
+                tip = string.format("%s|n%d of %d defeated", lock.name, lock.defeated, lock.encounters)
             end
+            if lock.difficultyName and lock.difficultyName ~= "" then
+                tip = tip .. "|n" .. lock.difficultyName
+            elseif lock.isRaid and lock.maxPlayers then
+                tip = tip .. "|n" .. lock.maxPlayers .. " player raid"
+            end
+
+            rows[#rows + 1] = {
+                label  = lock.name,
+                detail = lock.encounters > 0
+                    and string.format("%d/%d   %s", lock.defeated, lock.encounters, Duration(lock.reset))
+                    or Duration(lock.reset),
+                state  = "locked",
+                tip    = tip .. "|nResets in " .. Duration(lock.reset),
+                -- How much of the instance is already spent, which is
+                -- the part you actually weigh before going back in.
+                progress = lock.encounters > 0
+                    and { value = lock.defeated, max = lock.encounters } or nil,
+            }
         end
-        table.sort(rows, function(a, b) return a.label < b.label end)
         return rows
     end,
 })
 
 ---------------------------------------------------------------------------
 -- The clocks
+--
+-- Shown as how much of the period has run rather than a bare countdown:
+-- a bar most of the way along says "this week is nearly gone" at a
+-- glance, which a string of hours does not.
 ---------------------------------------------------------------------------
+
+local function SecondsUntil(fn)
+    local dt = C_DateAndTime
+    if not (dt and dt[fn]) then return nil end
+    local ok, secs = pcall(dt[fn])
+    if ok and secs and secs > 0 then return secs end
+    return nil
+end
 
 Codex:RegisterSection({
     id    = "resets",
@@ -70,27 +110,38 @@ Codex:RegisterSection({
     title = "Resets",
     order = 20,
     empty = "This client reports no reset timers.",
+    events = { "PLAYER_ENTERING_WORLD" },
+
+    GetHighlight = function()
+        local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
+        if not weekly then return nil end
+        return { value = Duration(weekly), label = "until the weekly reset" }
+    end,
+
     GetRows = function()
         local rows = {}
-        local dt = C_DateAndTime
-        if dt and dt.GetSecondsUntilDailyReset then
-            local ok, secs = pcall(dt.GetSecondsUntilDailyReset)
-            if ok and secs then
-                rows[#rows + 1] = { label = "Daily", detail = Duration(secs), state = "open" }
-            end
+        local daily = SecondsUntil("GetSecondsUntilDailyReset")
+        if daily then
+            rows[#rows + 1] = {
+                label = "Daily", detail = Duration(daily), state = "open",
+                tip = "The daily rollover, when quests flagged daily come back.",
+                progress = { value = DAY - daily, max = DAY },
+            }
         end
-        if dt and dt.GetSecondsUntilWeeklyReset then
-            local ok, secs = pcall(dt.GetSecondsUntilWeeklyReset)
-            if ok and secs then
-                rows[#rows + 1] = { label = "Weekly", detail = Duration(secs), state = "open" }
-            end
+        local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
+        if weekly then
+            rows[#rows + 1] = {
+                label = "Weekly", detail = Duration(weekly), state = "open",
+                tip = "The weekly rollover, when raid lockouts clear.",
+                progress = { value = WEEK - weekly, max = WEEK },
+            }
         end
         return rows
     end,
 })
 
--- The server only sends lockout data when asked. Ask on login and
--- whenever the codex opens.
+-- The server only sends lockout data when asked. Ask on login, and the
+-- codex asks again whenever it opens.
 BazUI:QueueForLogin(function()
     if RequestRaidInfo then pcall(RequestRaidInfo) end
 end)
