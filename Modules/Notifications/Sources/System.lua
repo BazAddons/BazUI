@@ -90,23 +90,22 @@ local function SetupHook()
             shouldIntercept = false
         end
 
-        if shouldIntercept and msgDedup:IsDuplicate(msg) then
-            shouldIntercept = false
-        end
-
         if shouldIntercept then
-            local priority = GetPriorityForCategory(category)
-            local icon = GetIconForCategory(category)
-
-            BNC:Push({
-                module = MODULE_ID,
-                title = msg,
-                message = "",
-                icon = icon,
-                priority = priority,
-                duration = GetSetting("toastDuration") or 4,
-                silent = GetSetting("toastsEnabled") == false,
-            })
+            -- A repeat inside the dedup window gets no second card, but
+            -- it must still be hidden: letting it fall through here is
+            -- how "Spell is not ready yet" showed up in red after the
+            -- first press had already been captured.
+            if not msgDedup:IsDuplicate(msg) then
+                BNC:Push({
+                    module = MODULE_ID,
+                    title = msg,
+                    message = "",
+                    icon = GetIconForCategory(category),
+                    priority = GetPriorityForCategory(category),
+                    duration = GetSetting("toastDuration") or 4,
+                    silent = GetSetting("toastsEnabled") == false,
+                })
+            end
 
             if GetSetting("hideDefaultText") ~= false then
                 return
