@@ -7,19 +7,20 @@ if not BazUI or not BazUI.RegisterUserGuide then return end
 
 BazUI:RegisterUserGuide("Auras", {
     title = "Auras",
-    intro = "Your buffs and debuffs, drawn as rounded icons on the BazUI player frame instead of in the corner by the minimap.",
+    intro = "Buffs and debuffs drawn as rounded icons on the BazUI player and target frames instead of in the corner by the minimap.",
     pages = {
         {
             title = "Overview",
             blocks = {
-                { type = "lead", text = "Buffs sit above the health bar on the left of the player frame and debuffs above the power bar on the right. Each side holds eight icons per row, and rows keep stacking upward for as long as you have auras to show." },
+                { type = "lead", text = "On the player frame, buffs sit above the health bar on the left and debuffs above the power bar on the right, with rows stacking upward. On the target frame the same two groups hang below the bars, with rows stacking downward. Each side holds eight icons per row for as long as there are auras to show." },
                 { type = "h2", text = "Highlights" },
                 { type = "list", items = {
                     "Right-click an icon to cancel that buff or remove a weapon enchant, in or out of combat",
                     "Time remaining and stack counts on the icons",
                     "Debuff rims coloured by type: blue Magic, purple Curse, brown Disease, green Poison",
                     "Weapon enchants such as poisons and sharpening stones shown with your buffs",
-                    "The icons follow the player frame wherever you move or scale it",
+                    "The target's auras appear and vanish with the BazUI target frame, and can be limited to the debuffs you applied",
+                    "The icons follow the frames wherever you move or scale them",
                     "Blizzard's own buff and debuff frames are parked while BazUI auras are shown",
                 }},
                 { type = "note", style = "tip", text = "If the BazUI player frame is turned off, the auras move above Blizzard's player frame instead, buffs on the bottom row and debuffs above them." },
@@ -36,7 +37,10 @@ BazUI:RegisterUserGuide("Auras", {
                       { "|cffffd700Hide Blizzard's frames|r", "Park the stock buff and debuff frames while ours are shown. Turn off to keep both." },
                       { "|cffffd700Icons per row|r",          "How many icons fill a row before the next row starts above it. Default 8." },
                       { "|cffffd700Icon size|r / |cffffd700Spacing|r", "Size of each icon and the gap between icons and rows." },
-                      { "|cffffd700Distance above the bars|r", "Space between the top of the health and power bars and the first row." },
+                      { "|cffffd700Distance above the player's bars|r", "Space between the top of the player frame's bars and the first row." },
+                      { "|cffffd700Show the target's auras|r",  "Buffs and debuffs below the BazUI target frame. Needs that frame; the stock target frame draws its own." },
+                      { "|cffffd700Only my debuffs|r",          "Hide debuffs other players put on the target." },
+                      { "|cffffd700Distance below the target's bars|r", "Space between the bottom of the target frame's bars and the first row." },
                       { "|cffffd700Fill direction|r",         "From the portrait outward puts the first icon next to the portrait. From the outer end inward starts at the far end of each bar." },
                       { "|cffffd700Time remaining|r / |cffffd700Stack counts|r", "Text on the icons." },
                       { "|cffffd700Colour debuff rims by type|r", "Off keeps every debuff rim red." },

@@ -2,10 +2,11 @@
 ---------------------------------------------------------------------------
 -- BazUI Auras
 --
--- Player buffs and debuffs drawn as rounded icons attached to the BazUI
--- player frame: buffs above the health bar on the left, debuffs above
--- the power bar on the right, eight per row, rows stacking upward for
--- as long as they need to.
+-- Buffs and debuffs drawn as rounded icons attached to the BazUI unit
+-- frames. On the player frame they sit above the bars (buffs over the
+-- health bar on the left, debuffs over the power bar on the right) with
+-- rows stacking upward; on the target frame they hang below the bars
+-- with rows stacking downward. Eight per row, as many rows as needed.
 --
 -- Blizzard's secure aura header (SecureAuraHeaderTemplate) creates the
 -- icon buttons, sorts them, lays them out and owns the right-click
@@ -35,6 +36,11 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         growth        = "portrait",  -- "portrait": first icon next to the portrait, later ones move
                                      --   outward. "edge": first icon at the outer end of the bar.
 
+        -- Target
+        targetEnabled = true,   -- the target's auras under the BazUI target frame
+        targetOnlyMine = false, -- only debuffs the player applied
+        targetGap     = 12,     -- pixels between the bottom of the bars and the first row
+
         -- Icons
         showDuration  = true,
         showCount     = true,
@@ -59,7 +65,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 addon.MODULE_NAME = MODULE_NAME
 
 function addon:ResetLayout()
-    for _, key in ipairs({ "perRow", "iconSize", "spacing", "gap", "growth" }) do
+    for _, key in ipairs({ "perRow", "iconSize", "spacing", "gap", "growth", "targetGap" }) do
         self:SetSetting(key, self.config.defaults[key])
     end
     self:ApplySettings()

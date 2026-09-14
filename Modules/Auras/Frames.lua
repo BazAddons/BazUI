@@ -2,11 +2,14 @@
 ---------------------------------------------------------------------------
 -- BazUI Auras: headers, buttons and painting
 --
--- Two SecureAuraHeaderTemplate frames (buffs, debuffs) are parented to
--- the BazUI player frame so they scale, move and hide with it. The
--- header creates BazUIAuraButtonTemplate buttons, stamps "index" and
--- "filter" (or "target-slot" for weapon enchants) on each, sorts and
--- positions them, and handles the right-click cancel securely.
+-- Four SecureAuraHeaderTemplate frames (buffs and debuffs for the
+-- player, buffs and debuffs for the target) are parented to the BazUI
+-- unit frames so they scale, move and hide with them. Each header
+-- creates BazUIAuraButtonTemplate buttons, stamps "index" and "filter"
+-- (or "target-slot" for weapon enchants) on each, sorts and positions
+-- them, and handles the right-click cancel securely. The target frame
+-- shows and hides through a secure state driver, so its headers follow
+-- the target in and out of combat.
 --
 -- Everything here that touches a protected frame (attributes, anchors,
 -- sizes, parent) runs out of combat only; a change requested in combat
@@ -29,7 +32,7 @@ local DEBUFF_COLORS = {
     Poison  = { r = 0.00, g = 0.60, b = 0.00 },
 }
 
-local headers = {}       -- "HELPFUL" / "HARMFUL" -> header frame
+local headers = {}       -- "HELPFUL" / "HARMFUL" (player), "TARGET_HELPFUL" / "TARGET_HARMFUL"
 local buttons = {}       -- set of every button the headers have created
 local hiddenParent
 local pendingApply  = false
@@ -99,6 +102,12 @@ local function UpdateDuration(btn, now)
     end
 end
 
+-- The unit a button shows: its header's unit attribute.
+local function ButtonUnit(btn)
+    local h = btn:GetParent()
+    return (h and h.GetAttribute and h:GetAttribute("unit")) or "player"
+end
+
 local function UpdateButton(btn)
     local slot   = tonumber(btn:GetAttribute("target-slot"))
     local index  = btn:GetAttribute("index")
@@ -110,7 +119,7 @@ local function UpdateButton(btn)
         icon, count, expirationTime = ReadWeapon(slot)
     elseif index then
         btn.isWeapon = false
-        icon, count, dispel, expirationTime = ReadAura("player", index, filter)
+        icon, count, dispel, expirationTime = ReadAura(ButtonUnit(btn), index, filter)
     end
 
     if not icon then
@@ -129,7 +138,7 @@ local function UpdateButton(btn)
     end
     btn.expirationTime = (expirationTime and expirationTime > 0) and expirationTime or nil
 
-    if filter == "HARMFUL" then
+    if filter and filter:find("HARMFUL", 1, true) then
         local c
         if addon:GetSetting("debuffBorders") ~= false then
             local colors = _G.DebuffTypeColor or DEBUFF_COLORS
@@ -188,7 +197,7 @@ function Auras.OnButtonEnter(btn)
         if slot then GameTooltip:SetInventoryItem("player", slot) end
     else
         local index = btn:GetAttribute("index")
-        if index then GameTooltip:SetUnitAura("player", index, btn:GetAttribute("filter")) end
+        if index then GameTooltip:SetUnitAura(ButtonUnit(btn), index, btn:GetAttribute("filter")) end
     end
     GameTooltip:Show()
 end
@@ -201,21 +210,23 @@ end
 -- Headers
 ---------------------------------------------------------------------------
 
-local function CreateHeader(filter, name)
+local function CreateHeader(key, unit, filter, name)
     local h = CreateFrame("Frame", name, UIParent, "SecureAuraHeaderTemplate")
-    h:SetAttribute("unit", "player")
+    h:SetAttribute("unit", unit)
     h:SetAttribute("filter", filter)
     h:SetAttribute("template", TEMPLATE)
     h:SetAttribute("weaponTemplate", TEMPLATE)
     h:SetAttribute("templateType", "Button")
     h:Hide()
-    headers[filter] = h
+    headers[key] = h
     return h
 end
 
--- side: "left" for buffs (above the health bar), "right" for debuffs
--- (above the power bar). Returns the header's own anchor point.
-local function ConfigureHeader(h, side)
+-- side: "left" for buffs (by the health bar), "right" for debuffs (by
+-- the power bar). below: rows hang under the bars and stack downward
+-- (the target frame) instead of sitting above and stacking upward (the
+-- player frame). Returns the header's own anchor point.
+local function ConfigureHeader(h, side, below)
     local size    = addon:GetSetting("iconSize") or 26
     local spacing = addon:GetSetting("spacing") or 3
     local perRow  = addon:GetSetting("perRow") or 8
@@ -226,21 +237,29 @@ local function ConfigureHeader(h, side)
     -- from it: buffs (left side) grow left, debuffs grow right. "edge"
     -- is the mirror image.
     local growRight = (growth == "portrait") == (side == "right")
-    local point = growRight and "BOTTOMLEFT" or "BOTTOMRIGHT"
+    local vertical = below and "TOP" or "BOTTOM"
+    local point = vertical .. (growRight and "LEFT" or "RIGHT")
 
     h:SetAttribute("point", point)
     h:SetAttribute("xOffset", growRight and step or -step)
     h:SetAttribute("yOffset", 0)
     h:SetAttribute("wrapAfter", perRow)
     h:SetAttribute("wrapXOffset", 0)
-    h:SetAttribute("wrapYOffset", step)
+    h:SetAttribute("wrapYOffset", below and -step or step)
     h:SetAttribute("maxWraps", 0)           -- 0 = as many rows as needed
     h:SetAttribute("minWidth", perRow * step - spacing)
     h:SetAttribute("minHeight", size)
     h:SetAttribute("sortMethod", addon:GetSetting("sortMethod") or "INDEX")
     h:SetAttribute("sortDirection", addon:GetSetting("sortDirection") or "+")
-    local weapons = side == "left" and addon:GetSetting("showWeapons") ~= false
+    local isPlayer = h:GetAttribute("unit") == "player"
+    local weapons = isPlayer and side == "left" and addon:GetSetting("showWeapons") ~= false
     h:SetAttribute("includeWeapons", weapons and 1 or nil)
+    if not isPlayer and side == "right" then
+        -- Changing the filter re-runs the header's update, which is fine
+        -- out of combat (ApplySettings never runs in combat).
+        local mine = addon:GetSetting("targetOnlyMine") == true
+        h:SetAttribute("filter", mine and "HARMFUL|PLAYER" or "HARMFUL")
+    end
     -- Buttons the header creates during combat still get the right size:
     -- this snippet runs in the header's secure environment.
     h:SetAttribute("initialConfigFunction", ("self:SetWidth(%d); self:SetHeight(%d)"):format(size, size))
@@ -255,6 +274,44 @@ local function PlayerRoot()
     if root and uf and uf.Layout and uf.GetSetting and uf:GetSetting("enabled") ~= false then
         return root, uf.Layout
     end
+end
+
+-- The BazUI target frame and its layout table. Target auras exist only
+-- with it: the stock target frame draws its own.
+local function TargetRoot()
+    local root = _G.BazUITargetFrame
+    local uf = BazUI:GetModule("UnitFrames")
+    local target = uf and uf.Target
+    if root and uf and uf.TargetLayout and target and target.GetSetting and target:GetSetting("enabled") ~= false then
+        return root, uf.TargetLayout
+    end
+end
+
+-- Left edge or right edge of a bar, in source pixels, for a header that
+-- anchors by `point`.
+local function BarEdge(bar, point)
+    if point:find("LEFT", 1, true) then return bar.x end
+    return bar.x + bar.w
+end
+
+local function AnchorTargetHeaders(buffPoint, debuffPoint)
+    local buffs, debuffs = headers.TARGET_HELPFUL, headers.TARGET_HARMFUL
+    buffs:ClearAllPoints()
+    debuffs:ClearAllPoints()
+    local root, L = TargetRoot()
+    if not root then return false end
+
+    local gap = addon:GetSetting("targetGap") or 12
+    local R = root:GetWidth() / L.width
+    local level = root:GetFrameLevel() + 6
+    buffs:SetParent(root)
+    debuffs:SetParent(root)
+    buffs:SetFrameLevel(level)
+    debuffs:SetFrameLevel(level)
+    -- First row hangs from the bottom of the bars; later rows stack down.
+    buffs:SetPoint(buffPoint, root, "TOPLEFT", BarEdge(L.health, buffPoint) * R, -((L.health.y + L.health.h) * R) - gap)
+    debuffs:SetPoint(debuffPoint, root, "TOPLEFT", BarEdge(L.power, debuffPoint) * R, -((L.power.y + L.power.h) * R) - gap)
+    return true
 end
 
 local function AnchorHeaders(buffPoint, debuffPoint)
@@ -274,10 +331,8 @@ local function AnchorHeaders(buffPoint, debuffPoint)
         debuffs:SetParent(root)
         buffs:SetFrameLevel(level)
         debuffs:SetFrameLevel(level)
-        local bx = buffPoint == "BOTTOMLEFT" and L.health.x or (L.health.x + L.health.w)
-        local px = debuffPoint == "BOTTOMLEFT" and L.power.x or (L.power.x + L.power.w)
-        buffs:SetPoint(buffPoint, root, "TOPLEFT", bx * R, -(L.health.y * R) + gap)
-        debuffs:SetPoint(debuffPoint, root, "TOPLEFT", px * R, -(L.power.y * R) + gap)
+        buffs:SetPoint(buffPoint, root, "TOPLEFT", BarEdge(L.health, buffPoint) * R, -(L.health.y * R) + gap)
+        debuffs:SetPoint(debuffPoint, root, "TOPLEFT", BarEdge(L.power, debuffPoint) * R, -(L.power.y * R) + gap)
     else
         -- No BazUI player frame: sit above the stock one, debuffs on
         -- top of the buffs.
@@ -338,13 +393,32 @@ function addon:ApplySettings()
     local buffPoint   = ConfigureHeader(headers.HELPFUL, "left")
     local debuffPoint = ConfigureHeader(headers.HARMFUL, "right")
     AnchorHeaders(buffPoint, debuffPoint)
+
+    local tBuffPoint   = ConfigureHeader(headers.TARGET_HELPFUL, "left", true)
+    local tDebuffPoint = ConfigureHeader(headers.TARGET_HARMFUL, "right", true)
+    local targetOk = AnchorTargetHeaders(tBuffPoint, tDebuffPoint)
+    local targetOn = enabled and targetOk and self:GetSetting("targetEnabled") ~= false
+
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
     end
     headers.HELPFUL:SetShown(enabled)
     headers.HARMFUL:SetShown(enabled)
+    headers.TARGET_HELPFUL:SetShown(targetOn)
+    headers.TARGET_HARMFUL:SetShown(targetOn)
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
     self:RefreshAll()
+end
+
+-- Out of combat, rebuild the target headers straight away when the
+-- target changes; the header also refreshes itself on the target's
+-- UNIT_AURA, which covers combat.
+function addon:RefreshTarget()
+    if InCombatLockdown() or not _G.SecureAuraHeader_Update then return end
+    for _, key in ipairs({ "TARGET_HELPFUL", "TARGET_HARMFUL" }) do
+        local h = headers[key]
+        if h and h:IsVisible() then _G.SecureAuraHeader_Update(h) end
+    end
 end
 
 function addon:QueueApply()
@@ -368,8 +442,10 @@ function addon:Initialize()
 
     hiddenParent = CreateFrame("Frame")
     hiddenParent:Hide()
-    CreateHeader("HELPFUL", "BazUIAurasBuffs")
-    CreateHeader("HARMFUL", "BazUIAurasDebuffs")
+    CreateHeader("HELPFUL", "player", "HELPFUL", "BazUIAurasBuffs")
+    CreateHeader("HARMFUL", "player", "HARMFUL", "BazUIAurasDebuffs")
+    CreateHeader("TARGET_HELPFUL", "target", "HELPFUL", "BazUIAurasTargetBuffs")
+    CreateHeader("TARGET_HARMFUL", "target", "HARMFUL", "BazUIAurasTargetDebuffs")
 
     -- One ticker for every duration label.
     local ticker = CreateFrame("Frame")
@@ -387,7 +463,11 @@ function addon:Initialize()
     end)
 
     self:On("UNIT_AURA", function(_, unit)
-        if unit == "player" then self:QueueRefresh() end
+        if unit == "player" or unit == "target" then self:QueueRefresh() end
+    end)
+    self:On("PLAYER_TARGET_CHANGED", function()
+        self:RefreshTarget()
+        self:QueueRefresh()
     end)
     self:On("UNIT_INVENTORY_CHANGED", function(_, unit)
         if unit == "player" then self:QueueRefresh() end
@@ -398,11 +478,14 @@ function addon:Initialize()
     end)
     self:OnProfileChanged(function() self:ApplySettings() end)
 
-    -- Follow the player frame: whenever Unit Frames re-applies (enable,
-    -- disable, scale, position), re-anchor after it.
+    -- Follow the unit frames: whenever Unit Frames re-applies either
+    -- frame (enable, disable, scale, position), re-anchor after it.
     local uf = BazUI:GetModule("UnitFrames")
     if uf and uf.ApplySettings then
         hooksecurefunc(uf, "ApplySettings", function() addon:QueueApply() end)
+    end
+    if uf and uf.Target and uf.Target.ApplySettings then
+        hooksecurefunc(uf.Target, "ApplySettings", function() addon:QueueApply() end)
     end
 
     self:ApplySettings()

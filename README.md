@@ -16,7 +16,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Bags | BazBags | Ported (Classic bags plus keyring; categories, pinning, search) |
 | Bars | BazBars | Ported (bars, spells, items, macros, mounts, equipment sets, keybinds; no toys, pets or flyouts) |
 | Unit Frames | new (written by Codex) | In progress (player and target frames from the BazUI artwork) |
-| Auras | new | Built (buffs and debuffs on the player frame, secure right-click cancel) |
+| Auras | new | Built (buffs and debuffs on the player and target frames, secure right-click cancel) |
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |
 | Micro Menu | new | Built (Blizzard's micro buttons on a movable bar as round ring-framed icons) |
 
