@@ -179,7 +179,7 @@ function BazUI:RegisterMinimapEntry(addonName, minimapConfig)
     if not button then
         BazUI:QueueForLogin(function()
             CreateButton()
-        end, "MinimapButton:Create")
+        end)
     end
 end
 

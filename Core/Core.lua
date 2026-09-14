@@ -35,58 +35,27 @@ end
 local loginReady = false
 local loginQueue = {}
 
--- Memory-log phase marker. Defined as a local stub before MemoryLog
--- has loaded; the real MarkMemoryEvent is published once that file
--- runs. The check makes it safe to call from any startup path.
-local function PhaseMark(label)
-    if BazUI.MarkMemoryEvent then
-        BazUI:MarkMemoryEvent("phase", label)
-    end
-end
-
 local lifecycleFrame = CreateFrame("Frame")
 lifecycleFrame:RegisterEvent("PLAYER_LOGIN")
 lifecycleFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
         loginReady = true
-        PhaseMark("login:queue-start (" .. #loginQueue .. " callbacks)")
         for _, entry in ipairs(loginQueue) do
-            -- Two shapes coexist: bare functions (legacy unlabelled
-            -- callers) and { fn, label } tables (new labelled form).
-            -- Type-check before indexing - indexing a function value
-            -- is a Lua error.
-            if type(entry) == "function" then
-                entry()
-            else
-                local fn    = entry.fn
-                local label = entry.label
-                if label then PhaseMark("login:before-" .. label) end
-                fn()
-                if label then PhaseMark("login:after-" .. label) end
-            end
+            entry()
         end
         wipe(loginQueue)
-        PhaseMark("login:queue-end")
         self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)
 
--- QueueForLogin(fn [, label])
---   Queues a callback for PLAYER_LOGIN. When `label` is provided, the
---   memory log brackets the callback's execution with phase markers
---   so the next /bazmem armwatch dump shows which queued task was
---   responsible for any spike.
-function BazUI:QueueForLogin(fn, label)
+-- QueueForLogin(fn)
+--   Queues a callback for PLAYER_LOGIN, or runs it at once if login has
+--   already happened.
+function BazUI:QueueForLogin(fn)
     if loginReady then
-        if label then PhaseMark("login:before-" .. label) end
         fn()
-        if label then PhaseMark("login:after-" .. label) end
     else
-        if label then
-            table.insert(loginQueue, { fn = fn, label = label })
-        else
-            table.insert(loginQueue, fn)
-        end
+        table.insert(loginQueue, fn)
     end
 end
 
@@ -199,7 +168,7 @@ function BazUI:RegisterModule(name, config)
         if config.onReady then
             BazUI:QueueForLogin(function()
                 config.onReady(addon)
-            end, "onReady:" .. name)
+            end)
         end
     end)
 
@@ -211,8 +180,8 @@ function BazUI:GetModule(name)
 end
 BazUI.GetAddon = BazUI.GetModule
 
--- Static setting access by module name, for shared helpers (MakeDraggable
--- and friends) that don't hold a module object.
+-- Static setting access by module name, for shared helpers that don't
+-- hold a module object.
 function BazUI:GetSetting(moduleName, key)
     local mod = self.addonObjects[moduleName]
     return mod and mod:GetSetting(key)
@@ -455,7 +424,7 @@ BazUI:QueueForLogin(function()
         end)
         BazUI:AddToSettings("BazUI-Profiles", "Profiles", "BazUI")
     end
-end, "BazUISelfPages")
+end)
 
 ---------------------------------------------------------------------------
 -- Do Not Disturb: environmental state check

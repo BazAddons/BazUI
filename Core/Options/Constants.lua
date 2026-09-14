@@ -437,6 +437,86 @@ function O.RenderListRows(listContent, rows, opts)
 end
 
 ---------------------------------------------------------------------------
+-- BuildTitleBar - shared header used by both the User Manual page and
+-- the standard list/detail page. Includes the addon icon (if available),
+-- gold title text, optional version line, and a horizontal rule
+-- underneath. Returns (frame, height) so the caller can advance its
+-- y-cursor past it.
+--
+-- opts = {
+--   title         = string,         -- displayed as gold large text
+--   addonName     = string,          -- used to look up icon + version
+--   version       = string,          -- optional override; otherwise
+--                                    -- read from the addon's .toc
+--   contentWidth  = number,          -- frame width to set
+-- }
+---------------------------------------------------------------------------
+
+function O.BuildTitleBar(parent, opts)
+    opts = opts or {}
+    local frame = CreateFrame("Frame", nil, parent)
+    local headerHeight = 44
+    local titleXOffset = O.PAD
+
+    local addonConfig = opts.addonName and BazUI.addons
+        and BazUI.addons[opts.addonName] or nil
+    local iconTex = addonConfig and (addonConfig.icon or (addonConfig.minimap and addonConfig.minimap.icon))
+    if not iconTex and opts.addonName and C_AddOns and C_AddOns.GetAddOnMetadata then
+        iconTex = C_AddOns.GetAddOnMetadata(opts.addonName, "IconTexture")
+    end
+    if iconTex then
+        local addonIcon = frame:CreateTexture(nil, "ARTWORK")
+        addonIcon:SetSize(32, 32)
+        addonIcon:SetPoint("TOPLEFT", O.PAD, -6)
+        addonIcon:SetTexture(iconTex)
+        titleXOffset = O.PAD + 40
+    end
+
+    local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    titleText:SetPoint("TOPLEFT", titleXOffset, -6)
+    titleText:SetText(opts.title or opts.addonName or "")
+    titleText:SetTextColor(unpack(O.GOLD))
+
+    local addonVersion = opts.version
+        or (addonConfig and addonConfig.version)
+    if not addonVersion and opts.addonName and C_AddOns and C_AddOns.GetAddOnMetadata then
+        addonVersion = C_AddOns.GetAddOnMetadata(opts.addonName, "Version")
+    end
+    if addonVersion then
+        local versionText = frame:CreateFontString(nil, "OVERLAY", O.SMALL_FONT)
+        versionText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -2)
+        versionText:SetText("v" .. addonVersion)
+        versionText:SetTextColor(unpack(O.DIM))
+        headerHeight = headerHeight + 6
+    end
+
+    local titleLine = frame:CreateTexture(nil, "ARTWORK")
+    titleLine:SetHeight(1)
+    titleLine:SetPoint("BOTTOMLEFT", O.PAD, 0)
+    titleLine:SetPoint("BOTTOMRIGHT", -O.PAD, 0)
+    titleLine:SetColorTexture(unpack(O.HEADER_LINE))
+
+    if opts.contentWidth then
+        frame:SetSize(opts.contentWidth, headerHeight)
+    else
+        frame:SetHeight(headerHeight)
+    end
+    return frame, headerHeight
+end
+
+-- Remove all children from a frame (for re-rendering)
+function O.ClearChildren(parent)
+    for _, child in ipairs({ parent:GetChildren() }) do
+        child:Hide()
+        child:SetParent(nil)
+    end
+    for _, region in ipairs({ parent:GetRegions() }) do
+        region:Hide()
+        region:SetParent(nil)
+    end
+end
+
+---------------------------------------------------------------------------
 -- List/detail layout dimensions - shared so the User Manual tree and
 -- the standard list/detail panel resolve to the same widths regardless
 -- of the container size. ListDetail used to clamp at 22 % / 180-320 px;
