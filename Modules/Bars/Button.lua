@@ -275,13 +275,15 @@ end
 local FLYOUT_ARROW = "Interface\\ChatFrame\\ChatFrameExpandArrow"
 
 local FLYOUT_ARROW_LOOK = {
-    RIGHT = { point = "RIGHT",  x =  5, y =  0, rotation = 0 },
-    UP    = { point = "TOP",    x =  0, y =  5, rotation = math.pi / 2 },
-    LEFT  = { point = "LEFT",   x = -5, y =  0, rotation = math.pi },
-    DOWN  = { point = "BOTTOM", x =  0, y = -5, rotation = -math.pi / 2 },
+    RIGHT = { point = "RIGHT",  x =  7, y =  0, rotation = 0 },
+    UP    = { point = "TOP",    x =  0, y =  7, rotation = math.pi / 2 },
+    LEFT  = { point = "LEFT",   x = -7, y =  0, rotation = math.pi },
+    DOWN  = { point = "BOTTOM", x =  0, y = -7, rotation = -math.pi / 2 },
 }
 
-local FLYOUT_ARROW_SIZE = 14
+-- The offset above keeps pace with the size: the arrow sits just off
+-- the button's edge rather than growing further over the icon.
+local FLYOUT_ARROW_SIZE = 20
 
 function Button:UpdateFlyoutArrow(btn)
     local isFlyout = btn.action and btn.action.type == "flyout"
@@ -297,10 +299,12 @@ function Button:UpdateFlyoutArrow(btn)
     if not arrow then
         arrow = btn:CreateTexture(nil, "OVERLAY")
         arrow:SetTexture(FLYOUT_ARROW)
-        arrow:SetSize(FLYOUT_ARROW_SIZE, FLYOUT_ARROW_SIZE)
         arrow:SetVertexColor(unpack(BazUI.Skin.Theme.colors.goldSoft))
         btn.bbFlyoutArrow = arrow
     end
+    -- Sized on every update rather than at creation, so changing the
+    -- constant takes effect without rebuilding the bars.
+    arrow:SetSize(FLYOUT_ARROW_SIZE, FLYOUT_ARROW_SIZE)
     arrow:SetRotation(look.rotation)
     arrow:ClearAllPoints()
     arrow:SetPoint(look.point, btn, look.point, look.x, look.y)
