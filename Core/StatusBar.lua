@@ -199,7 +199,10 @@ function BazUI.CreateStatusBar(name, parent, opts)
     local style = opts.style or "screen"
     local screen = (style ~= "panel")
 
-    local bar = CreateFrame("Button", name, parent or UIParent)
+    -- A bar that has to answer a click with something protected, like
+    -- targeting a unit, is built on a secure template and handed its
+    -- attributes by the caller. The widget itself sets none of them.
+    local bar = CreateFrame("Button", name, parent or UIParent, opts.template)
     Mixin(bar, BarMixin)
     bar._ticks = {}
     bar._inset = screen and 2 or 1

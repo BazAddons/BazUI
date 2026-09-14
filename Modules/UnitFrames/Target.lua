@@ -310,6 +310,9 @@ function addon:ApplySettings()
 end
 
 function addon:Initialize()
+    -- The bar redesign replaces these; while it is on this frame is
+    -- never built. See Modules/UnitFrames/REDESIGN.md.
+    if BazUI:GetModule("UnitFrames"):BarMode() then return end
     if root then return end
     -- Loading/reloading an addon in combat must not create secure buttons.
     if InCombatLockdown() then

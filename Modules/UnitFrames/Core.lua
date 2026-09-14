@@ -8,6 +8,18 @@ addon = BazUI:RegisterModule("UnitFrames", {
     defaults = {
         enabled = true,
         scale = 1,
+        -- The bar redesign. On means the unit is drawn as bars
+        -- that dock; off falls back to the artwork frames until
+        -- those are retired.
+        barMode = true,
+        barWidth = 240,
+        barHeight = 20,
+        barText = "always",
+        healthText = "namePercent",
+        powerText = "current",
+        unitTooltips = true,
+        playerBarPos = { point = "CENTER", relPoint = "CENTER", x = -260, y = -160 },
+        targetBarPos = { point = "CENTER", relPoint = "CENTER", x = 260, y = -160 },
         portraitStyle = "3d",
         modelLayer = "above",
         modelScale = 1,
@@ -49,6 +61,7 @@ addon = BazUI:RegisterModule("UnitFrames", {
     onReady = function(self)
         self:Initialize()
         self.Target:Initialize()
+        self:InitializeBars()
         self:OnProfileChanged(function() self:ApplySettings(); self.Target:ApplySettings() end)
     end,
 })
@@ -59,4 +72,38 @@ function addon:ResetLayout()
     self:SetSetting("scale", 1)
     self:SetSetting("position", { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 170 })
     self:ApplySettings()
+end
+
+---------------------------------------------------------------------------
+-- The bar redesign
+--
+-- Builds the player's readings as docked bars. The artwork frames stand
+-- down while this is on; they are still here only until step six of
+-- REDESIGN.md retires them.
+---------------------------------------------------------------------------
+
+function addon:BarMode()
+    return self:GetSetting("barMode") ~= false
+end
+
+function addon:InitializeBars()
+    if not self:BarMode() then return end
+    if InCombatLockdown() then
+        self:On("PLAYER_REGEN_ENABLED", function() self:InitializeBars() end)
+        return
+    end
+
+    local UnitBars = self.UnitBars
+    local set = UnitBars:Create("player")
+    if not set then return end
+    UnitBars:Watch("player")
+
+    -- Floating for now: the dock's other hosts, the action bars, get
+    -- their handles in the next step.
+    local pos = self:GetSetting("playerBarPos")
+    set.health:ClearAllPoints()
+    set.health:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+
+    UnitBars:Update("player")
+    UnitBars:SyncCast("player")
 end
