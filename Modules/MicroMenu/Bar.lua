@@ -30,7 +30,12 @@ addon.DEFS = DEFS
 
 -- Stock art on the buttons that our icon and ring replace.
 local CHROME_KEYS = { "Flash", "PerformanceIndicator", "NotificationOverlay", "texture" }
-local BLIZZARD_FRAMES = { "MicroMenuContainer", "MicroButtonAndBagsBar" }
+-- Blizzard's container, its legacy art strip, and the latency bar that
+-- hides behind the main menu bar art (and pops out once that art goes).
+local BLIZZARD_FRAMES = { "MicroMenuContainer", "MicroButtonAndBagsBar", "MainMenuBarPerformanceBarFrame" }
+
+local FADE_TICK = 0.1
+local FADE_IN, FADE_OUT = 0.15, 0.3
 
 local bar, hiddenParent
 local adopted = {}    -- key -> { button, def, icon, regions, origParent, origW, origH, active }
@@ -180,6 +185,63 @@ function addon:ResetPosition()
     if bar then ApplyPosition() end
 end
 
+---------------------------------------------------------------------------
+-- Mouseover fade
+--
+-- With the option on, the bar sits at its faded opacity (fully hidden by
+-- default) until the cursor is over it. IsMouseOver covers the child
+-- buttons too, so moving between them never flickers. A short ticker
+-- polls only while the option is on, and Edit Mode forces the bar
+-- visible so it can still be found and dragged.
+---------------------------------------------------------------------------
+
+local editing = false
+
+local function FadeTo(alpha)
+    if bar._bazTargetAlpha == alpha then return end
+    bar._bazTargetAlpha = alpha
+    local current = bar:GetAlpha()
+    if UIFrameFadeIn and UIFrameFadeOut then
+        if alpha > current then
+            UIFrameFadeIn(bar, FADE_IN, current, alpha)
+        else
+            UIFrameFadeOut(bar, FADE_OUT, current, alpha)
+        end
+    else
+        bar:SetAlpha(alpha)
+    end
+end
+
+local function UpdateFade()
+    if not bar then return end
+    if editing or not addon:GetSetting("mouseoverFade") then
+        FadeTo(1)
+        return
+    end
+    local faded = (addon:GetSetting("fadeAlpha") or 0) / 100
+    FadeTo(bar:IsMouseOver(6, -6, -6, 6) and 1 or faded)
+end
+
+local function SetFadeTicker(on)
+    if on then
+        bar._bazFadeElapsed = 0
+        bar:SetScript("OnUpdate", function(self, elapsed)
+            self._bazFadeElapsed = self._bazFadeElapsed + elapsed
+            if self._bazFadeElapsed < FADE_TICK then return end
+            self._bazFadeElapsed = 0
+            UpdateFade()
+        end)
+    else
+        bar:SetScript("OnUpdate", nil)
+    end
+    UpdateFade()
+end
+
+function addon:SetEditing(value)
+    editing = value and true or false
+    UpdateFade()
+end
+
 local function SetBlizzardHidden(hide)
     for _, name in ipairs(BLIZZARD_FRAMES) do
         local f = _G[name]
@@ -212,6 +274,7 @@ function addon:ApplySettings()
         self:Layout()
         ApplyPosition()
     end
+    SetFadeTicker(enabled and self:GetSetting("mouseoverFade") and true or false)
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
 end
 
@@ -247,6 +310,8 @@ function addon:Initialize()
         addonName   = self.MODULE_NAME,
         positionKey = "position",
         settings    = BazUI:BuildEditModeArrayFromSpec(self.MODULE_NAME),
+        onEnter     = function() addon:SetEditing(true) end,
+        onExit      = function() addon:SetEditing(false) end,
     })
 
     hooksecurefunc("UpdateMicroButtons", function() addon:OnBlizzardUpdate() end)

@@ -46,8 +46,8 @@ local function GetPagesFor(parentName)
         end
     end
     -- Sort order:
-    --   1. "User Manual"      (docs up top so new users find them first)
-    --   2. "General Settings" (main settings page)
+    --   1. "General Settings" (the page people come here for)
+    --   2. "User Manual"      (docs one tab over)
     --   3. "Global Settings"  (overrides that apply to every module)
     --   4. Custom sub-categories (alphabetical)
     --   5. "Profiles" last
@@ -55,9 +55,9 @@ local function GetPagesFor(parentName)
     -- resolve to the same slot so addons that haven't been renamed
     -- don't break their ordering.
     local function Rank(label)
-        if label == "User Manual" or label == "User Guide"
-            then return 1 end
         if label == "General Settings" or label == "Settings"
+            then return 1 end
+        if label == "User Manual" or label == "User Guide"
             then return 2 end
         if label == "Global Settings" or label == "Global Options"
             then return 3 end
@@ -492,8 +492,13 @@ local function EnsureModule(moduleKey)
     if categories[moduleKey] then return categories[moduleKey] end
     local root = EnsureRoot()
     if not root or not Settings.RegisterCanvasLayoutSubcategory then return nil end
+    -- A module's user guide registers at file load, before the module's
+    -- own landing page does at login, so the category can be created
+    -- before a display name exists. Fall back to the module's title
+    -- rather than its key ("Micro Menu", not "MicroMenu").
     local entry = optionsTables[moduleKey]
-    local label = (entry and entry.displayName) or moduleKey
+    local mod = BazUI.GetModule and BazUI:GetModule(moduleKey)
+    local label = (entry and entry.displayName) or (mod and mod.config and mod.config.title) or moduleKey
     local canvas = CreateCanvas(moduleKey)
     canvases[moduleKey] = canvas
     local sub = Settings.RegisterCanvasLayoutSubcategory(root, canvas, label)

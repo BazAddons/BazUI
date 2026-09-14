@@ -88,21 +88,42 @@ function Theme.ApplyRoundButton(button, icon, opts)
         ring:SetTexture(Skin.BUTTON_RING)
 
         button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing = disc, discMask, iconMask, ring
+
+        -- Press feedback: the icon and its disc sink a pixel down-right
+        -- and darken while the mouse button is held; the ring stays put
+        -- like a bezel. Released on mouse up, on leaving, and on hide so
+        -- a drag off the button can't leave it stuck down.
+        button:HookScript("OnMouseDown", function(self) Theme.SetRoundButtonPressed(self, true) end)
+        button:HookScript("OnMouseUp",   function(self) Theme.SetRoundButtonPressed(self, false) end)
+        button:HookScript("OnLeave",     function(self) Theme.SetRoundButtonPressed(self, false) end)
+        button:HookScript("OnHide",      function(self) Theme.SetRoundButtonPressed(self, false) end)
     end
+    button._bazIcon = icon
 
     button._bazRing:ClearAllPoints()
     button._bazRing:SetPoint("CENTER")
     button._bazRing:SetSize(size, size)
 
-    icon:ClearAllPoints()
-    icon:SetPoint("CENTER")
     icon:SetSize(inner, inner)
-
-    button._bazDisc:ClearAllPoints()
-    button._bazDisc:SetPoint("CENTER")
     button._bazDisc:SetSize(inner + 2, inner + 2)
     button._bazDiscMask:SetAllPoints(button._bazDisc)
     button._bazIconMask:SetAllPoints(icon)
+    Theme.SetRoundButtonPressed(button, false)
+end
+
+local PRESS_SHIFT = 1
+
+function Theme.SetRoundButtonPressed(button, pressed)
+    local icon, disc = button._bazIcon, button._bazDisc
+    if not icon or not disc then return end
+    local dx = pressed and PRESS_SHIFT or 0
+    local dy = pressed and -PRESS_SHIFT or 0
+    icon:ClearAllPoints()
+    icon:SetPoint("CENTER", button, "CENTER", dx, dy)
+    disc:ClearAllPoints()
+    disc:SetPoint("CENTER", button, "CENTER", dx, dy)
+    local shade = pressed and 0.75 or 1
+    icon:SetVertexColor(shade, shade, shade)
 end
 
 -- Hover tint for a round button's disc; pass nil to restore.

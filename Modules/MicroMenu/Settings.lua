@@ -47,7 +47,13 @@ local entries = {
       min = 22, max = 44, step = 1, get = Get("buttonSize"), set = Set("buttonSize") },
     { key = "spacing", label = "Spacing", type = "slider", section = "layout", order = 3, surfaces = both,
       min = 0, max = 16, step = 1, get = Get("spacing"), set = Set("spacing") },
-    { key = "resetPosition", label = "Reset position", type = "execute", section = "layout", order = 4,
+    { key = "mouseoverFade", label = "Show only on mouseover", type = "toggle", section = "layout", order = 4, surfaces = both,
+      desc = "Fade the bar out until the cursor is over it. The bar stays visible while Edit Mode is open.",
+      get = function() return addon:GetSetting("mouseoverFade") and true or false end, set = SetBool("mouseoverFade") },
+    { key = "fadeAlpha", label = "Faded opacity", type = "slider", section = "layout", order = 5, surfaces = both,
+      desc = "How visible the bar stays when faded, in percent. 0 hides it completely; hover the spot to bring it back.",
+      min = 0, max = 90, step = 5, get = function() return addon:GetSetting("fadeAlpha") or 0 end, set = Set("fadeAlpha") },
+    { key = "resetPosition", label = "Reset position", type = "execute", section = "layout", order = 6,
       func = function() addon:ResetPosition() end },
 }
 

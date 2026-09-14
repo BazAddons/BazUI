@@ -25,6 +25,8 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         spacing      = 6,
         position     = nil,           -- { x, y } from BazUI Edit Mode; nil = bottom right
         buttons      = {},            -- [key] = false hides that button
+        mouseoverFade = false,        -- fade the bar out until the cursor is over it
+        fadeAlpha    = 0,             -- opacity (percent) while faded; 0 = hidden
     },
     slash = { "/bazmicro" },
     defaultHandler = function() BazUI:OpenOptionsPanel(MODULE_NAME) end,
