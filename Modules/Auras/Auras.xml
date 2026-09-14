@@ -1,10 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
-    <!-- One aura icon. The secure aura header creates these itself (its
-         "template" attribute), so everything visual lives here and
-         BazUI.Auras.* only reads the attributes the header sets (index,
-         filter, target-slot) and paints. SecureAuraButtonTemplate brings
-         the right-click cancel (type2 = cancelaura). -->
-    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate" virtual="true">
+    <!-- The look of one aura icon: rim, masked icon, count and duration.
+         Shared by the real buttons and the preview's stand-ins. -->
+    <Button name="BazUIAuraVisualTemplate" virtual="true">
         <Size x="26" y="26"/>
         <Layers>
             <Layer level="BACKGROUND" textureSubLevel="-1">
@@ -48,6 +45,14 @@
                 </FontString>
             </Layer>
         </Layers>
+    </Button>
+
+    <!-- One real aura icon. The secure aura header creates these itself
+         (its "template" attribute) and stamps index, filter or target-slot
+         on each; BazUI.Auras.* only reads those and paints.
+         SecureAuraButtonTemplate brings the right-click cancel
+         (type2 = cancelaura). -->
+    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate, BazUIAuraVisualTemplate" virtual="true">
         <Scripts>
             <OnLoad>BazUI.Auras.OnButtonLoad(self)</OnLoad>
             <OnAttributeChanged>BazUI.Auras.OnButtonAttributeChanged(self, name, value)</OnAttributeChanged>

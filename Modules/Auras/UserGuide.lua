@@ -42,6 +42,7 @@ BazUI:RegisterUserGuide("Auras", {
                       { "|cffffd700Only my debuffs|r",          "Hide debuffs other players put on the target." },
                       { "|cffffd700Distance below the target's bars|r", "Space between the bottom of the target frame's bars and the first row." },
                       { "|cffffd700Fill direction|r",         "From the portrait outward puts the first icon next to the portrait. From the outer end inward starts at the far end of each bar." },
+                      { "|cffffd700Preview a full spread of auras|r", "Three rows of made-up icons on every side of both frames, so you can judge size and spacing. Also |cffffd700/bazauras preview|r. Ends when combat starts." },
                       { "|cffffd700Time remaining|r / |cffffd700Stack counts|r", "Text on the icons." },
                       { "|cffffd700Colour debuff rims by type|r", "Off keeps every debuff rim red." },
                       { "|cffffd700Weapon enchants|r",        "Show temporary weapon enchants among the buffs." },

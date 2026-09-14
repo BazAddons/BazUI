@@ -63,6 +63,7 @@
 --   get        - function() -> current value
 --   set        - function(_, value) -- save the new value
 --   disabled   - function() -> bool (live grey-out check)
+--   hidden     - bool or function() -> bool (Options page only)
 --   disabledLabel - string shown in editMode dropdowns when disabled
 --
 -- Format helpers:
@@ -207,6 +208,7 @@ local function BuildOptionsArgsForEntry(e)
         get  = e.get,
         set  = e.set,
         disabled = e.disabled,
+        hidden   = e.hidden,
     }
     if e.type == "slider" then
         out.type   = "range"

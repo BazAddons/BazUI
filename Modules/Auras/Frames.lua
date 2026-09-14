@@ -38,6 +38,12 @@ local hiddenParent
 local pendingApply  = false
 local refreshQueued = false
 local applyQueued   = false
+local targetAnchored = false   -- the target headers sit on a BazUI target frame
+
+-- Preview state (see "Preview" below).
+local demoFrame
+local demoButtons = {}
+local demoActive  = false
 
 ---------------------------------------------------------------------------
 -- Reading auras
@@ -395,6 +401,129 @@ local function SetBlizzardHidden(hide)
 end
 
 ---------------------------------------------------------------------------
+-- Preview
+--
+-- A full spread of made-up auras on every side, so the layout can be
+-- judged without waiting for real ones. The stand-ins are plain frames
+-- laid out by the same attributes the secure headers use, anchored to
+-- the headers themselves, so they land exactly where real icons would.
+-- Nothing secure is touched: the preview can start and stop at any
+-- time and ends by itself when combat begins. Real auras stay
+-- underneath it.
+---------------------------------------------------------------------------
+
+local DEMO_ROWS = 3
+
+local DEMO_BUFFS = {
+    "Spell_Holy_WordFortitude", "Spell_Holy_PowerWordShield", "Spell_Nature_Regeneration",
+    "Ability_Warrior_BattleShout", "Spell_Frost_FrostArmor", "Spell_Holy_DivineSpirit",
+    "Spell_Holy_Renew", "Spell_Nature_Thorns", "Spell_Holy_SealOfMight",
+    "Spell_Nature_StrengthOfEarthTotem02", "Ability_Hunter_AspectOfTheMonkey", "Spell_Fire_FireArmor",
+}
+-- Icon and dispel type, so the rim colours show.
+local DEMO_DEBUFFS = {
+    { "Spell_Shadow_CurseOfTounges", "Curse" },      { "Spell_Nature_CorrosiveBreath", "Poison" },
+    { "Spell_Shadow_CallofBone", "Disease" },        { "Spell_Fire_Immolation", "Magic" },
+    { "Spell_Shadow_ShadowWordPain", "Magic" },      { "Ability_Warrior_Sunder" },
+    { "Spell_Frost_FrostShock", "Magic" },           { "Ability_Rogue_Garrote" },
+    { "Spell_Shadow_AbominationExplosion", "Poison" }, { "Spell_Nature_NullifyDisease", "Disease" },
+    { "Spell_Shadow_UnholyFrenzy", "Curse" },        { "Ability_CriticalStrike" },
+}
+
+local function DemoButton(i)
+    local btn = demoButtons[i]
+    if not btn then
+        btn = CreateFrame("Button", nil, demoFrame, "BazUIAuraVisualTemplate")
+        btn:EnableMouse(false)
+        demoButtons[i] = btn
+    end
+    return btn
+end
+
+local function LayoutDemo()
+    local size   = addon:GetSetting("iconSize") or 26
+    local perRow = addon:GetSetting("perRow") or 8
+    local count  = perRow * DEMO_ROWS
+    local now    = GetTime()
+    local used   = 0
+    local sides = {
+        { headers.HELPFUL,        DEMO_BUFFS,   false, false },
+        { headers.HARMFUL,        DEMO_DEBUFFS, true,  false },
+        { headers.TARGET_HELPFUL, DEMO_BUFFS,   false, true },
+        { headers.TARGET_HARMFUL, DEMO_DEBUFFS, true,  true },
+    }
+    for _, side in ipairs(sides) do
+        local h, icons, harmful, isTarget = side[1], side[2], side[3], side[4]
+        if h and h:GetNumPoints() > 0 and (not isTarget or targetAnchored) then
+            local point = h:GetAttribute("point") or "BOTTOMLEFT"
+            local xOff  = h:GetAttribute("xOffset") or 0
+            local yWrap = h:GetAttribute("wrapYOffset") or 0
+            local wrap  = math.max(1, h:GetAttribute("wrapAfter") or perRow)
+            -- The header lives in its unit frame's scale; the stand-ins
+            -- live under UIParent, so offsets and sizes scale to match.
+            local s = h:GetEffectiveScale() / demoFrame:GetEffectiveScale()
+            local colors = _G.DebuffTypeColor or DEBUFF_COLORS
+            for i = 0, count - 1 do
+                used = used + 1
+                local btn = DemoButton(used)
+                local entry = icons[(i % #icons) + 1]
+                local icon, dispel = entry, nil
+                if type(entry) == "table" then icon, dispel = entry[1], entry[2] end
+
+                local px = size * s
+                btn:SetSize(px, px)
+                btn.Duration:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(px * 0.42)), "OUTLINE")
+                btn.Count:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(px * 0.40)), "OUTLINE")
+                btn.Icon:SetTexture("Interface\\Icons\\" .. icon)
+                btn.Count:SetText((i % 3 == 1 and addon:GetSetting("showCount") ~= false) and tostring((i % 5) + 2) or "")
+                -- Twenty seconds to an hour, spread so the labels differ.
+                btn.expirationTime = now + 20 + (i * 137) % 3600
+                local rim = BUFF_RIM
+                if harmful then
+                    if addon:GetSetting("debuffBorders") ~= false then
+                        rim = colors[dispel or "none"] or colors.none or DEBUFF_COLORS.none
+                    else
+                        rim = DEBUFF_COLORS.none
+                    end
+                end
+                SetRim(btn, rim)
+                UpdateDuration(btn, now)
+
+                local col, row = i % wrap, math.floor(i / wrap)
+                btn:ClearAllPoints()
+                btn:SetPoint(point, h, point, col * xOff * s, row * yWrap * s)
+                btn:Show()
+            end
+        end
+    end
+    for i = used + 1, #demoButtons do demoButtons[i]:Hide() end
+end
+
+-- Turn the preview on or off; no argument toggles it.
+function addon:SetPreview(on)
+    if on == nil then on = not demoActive end
+    demoActive = on and true or false
+    if demoActive then
+        if not demoFrame then
+            demoFrame = CreateFrame("Frame", "BazUIAurasPreview", UIParent)
+            demoFrame:SetFrameStrata("MEDIUM")
+            demoFrame:SetSize(1, 1)
+            demoFrame:SetPoint("CENTER")
+        end
+        LayoutDemo()
+        demoFrame:Show()
+        BazUI:Print("Auras preview on. It turns off when combat starts, or type /bazauras preview.")
+    elseif demoFrame then
+        demoFrame:Hide()
+    end
+    if BazUI.RefreshOptions then BazUI:RefreshOptions(self.MODULE_NAME .. "-Settings") end
+end
+
+function addon:IsPreviewing()
+    return demoActive
+end
+
+---------------------------------------------------------------------------
 -- Module API
 ---------------------------------------------------------------------------
 
@@ -427,8 +556,8 @@ function addon:ApplySettings()
 
     local tBuffPoint   = ConfigureHeader(headers.TARGET_HELPFUL, "left", true)
     local tDebuffPoint = ConfigureHeader(headers.TARGET_HARMFUL, "right", true)
-    local targetOk = AnchorTargetHeaders(tBuffPoint, tDebuffPoint)
-    local targetOn = enabled and targetOk and self:GetSetting("targetEnabled") ~= false
+    targetAnchored = AnchorTargetHeaders(tBuffPoint, tDebuffPoint)
+    local targetOn = enabled and targetAnchored and self:GetSetting("targetEnabled") ~= false
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
@@ -439,6 +568,7 @@ function addon:ApplySettings()
     headers.TARGET_HARMFUL:SetShown(targetOn)
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
     self:RefreshAll()
+    if demoActive then LayoutDemo() end
 end
 
 -- Out of combat, rebuild the target headers straight away when the
@@ -491,6 +621,13 @@ function addon:Initialize()
                 UpdateDuration(btn, now)
             end
         end
+        if demoActive then
+            for _, btn in ipairs(demoButtons) do
+                if btn.expirationTime and btn:IsVisible() then
+                    UpdateDuration(btn, now)
+                end
+            end
+        end
     end)
 
     self:On("UNIT_AURA", function(_, unit)
@@ -506,6 +643,9 @@ function addon:Initialize()
     self:On("PLAYER_ENTERING_WORLD", function() self:QueueRefresh() end)
     self:On("PLAYER_REGEN_ENABLED", function()
         if pendingApply then self:ApplySettings() end
+    end)
+    self:On("PLAYER_REGEN_DISABLED", function()
+        if demoActive then self:SetPreview(false) end
     end)
     self:OnProfileChanged(function() self:ApplySettings() end)
 
