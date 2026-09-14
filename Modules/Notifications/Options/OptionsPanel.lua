@@ -103,6 +103,13 @@ local function GetGeneralOptionsTable()
                 get = function() return DB("toastDuration", 5) end,
                 set = Setter("toastDuration"),
             },
+            toastScale = {
+                order = 13, type = "range", name = "Toast size",
+                desc = "How large the pop-ups are. The Scale setting below covers the bell and the history panel.",
+                min = 0.6, max = 2, step = 0.05, isPercent = true,
+                get = function() return DB("toastScale", 1) end,
+                set = Setter("toastScale"),
+            },
             soundEnabled = {
                 order = 13, type = "toggle", name = "Play sounds",
                 get = function() return DB("soundEnabled", true) ~= false end,

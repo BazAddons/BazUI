@@ -32,6 +32,7 @@ local DEFAULTS = {
     -- legacy corner default (TOPLEFT margin).
     bellAnchor = nil,
     toastDuration = 5,
+    toastScale = 1,
     toastsEnabled = true,
     soundEnabled = true,
     tomtomEnabled = true,

@@ -128,13 +128,24 @@ local function ReanchorToasts()
         panelOffset = addon.panel:GetHeight() + 4
     end
 
+    -- Scaling a frame changes what its own anchor offsets mean: they are
+    -- read in the frame's coordinate space, not the screen's. The stack
+    -- itself is built from toast heights, which are in that same space,
+    -- so it needs no adjustment. The three measurements that are meant
+    -- to be screen distances - the margin, the room left for the bell,
+    -- and the height of the panel above - are divided back out so they
+    -- stay put as the toasts grow.
+    local scale = addon.db.toastScale or 1
+    if scale <= 0 then scale = 1 end
+
     local cumulativeHeight = 0
-    for i, toast in ipairs(activeToasts) do
+    for _, toast in ipairs(activeToasts) do
+        toast:SetScale(scale)
         toast:ClearAllPoints()
 
-        local yOff = cumulativeHeight + buttonOffset + panelOffset
-        local xBase = margin * anchorData.xDir
-        local yBase = (margin + yOff) * anchorData.yDir
+        local yOff = cumulativeHeight + (buttonOffset + panelOffset) / scale
+        local xBase = (margin / scale) * anchorData.xDir
+        local yBase = (margin / scale + yOff) * anchorData.yDir
 
         toast:SetPoint(anchorData.point, UIParent, anchorData.relPoint, xBase, yBase)
         cumulativeHeight = cumulativeHeight + toast:GetHeight() + TOAST_SPACING
@@ -199,5 +210,6 @@ end
 -- Listen for toast requests
 addon.Events:Register("TOAST_REQUESTED", ShowToast)
 addon.Events:Register("SETTING_CHANGED_position", ReanchorToasts)
+addon.Events:Register("SETTING_CHANGED_toastScale", ReanchorToasts)
 addon.Events:Register("PANEL_SHOWN", ReanchorToasts)
 addon.Events:Register("PANEL_HIDDEN", ReanchorToasts)
