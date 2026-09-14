@@ -87,7 +87,7 @@ function QT.CreateBlock()
     -- exposed as a Lua global; FontFamily definitions sometimes are
     -- and sometimes aren't, depending on the load environment.
     title.stageLabel = title:CreateFontString(nil, "OVERLAY")
-    title.stageLabel:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.ttf", 18, "")
+    title.stageLabel:SetFont(BazUI.Skin.Theme.FontFile(), 18, "")
     title.stageLabel:SetJustifyH("LEFT")
     title.stageLabel:SetTextColor(1.0, 0.914, 0.682)
     title.stageLabel:SetShadowColor(0, 0, 0, 1)

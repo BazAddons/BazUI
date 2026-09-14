@@ -124,7 +124,7 @@ end
 local function GetOrCreateOverlay(slot)
     if slot._bazILvl then return slot._bazILvl end
     local fs = slot:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(STANDARD_TEXT_FONT, 13, "OUTLINE")
+    fs:SetFont(BazUI.Skin.Theme.FontFile(), 13, "OUTLINE")
     fs:SetPoint("TOPRIGHT", -2, -2)
     fs:SetJustifyH("RIGHT")
     fs:SetDrawLayer("OVERLAY", 7)  -- above the icon and any default Blizzard borders

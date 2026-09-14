@@ -104,7 +104,7 @@ local function ValueText(bar)
         valueLayer:SetAlpha(0)
     end
     local text = valueLayer:CreateFontString(nil, "OVERLAY")
-    text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
+    text:SetFont(BazUI.Skin.Theme.FontFile(), 11, "OUTLINE")
     text:SetPoint("CENTER", bar, "CENTER")
     text:SetTextColor(1, 1, 1)
     return text

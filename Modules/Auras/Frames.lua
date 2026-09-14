@@ -173,8 +173,8 @@ function Auras.ApplyButtonSize(btn)
     if not InCombatLockdown() then
         btn:SetSize(size, size)
     end
-    btn.Duration:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(size * 0.42)), "OUTLINE")
-    btn.Count:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(size * 0.40)), "OUTLINE")
+    btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.42)), "OUTLINE")
+    btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.40)), "OUTLINE")
 end
 
 ---------------------------------------------------------------------------
@@ -484,8 +484,8 @@ local function LayoutDemo()
 
                 local px = size * s
                 btn:SetSize(px, px)
-                btn.Duration:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(px * 0.42)), "OUTLINE")
-                btn.Count:SetFont(STANDARD_TEXT_FONT, math.max(8, math.floor(px * 0.40)), "OUTLINE")
+                btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.42)), "OUTLINE")
+                btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.40)), "OUTLINE")
                 btn.Icon:SetTexture("Interface\\Icons\\" .. icon)
                 btn.Count:SetText((i % 3 == 1 and addon:GetSetting("showCount") ~= false) and tostring((i % 5) + 2) or "")
                 -- Twenty seconds to an hour, spread so the labels differ.

@@ -77,6 +77,10 @@ Every texture and brand colour lives in `BazUI.Skin`. Modules reference `BazUI.S
 
 `Skin/Theme.lua` holds the shared look: the colour palette (`BazUI.Skin.Theme.colors`), the gold-edged panel backdrop (`Theme.ApplyPanel`), a flat inner backdrop, and the round ring-framed button treatment (`Theme.ApplyRoundButton`). New module UI should draw from it rather than define its own colours.
 
+### The shared face
+
+`Skin/Assets/DORISBR.TTF` (DorisPP) is the suite's font. Ask for `BazUI.Skin.Theme.FontFile()` anywhere you would have written `STANDARD_TEXT_FONT`; it returns the game's font when the user turns the face off under BazUI > General or when the client can't read the file. Fonts are read at client startup, so a newly added file needs a restart, not a `/reload`. Chat sets its own face through a font object because it also carries a size slider.
+
 ## Flavour and compatibility
 
 Development happens on Classic Era 1.15 because Forever is built by the Classic team on the same client family. Keep every API touchpoint that might differ (quest log, containers, minimap frames, chat) behind small helpers so the Forever delta is a short edit. `Modules/Drawers/Compat.lua` holds third-party shims; a top-level `Compat.lua` is the place for client-version shims once the beta shows what differs.

@@ -100,7 +100,7 @@ local FALLBACKS = {
 -- unchanged, so a missing font is never a blank chat.
 ---------------------------------------------------------------------------
 
-local CHAT_FONT_FILE = "Interface\\AddOns\\BazUI\\Modules\\Chat\\Assets\\DORISBR.TTF"
+local CHAT_FONT_FILE = BazUI.Skin.Theme.FONT_FILE
 local customFont
 local fontProbe
 
@@ -112,6 +112,8 @@ local MIN_FONT_SIZE, MAX_FONT_SIZE = 6, 32
 local function ChatFontObject(useCustom, scale)
     local blizzard = _G.ChatFontNormal
     if not blizzard then return nil end
+    -- The suite-wide switch turns the face off everywhere, chat included.
+    if not BazUI.Skin.Theme.IsFontEnabled() then useCustom = false end
     local blizzFace, blizzSize, flags = blizzard:GetFont()
     blizzSize = blizzSize or 14
     local size = math.floor(blizzSize * (tonumber(scale) or 1) + 0.5)

@@ -130,7 +130,7 @@ function addon:ApplySettings()
     innerWidth, innerHeight = width - 4, height - 4
     fill:SetSize(innerWidth, innerHeight)
     edge:SetSize(2, innerHeight)
-    text:SetFont(STANDARD_TEXT_FONT, math.min(12, height - 2), "OUTLINE")
+    text:SetFont(BazUI.Skin.Theme.FontFile(), math.min(12, height - 2), "OUTLINE")
     text:SetWidth(innerWidth - 10)
     text:SetWordWrap(false)
     for i, tick in ipairs(ticks) do

@@ -415,14 +415,14 @@ BazUI:QueueForLogin(function()
     -- Settings subcategory
     BazUI:RegisterOptionsTable("BazUI-Settings", function()
         return {
-            name = "Settings",
+            name = "General",
             type = "group",
             args = {
                 minimapBtn = {
                     order = 1,
                     type = "toggle",
-                    name = "Show Minimap Button",
-                    desc = "Show or hide the BazUI minimap button",
+                    name = "Show the minimap button",
+                    desc = "The BazUI button on the minimap ring.",
                     get = function() return not BazUIDB.minimap.hide end,
                     set = function(_, val)
                         BazUIDB.minimap.hide = not val
@@ -436,15 +436,43 @@ BazUI:QueueForLogin(function()
                 welcomeMsg = {
                     order = 2,
                     type = "toggle",
-                    name = "Show Welcome Messages",
-                    desc = "Show addon loaded messages in chat on login",
+                    name = "Show welcome messages",
+                    desc = "The line in chat at login saying BazUI loaded.",
                     get = function() return BazUIDB.welcomeMessage end,
                     set = function(_, val) BazUIDB.welcomeMessage = val end,
+                },
+                bazFont = {
+                    order = 3,
+                    type = "toggle",
+                    name = "Use the BazUI font",
+                    desc = "DorisPP, the face BazUI ships, on unit frames, auras, the XP bar and the drawer's widgets. Chat has its own switch.",
+                    get = function() return BazUIDB.useFont ~= false end,
+                    set = function(_, val)
+                        BazUIDB.useFont = val
+                        -- Modules that set their fonts on every apply
+                        -- change straight away; the rest draw their text
+                        -- once, at login.
+                        for _, name in ipairs({ "Auras", "XPBar" }) do
+                            local mod = BazUI:GetModule(name)
+                            if mod and mod.ApplySettings then mod:ApplySettings() end
+                        end
+                        local chat = BazUI.Chat and BazUI.Chat.Window
+                        if chat and chat.ApplyAll then chat:ApplyAll() end
+                        if BazUI.Confirm then
+                            BazUI:Confirm({
+                                title       = "Reload now?",
+                                body        = "Text already on screen keeps the old face until the interface reloads.",
+                                acceptLabel = "Reload",
+                                cancelLabel = "Later",
+                                onAccept    = function() ReloadUI() end,
+                            })
+                        end
+                    end,
                 },
             },
         }
     end)
-    BazUI:AddToSettings("BazUI-Settings", "General Settings", "BazUI")
+    BazUI:AddToSettings("BazUI-Settings", "General", "BazUI")
 
     -- Login line, suppressed by the General Settings toggle. Deferred a
     -- tick so it lands after any chat module has swapped DEFAULT_CHAT_FRAME.

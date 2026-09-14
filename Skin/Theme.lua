@@ -56,6 +56,47 @@ Theme.BACKDROP_FLAT = {
     insets = { left = 1, right = 1, top = 1, bottom = 1 },
 }
 
+---------------------------------------------------------------------------
+-- The suite's face
+--
+-- DorisPP, shipped in Skin/Assets. Modules ask for Theme.FontFile()
+-- wherever they would have named STANDARD_TEXT_FONT, so one switch
+-- changes the lot. The client reads font files at startup, so a file
+-- added while it is running is unreadable until it restarts: rather
+-- than draw nothing, an unreadable face quietly resolves to the game's
+-- own. Chat keeps its own switch, since it also has a size of its own.
+---------------------------------------------------------------------------
+
+Theme.FONT_FILE = "Interface\\AddOns\\BazUI\\Skin\\Assets\\DORISBR.TTF"
+
+local fontProbe, fontLoadable
+
+-- Whether the client can actually read the file. Fixed for the session.
+function Theme.IsFontLoadable()
+    if fontLoadable == nil then
+        fontProbe = fontProbe or CreateFont("BazUIFontProbe")
+        -- A Font object's SetFont reports nothing, so read the face back.
+        fontProbe:SetFont(Theme.FONT_FILE, 12, "")
+        local applied = fontProbe:GetFont()
+        fontLoadable = (applied and applied:lower() == Theme.FONT_FILE:lower()) or false
+    end
+    return fontLoadable
+end
+
+-- The global switch, on unless the user turned it off.
+function Theme.IsFontEnabled()
+    return not BazUIDB or BazUIDB.useFont ~= false
+end
+
+-- The face to draw with: ours when it is wanted and readable, the
+-- game's otherwise.
+function Theme.FontFile()
+    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then
+        return Theme.FONT_FILE
+    end
+    return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+end
+
 local function SetColor(fn, c)
     fn(c[1], c[2], c[3], c[4] or 1)
 end

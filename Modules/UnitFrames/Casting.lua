@@ -171,11 +171,11 @@ function C:Create(parent, name)
     self.flash = Texture(nil, "OVERLAY", false)
     self.label = f:CreateFontString(nil, "OVERLAY")
     self.label:SetAllPoints(name)
-    self.label:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
+    self.label:SetFont(BazUI.Skin.Theme.FontFile(), 10, "OUTLINE")
     self.label:SetTextColor(1, .84, .5); self.label:SetWordWrap(false)
     self.timer = f:CreateFontString(nil, "OVERLAY")
     self.timer:SetPoint("TOP", name, "BOTTOM", 0, -1)
-    self.timer:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
+    self.timer:SetFont(BazUI.Skin.Theme.FontFile(), 10, "OUTLINE")
     f:Hide()
     -- A dedicated event receiver avoids replacing UnitFrames' existing
     -- PLAYER_DEAD / PLAYER_ENTERING_WORLD handlers in BazUI's event registry.

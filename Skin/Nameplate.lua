@@ -26,7 +26,7 @@ function Theme.CreateNameplate(parent, root, layout, ratio, fontSize, tint)
     text:SetPoint("CENTER", root, "TOPLEFT", (label.x + label.w / 2) * ratio,
         -(label.y + label.h / 2) * ratio)
     text:SetHeight(label.h * ratio)
-    text:SetFont(STANDARD_TEXT_FONT, fontSize, "OUTLINE")
+    text:SetFont(BazUI.Skin.Theme.FontFile(), fontSize, "OUTLINE")
     text:SetTextColor(unpack(BazUI.Skin.Theme.colors.goldSoft))
     text:SetWordWrap(false)
     local lastName, lastWidth
