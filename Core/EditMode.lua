@@ -1092,3 +1092,50 @@ end
 function BazUI:IsEditMode()
     return isEditMode
 end
+
+---------------------------------------------------------------------------
+-- Making things from Edit Mode
+--
+-- One button on Blizzard's Edit Mode panel that offers everything BazUI
+-- can create. Modules register what they make rather than each bolting
+-- its own button onto the panel, which is how this started and would not
+-- have survived a third thing wanting one.
+--
+--   BazUI:RegisterEditModeCreator("Bars", function() return {
+--       { label = "Action bar", onClick = function() ... end },
+--   } end)
+--
+-- The entries are ordinary context-menu items, so a creator can offer a
+-- submenu when it makes more than one kind of thing.
+---------------------------------------------------------------------------
+
+-- Registered straight through as a context-menu section, so a module
+-- that loads late simply appears the next time the menu opens.
+function BazUI:RegisterEditModeCreator(name, getItems)
+    if type(name) ~= "string" or type(getItems) ~= "function" then return end
+    BazUI:RegisterContextMenuSection("editmode-create", name, getItems)
+end
+
+function BazUI:OpenEditModeCreateMenu(anchor)
+    if InCombatLockdown() then
+        BazUI:Print("Create things after combat ends.")
+        return
+    end
+    BazUI:OpenContextMenu("editmode-create", anchor, {}, { title = "Create" })
+end
+
+function BazUI:SetupEditModeCreateButton()
+    if not EditModeManagerFrame or self._editCreateButton then return end
+
+    local button = CreateFrame("Button", nil, EditModeManagerFrame, "UIPanelButtonTemplate")
+    button:SetText("Create")
+    button:SetSize((button.Text:GetStringWidth() or 120) + 28, 22)
+    button:SetScale(1.2)
+    button:SetPoint("BOTTOM", EditModeManagerFrame, "BOTTOM", 0, -36)
+    button:SetScript("OnClick", function(self) BazUI:OpenEditModeCreateMenu(self) end)
+    self._editCreateButton = button
+end
+
+BazUI:QueueForLogin(function()
+    BazUI:SetupEditModeCreateButton()
+end)

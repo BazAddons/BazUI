@@ -127,6 +127,7 @@ function addon:InitializeBars()
     end
 
     local UnitBars = self.UnitBars
+    UnitBars:RegisterCreator()
     UnitBars:BuildAll()
     self:SeedBars()
     UnitBars:WatchAll()

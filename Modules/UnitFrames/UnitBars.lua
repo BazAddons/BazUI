@@ -664,3 +664,45 @@ function UnitBars:WatchAll()
         watchers._player:SetScript("OnEvent", function() UnitBars:UpdateAll() end)
     end
 end
+
+---------------------------------------------------------------------------
+-- Making one from Edit Mode
+--
+-- Every kind this can draw, offered on the panel's Create button. The
+-- unit ones open a submenu of whose health or power it should read; the
+-- rest are about you and need no such question.
+---------------------------------------------------------------------------
+
+local KIND_ORDER = { "health", "power", "cast", "xp", "rep" }
+local UNIT_ORDER = { "player", "target", "pet" }
+
+function UnitBars:RegisterCreator()
+    BazUI:RegisterEditModeCreator("Bars and readouts", function()
+        local items = {}
+        for _, kind in ipairs(KIND_ORDER) do
+            local label = UnitBars.KINDS[kind]
+            if IsUnitKind(kind) then
+                local submenu = {}
+                for _, unit in ipairs(UNIT_ORDER) do
+                    submenu[#submenu + 1] = {
+                        label = UnitBars.UNITS[unit],
+                        onClick = function()
+                            local def = UnitBars:Add(kind, unit)
+                            if def then addon:Print("Created " .. def.name) end
+                        end,
+                    }
+                end
+                items[#items + 1] = { label = label .. " bar", submenu = submenu }
+            else
+                items[#items + 1] = {
+                    label = label .. " bar",
+                    onClick = function()
+                        local def = UnitBars:Add(kind)
+                        if def then addon:Print("Created " .. def.name) end
+                    end,
+                }
+            end
+        end
+        return items
+    end)
+end

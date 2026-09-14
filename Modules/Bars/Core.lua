@@ -656,25 +656,20 @@ end)
 ---------------------------------------------------------------------------
 
 function addon:SetupEditMode()
-    if not EditModeManagerFrame then return end
-
-    -- "Create New BazBar" button in Edit Mode panel. Auto-size to
-    -- whatever the text needs + a small horizontal padding so the
-    -- button hugs its label instead of stretching across the panel.
-    -- Scale 1.2 so the whole button (text + chrome) reads ~20% larger
-    -- without changing the auto-sizing math.
-    local createBtn = CreateFrame("Button", nil, EditModeManagerFrame, "UIPanelButtonTemplate")
-    createBtn:SetText("Create New BazBar")
-    createBtn:SetSize((createBtn.Text:GetStringWidth() or 120) + 24, 22)
-    createBtn:SetScale(1.2)
-    createBtn:SetPoint("BOTTOM", EditModeManagerFrame, "BOTTOM", 0, -36)
-    createBtn:SetScript("OnClick", function()
-        if not InCombatLockdown() then
-            local id = addon:CreateNewBar()
-            if id then
-                addon:Print("Created Bar " .. id)
-            end
-        end
+    -- The Edit Mode panel carries one Create button for the whole suite
+    -- now; this says what Bars can make. It used to bolt its own button
+    -- on, which did not survive a second module wanting one.
+    BazUI:RegisterEditModeCreator("Bars", function()
+        return {
+            {
+                label = "Action bar",
+                onClick = function()
+                    if InCombatLockdown() then return end
+                    local id = addon:CreateNewBar()
+                    if id then addon:Print("Created Bar " .. id) end
+                end,
+            },
+        }
     end)
 end
 
