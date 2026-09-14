@@ -23,7 +23,7 @@ local Theme = BazUI.Skin.Theme
 local Panel = {}
 Codex.Panel = Panel
 
-local WIDTH, HEIGHT = 820, 560
+local WIDTH, HEIGHT = 900, 580
 local PAD           = 14
 local TITLE_H       = 26
 local HERO_H        = 74
@@ -630,6 +630,7 @@ local function Build()
     bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 5, 0)
     bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 5, 0)
     ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
+    Theme.AutoFadeScrollBar(bar, scroll)
 
     content = CreateFrame("Frame", nil, scroll)
     content:SetWidth(ContentWidth())

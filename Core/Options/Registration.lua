@@ -183,6 +183,7 @@ local function RenderIntoCanvas(container, optionsTable)
     scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 4, 0)
     scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 4, 0)
     ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+    BazUI.Skin.Theme.AutoFadeScrollBar(scrollBar, scroll)
     O.AutoHideScrollbar(scroll, scrollBar)
 
     local content = CreateFrame("Frame", nil, scroll)

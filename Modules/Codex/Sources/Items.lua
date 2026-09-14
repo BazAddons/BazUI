@@ -225,6 +225,7 @@ end
 local page, pool = nil, {}
 local query = ""
 local headerNote
+local pendingHits = {}   -- what the header resolved, for the list to draw
 
 local function AcquireRow(parent)
     local row = table.remove(pool)
@@ -374,6 +375,9 @@ local function RebuildCategories()
     end
 end
 
+-- The header resolves the query and hands the result down to the list,
+-- so both halves of the page are drawn from one answer and the line of
+-- text above the list is never a pass behind it.
 local function RenderHeader(host, width)
     local h = BuildHeader(host)
     h:ClearAllPoints()
@@ -388,14 +392,48 @@ local function RenderHeader(host, width)
 
     local hasCategories = #(BagCategories() or {}) > 0
     h.strip:SetShown(hasCategories)
+
+    -- Categories are the player's to add to, so the row has no fixed
+    -- width and wraps to a second line rather than running off the edge.
+    local stripHeight = 0
+    if hasCategories then
+        h.strip:SetWrapWidth(width)
+        h.strip:Layout()
+        stripHeight = math.ceil(h.strip:GetHeight() or 20)
+    end
+
+    local hits, note = Resolve(query)
+    local category = addon:GetSetting("itemCategory") or "all"
+    if category ~= "all" then hits = InCategory(hits, category) end
+    pendingHits = hits
+
+    -- The count already sits in the rail, so this line is kept for the
+    -- times there is something to say that the rail cannot say.
+    if note then
+        headerNote = note
+    elseif #hits == 0 then
+        headerNote = (IndexSize() == 0)
+            and "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
+            or "Nothing in this category matches."
+    elseif #hits > MAX_RESULTS then
+        headerNote = string.format(
+            "%d found, showing the first %d. Keep typing to narrow it.", #hits, MAX_RESULTS)
+    else
+        headerNote = nil
+    end
+
     h.note:ClearAllPoints()
     h.note:SetPoint("TOPLEFT", hasCategories and h.strip or h.box, "BOTTOMLEFT", 2, -7)
     h.note:SetPoint("RIGHT", h, "RIGHT", -2, 0)
     h.note:SetText(headerNote or "")
+    h.note:SetShown(headerNote ~= nil)
 
-    -- The note keeps a fixed two lines whatever it says, so the list
-    -- below does not jump every time the wording changes length.
-    local height = 22 + 6 + (hasCategories and 27 or 0) + 26 + 8
+    local noteHeight = 0
+    if headerNote then
+        noteHeight = 7 + math.ceil((h.note:GetStringHeight() or 12) + 2)
+    end
+
+    local height = 22 + (hasCategories and 6 + stripHeight or 0) + noteHeight + 8
     h:SetHeight(height)
     return height
 end
@@ -432,33 +470,9 @@ local function Render(content, width)
     p:Show()
     ReleaseRows()
 
-    local hits, note = Resolve(query)
+    -- The header already resolved the query for this pass.
+    local hits = pendingHits or {}
     local y = 6
-
-    local category = addon:GetSetting("itemCategory") or "all"
-    local total = #hits
-    if category ~= "all" then
-        hits = InCategory(hits, category)
-    end
-
-    if note then
-        headerNote = note
-    elseif #hits == 0 then
-        headerNote = (IndexSize() == 0)
-            and "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
-            or "Nothing in this category matches."
-    else
-        local shown = math.min(#hits, MAX_RESULTS)
-        local head = (#hits == total)
-            and string.format("%d items met", #hits)
-            or string.format("%d of %d", #hits, IndexSize())
-        headerNote = shown < #hits
-            and string.format("%s, showing the first %d. Keep typing to narrow it.", head, shown)
-            or head
-    end
-    if header and header:IsShown() then
-        header.note:SetText(headerNote)
-    end
 
     for i = 1, math.min(#hits, MAX_RESULTS) do
         local itemID = hits[i]

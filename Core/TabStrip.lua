@@ -261,7 +261,34 @@ function StripMixin:Layout()
         return a.layoutIndex < b.layoutIndex
     end)
 
-    local x, maxH = self.tabInset or 0, 0
+    local inset = self.tabInset or 0
+
+    -- Wrapping strips fill left to right and drop to a new row when the
+    -- next tab would run past the width they were given. A strip with
+    -- tabs the user can add to (bag categories, say) has no fixed count,
+    -- so the row has to be able to become two rather than run off the
+    -- edge of the panel. These lay out downward from the top, since the
+    -- strip's height is what changes.
+    if self.wrapWidth and self.wrapWidth > 0 then
+        local x, y, rowHeight, widest = inset, 0, 0, 0
+        for _, child in ipairs(items) do
+            local w = child:GetWidth() or 0
+            if x > inset and (x + w) > self.wrapWidth then
+                y = y + rowHeight + (self.rowSpacing or 4)
+                x, rowHeight = inset, 0
+            end
+            child:ClearAllPoints()
+            child:SetPoint("TOPLEFT", self, "TOPLEFT", x, -y)
+            x = x + w + self.tabSpacing
+            rowHeight = math.max(rowHeight, child:GetHeight() or 0)
+            widest = math.max(widest, x - self.tabSpacing)
+        end
+        self:SetSize(math.max(math.min(widest, self.wrapWidth), 1),
+            math.max(y + rowHeight, 1))
+        return
+    end
+
+    local x, maxH = inset, 0
     for i, child in ipairs(items) do
         child:ClearAllPoints()
         child:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", x, 0)
@@ -269,6 +296,13 @@ function StripMixin:Layout()
         maxH = math.max(maxH, child:GetHeight() or 0)
     end
     self:SetSize(math.max(x, 1), math.max(maxH, 1))
+end
+
+-- Give a strip a width to wrap inside. Pass nothing to go back to one
+-- row that grows as wide as it likes.
+function StripMixin:SetWrapWidth(width)
+    self.wrapWidth = width
+    self:MarkDirty()
 end
 
 ---------------------------------------------------------------------------
@@ -282,6 +316,9 @@ end
 --   opts.tabHeight       underline tabs only (default 24)
 --   opts.spacing         gap between tabs (default 2)
 --   opts.inset           gap before the first tab (default 0)
+--   opts.wrapWidth       wrap onto more rows inside this width; also
+--                        settable later with strip:SetWrapWidth(w)
+--   opts.rowSpacing      gap between wrapped rows (default 4)
 --   opts.dividerParent   frame to span with a rule under the tabs; the
 --                        strip only spans its own tabs, so a full-width
 --                        rule has to hang off the container
@@ -298,6 +335,8 @@ function BazUI.CreateTabStrip(name, parent, opts)
     strip.tabHeight      = opts.tabHeight
     strip.tabSpacing     = opts.spacing or DEFAULT_SPACING
     strip.tabInset       = opts.inset or 0
+    strip.wrapWidth      = opts.wrapWidth
+    strip.rowSpacing     = opts.rowSpacing or 4
     strip.tabSelectSound = opts.tabSelectSound
     strip:SetSize(1, 1)
 

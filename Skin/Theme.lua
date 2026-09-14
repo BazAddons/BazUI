@@ -379,6 +379,72 @@ function Theme.CreateStatBar(parent, opts)
 end
 
 ---------------------------------------------------------------------------
+-- Scroll bars that stay out of the way
+--
+-- A scroll bar is only worth looking at while you are scrolling, so it
+-- lives at zero alpha, appears the moment the wheel turns or the cursor
+-- reaches it, and fades back out a beat after you stop. It still takes
+-- the mouse while invisible, so grabbing where the bar sits works even
+-- before it has faded in.
+--
+--   Theme.AutoFadeScrollBar(bar, scrollFrame)
+--
+-- A bar with nothing to scroll never appears at all, which is what
+-- keeps a short page clean.
+---------------------------------------------------------------------------
+
+function Theme.AutoFadeScrollBar(bar, scrollFrame, opts)
+    if not bar then return end
+    opts = opts or {}
+    local hold    = opts.hold or 1.1     -- seconds at full alpha after activity
+    local fadeOut = opts.fade or 0.45    -- seconds to fade away
+    local fadeIn  = opts.fadeIn or 0.12
+
+    local awakeUntil = 0
+    local function Wake()
+        awakeUntil = GetTime() + hold
+    end
+    bar.Wake = Wake
+
+    if scrollFrame then
+        scrollFrame:HookScript("OnMouseWheel", Wake)
+        scrollFrame:HookScript("OnVerticalScroll", Wake)
+        scrollFrame:HookScript("OnScrollRangeChanged", Wake)
+    end
+    bar:HookScript("OnMouseWheel", Wake)
+    bar:HookScript("OnMouseDown", Wake)
+    bar:HookScript("OnShow", Wake)
+
+    -- The tween lives on a frame of its own rather than on the bar's own
+    -- OnUpdate, which belongs to Blizzard's scroll bar template.
+    local driver = CreateFrame("Frame", nil, bar)
+    driver:SetScript("OnUpdate", function(_, elapsed)
+        local scrollable = true
+        if scrollFrame and scrollFrame.GetVerticalScrollRange then
+            scrollable = (scrollFrame:GetVerticalScrollRange() or 0) > 1
+        end
+
+        local target = 0
+        if scrollable then
+            -- The cursor resting on the bar counts as still scrolling.
+            if bar:IsMouseOver() then Wake() end
+            if GetTime() < awakeUntil then target = 1 end
+        end
+
+        local alpha = bar:GetAlpha() or 0
+        if target > alpha then
+            bar:SetAlpha(math.min(target, alpha + elapsed / fadeIn))
+        elseif target < alpha then
+            bar:SetAlpha(math.max(target, alpha - elapsed / fadeOut))
+        end
+    end)
+    bar._bazFadeDriver = driver
+
+    bar:SetAlpha(0)
+    return bar
+end
+
+---------------------------------------------------------------------------
 -- Round ring-framed button (the minimap-button treatment)
 --
 -- A dark disc, the icon masked to a circle inside the ring, and the gold

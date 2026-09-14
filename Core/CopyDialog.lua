@@ -128,6 +128,7 @@ local function CreateDialog()
     scrollBar:SetPoint("BOTTOMLEFT",  scroll, "BOTTOMRIGHT", 4, 0)
     if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
         ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+        BazUI.Skin.Theme.AutoFadeScrollBar(scrollBar, scroll)
     end
     f.scrollBar = scrollBar
 
