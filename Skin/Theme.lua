@@ -68,6 +68,59 @@ function Theme.ApplyPanel(frame, bgColor)
 end
 
 ---------------------------------------------------------------------------
+-- Flat panel (the tooltip treatment)
+--
+-- A solid interior and a one-pixel gold edge: the quiet chrome the
+-- tooltips wear (Theme.ApplyTooltipFrame below builds the same thing in
+-- a child frame, which GameTooltip needs because it manages its own
+-- regions). Panels of our own can take it directly. Any backdrop the
+-- frame already has is cleared so the two treatments never stack.
+---------------------------------------------------------------------------
+
+function Theme.ApplyFlatPanel(frame, bgColor, edgeColor)
+    if frame.GetBackdrop and frame:GetBackdrop() then frame:SetBackdrop(nil) end
+
+    local art = frame._bazFlatPanel
+    if not art then
+        art = { edges = {} }
+        art.bg = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+        art.bg:SetAllPoints(frame)
+        for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+            local edge = frame:CreateTexture(nil, "BORDER", nil, 7)
+            if side == "TOP" or side == "BOTTOM" then
+                edge:SetPoint(side .. "LEFT", frame, side .. "LEFT")
+                edge:SetPoint(side .. "RIGHT", frame, side .. "RIGHT")
+                edge:SetHeight(1)
+            else
+                edge:SetPoint("TOP" .. side, frame, "TOP" .. side, 0, -1)
+                edge:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, 0, 1)
+                edge:SetWidth(1)
+            end
+            art.edges[#art.edges + 1] = edge
+        end
+        frame._bazFlatPanel = art
+    end
+
+    local c = edgeColor or Theme.colors.goldDim
+    for _, edge in ipairs(art.edges) do
+        edge:SetColorTexture(c[1], c[2], c[3], c[4] or 0.8)
+        edge:Show()
+    end
+    Theme.SetFlatPanelColor(frame, bgColor)
+    art.bg:Show()
+end
+
+-- Recolour a flat panel's interior without rebuilding it (hover states,
+-- an opacity slider). Silently does nothing on a frame that never had
+-- ApplyFlatPanel, so callers can stay simple.
+function Theme.SetFlatPanelColor(frame, bgColor, alpha)
+    local art = frame._bazFlatPanel
+    if not art then return end
+    local c = bgColor or Theme.colors.bg
+    art.bg:SetColorTexture(c[1], c[2], c[3], alpha or c[4] or 1)
+end
+
+---------------------------------------------------------------------------
 -- Round ring-framed button (the minimap-button treatment)
 --
 -- A dark disc, the icon masked to a circle inside the ring, and the gold

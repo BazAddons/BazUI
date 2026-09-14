@@ -14,7 +14,6 @@ local CARD_SPACING = 4
 local CONTENT_WIDTH = PANEL_WIDTH - PANEL_PADDING * 2
 local HISTORY_PAGE_SIZE = 100
 
-local BACKDROP_PANEL = BazUI.Skin.Theme.BACKDROP_PANEL
 
 local BACKDROP_INPUT = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -382,9 +381,8 @@ local function CreatePanel()
     -- Main panel
     panel = CreateFrame("Frame", "BazUINotifPanel", UIParent, "BackdropTemplate")
     panel:SetSize(PANEL_WIDTH, PANEL_HEIGHT)
-    panel:SetBackdrop(BACKDROP_PANEL)
-    panel:SetBackdropColor(unpack(Colors.panelBg))
-    panel:SetBackdropBorderColor(unpack(Colors.panelBorder))
+    -- The same flat chrome the tooltips wear.
+    BazUI.Skin.Theme.ApplyFlatPanel(panel, Colors.panelBg, Colors.panelBorder)
     panel:SetFrameStrata("HIGH")
     panel:SetFrameLevel(10)
     panel:SetClampedToScreen(true)
@@ -974,8 +972,7 @@ end
 
 local function UpdatePanelOpacity()
     if not panel or not addon.db then return end
-    local c = Colors.panelBg
-    panel:SetBackdropColor(c[1], c[2], c[3], addon.db.panelOpacity)
+    BazUI.Skin.Theme.SetFlatPanelColor(panel, Colors.panelBg, addon.db.panelOpacity)
 end
 
 ---------------------------------------------------------------------

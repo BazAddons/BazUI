@@ -25,7 +25,8 @@ local activeToasts = {}
 local function CreateToast(index)
     local toast = CreateFrame("Button", "BazUINotifToast" .. index, UIParent, "BackdropTemplate")
     toast:SetSize(TOAST_WIDTH, TOAST_MIN_HEIGHT)
-    BazUI.Skin.Theme.ApplyPanel(toast, Colors.toastBg)
+    -- The same flat chrome the tooltips wear.
+    BazUI.Skin.Theme.ApplyFlatPanel(toast, Colors.toastBg, Colors.toastBorder)
     toast:SetFrameStrata("HIGH")
     toast:SetFrameLevel(5)
     toast:SetClampedToScreen(true)
@@ -38,7 +39,7 @@ local function CreateToast(index)
 
     -- Hover effect + item tooltip + pause auto-dismiss
     toast:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(unpack(Colors.cardHover))
+        BazUI.Skin.Theme.SetFlatPanelColor(self, Colors.cardHover)
         if self._timer then
             self._timer:Cancel()
             self._timer = nil
@@ -52,7 +53,7 @@ local function CreateToast(index)
     end)
 
     toast:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(unpack(Colors.toastBg))
+        BazUI.Skin.Theme.SetFlatPanelColor(self, Colors.toastBg)
         -- Resume auto-dismiss
         self._timer = C_Timer.NewTimer(2, function()
             addon.DismissToast(self)
