@@ -139,49 +139,46 @@ end
 ---------------------------------------------------------------------------
 -- Where an event goes
 --
--- Three independent destinations, because they answer different
--- questions. The panel is the record you can go back to; a toast is
--- something you want to see happen; the chat box is for the things you
--- read in a stream with everything else.
+-- Three places, and they are three different things rather than three
+-- shades of one:
 --
---   panel   kept in the notification list and the history
---   toast   pops on screen
---   chat    printed into the chat frame
+--   default  the game's own alert for this, left alone or suppressed.
+--            Only offered where the event has one and we can silence
+--            it; most do not.
+--   toast    this module: a toast on screen and a line in the history.
+--   chat     printed into the chat frame.
 --
--- The panel switch doubles as the master: a source checks its show keys
--- before raising anything at all, so turning every destination off stops
--- the work as well as the noise. Turning the panel off on its own leaves
--- the event raised, and only the destinations you left on receive it.
+-- Toast and chat are the two this module can deliver, so between them
+-- they decide whether the source raises the event at all. Default is not
+-- a delivery at all: it governs whether Blizzard's own display is left
+-- in place, which is why it can be on with both others off.
 ---------------------------------------------------------------------------
 
 function BNC.EventChatKey(def)
     return def.chat or (def.key .. "Chat")
 end
 
-function BNC.EventPanelKey(def)
-    return def.panel or (def.key .. "Panel")
-end
-
 function BNC:GetEventDestination(moduleId, def, which)
-    if which == "toast" then
-        if not def.toast then return false end
-        local v = BNC:GetModuleSetting(moduleId, def.toast)
-        if v == nil then return (def.default or "toast") == "toast" end
-        return v ~= false
+    if which == "default" then
+        -- The stored setting asks the opposite question - whether to
+        -- hide Blizzard's own - so the switch reads inverted.
+        if not def.blizzard then return false end
+        return BNC:GetModuleSetting(moduleId, def.blizzard) == false
     end
 
     if which == "chat" then
         return BNC:GetModuleSetting(moduleId, BNC.EventChatKey(def)) == true
     end
 
-    -- panel: on unless it was explicitly turned off, and only while the
-    -- event is raised at all.
+    -- toast
     if not BNC:IsEventRaised(moduleId, def) then return false end
-    return BNC:GetModuleSetting(moduleId, BNC.EventPanelKey(def)) ~= false
+    if not def.toast then return true end
+    local v = BNC:GetModuleSetting(moduleId, def.toast)
+    if v == nil then return (def.default or "toast") == "toast" end
+    return v ~= false
 end
 
--- Whether the source should raise this event at all: true when any
--- destination wants it.
+-- Whether the source should raise this event at all.
 function BNC:IsEventRaised(moduleId, def)
     for _, k in ipairs(BNC.EventShowKeys(def)) do
         local v = BNC:GetModuleSetting(moduleId, k)
@@ -192,21 +189,26 @@ function BNC:IsEventRaised(moduleId, def)
 end
 
 function BNC:SetEventDestination(moduleId, def, which, on)
-    if which == "toast" then
-        if def.toast then BNC:SetModuleSetting(moduleId, def.toast, on) end
-    elseif which == "chat" then
-        BNC:SetModuleSetting(moduleId, BNC.EventChatKey(def), on)
-    else
-        BNC:SetModuleSetting(moduleId, BNC.EventPanelKey(def), on)
+    if which == "default" then
+        if def.blizzard then BNC:SetModuleSetting(moduleId, def.blizzard, not on) end
+        return
     end
 
-    -- The show keys are the master switch the sources themselves read,
-    -- so they follow whether anything at all still wants this event.
-    local wanted = (which == "panel" and on)
-        or (which ~= "panel" and BNC:GetModuleSetting(moduleId, BNC.EventPanelKey(def)) ~= false)
-        or BNC:GetEventDestination(moduleId, def, "toast")
-        or BNC:GetEventDestination(moduleId, def, "chat")
-        or on
+    if which == "chat" then
+        BNC:SetModuleSetting(moduleId, BNC.EventChatKey(def), on)
+    else
+        if def.toast then BNC:SetModuleSetting(moduleId, def.toast, on) end
+    end
+
+    -- The show keys are the master the sources themselves read, so they
+    -- follow whether this module still has anywhere to put the event.
+    local toast = (which == "toast") and on
+        or (which ~= "toast" and def.toast
+            and BNC:GetModuleSetting(moduleId, def.toast) ~= false)
+    local chat = (which == "chat") and on
+        or (which ~= "chat"
+            and BNC:GetModuleSetting(moduleId, BNC.EventChatKey(def)) == true)
+    local wanted = toast or chat
     for _, k in ipairs(BNC.EventShowKeys(def)) do
         BNC:SetModuleSetting(moduleId, k, wanted and true or false)
     end

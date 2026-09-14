@@ -217,7 +217,7 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { type = "event", key = "items", label = "Item loot",  show = "showItems", toast = "itemToasts" },
+    { type = "event", key = "items", label = "Item loot",  show = "showItems", toast = "itemToasts", blizzard = "hideLootAlerts" },
     { type = "event", key = "gold",  label = "Gold gains", show = "showGold",  toast = "goldToasts" },
     { key = "minQuality",     label = "Minimum item quality", desc = "Items below this quality are skipped.", type = "select", default = 0,
       values = { [0] = "Poor", [1] = "Common", [2] = "Uncommon", [3] = "Rare", [4] = "Epic" }, sorting = { 0, 1, 2, 3, 4 } },
@@ -225,7 +225,6 @@ BNC:RegisterModuleOptions(MODULE_ID, {
     { key = "autoLoot",       label = "Auto-loot",        type = "toggle", default = true },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
     { key = "hideLootFrame",  label = "Hide the loot window",        type = "toggle", default = true, section = "blizzard" },
-    { key = "hideLootAlerts", label = "Hide Blizzard's loot popups", type = "toggle", default = true, section = "blizzard" },
 })
 
 for _, frameName in ipairs(SUPPRESSED_FRAMES) do

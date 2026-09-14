@@ -260,12 +260,11 @@ BNC:RegisterModule({
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {
-    { type = "event", key = "danger",  label = "Danger and PvP warnings", show = "showDanger" },
-    { type = "event", key = "errors",  label = "Error messages",          show = "showErrors" },
-    { type = "event", key = "info",    label = "Info messages",           show = "showInfo" },
-    { type = "event", key = "emotes",  label = "Zone and boss warnings",  show = "showBossEmotes" },
-    { type = "event", key = "raid",    label = "Raid warnings",           show = "showRaidWarnings" },
-    { type = "event", key = "banners", label = "Event banners",           show = "showEventToasts" },
+    { type = "event", key = "danger",  label = "Danger and PvP warnings", show = "showDanger", blizzard = "hideDefaultText" },
+    { type = "event", key = "errors",  label = "Error messages",          show = "showErrors", blizzard = "hideDefaultText" },
+    { type = "event", key = "info",    label = "Info messages",           show = "showInfo", blizzard = "hideDefaultText" },
+    { type = "event", key = "emotes",  label = "Zone and boss warnings",  show = "showBossEmotes", blizzard = "hideDefaultText" },
+    { type = "event", key = "raid",    label = "Raid warnings",           show = "showRaidWarnings", blizzard = "hideDefaultText" },
+    { type = "event", key = "banners", label = "Event banners",           show = "showEventToasts", blizzard = "hideDefaultText" },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "hideDefaultText", label = "Hide Blizzard's text for these", type = "toggle", default = true, section = "blizzard" },
 })

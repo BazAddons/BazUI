@@ -223,20 +223,21 @@ local function BuildOption(moduleId, def, disabled)
         -- Three places a notification can land, each its own switch. A
         -- source with no toast of its own only offers the two it has.
         opt.type = "flags"
-        opt.flags = {
-            {
-                label = "Default",
-                get = function() return BNC:GetEventDestination(moduleId, def, "panel") end,
-                set = function(_, val) BNC:SetEventDestination(moduleId, def, "panel", val) end,
-            },
-        }
-        if def.toast then
+        opt.flags = {}
+        -- Only events that replace something of Blizzard's can offer to
+        -- put it back, so most rows show two switches rather than three.
+        if def.blizzard then
             opt.flags[#opt.flags + 1] = {
-                label = "Toast",
-                get = function() return BNC:GetEventDestination(moduleId, def, "toast") end,
-                set = function(_, val) BNC:SetEventDestination(moduleId, def, "toast", val) end,
+                label = "Default",
+                get = function() return BNC:GetEventDestination(moduleId, def, "default") end,
+                set = function(_, val) BNC:SetEventDestination(moduleId, def, "default", val) end,
             }
         end
+        opt.flags[#opt.flags + 1] = {
+            label = "Toast",
+            get = function() return BNC:GetEventDestination(moduleId, def, "toast") end,
+            set = function(_, val) BNC:SetEventDestination(moduleId, def, "toast", val) end,
+        }
         opt.flags[#opt.flags + 1] = {
             label = "Chat",
             get = function() return BNC:GetEventDestination(moduleId, def, "chat") end,

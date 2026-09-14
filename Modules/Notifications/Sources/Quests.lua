@@ -255,7 +255,6 @@ BNC:RegisterModule({
 BNC:RegisterModuleOptions(MODULE_ID, {
     { type = "event", key = "accepted",  label = "Quest accepted",     show = "showAccepted",  toast = "acceptedToasts" },
     { type = "event", key = "completed", label = "Quest completed",    show = "showCompleted", toast = "completedToasts" },
-    { type = "event", key = "progress",  label = "Objective progress", show = { "showProgress", "showObjectiveComplete" }, toast = "progressToasts" },
+    { type = "event", key = "progress",  label = "Objective progress", show = { "showProgress", "showObjectiveComplete" }, toast = "progressToasts", blizzard = "hideDefaultText" },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "hideDefaultText", label = "Hide Blizzard's progress text", type = "toggle", default = true, section = "blizzard" },
 })

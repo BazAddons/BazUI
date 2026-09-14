@@ -139,11 +139,11 @@ function BNC:Push(data)
     local toPanel = true
     local toChat  = false
     if def then
-        toPanel = BNC:GetEventDestination(data.module, def, "panel")
+        -- A toast and a line in the history are one destination: this
+        -- module. Chat is the other.
+        toPanel = BNC:GetEventDestination(data.module, def, "toast")
         toChat  = BNC:GetEventDestination(data.module, def, "chat")
-        if not BNC:GetEventDestination(data.module, def, "toast") then
-            notification.silent = true
-        end
+        if not toPanel then notification.silent = true end
     end
 
     if toChat then BNC.PrintToChat(notification) end
