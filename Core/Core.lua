@@ -585,6 +585,22 @@ BazUI:QueueForLogin(function()
                     local function shown(f) return f and f.IsShown and f:IsShown() and true or false end
                     BazUI:Print("Escape chain check:")
                     print("  target exists:", UnitExists("target"), " charmed:", UnitIsCharmed("player"), " spell targeting:", _G.SpellIsTargeting())
+                    local casting = _G.UnitCastingInfo and _G.UnitCastingInfo("player")
+                    local channel = _G.UnitChannelInfo and _G.UnitChannelInfo("player")
+                    print("  casting:", tostring(casting), " channelling:", tostring(channel), " (Esc stops a cast before it clears the target)")
+                    print("  in combat lockdown:", InCombatLockdown())
+                    local root = _G.BazUITargetFrame
+                    if root then
+                        print("  BazUI target frame shown:", root:IsShown(), " visible:", root:IsVisible(),
+                            " driver state:", tostring(root:GetAttribute("state-visibility")))
+                    end
+                    if _G.Menu and _G.Menu.GetManager then
+                        local okM, mgr = pcall(_G.Menu.GetManager)
+                        if okM and mgr and mgr.IsAnyMenuOpen then
+                            local okO, open = pcall(mgr.IsAnyMenuOpen, mgr)
+                            print("  any menu open:", okO and tostring(open) or "n/a")
+                        end
+                    end
                     print("  GameMenu:", shown(_G.GameMenuFrame), " Help:", shown(_G.HelpFrame), " EditMode:", shown(_G.EditModeManagerFrame),
                         " Loot:", shown(_G.LootFrame), " Opacity:", shown(_G.OpacityFrame), " ModelPreview:", shown(_G.ModelPreviewFrame))
                     for i = 1, 4 do
@@ -614,7 +630,8 @@ BazUI:QueueForLogin(function()
                             print("  open Menu:", ok2 and tostring(open) or "n/a")
                         end
                     end
-                    print("  If everything above is false or empty, Esc reaches ClearTarget and a taint block is likely: check BugSack for 'ClearTarget'.")
+                    print("  Reading it: 'target exists: false' with the BazUI target frame shown means the frame's visibility driver did not hide it (Unit Frames).")
+                    print("  Everything false or empty with the target still existing means Esc reached ClearTarget and was blocked: check BugSack for 'ClearTarget'.")
                 end,
             },
             profiles = {

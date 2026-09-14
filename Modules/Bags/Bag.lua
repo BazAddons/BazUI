@@ -1306,20 +1306,29 @@ local function HookBlizzardBagToggles()
     OpenBag        = function() Open() end
 
     -- Close paths keep calling Blizzard's originals so any stock bag
-    -- frame another addon opened directly closes too.
+    -- frame another addon opened directly closes too. They report
+    -- whether anything was closed, as Blizzard's do: the Escape chain
+    -- (CloseAllWindows) uses that so the press that closes the bag
+    -- stops there instead of also clearing the target.
     local origCloseAll, origCloseBackpack, origCloseBag = CloseAllBags, CloseBackpack, CloseBag
-    CloseAllBags = function(...)
+    local function CloseOurs()
+        local wasShown = frame and frame:IsShown() or false
         Bag:Hide()
-        if origCloseAll then pcall(origCloseAll, ...) end
+        return wasShown
     end
-    CloseBackpack = function(...)
-        Bag:Hide()
-        if origCloseBackpack then pcall(origCloseBackpack, ...) end
+    local function Wrap(orig)
+        return function(...)
+            local closed = CloseOurs()
+            if orig then
+                local ok, result = pcall(orig, ...)
+                if ok and result then closed = true end
+            end
+            return closed
+        end
     end
-    CloseBag = function(...)
-        Bag:Hide()
-        if origCloseBag then pcall(origCloseBag, ...) end
-    end
+    CloseAllBags  = Wrap(origCloseAll)
+    CloseBackpack = Wrap(origCloseBackpack)
+    CloseBag      = Wrap(origCloseBag)
 end
 
 BazUI:QueueForLogin(HookBlizzardBagToggles)
