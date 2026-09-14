@@ -3,8 +3,9 @@ local addon = BazUI:GetModule("Tooltip")
 local Theme = BazUI.Skin.Theme
 local tracked, holder = {}, nil
 local healthParent, settingOwner
+local anchorFrame, unlocked
 local names = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2",
-    "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2" }
+    "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "SmallTextTooltip", "WorldMapTooltip" }
 
 local function Enabled() return addon:GetSetting("enabled") end
 local function Suppressed() return Enabled() and addon:GetSetting("hideCombat") and InCombatLockdown() end
@@ -14,13 +15,22 @@ local function Docked(tip)
     return relative and relative == _G.BazUIDrawerTooltipDock
 end
 
+-- Shared templates also serve tooltips created by Blizzard panels and other addons.
+function addon:Track(tip)
+    if not tip or not tip.NineSlice or tip.IsEmbedded then return end
+    if tracked[tip] then return end
+    tracked[tip] = {}
+    tip:HookScript("OnShow", function(frame) self:Shown(frame) end)
+end
+
 function addon:Style(tip)
+    self:Track(tip)
     local state = tracked[tip]
     if not state then return end
     if Enabled() and self:GetSetting("skin") then
-        if tip.NineSlice and not state.nineParent then
-            state.nineParent = tip.NineSlice:GetParent()
-            tip.NineSlice:SetParent(holder)
+        if tip.NineSlice then
+            if not state.nineParent then state.nineParent = tip.NineSlice:GetParent() end
+            if tip.NineSlice:GetParent() ~= holder then tip.NineSlice:SetParent(holder) end
         end
         Theme.ApplyTooltipFrame(tip, self:GetSetting("opacity"))
     else
@@ -56,8 +66,7 @@ function addon:Anchor(tip)
             x / scale + self:GetSetting("cursorX"), y / scale + self:GetSetting("cursorY"))
     else
         local point = self:GetSetting("point")
-        local factor = UIParent:GetEffectiveScale() / tip:GetEffectiveScale()
-        tip:SetPoint(point, UIParent, point, self:GetSetting("x") * factor, self:GetSetting("y") * factor)
+        tip:SetPoint(point, anchorFrame, "CENTER", 0, 0)
     end
 end
 
@@ -76,16 +85,13 @@ end
 function addon:Scan()
     for _, name in ipairs(names) do
         local tip = _G[name]
-        if tip and not tracked[tip] then
-            tracked[tip] = {}
-            tip:HookScript("OnShow", function(frame) self:Shown(frame) end)
-            self:Style(tip)
-        end
+        if tip then self:Style(tip) end
     end
 end
 
 function addon:ApplySettings()
     self:Scan()
+    self:UpdateAnchorMarker()
     self:HealthBar()
     for tip, state in pairs(tracked) do
         if state.oldScale then tip:SetScale(state.oldScale); state.oldScale = nil end
@@ -93,6 +99,54 @@ function addon:ApplySettings()
         -- Next hover starts with its owner's original anchor and fresh content.
         tip:Hide()
     end
+end
+
+function addon:UpdateAnchorMarker()
+    if not anchorFrame then return end
+    anchorFrame:ClearAllPoints()
+    anchorFrame:SetPoint("CENTER", UIParent, self:GetSetting("point"), self:GetSetting("x"), self:GetSetting("y"))
+    anchorFrame:EnableMouse(unlocked and true or false)
+    -- Keep the anchor frame shown so a locked tooltip can still anchor to it.
+    anchorFrame.marker:SetShown(unlocked and Enabled() and self:GetSetting("anchor") == "fixed")
+end
+
+function addon:SetUnlocked(value)
+    unlocked = value
+    if value then self:SetSetting("anchor", "fixed") end
+    if anchorFrame then anchorFrame:StopMovingOrSizing() end
+    self:ApplySettings()
+end
+
+function addon:SaveAnchor()
+    local x, y = anchorFrame:GetCenter()
+    local factor = anchorFrame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local point = self:GetSetting("point")
+    local referenceX = UIParent:GetLeft() + (point:find("RIGHT") and UIParent:GetWidth() or 0)
+    local referenceY = UIParent:GetBottom() + (point:find("TOP") and UIParent:GetHeight() or 0)
+    self:SetSetting("x", x * factor - referenceX)
+    self:SetSetting("y", y * factor - referenceY)
+    self:UpdateAnchorMarker()
+end
+
+function addon:CreateAnchor()
+    anchorFrame = CreateFrame("Frame", "BazUITooltipAnchor", UIParent)
+    anchorFrame:SetSize(170, 38)
+    anchorFrame:SetFrameStrata("DIALOG")
+    anchorFrame:SetMovable(true)
+    anchorFrame:SetClampedToScreen(true)
+    anchorFrame:RegisterForDrag("LeftButton")
+    local marker = CreateFrame("Frame", nil, anchorFrame, "BackdropTemplate")
+    marker:SetAllPoints(anchorFrame)
+    Theme.ApplyPanel(marker)
+    marker:EnableMouse(false)
+    local label = marker:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("CENTER")
+    label:SetText("Tooltip anchor\nDrag | Right-click to lock")
+    anchorFrame.marker = marker
+    anchorFrame:SetScript("OnDragStart", function(frame) if unlocked then frame:StartMoving() end end)
+    anchorFrame:SetScript("OnDragStop", function(frame) frame:StopMovingOrSizing(); self:SaveAnchor() end)
+    anchorFrame:SetScript("OnMouseUp", function(_, button) if button == "RightButton" then self:SetUnlocked(false) end end)
+    self:UpdateAnchorMarker()
 end
 
 function addon:Preview()
@@ -111,6 +165,7 @@ function addon:Initialize()
     if holder then return end
     holder = CreateFrame("Frame")
     holder:Hide()
+    self:CreateAnchor()
     self:Scan()
     hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tip)
         if tip == GameTooltip then self:Anchor(tip) end
@@ -122,6 +177,9 @@ function addon:Initialize()
         settingOwner = false
         self:Anchor(tip)
     end)
+    if _G.SharedTooltip_OnLoad then
+        hooksecurefunc("SharedTooltip_OnLoad", function(tip) self:Style(tip) end)
+    end
     if _G.SharedTooltip_SetBackdropStyle then
         hooksecurefunc("SharedTooltip_SetBackdropStyle", function(tip) self:Style(tip) end)
     end

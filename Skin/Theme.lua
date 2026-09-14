@@ -148,9 +148,15 @@ Theme.nameplate = {
 -- Quiet tooltip chrome: no stretched artwork, bright ornament or glow.
 function Theme.ApplyTooltipFrame(tooltip, opacity)
     if not tooltip._bazTooltipArt then
+        -- Native GameTooltip content updates/fades manage its own regions.
+        -- Keep our chrome in a child frame, inheriting the tooltip's alpha.
+        local chrome = CreateFrame("Frame", nil, tooltip)
+        chrome:SetAllPoints(tooltip)
+        chrome:EnableMouse(false)
+        tooltip._bazTooltipArtFrame = chrome
         local art = {}
         local function Texture(color, alpha)
-            local t = tooltip:CreateTexture(nil, "BACKGROUND", nil, -7)
+            local t = chrome:CreateTexture(nil, "BACKGROUND", nil, -7)
             t:SetColorTexture(color[1], color[2], color[3], alpha or color[4] or 1)
             art[#art + 1] = t
             return t
@@ -159,6 +165,7 @@ function Theme.ApplyTooltipFrame(tooltip, opacity)
         bg:SetAllPoints(tooltip)
         for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
             local edge = Texture(Theme.colors.goldDim, .8)
+            edge:SetDrawLayer("BORDER", 7)
             if side == "TOP" or side == "BOTTOM" then
                 edge:SetPoint(side .. "LEFT", tooltip, side .. "LEFT")
                 edge:SetPoint(side .. "RIGHT", tooltip, side .. "RIGHT")
@@ -171,6 +178,7 @@ function Theme.ApplyTooltipFrame(tooltip, opacity)
         end
         tooltip._bazTooltipArt = art
     end
+    tooltip._bazTooltipArtFrame:SetFrameLevel(math.max(0, tooltip:GetFrameLevel() - 1))
     local bg = Theme.colors.bg
     tooltip._bazTooltipArt[1]:SetColorTexture(bg[1], bg[2], bg[3], opacity or .96)
     for _, t in ipairs(tooltip._bazTooltipArt) do t:Show() end

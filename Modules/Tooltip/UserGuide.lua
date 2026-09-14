@@ -7,6 +7,7 @@ BazUI:RegisterUserGuide("Tooltip", {
         { type = "list", items = {
             "Use the BazUI frame, adjust background opacity, or change the overall scale.",
             "Default anchoring respects Blizzard, other UI frames and the Drawers tooltip dock.",
+            "Use Unlock and drag tooltip anchor (or /baztooltip unlock), then right-click the marker to lock it. The marker center is the tooltip anchor.",
             "Follow cursor and fixed screen position move the main hover tooltip. Comparisons stay attached to their item.",
             "Hide the unit health bar or hide tooltips during combat. Both are optional.",
             "A tooltip in the drawer dock uses the drawer's fit scale. Choosing another anchor pauses docking.",

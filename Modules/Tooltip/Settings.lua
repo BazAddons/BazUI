@@ -6,6 +6,10 @@ BazUI:RegisterSettingsSpec("Tooltip", {
     sections = { appearance = { label = "Appearance", order = 1 },
         anchor = { label = "Position", order = 2 }, behavior = { label = "Visibility", order = 3 } },
     entries = {
+        { key = "unlock", label = "Unlock and drag tooltip anchor", type = "execute", section = "anchor", order = .1,
+          func = function() addon:SetUnlocked(true) end },
+        { key = "lock", label = "Lock tooltip anchor", type = "execute", section = "anchor", order = .2,
+          func = function() addon:SetUnlocked(false) end },
         { key = "enabled", label = "Enable Tooltip module", type = "toggle", section = "appearance", order = 1, get = Get("enabled"), set = Set("enabled") },
         { key = "skin", label = "Use BazUI tooltip frame", type = "toggle", section = "appearance", order = 2, get = Get("skin"), set = Set("skin") },
         { key = "scale", label = "Tooltip scale", type = "slider", section = "appearance", order = 3, min = .75, max = 1.5, step = .05, format = "percent", get = Get("scale"), set = Set("scale") },
