@@ -241,6 +241,27 @@ local core = BazUI:RegisterModule(addonName, {
                 end
             end,
         },
+        font = {
+            desc    = "Report whether the BazUI chat font is loaded and in use",
+            handler = function()
+                local W = addon.Window
+                if not (W and W.FontStatus) then
+                    addon.core:Print("Chat windows are not up yet.")
+                    return
+                end
+                local s = W:FontStatus()
+                addon.core:Print("Chat font:")
+                print("  setting on:", s.setting)
+                print("  file:", s.file)
+                print("  client can load it:", s.loadable)
+                print("  in use now:", tostring(s.inUse))
+                print("  Blizzard's:", tostring(s.blizzard))
+                if s.setting and not s.loadable then
+                    print("  |cffffd700The client reads fonts at startup. Quit to the desktop and start the game again; a /reload is not enough.|r")
+                end
+            end,
+        },
+
         toggle = {
             desc    = "Master toggle for all BazUI Chat features",
             handler = function()

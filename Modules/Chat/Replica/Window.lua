@@ -101,13 +101,21 @@ local FALLBACKS = {
 
 local CHAT_FONT_FILE = "Interface\\AddOns\\BazUI\\Modules\\Chat\\Assets\\DORISBR.TTF"
 local customFont
+local fontProbe
 
 local function ChatFontObject(useCustom)
     local blizzard = _G.ChatFontNormal
     if not useCustom or not blizzard then return blizzard end
     if not customFont then customFont = CreateFont("BazUIChatFont") end
     local _, size, flags = blizzard:GetFont()
-    if not customFont:SetFont(CHAT_FONT_FILE, size or 14, flags or "") then
+    customFont:SetFont(CHAT_FONT_FILE, size or 14, flags or "")
+    -- A Font object's SetFont returns nothing (only the FontString and
+    -- EditBox versions report success), so read the face back to find
+    -- out whether the client could load the file. It can't when the
+    -- file was added while the client was running: fonts are read at
+    -- startup, so a new one needs a full restart, not a /reload.
+    local applied = customFont:GetFont()
+    if not applied or applied:lower() ~= CHAT_FONT_FILE:lower() then
         return blizzard
     end
     customFont:SetTextColor(blizzard:GetTextColor())
@@ -115,6 +123,7 @@ local function ChatFontObject(useCustom)
     customFont:SetShadowOffset(blizzard:GetShadowOffset())
     return customFont
 end
+
 
 -- Safe DB profile accessor. BazUI's onReady (which sets addon.db)
 -- runs AFTER QueueForLogin callbacks - so at the time Replica:Start
@@ -1368,6 +1377,23 @@ function Window:ApplySettings(idx)
     if f.SetSpacing then
         f:SetSpacing(chrome.messageSpacing or 0)
     end
+end
+
+-- What the chat face is doing right now, for /bc font.
+function Window:FontStatus()
+    local blizzard = _G.ChatFontNormal
+    fontProbe = fontProbe or CreateFont("BazUIChatFontProbe")
+    fontProbe:SetFont(CHAT_FONT_FILE, 14, "")
+    local loaded = fontProbe:GetFont()
+    local f = windows[1]
+    local inUse = f and f:GetFont() or nil
+    return {
+        file      = CHAT_FONT_FILE,
+        loadable  = loaded and loaded:lower() == CHAT_FONT_FILE:lower() or false,
+        setting   = (WindowDB(1) or {}).customFont ~= false,
+        inUse     = inUse,
+        blizzard  = blizzard and blizzard:GetFont() or nil,
+    }
 end
 
 function Window:ApplyAll()
