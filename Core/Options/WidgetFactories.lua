@@ -442,6 +442,10 @@ local function CreateFlagsWidget(parent, opt, contentWidth)
 
         cb._label = text
         cb._flag  = flag
+        -- Set now as well as in OnShow: a row built into an already
+        -- visible page never receives an OnShow, and would sit there
+        -- reading unchecked whatever the setting says.
+        cb:SetChecked(flag.get and flag.get() or false)
         frame.checks[#frame.checks + 1] = cb
 
         x = x - (O.CHECK_W + 2 + widths[i] + FLAG_GAP)

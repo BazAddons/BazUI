@@ -139,5 +139,6 @@ BNC:RegisterModuleOptions(MODULE_ID, {
     { type = "event", key = "levelUp", label = "Level up",           show = "showLevelUp", toast = "levelToasts" },
     { type = "event", key = "rested",  label = "Rested XP at login", show = "showRested",  toast = "restedToasts" },
     { key = "toastDuration",    label = "Toast duration", type = "slider", default = 4, min = 1, max = 15, step = 1 },
-    { key = "hideDefaultLevelUp", label = "Hide Blizzard's level-up display", type = "toggle", default = true, section = "blizzard" },
+    { key = "hideDefaultLevelUp", label = "Hide Blizzard's level-up display", type = "toggle", default = true, section = "blizzard",
+      desc = "Blizzard's own splash across the middle of the screen, not this module's notification. Turn it off and both appear." },
 })
