@@ -477,13 +477,30 @@ end
 -- go anywhere else and it simply floats at the position it was dropped.
 ---------------------------------------------------------------------------
 
-local SNAP_DISTANCE = 24
+local SNAP_DISTANCE = 36
+
+-- Frame coordinates are reported in the frame's own scale, so two frames
+-- at different scales cannot be compared directly. Everything here is
+-- converted to screen pixels first, which is the only space they share.
+-- An action bar carries a scale of its own, so skipping this is why the
+-- first attempt never matched anything.
+local function ScreenEdges(frame)
+    local scale = frame:GetEffectiveScale() or 1
+    local left, right = frame:GetLeft(), frame:GetRight()
+    local top, bottom = frame:GetTop(), frame:GetBottom()
+    if not (left and right and top and bottom) then return nil end
+    return left * scale, right * scale, top * scale, bottom * scale
+end
 
 -- The closest edge worth snapping to, or nothing.
+--
+-- Docking below a host means this bar's top meeting the host's bottom,
+-- so the comparison is edge to edge. Measuring from the middle of the
+-- bar, as this first did, is half a bar's height out before anything
+-- else goes wrong.
 local function NearestDock(mover, selfFrame)
-    local mx, my = mover:GetCenter()
-    if not mx then return nil end
-    local halfWidth = mover:GetWidth() / 2
+    local left, right, top, bottom = ScreenEdges(mover)
+    if not left then return nil end
 
     local best, bestDistance
     for _, host in ipairs(BazUI.Dock:GetHosts()) do
@@ -493,20 +510,95 @@ local function NearestDock(mover, selfFrame)
         if frame and frame ~= selfFrame and frame:IsVisible()
             and not BazUI.Dock:Follows(frame, selfFrame) then
 
-            local hx = frame:GetCenter()
-            if hx and math.abs(hx - mx) < math.max(halfWidth, frame:GetWidth() / 2) then
-                for _, edge in ipairs({ "BOTTOM", "TOP" }) do
-                    local y = (edge == "BOTTOM") and frame:GetBottom() or frame:GetTop()
-                    local distance = y and math.abs(y - my) or nil
-                    if distance and distance < SNAP_DISTANCE
-                        and (not bestDistance or distance < bestDistance) then
-                        best, bestDistance = { host = host.id, edge = edge }, distance
+            local hLeft, hRight, hTop, hBottom = ScreenEdges(frame)
+            -- Any horizontal overlap at all is enough. Requiring the
+            -- centres to line up meant a wide action bar and a narrow
+            -- bar rarely agreed.
+            if hLeft and left < hRight and right > hLeft then
+                local candidates = {
+                    { edge = "BOTTOM", distance = math.abs(hBottom - top) },
+                    { edge = "TOP",    distance = math.abs(hTop - bottom) },
+                }
+                for _, candidate in ipairs(candidates) do
+                    if candidate.distance < SNAP_DISTANCE
+                        and (not bestDistance or candidate.distance < bestDistance) then
+                        best = { host = host.id, edge = candidate.edge }
+                        bestDistance = candidate.distance
                     end
                 end
             end
         end
     end
     return best
+end
+
+-- Where it will land, drawn on the host rather than on the handle.
+--
+-- Edit Mode puts its own overlay on top of anything registered with it,
+-- so recolouring the handle is invisible: the overlay is what you are
+-- looking at. Marking the target edge instead is both visible and
+-- clearer about what is going to happen.
+local snapLine
+
+local function SnapLine()
+    if snapLine then return snapLine end
+    snapLine = CreateFrame("Frame", nil, UIParent)
+    snapLine:SetFrameStrata("TOOLTIP")
+    snapLine:Hide()
+
+    snapLine.bar = snapLine:CreateTexture(nil, "OVERLAY")
+    snapLine.bar:SetAllPoints()
+    snapLine.bar:SetColorTexture(0.35, 1, 0.45, 0.95)
+
+    snapLine.glow = snapLine:CreateTexture(nil, "ARTWORK")
+    snapLine.glow:SetPoint("TOPLEFT", -2, 6)
+    snapLine.glow:SetPoint("BOTTOMRIGHT", 2, -6)
+    snapLine.glow:SetColorTexture(0.35, 1, 0.45, 0.25)
+
+    snapLine.text = BazUI.Skin.Theme.FontString(snapLine, "OVERLAY", "GameFontNormal")
+    snapLine.text:SetPoint("BOTTOM", snapLine, "TOP", 0, 4)
+    snapLine.text:SetTextColor(0.5, 1, 0.55)
+    return snapLine
+end
+
+local function ShowSnapLine(snap)
+    if not snap then
+        if snapLine then snapLine:Hide() end
+        return
+    end
+    local host = BazUI.Dock:GetHostFrame(snap.host)
+    if not host then return end
+
+    local line = SnapLine()
+    local label
+    for _, entry in ipairs(BazUI.Dock:GetHosts()) do
+        if entry.id == snap.host then label = entry.label break end
+    end
+
+    line:ClearAllPoints()
+    line:SetPoint("LEFT", host, "LEFT", 0, 0)
+    line:SetPoint("RIGHT", host, "RIGHT", 0, 0)
+    line:SetHeight(3)
+    if snap.edge == "BOTTOM" then
+        line:SetPoint("TOP", host, "BOTTOM", 0, 1)
+    else
+        line:SetPoint("BOTTOM", host, "TOP", 0, -1)
+    end
+    line.text:SetText((snap.edge == "BOTTOM" and "Below " or "Above ") .. (label or "here"))
+    line:Show()
+end
+
+-- Says what the snap test can see, for when it insists nothing is near.
+function UnitBars:DescribeSnap()
+    local hosts = BazUI.Dock:GetHosts()
+    addon:Print(("Snap targets: %d"):format(#hosts))
+    for _, host in ipairs(hosts) do
+        local frame = BazUI.Dock:GetHostFrame(host.id)
+        local l, r, t, b
+        if frame then l, r, t, b = ScreenEdges(frame) end
+        addon:Print(("  %s (%s): %s"):format(host.label, host.id,
+            l and ("%d..%d wide, top %d bottom %d"):format(l, r, t, b) or "no geometry"))
+    end
 end
 
 function UnitBars:SavePosition(bar)
@@ -555,24 +647,6 @@ function UnitBars:CreateMover(bar)
     tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
     mover.tint = tint
 
-    -- Two pixels of border, opaque, so the state reads whatever colour
-    -- the bar underneath happens to be.
-    mover.edges = {}
-    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-        local edge = mover:CreateTexture(nil, "OVERLAY")
-        edge:SetColorTexture(0.35, 0.65, 1, 0.9)
-        if side == "TOP" or side == "BOTTOM" then
-            edge:SetPoint(side .. "LEFT")
-            edge:SetPoint(side .. "RIGHT")
-            edge:SetHeight(2)
-        else
-            edge:SetPoint("TOP" .. side)
-            edge:SetPoint("BOTTOM" .. side)
-            edge:SetWidth(2)
-        end
-        mover.edges[#mover.edges + 1] = edge
-    end
-
     local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("CENTER")
     label:SetText(def.name or ("Bar " .. def.id))
@@ -616,26 +690,7 @@ function UnitBars:CreateMover(bar)
 
     function mover:ShowSnap(snap)
         self._snapShown = snap and true or false
-        if snap then
-            local hostLabel
-            for _, host in ipairs(BazUI.Dock:GetHosts()) do
-                if host.id == snap.host then hostLabel = host.label break end
-            end
-            for _, edge in ipairs(self.edges) do
-                edge:SetColorTexture(0.35, 0.95, 0.40, 1)
-            end
-            self.tint:SetColorTexture(0.20, 0.70, 0.30, 0.35)
-            self.label:SetText((snap.edge == "BOTTOM" and "Below " or "Above ")
-                .. (hostLabel or "that"))
-            self.label:SetTextColor(0.5, 1, 0.55)
-        else
-            for _, edge in ipairs(self.edges) do
-                edge:SetColorTexture(0.35, 0.65, 1, 0.9)
-            end
-            self.tint:SetColorTexture(0.15, 0.50, 0.80, 0.35)
-            self.label:SetText(bar.def.name or ("Bar " .. bar.def.id))
-            self.label:SetTextColor(1, 1, 1)
-        end
+        ShowSnapLine(snap)
     end
 
     mover:HookScript("OnDragStart", function(self) self.isMoving = true end)
