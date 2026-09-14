@@ -176,6 +176,15 @@ local IsOverlayed = (C_Spell and C_Spell.IsSpellOverlayed)
     or (C_SpellActivationOverlay and C_SpellActivationOverlay.IsSpellOverlayed)
     or IsSpellOverlayed
 
+-- The stance, form, aura or stealth you are in, a cast in progress, or
+-- an auto-repeating spell such as Attack, Auto Shot and Shoot.
+function Spell.isCurrent(data)
+    if not data or not data.id then return false end
+    if C_Spell.IsCurrentSpell and C_Spell.IsCurrentSpell(data.id) then return true end
+    if C_Spell.IsAutoRepeatSpell and C_Spell.IsAutoRepeatSpell(data.id) then return true end
+    return false
+end
+
 function Spell.hasProcGlow(data)
     if not IsOverlayed then return false end
     local ok, glowing = pcall(IsOverlayed, data.id)

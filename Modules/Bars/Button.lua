@@ -192,6 +192,14 @@ function Button:ShowTooltip(btn)
     GameTooltip:Show()
 end
 
+-- Blizzard's checked state: lit while the action is current.
+function Button:UpdateChecked(btn)
+    if not btn.Checked then return end
+    local handler, data = GetHandler(btn)
+    local on = handler and handler.isCurrent and handler.isCurrent(data)
+    btn.Checked:SetShown(on and true or false)
+end
+
 function Button:UpdateGlow(btn)
     local handler, data = GetHandler(btn)
     if handler and handler.hasProcGlow and handler.hasProcGlow(data) then
@@ -247,6 +255,7 @@ function Button:UpdateButton(btn)
     Button:UpdateUsable(btn)
     Button:UpdateCount(btn)
     Button:UpdateGlow(btn)
+    Button:UpdateChecked(btn)
     Button:UpdateEquipped(btn)
     Button:UpdateMacroName(btn)
 end

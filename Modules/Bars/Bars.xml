@@ -20,6 +20,13 @@
                 <Texture parentKey="SlotBackground" atlas="UI-HUD-ActionBar-IconFrame-Background" setAllPoints="true"/>
                 <Texture parentKey="SlotArt" atlas="ui-hud-actionbar-iconframe-slot" setAllPoints="true"/>
             </Layer>
+            <Layer level="OVERLAY" textureSubLevel="-1">
+                <!-- Lit while the button's spell is current (the stance or
+                     form you are in, a cast in progress) or auto-repeating
+                     (Attack, Auto Shot, Shoot). Same additive glow Blizzard's
+                     buttons use for their checked state. -->
+                <Texture parentKey="Checked" file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD" setAllPoints="true" hidden="true"/>
+            </Layer>
             <Layer level="OVERLAY">
                 <FontString parentKey="Count" inherits="NumberFontNormal" justifyH="RIGHT">
                     <Anchors>

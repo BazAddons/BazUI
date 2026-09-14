@@ -522,6 +522,11 @@ addon.config.onReady = function(self)
     self:On("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", function() addon:UpdateAllGlow() end)
     self:On("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE", function() addon:UpdateAllGlow() end)
     self:On("UPDATE_MACROS",        function() addon:UpdateAllMacroNames() end)
+    -- The lit "current" state: stance and form changes, casts starting
+    -- and ending, auto-attack and auto-shot toggling.
+    self:On({ "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS", "CURRENT_SPELL_CAST_CHANGED",
+              "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT" },
+        function() addon:UpdateAllChecked() end)
     self:On("PLAYER_TARGET_CHANGED", function() addon:OnRangeEvent() end)
 
     -- These are infrequent events - a full update pass is fine.
@@ -637,6 +642,10 @@ end
 
 function addon:UpdateAllGlow()
     ForEachButton(function(btn) self.Button:UpdateGlow(btn) end)
+end
+
+function addon:UpdateAllChecked()
+    ForEachButton(function(btn) self.Button:UpdateChecked(btn) end)
 end
 
 function addon:UpdateAllMacroNames()
