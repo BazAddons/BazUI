@@ -6,6 +6,7 @@ local Colors = addon.Colors
 local PANEL_WIDTH = 380
 local PANEL_HEIGHT = 500
 local PANEL_PADDING = 10
+local HISTORY_FOOTER_H = 16   -- the strip the history count sits in
 local HEADER_HEIGHT = 36
 local TAB_HEIGHT = 24
 local FILTER_ROW_HEIGHT = 24
@@ -535,7 +536,12 @@ local function CreatePanel()
     panel.histSearchBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -histSearchTop)
 
     -- History scroll
-    historyScroll = addon.CreateScrollContainer(panel, CONTENT_WIDTH, PANEL_HEIGHT - histTop - PANEL_PADDING)
+    -- The running count sits along the bottom, so the list stops short
+    -- of it. Draw layers cannot settle this: every card is a frame, and
+    -- a frame is drawn over its parent's own text whatever layer that
+    -- text is on.
+    historyScroll = addon.CreateScrollContainer(panel, CONTENT_WIDTH,
+        PANEL_HEIGHT - histTop - PANEL_PADDING - HISTORY_FOOTER_H)
     historyScroll.clipFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -histTop)
 
     -- History empty
@@ -550,7 +556,7 @@ local function CreatePanel()
     panel.histCount = panel:CreateFontString(nil, "OVERLAY")
     panel.histCount:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormalSmall"))
     panel.histCount:SetTextColor(unpack(Colors.textMuted))
-    panel.histCount:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PANEL_PADDING, 4)
+    panel.histCount:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -PANEL_PADDING, PANEL_PADDING - 4)
     panel.histCount:Hide()
 
     -- Load More button (inside history scroll content)
