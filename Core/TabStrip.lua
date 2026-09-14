@@ -22,7 +22,7 @@
 --
 -- Two looks, chosen with opts.style:
 --
---   "panel"      Blizzard's tab art over a dark panel with a gold accent
+--   "panel"      A square plate with a gold accent along its top
 --                along the top of the selected tab. Tabs that sit above
 --                a page: the options canvas, the chat dock.
 --   "underline"  Text alone, the selected one bright over a gold rule.
@@ -35,7 +35,6 @@
 local Theme = BazUI.Skin.Theme
 
 local DEFAULT_SPACING = 2
-local TEXT_PAD        = 40   -- MinimalTab's own text-to-edge padding
 local UNDERLINE_PAD   = 16
 local UNDERLINE_H     = 2
 
@@ -50,64 +49,54 @@ end
 ---------------------------------------------------------------------------
 -- The "panel" look
 --
--- MinimalTab's own art is a faint translucent shape that all but
--- vanishes over the game world, so each tab gets a solid panel behind it
--- and the selected one is capped with gold.
+-- A square plate with the accent line capping it. Blizzard's own tab
+-- art is rounded at the top corners, so a straight line across it left
+-- a notch at each end; drawing the plate ourselves means the line meets
+-- the corners and the tab matches the flat chrome everywhere else.
+-- The plate also gives a hit target that reads over the game world,
+-- which is why the chat dock uses this rather than the underline.
 ---------------------------------------------------------------------------
+
+local PANEL_TEXT_PAD = 24
+local PANEL_ACCENT_H = 2
 
 local Panel = {}
 
 function Panel.Create(strip)
-    local tab
-    if HasTemplate("MinimalTabTemplate") then
-        tab = CreateFrame("Button", nil, strip, "MinimalTabTemplate")
-        tab._bazMinimal = true
+    local tab = CreateFrame("Button", nil, strip)
+    tab:SetHeight(strip.tabHeight or 26)
 
-        local bg = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
-        if tab.Left and tab.Right then
-            bg:SetPoint("TOPLEFT",     tab.Left,  "TOPLEFT",      1, 0)
-            bg:SetPoint("BOTTOMRIGHT", tab.Right, "BOTTOMRIGHT", -1, 0)
-        else
-            bg:SetPoint("TOPLEFT", 1, -6)
-            bg:SetPoint("BOTTOMRIGHT", -1, 0)
-        end
-        local edge = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
-        edge:SetPoint("TOPLEFT",  bg, "TOPLEFT",  0, 0)
-        edge:SetPoint("TOPRIGHT", bg, "TOPRIGHT", 0, 0)
-        edge:SetHeight(2)
-        tab._bazBg, tab._bazEdge = bg, edge
-    else
-        tab = CreateFrame("Button", nil, strip, "PanelTopTabButtonTemplate")
-    end
+    tab.bg = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    tab.bg:SetAllPoints()
+
+    tab.accent = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
+    tab.accent:SetHeight(PANEL_ACCENT_H)
+    tab.accent:SetPoint("TOPLEFT")
+    tab.accent:SetPoint("TOPRIGHT")
+
+    tab.Text = Theme.FontString(tab, "OVERLAY", "GameFontNormal")
+    tab.Text:SetPoint("CENTER", 0, -1)
+
+    tab:HookScript("OnEnter", function(self)
+        if not self.isSelected then self.Text:SetTextColor(unpack(Theme.colors.gold)) end
+    end)
+    tab:HookScript("OnLeave", function(self)
+        Panel.SetSelected(self, self.isSelected)
+    end)
     return tab
 end
 
 function Panel.Init(tab, text, strip)
-    if tab.Text then tab.Text:SetText(text or "") else tab:SetText(text or "") end
-    local minW = strip.minTabWidth or 60
-    local maxW = strip.maxTabWidth or 120
-    if tab._bazMinimal then
-        local w = (tab.Text and tab.Text:GetStringWidth() or 0) + TEXT_PAD
-        tab:SetWidth(math.max(minW, math.min(maxW, w)))
-    else
-        PanelTemplates_TabResize(tab, 0, nil, minW, maxW)
-    end
+    tab.Text:SetText(text or "")
+    local w = (tab.Text:GetStringWidth() or 0) + PANEL_TEXT_PAD
+    tab:SetWidth(math.max(strip.minTabWidth or 60, math.min(strip.maxTabWidth or 120, w)))
+    tab:SetHeight(strip.tabHeight or 26)
 end
 
 function Panel.SetSelected(tab, selected)
-    if tab._bazMinimal then
-        if tab.SetSelected then
-            tab:SetSelected(selected)
-        elseif tab.OnSelected then
-            tab:OnSelected(selected)
-        end
-        if tab._bazBg then
-            SetTexColor(tab._bazBg, selected and Theme.colors.bgRaised or Theme.colors.bg)
-            SetTexColor(tab._bazEdge, selected and Theme.colors.gold or Theme.colors.divider)
-        end
-    else
-        if selected then PanelTemplates_SelectTab(tab) else PanelTemplates_DeselectTab(tab) end
-    end
+    SetTexColor(tab.bg, selected and Theme.colors.bgRaised or Theme.colors.bg)
+    SetTexColor(tab.accent, selected and Theme.colors.gold or Theme.colors.divider)
+    tab.Text:SetTextColor(unpack(selected and Theme.colors.text or Theme.colors.textMuted))
 end
 
 ---------------------------------------------------------------------------
