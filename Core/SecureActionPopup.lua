@@ -74,6 +74,9 @@
 --                                      -- the secure cell button. Called
 --                                      -- out-of-combat only.
 --     iconForCell  = function(cellData) -> textureID|texturePath end,
+--     countForCell = function(cellData) -> string|nil end,
+--                                      -- stack count or charges, drawn
+--                                      -- in the cell's bottom corner
 --     onCellClick  = function(cellIndex, cellData, mouseBtn, popup) end,
 --                                      -- fires from PostClick (insecure)
 --                                      -- after the secure cast.
@@ -183,6 +186,12 @@ local function CreateCell(popup, index)
     btn.border:SetVertexColor(0.55, 0.45, 0.25, 1)
     btn.border:SetPoint("TOPLEFT", btn, "TOPLEFT", -2, 2)
     btn.border:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 2, -2)
+
+    -- Stack counts, in the corner a bar slot puts them, so a stack of
+    -- reagents in a flyout reads the same as one on the bar.
+    btn.count = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    btn.count:SetJustifyH("RIGHT")
+    btn.count:SetPoint("BOTTOMRIGHT", -3, 3)
 
     btn.highlight = btn:CreateTexture(nil, "HIGHLIGHT")
     btn.highlight:SetAllPoints()
@@ -361,6 +370,10 @@ local function ApplyCellContent(popup)
         else
             cellBtn.icon:Hide()
         end
+
+        local count
+        if cellData and opts.countForCell then count = opts.countForCell(cellData) end
+        cellBtn.count:SetText(count or "")
     end
 end
 

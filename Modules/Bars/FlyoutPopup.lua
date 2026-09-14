@@ -77,6 +77,14 @@ local function BuildOpts(button, data)
             if handler and handler.getIcon then return handler.getIcon(cellData.data) end
         end,
 
+        -- The same count the action would show on a bar: a stack of
+        -- reagents, charges on a wand, whatever the handler counts.
+        countForCell = function(cellData)
+            if not (cellData and cellData.type) then return nil end
+            local handler = Actions:Get(cellData.type)
+            if handler and handler.getCount then return handler.getCount(cellData.data) end
+        end,
+
         onCellEnter = function(_, cellData, cellBtn)
             if not (cellData and cellData.type) then return end
             local handler = Actions:Get(cellData.type)
@@ -189,5 +197,23 @@ BazUI:QueueForLogin(function()
             end
         end
         wipe(waitingForCombatEnd)
+    end)
+end)
+
+-- An open popup follows the bags: use one of a stack from inside it and
+-- the number on the cell should change with it rather than at the next
+-- time the grid happens to be rebuilt.
+BazUI:QueueForLogin(function()
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("BAG_UPDATE_DELAYED")
+    watcher:SetScript("OnEvent", function()
+        for _, frame in pairs(addon.Bar:GetAll()) do
+            for _, row in pairs(frame.buttons or {}) do
+                for _, btn in pairs(row) do
+                    local popup = btn._bazFlyoutPopup
+                    if popup and popup:IsShown() then popup:RefreshCells() end
+                end
+            end
+        end
     end)
 end)
