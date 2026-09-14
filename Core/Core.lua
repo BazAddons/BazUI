@@ -611,7 +611,7 @@ BazUI:QueueForLogin(function()
                         local ok, mgr = pcall(_G.Menu.GetManager)
                         if ok and mgr and mgr.GetOpenMenu then
                             local ok2, open = pcall(mgr.GetOpenMenu, mgr)
-                            print("  open _G.Menu:", ok2 and tostring(open) or "n/a")
+                            print("  open Menu:", ok2 and tostring(open) or "n/a")
                         end
                     end
                     print("  If everything above is false or empty, Esc reaches ClearTarget and a taint block is likely: check BugSack for 'ClearTarget'.")
