@@ -58,15 +58,17 @@ end
 
 function addon:Anchor(tip)
     if not self:OverridesAnchor() then return end
+    local origin = self:GetSetting("origin")
+    if origin == "auto" then origin = nil end
     tip:ClearAllPoints()
     if self:GetSetting("anchor") == "cursor" then
         local x, y = GetCursorPosition()
         local scale = tip:GetEffectiveScale()
-        tip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT",
+        tip:SetPoint(origin or "BOTTOMLEFT", UIParent, "BOTTOMLEFT",
             x / scale + self:GetSetting("cursorX"), y / scale + self:GetSetting("cursorY"))
     else
         local point = self:GetSetting("point")
-        tip:SetPoint(point, anchorFrame, "CENTER", 0, 0)
+        tip:SetPoint(origin or point, anchorFrame, "CENTER", 0, 0)
     end
 end
 
