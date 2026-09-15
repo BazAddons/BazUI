@@ -1055,6 +1055,30 @@ end
 -- belongs to RegisterUnitWatch, so the watch is handed back and forth
 -- rather than fought with; both calls are out-of-combat only, which Edit
 -- Mode already is.
+-- Asked for by hand, as opposed to asked for by Edit Mode being open.
+-- Kept apart so closing Edit Mode does not cancel a preview somebody
+-- turned on deliberately.
+local previewWanted = false
+
+function UnitBars:SetPreviewWanted(on)
+    previewWanted = on and true or false
+    self:RefreshPreview()
+end
+
+function UnitBars:IsPreviewing()
+    return previewing
+end
+
+function UnitBars:PreviewWanted()
+    return previewWanted
+end
+
+-- What the preview should be right now: either somebody asked for it, or
+-- Edit Mode is open and arranging is the point.
+function UnitBars:RefreshPreview()
+    self:SetPreview(previewWanted or BazUI:IsEditMode())
+end
+
 function UnitBars:SetPreview(on)
     if InCombatLockdown() then return end
     previewing = on and true or false
@@ -1071,6 +1095,19 @@ function UnitBars:SetPreview(on)
                 if _G.RegisterUnitWatch then _G.RegisterUnitWatch(bar.frame) end
             end
             self:Update(bar)
+
+        -- A cast bar is invisible between casts, which is the same
+        -- problem: nothing can be docked to it and it cannot be judged
+        -- against what is around it. One that is actually casting is
+        -- left alone.
+        elseif def.kind == "cast" and not bar.frame._cast then
+            BazUI.Dock:SetShown(bar.frame, previewing)
+            if previewing then
+                bar.frame:SetAlpha(1)
+                bar.frame:SetValue(0.55)
+                bar.frame:SetFillColor(CAST_COLOR)
+                bar.frame:SetText("Casting  1.4")
+            end
         end
     end
 end

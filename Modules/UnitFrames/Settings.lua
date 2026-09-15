@@ -33,7 +33,25 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
           section = "bars", order = 2,
           desc = "Health bars for players take the class colour instead of green.",
           get = Get("classColor"), set = Set("classColor") },
-        { key = "help", type = "note", section = "bars", order = 3, style = "info",
+        { key = "preview", label = "Preview bars for absent units", type = "execute",
+          section = "bars", order = 3,
+          desc = "Party and target bars are hidden when there is nobody in them. This shows them as placeholders so they can be moved and docked while you are alone. Also /bazframes preview.",
+          hidden = function()
+              local bars = addon.UnitBars
+              return not bars or bars:PreviewWanted()
+          end,
+          disabled = InCombatLockdown,
+          func = function() addon.UnitBars:SetPreviewWanted(true) end },
+        { key = "previewOff", label = "Stop previewing", type = "execute",
+          section = "bars", order = 3,
+          desc = "Hide the placeholder bars again.",
+          hidden = function()
+              local bars = addon.UnitBars
+              return not bars or not bars:PreviewWanted()
+          end,
+          disabled = InCombatLockdown,
+          func = function() addon.UnitBars:SetPreviewWanted(false) end },
+        { key = "help", type = "note", section = "bars", order = 4, style = "info",
           text = "Bars are made and arranged on the Bars page, or in Edit Mode: "
               .. "drag one near the edge of an action bar or another bar to dock "
               .. "it there. Whatever you make a bar for replaces the game's own "

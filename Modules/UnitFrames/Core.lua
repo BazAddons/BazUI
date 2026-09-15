@@ -27,6 +27,22 @@ addon = BazUI:RegisterModule("UnitFrames", {
     },
     slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,
+    commands = {
+        preview = {
+            desc = "Show bars for units that are not there, to arrange them",
+            handler = function()
+                local UnitBars = addon.UnitBars
+                if InCombatLockdown() then
+                    addon:Print("Preview the bars after combat ends.")
+                    return
+                end
+                UnitBars:SetPreviewWanted(not UnitBars:PreviewWanted())
+                addon:Print(UnitBars:PreviewWanted()
+                    and "Previewing bars for absent units."
+                    or "Preview off.")
+            end,
+        },
+    },
     onReady = function(self)
         self:InitializeBars()
         self:OnProfileChanged(function() self:ApplySettings() end)
@@ -99,11 +115,11 @@ function addon:InitializeBars()
         UnitBars:RefreshEditSettings()
         -- Bars for absent units turn up while arranging, so a party
         -- layout can be built without a party.
-        UnitBars:SetPreview(true)
+        UnitBars:RefreshPreview()
         UnitBars:ShowAllMovers()
     end)
     self:On("BAZ_EDITMODE_EXIT",  function()
-        UnitBars:SetPreview(false)
+        UnitBars:RefreshPreview()
         UnitBars:ShowAllMovers()
     end)
     self:On("PLAYER_REGEN_ENABLED", function()
@@ -111,7 +127,7 @@ function addon:InitializeBars()
         UnitBars:ApplyAll()
         -- Showing and hiding these is protected, so whatever the preview
         -- should have been while the fight ran, it is now.
-        UnitBars:SetPreview(BazUI:IsEditMode())
+        UnitBars:RefreshPreview()
         UnitBars:ShowAllMovers()
         -- Hiding Blizzard's frames is protected, so anything that
         -- changed mid-fight has been waiting for this.
