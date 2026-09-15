@@ -246,9 +246,11 @@ local function AcquireCard()
     card.rule:SetColorTexture(Theme.colors.divider[1], Theme.colors.divider[2],
         Theme.colors.divider[3], Theme.colors.divider[4])
 
+    -- Inset a little further than a row is, so the summary sits inside
+    -- the column of rows it is summarising rather than level with it.
     card.bar = Theme.CreateStatBar(card, { height = 11, labels = true })
-    card.bar:SetPoint("TOPLEFT", CARD_PAD + 1, -(CARD_HEAD + CARD_PAD))
-    card.bar:SetPoint("TOPRIGHT", -(CARD_PAD + 1), -(CARD_HEAD + CARD_PAD))
+    card.bar:SetPoint("TOPLEFT", CARD_PAD + 3, -(CARD_HEAD + CARD_PAD))
+    card.bar:SetPoint("TOPRIGHT", -(CARD_PAD + 3), -(CARD_HEAD + CARD_PAD))
 
     card.head:SetScript("OnEnter", function(self)
         self.bg:SetColorTexture(unpack(HEAD_LIT))
@@ -459,7 +461,9 @@ function Panel:Refresh()
                 card.bar:SetValues(barDef.value, barDef.max, barDef.text)
                 card.bar:SetBreakpoints(barDef.breakpoints, barDef.max)
                 card.bar:Show()
-                inner = inner + CARD_PAD + 24
+                -- What the bar actually is, rather than a number that
+                -- used to be close to it.
+                inner = inner + CARD_PAD + card.bar:GetHeight()
             else
                 card.bar:Hide()
             end

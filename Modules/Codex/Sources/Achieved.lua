@@ -128,47 +128,91 @@ Codex:RegisterSection({
 ---------------------------------------------------------------------------
 -- Reputation
 --
--- Only the standings worth calling an accomplishment: revered and above.
--- Each row carries how far through its standing you are, so the ones
--- within reach of exalted stand out from the ones that just arrived.
+-- Everyone you have standing with, each with a bar showing how far
+-- through that standing you are. It used to list revered and above only,
+-- on the grounds that those are the ones worth calling an achievement,
+-- which meant the card read "nothing at revered yet" for the first fifty
+-- levels of the game and told you nothing you could act on.
+--
+-- Sorted by standing and then by how far into it you are, so whoever you
+-- are about to advance with sits at the top of their group and the
+-- factions you have never spoken to fall to the bottom.
 ---------------------------------------------------------------------------
 
-local STANDING = {
-    [5] = "Friendly", [6] = "Honored", [7] = "Revered", [8] = "Exalted",
-}
+-- The client's own word for a standing: localised, and gendered in the
+-- languages that need it. The game's own reputation pane asks the same
+-- way.
+local function StandingName(standing)
+    local token = "FACTION_STANDING_LABEL" .. standing
+    local label = GetText and GetText(token, UnitSex("player")) or _G[token]
+    return label or tostring(standing)
+end
 
+-- Our palette rather than the game's FACTION_BAR_COLORS, so a reputation
+-- reads like every other reading in the suite: green is finished, gold is
+-- in progress, red is a problem. Nothing is lost by it - the game paints
+-- friendly through exalted the same green anyway - and exalted getting a
+-- colour of its own is one more thing than the game tells you.
+local function StandingColor(standing)
+    if standing >= 8 then return Theme.colors.success end
+    if standing >= 5 then return Theme.colors.gold end
+    if standing == 4 then return Theme.colors.textMuted end
+    return Theme.colors.danger
+end
+
+-- Everything the client is willing to list, which is everything visible
+-- in the game's own reputation pane. A group collapsed there is collapsed
+-- here too: expanding one fires UPDATE_FACTION, and this runs on
+-- UPDATE_FACTION, so expanding them ourselves to read them would refresh
+-- the codex, which would expand them again. The count comes back instead,
+-- so the card can say where the missing ones went.
 local function Factions()
-    local out = {}
+    local out, collapsed = {}, 0
     local numFactions = (C_Reputation and C_Reputation.GetNumFactions
         and C_Reputation.GetNumFactions()) or (GetNumFactions and GetNumFactions()) or 0
 
     for i = 1, numFactions do
-        local name, standing, isHeader, barMin, barMax, barValue
+        local name, standing, isHeader, hasRep, barMin, barMax, barValue
         if C_Reputation and C_Reputation.GetFactionDataByIndex then
             local data = C_Reputation.GetFactionDataByIndex(i)
             if data then
                 name, standing, isHeader = data.name, data.reaction, data.isHeader
+                hasRep = data.isHeaderWithRep
+                if data.isCollapsed then collapsed = collapsed + 1 end
                 barMin, barMax, barValue = data.currentReactionThreshold,
                     data.nextReactionThreshold, data.currentStanding
             end
         else
-            local n, _, s, low, high, value, _, _, header = GetFactionInfo(i)
-            name, standing, isHeader = n, s, header
+            local n, _, s, low, high, value, _, _, header, isCollapsed, rep = GetFactionInfo(i)
+            name, standing, isHeader, hasRep = n, s, header, rep
+            if isCollapsed then collapsed = collapsed + 1 end
             barMin, barMax, barValue = low, high, value
         end
 
-        if name and not isHeader and standing and standing >= 7 then
+        -- A header is a grouping and not a reputation, unless the game
+        -- says it carries one of its own.
+        if name and standing and (not isHeader or hasRep) then
+            local min, max = barMin or 0, barMax or 0
+            local span = math.max(0, max - min)
             out[#out + 1] = {
                 name = name, standing = standing,
-                min = barMin or 0, max = barMax or 0, value = barValue or 0,
+                into = math.max(0, (barValue or 0) - min),
+                span = span,
+                -- Exalted has no next standing to be partway to, so it
+                -- reads full rather than as whatever the client reports
+                -- for a track that has ended.
+                fraction = standing >= 8 and 1
+                    or (span > 0 and math.max(0, (barValue or 0) - min) / span or 0),
             }
         end
     end
+
     table.sort(out, function(a, b)
         if a.standing ~= b.standing then return a.standing > b.standing end
+        if a.fraction ~= b.fraction then return a.fraction > b.fraction end
         return a.name < b.name
     end)
-    return out
+    return out, collapsed
 end
 
 Codex:RegisterSection({
@@ -176,7 +220,7 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Reputation",
     order  = 40,
-    empty = "Nothing at revered yet.",
+    empty  = "No standing with anyone yet.",
     events = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
 
     GetHighlight = function()
@@ -188,21 +232,30 @@ Codex:RegisterSection({
     end,
 
     GetRows = function()
+        local factions, collapsed = Factions()
         local rows = {}
-        for _, f in ipairs(Factions()) do
+        for _, f in ipairs(factions) do
             local done = f.standing >= 8
-            local span = math.max(0, (f.max or 0) - (f.min or 0))
             rows[#rows + 1] = {
                 label  = f.name,
-                detail = STANDING[f.standing] or tostring(f.standing),
+                detail = done and StandingName(f.standing)
+                    or ("%s   %s / %s"):format(StandingName(f.standing),
+                        BazUI:FormatNumber(f.into), BazUI:FormatNumber(f.span)),
                 state  = done and "done" or "open",
-                -- Exalted is the end of the track, so it reads full
-                -- rather than as whatever fraction the client reports.
-                progress = (done or span > 0)
-                    and { value = done and 1 or (f.value - f.min),
-                          max   = done and 1 or span,
-                          color = done and Theme.colors.success or Theme.colors.caution }
-                    or nil,
+                progress = {
+                    value = done and 1 or f.into,
+                    max   = done and 1 or math.max(f.span, 1),
+                    color = StandingColor(f.standing),
+                },
+            }
+        end
+
+        if collapsed > 0 then
+            rows[#rows + 1] = {
+                label = ("%d group%s collapsed in the game's reputation pane."):format(
+                    collapsed, collapsed == 1 and "" or "s"),
+                detail = "expand them there to see them here",
+                muted = true,
             }
         end
         return rows

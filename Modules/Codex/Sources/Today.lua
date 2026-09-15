@@ -97,6 +97,12 @@ Codex:RegisterSection({
 -- Shown as how much of the period has run rather than a bare countdown:
 -- a bar most of the way along says "this week is nearly gone" at a
 -- glance, which a string of hours does not.
+--
+-- Which means the two bars measure different windows, and on the day the
+-- weekly rolls over they carry the same number at different lengths - an
+-- hour and a half is most of what is left of the day and almost none of
+-- what is left of the week. That looks like a bug until you know what the
+-- bar is of, so each row says so.
 ---------------------------------------------------------------------------
 
 local function SecondsUntil(fn)
@@ -110,14 +116,15 @@ end
 -- One reset clock. The bar fills as the window runs out and warms from
 -- gold towards amber as it does, so a glance says how much of the day or
 -- the week is already spent without reading the number.
-local function ResetRow(label, remaining, period, tip)
+local function ResetRow(label, remaining, period, window, tip)
     local Theme = BazUI.Skin.Theme
     local spent = (period - remaining) / period
     return {
         label    = label,
         detail   = Duration(remaining) .. " left",
         state    = "open",
-        tip      = tip,
+        tip      = ("%s\n\n%s of %s has run, and the bar is that much of it.")
+            :format(tip, Duration(period - remaining), window),
         progress = {
             value = period - remaining,
             max   = period,
@@ -144,12 +151,12 @@ Codex:RegisterSection({
         local rows = {}
         local daily = SecondsUntil("GetSecondsUntilDailyReset")
         if daily then
-            rows[#rows + 1] = ResetRow("Daily", daily, DAY,
+            rows[#rows + 1] = ResetRow("Daily", daily, DAY, "the day",
                 "The daily rollover, when quests flagged daily come back.")
         end
         local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
         if weekly then
-            rows[#rows + 1] = ResetRow("Weekly", weekly, WEEK,
+            rows[#rows + 1] = ResetRow("Weekly", weekly, WEEK, "the week",
                 "The weekly rollover, when raid lockouts clear.")
         end
         return rows

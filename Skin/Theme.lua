@@ -299,7 +299,13 @@ function Theme.CreateStatBar(parent, opts)
         overlay    = false,
         text       = false,
     })
-    bar:SetHeight(height + (opts.labels and 16 or 0))
+    -- A labelled bar reserves a band above the fill for its two captions.
+    -- Twenty rather than sixteen, because sixteen left the text sitting on
+    -- the fill with nothing between them.
+    local LABEL_BAND  = 20
+    local LABEL_INSET = 3
+
+    bar:SetHeight(height + (opts.labels and LABEL_BAND or 0))
 
     -- The fill sits at the bottom so the labels can have the space above
     -- it, which is the one way a panel row differs from a screen bar.
@@ -310,15 +316,24 @@ function Theme.CreateStatBar(parent, opts)
     bar.track = bar
 
     if opts.labels then
+        -- Inset from the ends rather than flush with them. A caption that
+        -- stops exactly where the bar stops reads as cramped against
+        -- whatever the bar is sitting in, and the bar is usually sitting
+        -- just inside the edge of a card.
         bar.left = Theme.FontString(bar, "OVERLAY", "GameFontHighlightSmall")
-        bar.left:SetPoint("TOPLEFT")
+        bar.left:SetPoint("TOPLEFT", LABEL_INSET, -2)
         bar.left:SetJustifyH("LEFT")
         bar.left:SetTextColor(unpack(Theme.colors.textSoft))
 
         bar.right = Theme.FontString(bar, "OVERLAY", "GameFontHighlightSmall")
-        bar.right:SetPoint("TOPRIGHT")
+        bar.right:SetPoint("TOPRIGHT", -LABEL_INSET, -2)
         bar.right:SetJustifyH("RIGHT")
         bar.right:SetTextColor(unpack(Theme.colors.textMuted))
+
+        -- Neither caption may run into the other.
+        bar.left:SetPoint("RIGHT", bar.right, "LEFT", -8, 0)
+        bar.left:SetWordWrap(false)
+        bar.right:SetWordWrap(false)
     end
 
     bar.pips = {}

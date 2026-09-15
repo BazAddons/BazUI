@@ -211,9 +211,17 @@ function MapScale()
 end
 
 -- How far the map is grown past the hole in the frame, so its edge slides
--- under the band. The art's inner edge is antialiased; an edge that only
--- meets it leaves a seam of half-lit pixels all the way round.
-local FRAME_OVERLAP = 2
+-- under the band. The art's inner edge is antialiased and the map's
+-- circle does not quite reach the edge of the frame it is drawn in, so an
+-- edge that only meets the art leaves a ring of background showing
+-- through between the two.
+--
+-- In design pixels, which the drawer multiplies along with everything
+-- else, so this is a few more on screen than it says. Two was not enough
+-- to clear the gap; five is, and it costs a sliver of the band's inner
+-- edge, which is the widest part of the picture and has it to spare. The
+-- map comes out a little bigger for it, which is the other thing wanted.
+local FRAME_OVERLAP = 5
 
 local ring, ringHost
 

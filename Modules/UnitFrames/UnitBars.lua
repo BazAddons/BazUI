@@ -712,10 +712,42 @@ end
 -- Building one
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- The right-click menu
+--
+-- The game keeps a menu per kind of unit and they are not interchangeable.
+-- TARGET is the one for something you have targeted and know nothing else
+-- about - a raid icon, set focus, add friend - while PLAYER is the one
+-- with invite, whisper, inspect, trade, follow and duel on it, and PARTY
+-- adds promote, uninvite and the rest. Right-clicking a player used to
+-- offer no way to invite them because every unit that was not you got
+-- TARGET.
+--
+-- Choosing between them is not our job: SECURE_ACTIONS.togglemenu does
+-- it, it is the same code the game's own frames reach, and it runs in the
+-- secure environment so it keeps working in a fight. Blizzard notes that
+-- they keep it for exactly this - an addon setting the attribute itself.
+--
+-- The menu below is what happens on a client that does not have it. It is
+-- the same rule, shortened to the units a bar can read.
+---------------------------------------------------------------------------
+
+local function MenuFor(unit)
+    if UnitIsUnit(unit, "player") then return "SELF" end
+    if unit:match("^partypet") or UnitIsOtherPlayersPet(unit) then return "OTHERPET" end
+    if unit:match("^party") then return "PARTY" end
+    if UnitIsPlayer(unit) then
+        if UnitInRaid(unit) then return "RAID_PLAYER" end
+        if UnitInParty(unit) then return "PARTY" end
+        return "PLAYER"
+    end
+    return "TARGET"
+end
+
 local function UnitMenu(frame)
     local unit = frame:GetAttribute("unit") or "player"
     if _G.UnitPopup_OpenMenu then
-        _G.UnitPopup_OpenMenu(unit == "player" and "SELF" or "TARGET",
+        _G.UnitPopup_OpenMenu(MenuFor(unit),
             { unit = unit, fromPlayerFrame = unit == "player" })
     elseif _G.ToggleDropDownMenu then
         local menu = unit == "player" and _G.PlayerFrameDropDown or _G.TargetFrameDropDown
@@ -745,6 +777,14 @@ function UnitBars:Build(def)
         frame:SetAttribute("unit", def.unit)
         if _G.SecureUnitButton_OnLoad then
             _G.SecureUnitButton_OnLoad(frame, def.unit, UnitMenu)
+        end
+
+        -- SecureUnitButton_OnLoad hands the right button to a function of
+        -- ours; hand it back to the game instead, where it picks the menu
+        -- that suits the unit. The function above stays as the answer for
+        -- a client without it.
+        if _G.SECURE_ACTIONS and _G.SECURE_ACTIONS.togglemenu then
+            frame:SetAttribute("*type2", "togglemenu")
         end
         frame:RegisterForClicks("AnyUp")
         -- The game shows and hides it as the unit comes and goes, in the

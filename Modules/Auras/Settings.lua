@@ -156,6 +156,7 @@ local function RowArgs(def, index)
     local setAlign,  getAlign  = Field("align", "LEFT")
     local setGap,    getGap    = Field("gap", 4)
     local setMine,   getMine   = Field("onlyMine", false)
+    local setShowDuration      = Field("showDuration", true)
     local setUnit,   getUnit   = Field("unit", "player")
     local setFilter, getFilter = Field("filter", "HELPFUL")
 
@@ -294,6 +295,25 @@ local function RowArgs(def, index)
                 get = function() return def.stack or "AUTO" end,
                 set = function(_, value)
                     def.stack = (value ~= "AUTO") and value or nil
+                    Apply()
+                end,
+            },
+
+            timerHeader = { order = 27, type = "header", name = "Timers" },
+            showDuration = {
+                order = 28, type = "toggle", name = "Show timers",
+                desc = "The time left, on the icon. This row only; leave every row alone and they follow the setting on the General page.",
+                get = function() return addon:RowValue(def, "showDuration") ~= false end,
+                set = setShowDuration,
+            },
+            durationSize = {
+                order = 29, type = "range", name = "Timer size",
+                desc = "Nought sizes the timer from the icon, which is what it did before this existed. That has a floor of eight points, and on a row of small icons eight points is most of the icon - so set a number here, or turn the timers off.",
+                hidden = function() return addon:RowValue(def, "showDuration") == false end,
+                min = 0, max = 24, step = 1,
+                get = function() return addon:RowValue(def, "durationSize") end,
+                set = function(_, value)
+                    def.durationSize = (value > 0) and value or nil
                     Apply()
                 end,
             },

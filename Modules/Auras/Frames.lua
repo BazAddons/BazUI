@@ -37,6 +37,8 @@ local buttons = {}       -- set of every button the headers have created
 local hiddenParent
 local initialized = false
 local pendingApply  = false
+-- A button the header made mid-fight that we were not allowed to resize.
+local sizePending   = false
 local refreshQueued = false
 local applyQueued   = false
 
@@ -44,6 +46,8 @@ local applyQueued   = false
 local demoFrame
 local demoButtons = {}
 local demoActive  = false
+-- Defined with the rest of the preview, called from SizeRows above it.
+local LayoutDemo
 
 ---------------------------------------------------------------------------
 -- Reading auras
@@ -91,7 +95,8 @@ local function SetRim(btn, c)
 end
 
 local function UpdateDuration(btn, now)
-    if not btn.expirationTime or addon:GetSetting("showDuration") == false then
+    if not btn.expirationTime
+        or addon:RowValue(addon:RowOfButton(btn), "showDuration") == false then
         btn.Duration:SetText("")
         return
     end
@@ -170,10 +175,21 @@ end
 
 function Auras.ApplyButtonSize(btn)
     local size = addon:RowValue(addon:RowOfButton(btn), "iconSize")
-    if not InCombatLockdown() then
+    if InCombatLockdown() then
+        -- Resizing a button the secure header owns is protected, and the
+        -- header makes a new one the moment an aura turns up that has no
+        -- button yet. So a fight leaves a row wearing two sizes: the ones
+        -- sized while we could, and the ones still at whatever the
+        -- template started them at. Remember, and put it right after.
+        if math.abs((btn:GetWidth() or 0) - size) > 0.5 then
+            sizePending = true
+        end
+    else
         btn:SetSize(size, size)
     end
-    btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.42)), "OUTLINE")
+    local row = addon:RowOfButton(btn)
+    btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
+        addon:DurationSize(row, size), "OUTLINE")
     btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.40)), "OUTLINE")
 end
 
@@ -439,6 +455,7 @@ local ROW_FALLBACK = {
     perRow        = "perRow",
     sortMethod    = "sortMethod",
     sortDirection = "sortDirection",
+    showDuration  = "showDuration",
 }
 
 local ROW_DEFAULT = {
@@ -447,6 +464,13 @@ local ROW_DEFAULT = {
     perRow        = 8,
     sortMethod    = "INDEX",
     sortDirection = "+",
+    showDuration  = true,
+    -- Nought is "whatever suits the icon", which is what the timer did
+    -- before it could be set: a shade under half the icon's height, and
+    -- never below eight, because a smaller number is not a number any
+    -- more. On a row of small icons that floor is most of the icon, which
+    -- is the reason this is a setting.
+    durationSize  = 0,
 }
 
 -- Icon size worked out from the host's width, for a row set to fill
@@ -463,6 +487,14 @@ function addon:RowValue(def, key)
     value = self:GetSetting(ROW_FALLBACK[key] or key)
     if value ~= nil then return value end
     return ROW_DEFAULT[key]
+end
+
+-- What size the timer on a button should be: the row's own answer, or
+-- one worked out from the icon when the row has not got one.
+function addon:DurationSize(def, iconSize)
+    local wanted = self:RowValue(def, "durationSize")
+    if wanted and wanted > 0 then return wanted end
+    return math.max(8, math.floor(iconSize * 0.42))
 end
 
 -- The row a button was created for, so its own icon size reaches it.
@@ -809,6 +841,14 @@ function addon:SizeRows()
             end
         end
     end
+
+    -- The stand-ins are placed against the rows, so they are placed
+    -- again whenever the rows change. Entering Edit Mode is exactly that
+    -- case: an empty row is a pixel tall until this runs and stands it up
+    -- to its real height, and laying the stand-ins out first put them
+    -- against nothing. Doing it here rather than at each call site means
+    -- no caller has to know the order.
+    if demoActive then LayoutDemo() end
 end
 
 function addon:ApplyRows()
@@ -1021,6 +1061,29 @@ function addon:RowEditSettings(def)
             set = function(value) def.onlyMine = value and true or false Refresh() end }
     end
 
+    widgets[#widgets + 1] = { type = "checkbox", section = "Timers", label = "Show timers",
+        get = function() return addon:RowValue(def, "showDuration") ~= false end,
+        set = function(value)
+            def.showDuration = value and true or false
+            Refresh()
+            -- A row with no timers has no timer size. A checkbox may
+            -- change which settings are showing; a slider may not.
+            addon:RefreshRowEditSettings()
+        end }
+
+    if addon:RowValue(def, "showDuration") ~= false then
+        widgets[#widgets + 1] = { type = "slider", section = "Timers", label = "Timer size",
+            min = 0, max = 24, step = 1,
+            format = function(value)
+                return (value or 0) > 0 and tostring(value) or "Auto"
+            end,
+            get = function() return addon:RowValue(def, "durationSize") end,
+            set = function(value)
+                def.durationSize = (value > 0) and value or nil
+                Refresh()
+            end }
+    end
+
     widgets[#widgets + 1] = { type = "dropdown", section = "Sorting", label = "Sort by",
         options = Values(addon.ROW_SORTS),
         get = function() return addon:RowValue(def, "sortMethod") end,
@@ -1160,7 +1223,7 @@ local function DemoButton(i)
     return btn
 end
 
-local function LayoutDemo()
+function LayoutDemo()
     local now  = GetTime()
     local used = 0
     -- Every row there is, rather than the four there used to be, and
@@ -1205,7 +1268,8 @@ local function LayoutDemo()
 
                 local px = size * s
                 btn:SetSize(px, px)
-                btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.42)), "OUTLINE")
+                btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
+                    addon:DurationSize(def, px), "OUTLINE")
                 btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.40)), "OUTLINE")
                 btn.Icon:SetTexture("Interface\\Icons\\" .. icon)
                 btn.Count:SetText((i % 3 == 1 and addon:GetSetting("showCount") ~= false) and tostring((i % 5) + 2) or "")
@@ -1302,6 +1366,17 @@ function addon:QueueRefresh()
         refreshQueued = false
         addon:RefreshAll()
     end)
+end
+
+-- Every button to the size its row asks for. Cheap enough to do the lot:
+-- the alternative is tracking which ones missed out, and a button that
+-- misses out is exactly the one nobody is tracking.
+function Auras.ResizeButtons()
+    if InCombatLockdown() then return end
+    sizePending = false
+    for btn in pairs(buttons) do
+        Auras.ApplyButtonSize(btn)
+    end
 end
 
 function addon:ApplySettings()
@@ -1405,7 +1480,14 @@ function addon:Initialize()
     end)
     self:On("PLAYER_ENTERING_WORLD", function() self:QueueRefresh() end)
     self:On("PLAYER_REGEN_ENABLED", function()
-        if pendingApply then self:ApplySettings() else self:SizeRows() end
+        if pendingApply then
+            self:ApplySettings()
+            return
+        end
+        -- Buttons before rows: a row measures the box its buttons make,
+        -- so it has to be asked after they are the right size.
+        if sizePending then Auras.ResizeButtons() end
+        self:SizeRows()
     end)
     self:On("PLAYER_REGEN_DISABLED", function()
         -- Stand-ins have no business on screen during a fight, whoever

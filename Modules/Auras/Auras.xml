@@ -1,36 +1,42 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
-    <!-- The look of one aura icon: rim, masked icon, count and duration.
+    <!-- The look of one aura icon: a square rim, the icon inside it, the
+         stack count and the time left.
          Shared by the real buttons and the preview's stand-ins. -->
     <Button name="BazUIAuraVisualTemplate" virtual="true">
         <Size x="26" y="26"/>
         <Layers>
-            <Layer level="BACKGROUND" textureSubLevel="-1">
-                <!-- Rim: a rounded square two pixels larger than the icon,
-                     dark for buffs, colored by dispel type for debuffs. -->
-                <Texture parentKey="Border">
-                    <Anchors>
-                        <Anchor point="TOPLEFT" x="-2" y="2"/>
-                        <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
-                    </Anchors>
+            <Layer level="BACKGROUND">
+                <!-- The rim, and the button's whole box.
+                     
+                     It used to hang two pixels outside the button and wear
+                     a rounded-square mask off one of the game's atlases.
+                     Both cost more than they were worth: the mask insets
+                     the art it covers, so a row set to no spacing still
+                     showed a dark strip between every pair of icons - two
+                     rims, side by side, in the gap the inset left - and a
+                     row measured four pixels narrower than it looked,
+                     which a row told to fill its host then got wrong.
+                     
+                     Square, and inside the box, so what a button occupies
+                     is what you can see of it. Spacing is then the number
+                     it says it is, and it is the same square border the
+                     bars and panels wear. -->
+                <Texture parentKey="Border" setAllPoints="true">
                     <Color r="0.08" g="0.08" b="0.10" a="1"/>
                 </Texture>
-                <MaskTexture parentKey="BorderMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
-                    <Anchors>
-                        <Anchor point="TOPLEFT" relativeKey="$parent.Border"/>
-                        <Anchor point="BOTTOMRIGHT" relativeKey="$parent.Border"/>
-                    </Anchors>
-                    <MaskedTextures>
-                        <MaskedTexture childKey="Border"/>
-                    </MaskedTextures>
-                </MaskTexture>
             </Layer>
             <Layer level="ARTWORK">
-                <Texture parentKey="Icon" setAllPoints="true"/>
-                <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE" setAllPoints="true">
-                    <MaskedTextures>
-                        <MaskedTexture childKey="Icon"/>
-                    </MaskedTextures>
-                </MaskTexture>
+                <!-- Trimmed, because every icon in the game's art has a
+                     dark border painted into it about a fifteenth of the
+                     way in. Drawing the whole texture puts that border
+                     inside our button on top of our own. -->
+                <Texture parentKey="Icon">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" x="1" y="-1"/>
+                        <Anchor point="BOTTOMRIGHT" x="-1" y="1"/>
+                    </Anchors>
+                    <TexCoords left="0.07" right="0.93" top="0.07" bottom="0.93"/>
+                </Texture>
             </Layer>
             <Layer level="OVERLAY">
                 <FontString parentKey="Count" inherits="NumberFontNormalSmall" justifyH="RIGHT">
