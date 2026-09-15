@@ -42,7 +42,10 @@ function Theme.CreateNameplate(parent, root, layout, ratio, fontSize, tint)
     plate:SetSize(minimum, height)
     Theme.ApplyBorder(plate, { fill = Theme.colors.bg })
 
-    local text = parent:CreateFontString(nil, "OVERLAY")
+    -- On the plate, not on the parent. A child frame draws over its
+    -- parent's regions, so a font string belonging to the parent ends up
+    -- behind the plate no matter which layer it claims.
+    local text = plate:CreateFontString(nil, "OVERLAY")
     text:SetPoint("CENTER", plate, "CENTER", 0, 0)
     text:SetFont(Theme.FontFile(), fontSize, "OUTLINE")
     text:SetTextColor(unpack(Theme.colors.goldSoft))

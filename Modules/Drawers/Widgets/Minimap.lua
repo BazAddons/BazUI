@@ -15,7 +15,14 @@ if not addon then return end
 
 local WIDGET_ID    = "bazdrawer_minimap"
 local DEFAULT_SIZE = 140
-local VISUAL_PAD   = 18  -- breathing room around the minimap inside the wrapper
+-- Breathing room around the minimap inside the wrapper. Kept small
+-- because it scales with everything else: the drawer sizes a widget by
+-- its declared width, so eighteen pixels of padding around a hundred and
+-- forty pixel map becomes fifty either side once the map is filling a
+-- drawer, and the map ends up two thirds of the width it was given. The
+-- border used to need the room - the old ring art hung outside the map -
+-- and the drawn one sits inside the footprint instead.
+local VISUAL_PAD   = 4
                         -- (bigger than it looks because the cardinal
                         -- decoration points extend past GetWidth/Height)
 
