@@ -31,6 +31,10 @@ addon = BazUI:RegisterModule("UnitFrames", {
     slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,
     commands = {
+        reset = {
+            desc = "Delete every bar and start again with the usual five",
+            handler = function() addon:ResetBars() end,
+        },
         stacks = {
             desc = "Print every bar and row with what it is docked to",
             handler = function() addon:PrintStacks() end,
@@ -55,6 +59,33 @@ addon = BazUI:RegisterModule("UnitFrames", {
         self:OnProfileChanged(function() self:ApplySettings() end)
     end,
 })
+
+-- Back to the five a new profile starts with. Testing an arrangement
+-- leaves debris, and deleting a dozen bars one at a time through a
+-- confirmation each is its own punishment.
+function addon:ResetBars()
+    if InCombatLockdown() then
+        self:Print("Reset the bars after combat ends.")
+        return
+    end
+    if not BazUI.Confirm then return end
+
+    BazUI:Confirm({
+        title       = "Delete every bar?",
+        body        = "Every bar you have made goes, and the five a new profile starts with come back. Aura rows are separate: /bazauras reset does those.",
+        acceptLabel = "Delete them",
+        acceptStyle = "destructive",
+        onAccept    = function()
+            local UnitBars = addon.UnitBars
+            local ids = {}
+            for _, def in ipairs(UnitBars:Defs()) do ids[#ids + 1] = def.id end
+            for _, id in ipairs(ids) do UnitBars:Remove(id) end
+            addon:SeedBars()
+            UnitBars:ApplyAll()
+            addon:Print("Bars reset.")
+        end,
+    })
+end
 
 -- What is docked to what, as the saved definitions have it and as the
 -- dock has it. The two disagreeing is worth seeing directly rather than

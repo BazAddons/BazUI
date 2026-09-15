@@ -166,40 +166,55 @@ function Dock:CanCopy(frame)
     return copiers[frame] ~= nil
 end
 
-function Dock:CopyStack(frame, unit, hostId, edge, report)
-    local copier = copiers[frame]
-    if not copier then return nil, 0 end
+-- Everything hanging off `frame`, worked out before anything is made.
+--
+-- Walking and copying at the same time is asking for trouble: every copy
+-- attaches to something, attaching changes the follower lists being
+-- walked, and the walk can end up copying what it has just made. Reading
+-- the whole shape first and then building from that list cannot.
+local function Plan(frame, parent, edge, out, seen)
+    if not frame or seen[frame] then return end
+    seen[frame] = true
+    out[#out + 1] = { frame = frame, parent = parent, edge = edge }
 
-    local newId, newFrame = copier(unit, hostId, edge)
-    if not newFrame then return nil, 0 end
-    local made = 1
-
-    -- Say what each piece was asked to attach to and whether it did.
-    -- A copy that comes out loose when a host was named is the only
-    -- interesting failure here, and it is invisible from the screen:
-    -- a loose bar looks exactly like one that was never told.
-    if report then
-        report[#report + 1] = {
-            id     = newId,
-            host   = hostId,
-            docked = self:IsDocked(newFrame),
-        }
-    end
-
-    -- A snapshot: every copy attaches to the copy above it, which adds
-    -- to the follower lists as we go.
     local list = followers[frame]
-    if list then
-        local snapshot = {}
-        for index = 1, #list do snapshot[index] = list[index] end
-        for _, follower in ipairs(snapshot) do
-            local link = links[follower]
-            local _, count = Dock:CopyStack(follower, unit, newId,
-                link and link.edge or "BOTTOM", report)
-            made = made + (count or 0)
+    if not list then return end
+    for index = 1, #list do
+        local follower = list[index]
+        local link = links[follower]
+        Plan(follower, frame, link and link.edge or "BOTTOM", out, seen)
+    end
+end
+
+function Dock:CopyStack(frame, unit, report)
+    local plan = {}
+    Plan(frame, nil, nil, plan, {})
+
+    -- Where each original's copy ended up, so a follower's copy can be
+    -- told to attach to its own parent's copy rather than to anything
+    -- that happens to be lying around.
+    local copies, made = {}, 0
+
+    for _, entry in ipairs(plan) do
+        local copier = copiers[entry.frame]
+        if copier then
+            local hostId = entry.parent and copies[entry.parent] or nil
+            local newId, newFrame = copier(unit, hostId, entry.edge)
+            if newFrame then
+                copies[entry.frame] = newId
+                made = made + 1
+                if report then
+                    report[#report + 1] = {
+                        id     = newId,
+                        host   = hostId,
+                        docked = self:IsDocked(newFrame),
+                    }
+                end
+            end
         end
     end
-    return newId, made
+
+    return made
 end
 
 -- The corner a follower is hung by, for anything that has to sit over

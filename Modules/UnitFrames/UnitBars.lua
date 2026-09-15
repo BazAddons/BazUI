@@ -1414,7 +1414,7 @@ end
 -- broken copy passes for a working one.
 function UnitBars:RunCopy(frame, unit)
     local report = {}
-    local _, made = BazUI.Dock:CopyStack(frame, unit, nil, nil, report)
+    local made = BazUI.Dock:CopyStack(frame, unit, report)
     addon:Print(("Copied %d%s."):format(made or 0,
         unit and (" for " .. (UnitBars.UNITS[unit] or unit)) or ""))
 
