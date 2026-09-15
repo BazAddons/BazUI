@@ -148,8 +148,9 @@ local function BarArgs(def)
             },
             height = {
                 order = 22, type = "range", name = "Height",
-                min = 8, max = 48, step = 1,
-                get = Field(def, "height", 20), set = SetField(def, "height"),
+                desc = "Four pixels a side are border, so a bar is about eight taller than the fill you want.",
+                min = 14, max = 48, step = 1,
+                get = Field(def, "height", 24), set = SetField(def, "height"),
             },
             textMode = {
                 order = 23, type = "select", name = "Show text",

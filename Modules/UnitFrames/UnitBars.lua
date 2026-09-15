@@ -116,7 +116,9 @@ function UnitBars:Add(kind, unit)
         kind       = kind,
         unit       = unit,
         width      = 240,
-        height     = 20,
+        -- Four pixels a side go to the outline, the rim and the line
+        -- between them, so this is a sixteen pixel fill.
+        height     = 24,
         textMode   = "always",
         textFormat = (kind == "xp" or kind == "rep") and "detailed"
             or ((kind == "power" or kind == "cast") and "current" or "namePercent"),
@@ -406,7 +408,7 @@ function UnitBars:Build(def)
     local frame = BazUI.CreateStatusBar("BazUIStatusBar" .. def.id, UIParent, {
         style    = "screen",
         width    = def.width or 240,
-        height   = def.height or 20,
+        height   = def.height or 24,
         textMode = def.textMode or "always",
         template = secure and "SecureUnitButtonTemplate" or nil,
     })
@@ -493,7 +495,7 @@ function UnitBars:Apply(bar)
     end
 
     frame:SetBarSize(math.max(60, math.min(1200, def.width or 240)),
-        math.max(8, math.min(48, def.height or 20)))
+        math.max(14, math.min(48, def.height or 24)))
     frame:SetTextMode(def.textMode or "always")
     frame:SetTicks(def.ticks or 0)
 
@@ -762,8 +764,8 @@ function UnitBars:EditSettings(bar)
           get = function() return def.width or 240 end,
           set = function(value) def.width = value Refresh() end },
         { type = "slider", section = "Size", label = "Height",
-          min = 8, max = 48, step = 1,
-          get = function() return def.height or 20 end,
+          min = 14, max = 48, step = 1,
+          get = function() return def.height or 24 end,
           set = function(value) def.height = value Refresh() end },
 
         { type = "dropdown", section = "Text", label = "Show text",

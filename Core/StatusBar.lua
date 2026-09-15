@@ -205,34 +205,33 @@ function BazUI.CreateStatusBar(name, parent, opts)
     local bar = CreateFrame("Button", name, parent or UIParent, opts.template)
     Mixin(bar, BarMixin)
     bar._ticks = {}
-    bar._inset = screen and 2 or 1
+    bar._inset = screen and 4 or 1
     bar._textMode = opts.textMode or "always"
 
     if screen then
-        -- A dark outline so the bar reads over any ground, then the rim,
-        -- then the track it fills against. Two pixels a side, and the
-        -- fill gets everything else.
+        -- Four rings, outside in: two pixels of dark outline, one of
+        -- gold rim, one of dark track, then the fill. The gold is a
+        -- single pixel and does all the work, which it can only do with
+        -- dark on both sides of it: the outline holds it off whatever
+        -- the bar is sitting over, and the inner line holds it off the
+        -- fill.
         --
-        -- All of it inside the frame. The outline used to sit two pixels
-        -- beyond every edge, which made the bar visibly wider than its
-        -- own box: docked to something, it matched that thing's width
-        -- exactly and still overhung it by four pixels. Bringing it in
-        -- cost the fill those pixels, and on a fourteen pixel bar losing
-        -- two of them off the middle is the whole look, so the dark ring
-        -- that used to sit between the rim and the fill is gone instead.
-        -- It was never doing much: the track behind an empty bar is the
-        -- same colour, and against the fill the rim reads better with
-        -- nothing between them.
+        -- All of it inside the frame. It used to be drawn beyond every
+        -- edge, which made a bar wider than its own box, so a docked one
+        -- matched its host's width exactly and still overhung it. The
+        -- chrome therefore costs four pixels a side and the fill gets
+        -- what is left: a bar wants to be about eight pixels taller than
+        -- the fill you want to see.
         local shadow = Solid(bar, "BACKGROUND", SHADOW, -8)
         shadow:SetAllPoints(bar)
 
         local rim = Solid(bar, "BACKGROUND", opts.rimColor or RIM, -7)
-        rim:SetPoint("TOPLEFT", 1, -1)
-        rim:SetPoint("BOTTOMRIGHT", -1, 1)
+        rim:SetPoint("TOPLEFT", 2, -2)
+        rim:SetPoint("BOTTOMRIGHT", -2, 2)
 
         local track = Solid(bar, "BACKGROUND", opts.trackColor or TRACK, -6)
-        track:SetPoint("TOPLEFT", 2, -2)
-        track:SetPoint("BOTTOMRIGHT", -2, 2)
+        track:SetPoint("TOPLEFT", 3, -3)
+        track:SetPoint("BOTTOMRIGHT", -3, 3)
         bar.rim, bar.track = rim, track
     elseif Theme and Theme.ApplyFlatPanel then
         Theme.ApplyFlatPanel(bar, opts.trackColor or { 0.02, 0.02, 0.02, 0.85 },
