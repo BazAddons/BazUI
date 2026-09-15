@@ -667,10 +667,16 @@ function UnitBars:Apply(bar)
     frame:SetTextMode(def.textMode or "always")
     frame:SetTicks(def.ticks or 0)
 
-    local dock = def.dock or { host = "float" }
+    -- Full width is one bar to a line; half or its own width lets two
+    -- sit side by side, which is how a health bar on the left and a
+    -- power bar on the right end up on the same action bar.
+    local dock  = def.dock or { host = "float" }
+    local takes = def.takes or "full"
     BazUI.Dock:AttachTo(frame, dock.host, {
         edge    = dock.edge or "BOTTOM",
-        mode    = "stretch",
+        mode    = (takes == "full") and "stretch" or "align",
+        align   = def.align or "LEFT",
+        share   = (takes == "half") and 2 or nil,
         order   = def.id,
         gap     = def.gap,
         reserve = def.kind == "cast",
@@ -758,6 +764,14 @@ local TEXT_FORMATS = {
 }
 local EDGES = { BOTTOM = "Below", TOP = "Above" }
 
+-- How much of its host a docked bar takes, and where it sits across it.
+local TAKES = {
+    full = "The whole width",
+    half = "Half the width",
+    own  = "Its own width",
+}
+local ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+
 function UnitBars:EditSettings(bar)
     local def = bar.def
 
@@ -826,6 +840,23 @@ function UnitBars:EditSettings(bar)
             min = 0, max = 24, step = 1,
             get = function() return def.gap or 2 end,
             set = function(value) def.gap = value Refresh() end,
+        })
+        table.insert(widgets, 3, {
+            type = "dropdown", section = "Docking", label = "Aligned",
+            options = ValuesArray(ALIGNS),
+            get = function() return def.align or "LEFT" end,
+            set = function(value) def.align = value Refresh() end,
+        })
+        table.insert(widgets, 3, {
+            type = "dropdown", section = "Docking", label = "Takes",
+            options = ValuesArray(TAKES),
+            get = function() return def.takes or "full" end,
+            set = function(value)
+                def.takes = value
+                Refresh()
+                -- Full width has no alignment to speak of.
+                UnitBars:RefreshEditSettings()
+            end,
         })
     end
 

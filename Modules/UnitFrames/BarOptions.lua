@@ -24,6 +24,12 @@ local FORMATS = {
     namePercent     = "Name and percent",
 }
 local EDGES = { BOTTOM = "Below", TOP = "Above" }
+local TAKES = {
+    full = "The whole width",
+    half = "Half the width",
+    own  = "Its own width",
+}
+local ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
 
 local function Bars()
     return addon.UnitBars
@@ -138,8 +144,25 @@ local function BarArgs(def)
                     if bar then UnitBars:Apply(bar) end
                 end,
             },
+            takes = {
+                order = 13, type = "select", name = "Takes",
+                desc = "Half the width lets two bars share one line: a health bar aligned left and a power bar aligned right on the same action bar.",
+                values = TAKES,
+                hidden = function() return not def.dock or def.dock.host == "float" end,
+                get = Field(def, "takes", "full"), set = SetField(def, "takes"),
+            },
+            align = {
+                order = 14, type = "select", name = "Aligned",
+                desc = "Which end of its host it sits at.",
+                values = ALIGNS,
+                hidden = function()
+                    return not def.dock or def.dock.host == "float"
+                        or (def.takes or "full") == "full"
+                end,
+                get = Field(def, "align", "LEFT"), set = SetField(def, "align"),
+            },
             gap = {
-                order = 13, type = "range", name = "Gap",
+                order = 15, type = "range", name = "Gap",
                 desc = "Pixels between this bar and the one it is docked to. Each bar owns the space above it, so a chain is spaced by setting each bar in turn.",
                 min = 0, max = 24, step = 1,
                 hidden = function() return not def.dock or def.dock.host == "float" end,
@@ -149,8 +172,11 @@ local function BarArgs(def)
             width = {
                 order = 21, type = "range", name = "Width",
                 min = 60, max = 1200, step = 5,
-                hidden = function() return def.dock and def.dock.host ~= "float" end,
-                desc = "A docked bar takes its host's width instead.",
+                hidden = function()
+                    return def.dock and def.dock.host ~= "float"
+                        and (def.takes or "full") ~= "own"
+                end,
+                desc = "A docked bar is measured from its host unless it is set to keep its own width.",
                 get = Field(def, "width", 240), set = SetField(def, "width"),
             },
             height = {

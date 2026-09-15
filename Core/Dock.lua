@@ -77,6 +77,9 @@ function Dock:Attach(frame, host, opts)
         align   = opts.align or "LEFT",
         order   = opts.order or 100,
         gap     = gap,
+        -- How much of the host's width an aligned follower takes: 1 for
+        -- all of it, 2 for half. Nothing means keep your own width.
+        share   = opts.share,
         reserve = opts.reserve and true or false,
     }
 
@@ -344,6 +347,19 @@ local function PlaceOneEdge(host, edge)
                 frame:SetPoint(down and "TOP" or "BOTTOM", host,
                     down and "BOTTOM" or "TOP", 0, down and -offset or offset)
             else
+                -- An aligned follower can still be measured from its
+                -- host: half of an action bar is what two bars sharing
+                -- one line want, and neither should have to be told the
+                -- number.
+                if link.share then
+                    local width = hostWidth / link.share / (frame:GetEffectiveScale() or 1)
+                    if frame.SetBarSize then
+                        frame:SetBarSize(width, frame:GetHeight())
+                    else
+                        frame:SetWidth(width)
+                    end
+                end
+
                 local point, hostPoint
                 if link.align == "CENTER" then
                     point     = down and "TOP" or "BOTTOM"
