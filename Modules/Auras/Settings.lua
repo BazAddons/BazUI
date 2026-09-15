@@ -117,7 +117,11 @@ local function DockValues(frame)
     local values = { float = "Floating" }
     for _, host in ipairs(BazUI.Dock:GetHosts()) do
         local hostFrame = BazUI.Dock:GetHostFrame(host.id)
-        if hostFrame and hostFrame ~= frame then values[host.id] = host.label end
+        -- Not itself, and not anything already hanging off it.
+        if hostFrame and hostFrame ~= frame
+            and not (frame and BazUI.Dock:Follows(hostFrame, frame)) then
+            values[host.id] = host.label
+        end
     end
     return values
 end

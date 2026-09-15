@@ -396,6 +396,8 @@ local refitting = false     -- guards the resize-begets-resize loop
 
 function addon:RowFrame(id) return rowFrames[id] end
 
+function addon:RowHostID(id) return "aurarow:" .. id end
+
 -- Whether anything on screen cares about this unit's auras.
 function addon:HasRowFor(unit)
     for _, def in ipairs(self:Rows()) do
@@ -525,6 +527,7 @@ function addon:RemoveRow(id)
             local frame = rowFrames[id]
             if frame then
                 BazUI.Dock:Detach(frame)
+                BazUI.Dock:UnregisterHost(self:RowHostID(id))
                 if frame.mover then
                     BazUI:UnregisterEditModeFrame(frame.mover)
                     frame.mover:Hide()
@@ -586,6 +589,12 @@ function addon:BuildRow(def)
     rowFrames[def.id] = frame
 
     headers[def.id]:SetParent(frame)
+
+    -- A row is somewhere other things can dock, the same as a bar: a
+    -- debuff row under a buff row is the obvious arrangement and there
+    -- was nothing to attach it to, because only bars ever registered.
+    BazUI.Dock:RegisterHost(addon:RowHostID(def.id), frame,
+        def.name or ("Row " .. def.id), 40)
 
     -- The thing this is docked to can be rescaled or resized long after
     -- it was docked, and the dock passes that width straight down. A
@@ -704,7 +713,15 @@ function addon:SizeRows()
                 -- Nothing to show, so it takes up nothing: a docked row
                 -- with no auras in it should not hold an icon's worth of
                 -- space open above whatever is under it.
-                if filling then frame:SetHeight(1) else frame:SetSize(1, 1) end
+                -- Height one, so a chain closes up over it, but the
+                -- width it would have when full: something docked to
+                -- this row takes that width, and a bar squeezed to a
+                -- single pixel because nobody is buffed is nonsense.
+                if filling then
+                    frame:SetHeight(1)
+                else
+                    frame:SetSize(math.max(1, perRow * step - spacing), 1)
+                end
             else
                 local capped  = def.maxRows and def.maxRows > 0
                     and math.min(count, def.maxRows * perRow) or count
@@ -752,6 +769,9 @@ function addon:ApplyRows()
             -- goes with it rather than floating over the screen alone.
             BazUI.Dock:SetShown(frame, enabled)
             if headers[def.id] then headers[def.id]:SetShown(enabled) end
+            BazUI.Dock:RegisterHost(self:RowHostID(def.id), frame,
+                def.name or ("Row " .. def.id), 40)
+
             if frame.mover then
                 BazUI:UpdateEditModeLabel(frame.mover, def.name)
                 frame.mover:ShowForEdit()
@@ -817,7 +837,10 @@ function addon:RowEditSettings(def)
     local frame = rowFrames[def.id]
     for _, host in ipairs(BazUI.Dock:GetHosts()) do
         local hostFrame = BazUI.Dock:GetHostFrame(host.id)
-        if hostFrame and hostFrame ~= frame then
+        -- Not itself, and not anything already hanging off it, which
+        -- would be a loop.
+        if hostFrame and hostFrame ~= frame
+            and not (frame and BazUI.Dock:Follows(hostFrame, frame)) then
             dockOptions[#dockOptions + 1] = { label = host.label, value = host.id }
         end
     end
