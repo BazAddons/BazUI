@@ -1134,11 +1134,19 @@ local function LayoutDemo()
         if h and h:GetNumPoints() > 0 then
             local size   = addon:RowValue(def, "iconSize")
             local perRow = addon:RowValue(def, "perRow")
-            local count  = perRow * DEMO_ROWS
             local point = h:GetAttribute("point") or "BOTTOMLEFT"
             local xOff  = h:GetAttribute("xOffset") or 0
             local yWrap = h:GetAttribute("wrapYOffset") or 0
             local wrap  = math.max(1, h:GetAttribute("wrapAfter") or perRow)
+
+            -- Under the row's own limits, read from the header so there
+            -- is one answer rather than two. A preview that ignores them
+            -- shows a layout the row will never produce, which is worse
+            -- than no preview: it was showing three rows to somebody who
+            -- had just asked for one.
+            local maxWraps = tonumber(h:GetAttribute("maxWraps")) or 0
+            local rows  = (maxWraps > 0) and maxWraps or DEMO_ROWS
+            local count = wrap * rows
             -- The header lives in its unit frame's scale; the stand-ins
             -- live under UIParent, so offsets and sizes scale to match.
             local s = h:GetEffectiveScale() / demoFrame:GetEffectiveScale()
