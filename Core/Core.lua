@@ -51,11 +51,42 @@ end)
 -- QueueForLogin(fn)
 --   Queues a callback for PLAYER_LOGIN, or runs it at once if login has
 --   already happened.
+-- Which module a piece of work belongs to, from the file that queued it.
+--
+-- Modules do plenty at login outside their onReady: hooking the bag
+-- keys, seeding categories, registering widgets. Switching a module off
+-- has to stop that too, and asking every one of thirty call sites to
+-- check for itself is how one of them gets forgotten. The file's path
+-- already says which module it is, so the queue can ask.
+local function CallerModule(level)
+    if not (debug and debug.getinfo) then return nil end
+    local info = debug.getinfo(level + 1, "S")
+    local source = info and info.source
+    if not source then return nil end
+    -- Both separators, since the path can come back either way.
+    local sep = "[/" .. string.char(92) .. "]"
+    local folder = source:match("Modules" .. sep .. "([^/"
+        .. string.char(92) .. "]+)" .. sep)
+    return folder
+end
+
 function BazUI:QueueForLogin(fn)
-    if loginReady then
+    local owner = CallerModule(2)
+
+    local function Run()
+        -- Asked at the time it runs rather than the time it was queued,
+        -- since a module's settings are not ready during file load.
+        if owner and BazUI.addons and BazUI.addons[owner]
+            and BazUI.IsModuleEnabled and not BazUI:IsModuleEnabled(owner) then
+            return
+        end
         fn()
+    end
+
+    if loginReady then
+        Run()
     else
-        table.insert(loginQueue, fn)
+        table.insert(loginQueue, Run)
     end
 end
 
