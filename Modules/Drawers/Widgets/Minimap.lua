@@ -168,44 +168,47 @@ local FRAME_STYLES = {
 -- edge is 87% of the texture width; the N tag and
 -- outer rim stay outside the map. Sized so the inner edge overlaps by a
 -- few pixels to hide the mask's anti-aliasing.
-local BAZUI_RING_FILE        = BazUI.Skin.MINIMAP_RING
-local BAZUI_RING_INNER_RATIO = BazUI.Skin.Theme.minimapRingInnerRatio
-local BAZUI_RING_OVERLAP     = BazUI.Skin.Theme.minimapRingOverlap
+-- The ring is drawn rather than painted: three circles around the map,
+-- the same border the status bars wear, at a scale that suits something
+-- this size. They sit behind the map, since a filled circle in front of
+-- it is just a filled circle; what shows of each is the part the next
+-- one does not cover, and the map itself covers the innermost.
+local RING_SCALE = 3
 
-local ringTexture
+local ring, ringHost
 
 local function BlizzardRingTextures()
     return { MinimapBorder, MinimapNorthTag, MinimapCompassTexture }
 end
 
-local function EnsureRingTexture()
-    if ringTexture then return ringTexture end
+local function EnsureRing()
+    if ring then return ring end
     if not Minimap then return nil end
-    -- Prefer Blizzard's backdrop so our ring inherits its draw order; fall
-    -- back to a frame of our own directly above the map if another addon
-    -- has replaced or re-parented it.
-    local host = MinimapBackdrop
-    if not (host and host.GetParent and host:GetParent() == Minimap) then
-        host = CreateFrame("Frame", nil, Minimap)
-        host:SetAllPoints(Minimap)
-        host:SetFrameLevel(Minimap:GetFrameLevel() + 1)
-    end
-    ringTexture = host:CreateTexture(nil, "OVERLAY", nil, 3)
-    ringTexture:SetTexture(BAZUI_RING_FILE)
-    ringTexture:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
-    ringTexture:Hide()
-    return ringTexture
+
+    -- Behind the map, which means not a child of it: anything parented
+    -- to the minimap draws over the map itself.
+    ringHost = CreateFrame("Frame", nil, Minimap:GetParent() or UIParent)
+    ringHost:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+    ringHost:SetSize(1, 1)
+    ringHost:SetFrameStrata(Minimap:GetFrameStrata())
+    ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
+
+    ring = BazUI.Skin.Theme.CreateRoundRing(ringHost, {
+        layer = "ARTWORK", sublevel = 0, scale = RING_SCALE,
+    })
+    ring:Hide()
+    return ring
 end
 
-local function LayoutRingTexture()
-    if not ringTexture or not Minimap then return end
-    -- Size the ring from the original widget footprint, never the enlarged
-    -- map. Reapplying settings must not grow both in a feedback loop.
+local function LayoutRing()
+    if not ring or not Minimap then return end
+    -- Sized from the widget's own footprint, never from the map as it
+    -- stands: the map is shrunk to make room for the border, and
+    -- measuring the shrunken map would shrink it again on every apply.
     local d = nativeMapWidth or DEFAULT_SIZE
-    local size = (d - BAZUI_RING_OVERLAP * 2) / BazUI.Skin.Theme.minimapRingDesignRatio
-    ringTexture:SetSize(size, size)
-    local mapSize = size * BAZUI_RING_INNER_RATIO + BAZUI_RING_OVERLAP * 2
+    local mapSize = math.max(16, d - ring:Thickness() * 2)
     raw.SetSize(Minimap, mapSize, mapSize)
+    ring:SetInnerSize(mapSize)
 end
 
 local function GetFrameStyle()
@@ -222,13 +225,13 @@ function MinimapWidget:ApplyFrameStyle()
         end
     end
     if bazui then
-        local tex = EnsureRingTexture()
-        if tex then
-            LayoutRingTexture()
-            tex:Show()
+        local drawn = EnsureRing()
+        if drawn then
+            LayoutRing()
+            drawn:Show()
         end
     else
-        if ringTexture then ringTexture:Hide() end
+        if ring then ring:Hide() end
         if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
     end
 end

@@ -575,11 +575,23 @@ function Theme.CreateRoundRing(parent, opts)
 
     ring.gold = ring.parts[2]
 
-    -- Four pixels of border all told, so each circle is the icon plus
-    -- twice whatever is still outside it.
+    -- Four pixels of border all told, so each circle is the inner size
+    -- plus twice whatever is still outside it. A scale multiplies every
+    -- layer: the proportions are what make it look like our border, and
+    -- a ring around something the size of the minimap wants them bigger
+    -- rather than different.
+    local scale = opts.scale or 1
+
+    function ring:Thickness()
+        local total = 0
+        for _, spec in ipairs(ROUND_RING_LAYERS) do
+            total = total + spec.thickness * scale
+        end
+        return total
+    end
+
     function ring:SetInnerSize(inner)
-        local out = 0
-        for _, spec in ipairs(ROUND_RING_LAYERS) do out = out + spec.thickness end
+        local out = self:Thickness()
         for index, spec in ipairs(ROUND_RING_LAYERS) do
             local texture = self.parts[index]
             local diameter = inner + out * 2
@@ -587,7 +599,7 @@ function Theme.CreateRoundRing(parent, opts)
             texture:SetPoint("CENTER", opts.anchor or parent, "CENTER", 0, 0)
             texture:SetSize(diameter, diameter)
             texture._mask:SetAllPoints(texture)
-            out = out - spec.thickness
+            out = out - spec.thickness * scale
         end
     end
 
