@@ -15,16 +15,14 @@ if not addon then return end
 
 local WIDGET_ID    = "bazdrawer_minimap"
 local DEFAULT_SIZE = 140
--- Breathing room around the minimap inside the wrapper. Kept small
--- because it scales with everything else: the drawer sizes a widget by
--- its declared width, so eighteen pixels of padding around a hundred and
--- forty pixel map becomes fifty either side once the map is filling a
--- drawer, and the map ends up two thirds of the width it was given. The
--- border used to need the room - the old ring art hung outside the map -
--- and the drawn one sits inside the footprint instead.
+-- Breathing room around the minimap inside the wrapper, for the Blizzard
+-- style: its ring is part of the map's own textures and sits right on the
+-- edge, so without a little room it butts against whatever is docked
+-- above. Kept small because it scales with everything else - the drawer
+-- sizes a widget by its declared width, so padding here is multiplied
+-- before anyone sees it. The BazUI frame brings its own margin and does
+-- not use this.
 local VISUAL_PAD   = 4
-                        -- (bigger than it looks because the cardinal
-                        -- decoration points extend past GetWidth/Height)
 
 ---------------------------------------------------------------------------
 -- Raw method helpers
@@ -43,6 +41,10 @@ local wrapper
 local widgetInfo
 local minimapParentedInto = nil
 local nativeMapWidth, nativeMapHeight
+
+-- Defined with the frame styles further down, called from AttachMinimap
+-- above it.
+local HostRing
 
 ---------------------------------------------------------------------------
 -- Parent the Minimap into the given frame (either the wrapper when docked,
@@ -76,6 +78,10 @@ local function AttachMinimap(parent)
         MinimapCluster.Selection:Hide()
         MinimapCluster.Selection.Show = MinimapCluster.Selection.Hide
     end
+
+    -- The frame is drawn behind the map on a host of its own, which has
+    -- to follow it.
+    HostRing(parent)
 
     minimapParentedInto = parent
 end
@@ -144,11 +150,7 @@ local function HideMinimapCluster()
 end
 
 ---------------------------------------------------------------------------
--- Init
----------------------------------------------------------------------------
-
----------------------------------------------------------------------------
--- Minimap frame (ring) styles.
+-- Minimap frame styles.
 --
 -- Blizzard draws its ring on MinimapBackdrop, which is a CHILD of the
 -- Minimap on both flavours (Era: MinimapBorder + MinimapNorthTag +
@@ -158,11 +160,11 @@ end
 -- why the zoom / tracking / day-night buttons (also MinimapBackdrop
 -- children) sit on it.
 --
--- The BazUI style fades Blizzard's ring textures to alpha 0 (Show/Hide
--- independent, so Blizzard toggling MinimapCompassTexture for the
--- rotate-minimap CVar can't bring them back) and draws our own ring on the
--- same backdrop frame, inheriting its exact layering: above the map
--- surface, below the buttons that live on the ring.
+-- The BazUI style fades those textures to alpha 0 - alpha rather than
+-- Hide, which is independent of Show, so Blizzard toggling
+-- MinimapCompassTexture for the rotate-minimap CVar cannot bring them
+-- back - and puts our own frame behind the map instead, with the map
+-- shrunk to sit in the hole in the middle of it.
 ---------------------------------------------------------------------------
 
 local FRAME_STYLE_KEY = "frameStyle"
@@ -171,16 +173,16 @@ local FRAME_STYLES = {
     bazui   = "BazUI",
 }
 
--- The ring is drawn rather than painted: three circles around the map,
--- the same border the status bars wear, at a scale that suits something
--- this size. They sit behind the map, since a filled circle in front of
--- it is just a filled circle; what shows of each is the part the next
--- one does not cover, and the map itself covers the innermost.
--- One, not two or three. The drawer magnifies the whole widget to fill
--- its width - close to three times, at a drawer this wide - so whatever
--- this says is multiplied before anybody sees it. Four pixels of border
--- here is a dozen on screen, which is already heavier than the bars.
-local RING_SCALE = 1
+local function GetFrameStyle()
+    local style = addon:GetWidgetSetting(WIDGET_ID, FRAME_STYLE_KEY, "default")
+    if not FRAME_STYLES[style] then style = "default" end
+    return style
+end
+
+-- How far the map is grown past the hole in the frame, so its edge slides
+-- under the band. The art's inner edge is antialiased; an edge that only
+-- meets it leaves a seam of half-lit pixels all the way round.
+local FRAME_OVERLAP = 2
 
 local ring, ringHost
 
@@ -188,49 +190,84 @@ local function BlizzardRingTextures()
     return { MinimapBorder, MinimapNorthTag, MinimapCompassTexture }
 end
 
+-- Put the ring's host behind the map, wherever the map currently lives.
+--
+-- Behind, which means not a child of the Minimap: anything parented to it
+-- draws over the map itself. Behind is also what keeps Blizzard's zoom
+-- and day/night buttons usable. Those hang off MinimapBackdrop, out at
+-- the ring's own radius, which is exactly where our band is - a frame
+-- drawn over the map would bury them in it.
+function HostRing(parent)
+    if not (ringHost and parent and Minimap) then return end
+    ringHost:SetParent(parent)
+    ringHost:SetFrameStrata(Minimap:GetFrameStrata())
+    ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
+    ringHost:ClearAllPoints()
+    ringHost:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+end
+
 local function EnsureRing()
     if ring then return ring end
     if not Minimap then return nil end
 
-    -- Behind the map, which means not a child of it: anything parented
-    -- to the minimap draws over the map itself.
     ringHost = CreateFrame("Frame", nil, Minimap:GetParent() or UIParent)
-    ringHost:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
     ringHost:SetSize(1, 1)
-    ringHost:SetFrameStrata(Minimap:GetFrameStrata())
-    ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
+    HostRing(Minimap:GetParent() or UIParent)
 
-    -- Two pixels of gold rather than one. The mask softens every edge by
-    -- about a pixel, so a single-pixel ring is all blend and reads
-    -- duller than the same gold on the square borders, which have hard
-    -- edges. The dark either side keeps its thickness.
-    ring = BazUI.Skin.Theme.CreateRoundRing(ringHost, {
-        layer = "ARTWORK", sublevel = 0, scale = RING_SCALE,
-        layers = {
-            { thickness = 2, color = { 0, 0, 0, 0.75 } },
-            { thickness = 2, color = { 0.55, 0.43, 0.25, 1 } },
-            { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },
-        },
+    local Skin = BazUI.Skin
+    ring = Skin.Theme.CreateArtRing(ringHost, {
+        layer       = "ARTWORK",
+        sublevel    = 0,
+        texture     = Skin.MINIMAP_FRAME,
+        widthRatio  = Skin.MINIMAP_FRAME_WIDTH,
+        heightRatio = Skin.MINIMAP_FRAME_HEIGHT,
+        overlap     = FRAME_OVERLAP,
     })
     ring:Hide()
     return ring
 end
 
-local function LayoutRing()
-    if not ring or not Minimap then return end
-    -- Sized from the widget's own footprint, never from the map as it
-    -- stands: the map is shrunk to make room for the border, and
-    -- measuring the shrunken map would shrink it again on every apply.
-    local d = nativeMapWidth or DEFAULT_SIZE
-    local mapSize = math.max(16, d - ring:Thickness() * 2)
-    raw.SetSize(Minimap, mapSize, mapSize)
-    ring:SetInnerSize(mapSize)
+-- The map's diameter under the BazUI frame.
+--
+-- Measured from the widget's declared width, never from the map as it
+-- stands: the map is shrunk to make room for the frame, and measuring the
+-- shrunken map would shrink it again on every apply.
+local function MapSizeFor(frame)
+    return math.max(16, frame:InnerFor(nativeMapWidth or DEFAULT_SIZE))
 end
 
-local function GetFrameStyle()
-    local style = addon:GetWidgetSetting(WIDGET_ID, FRAME_STYLE_KEY, "default")
-    if not FRAME_STYLES[style] then style = "default" end
-    return style
+-- What the widget asks the drawer for.
+--
+-- Proportions rather than sizes: the drawer scales a widget to fill its
+-- width, so what these numbers decide is how that width is divided
+-- between the map and the frame around it, and how much height the pair
+-- needs. The frame keeps the declared width and gives the map what is
+-- left inside the hole; it is taller than it is wide, because the points
+-- at the top and bottom run past the circle.
+local function Footprint()
+    if GetFrameStyle() == "bazui" then
+        local frame = EnsureRing()
+        if frame then return frame:Extent(MapSizeFor(frame)) end
+    end
+    local pad = VISUAL_PAD * 2
+    return (nativeMapWidth or DEFAULT_SIZE) + pad,
+           (nativeMapHeight or DEFAULT_SIZE) + pad
+end
+
+-- Tell the drawer what the widget wants now.
+--
+-- The two styles do not have the same shape, so switching between them
+-- changes the room the widget needs. Docked, the host reads the footprint
+-- back on the next reflow; floating, nothing else is going to resize the
+-- wrapper, so set it here and let the reflow ignore it.
+function MinimapWidget:ApplyFootprint()
+    if not (wrapper and widgetInfo) then return end
+    local width, height = Footprint()
+    widgetInfo.designWidth, widgetInfo.designHeight = width, height
+    wrapper:SetSize(width, height)
+    if addon.WidgetHost and addon.WidgetHost.Reflow then
+        addon.WidgetHost:Reflow()
+    end
 end
 
 function MinimapWidget:ApplyFrameStyle()
@@ -241,15 +278,18 @@ function MinimapWidget:ApplyFrameStyle()
         end
     end
     if bazui then
-        local drawn = EnsureRing()
-        if drawn then
-            LayoutRing()
-            drawn:Show()
+        local frame = EnsureRing()
+        if frame then
+            local map = MapSizeFor(frame)
+            raw.SetSize(Minimap, map, map)
+            frame:SetInnerSize(map)
+            frame:Show()
         end
     else
         if ring then ring:Hide() end
         if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
     end
+    self:ApplyFootprint()
 end
 
 ---------------------------------------------------------------------------
@@ -329,7 +369,7 @@ function MinimapWidget:GetOptionsArgs()
             order  = 11,
             type   = "select",
             name   = "Frame Style",
-            desc   = "The ring drawn around the minimap. BazUI is the Baz Suite's brass ring; Blizzard Default keeps the game's own frame.",
+            desc   = "The frame around the minimap. BazUI is the brass ring from the WoW Forever logo; Blizzard Default keeps the game's own.",
             values = FRAME_STYLES,
             get    = function() return GetFrameStyle() end,
             set    = function(_, val)
@@ -375,9 +415,10 @@ function MinimapWidget:Init()
     -- Hide Blizzard's cluster shell
     HideMinimapCluster()
 
-    -- Wrapper is slightly larger than the minimap so the circular edge
-    -- isn't flush against the widget border. The minimap is centered in
-    -- the wrapper, so the padding appears evenly on all sides.
+    -- The minimap sits in the middle of the wrapper, so whatever room the
+    -- frame needs appears evenly around it. ApplyFrameStyle sets the real
+    -- footprint once the style is known; this is only what the wrapper is
+    -- born at.
     local wrapperW = mapW + VISUAL_PAD * 2
     local wrapperH = mapH + VISUAL_PAD * 2
 
@@ -390,6 +431,9 @@ function MinimapWidget:Init()
         designWidth  = wrapperW,
         designHeight = wrapperH,
         frame        = wrapper,
+        -- Asked on every reflow, so a style change is picked up even if
+        -- something else in the drawer triggers the reflow first.
+        GetDesiredHeight = function() return (select(2, Footprint())) end,
         OnDock       = function() AttachMinimap(wrapper) end,
         OnUndock     = function()
             -- When switching to floating mode or re-docking, we keep the

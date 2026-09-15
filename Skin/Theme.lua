@@ -755,6 +755,19 @@ function Theme.CreateRoundRing(parent, opts)
         end
     end
 
+    -- Both kinds of ring answer the same two questions, so whatever holds
+    -- one can hold the other: how big the hole comes out when the ring
+    -- has to fit a footprint this wide, and how much room the ring wants
+    -- around a hole of a given size.
+    function ring:InnerFor(width)
+        return math.max(1, width - self:Thickness() * 2)
+    end
+
+    function ring:Extent(inner)
+        local outer = inner + self:Thickness() * 2
+        return outer, outer
+    end
+
     function ring:SetTint(r, g, b)
         self.gold:SetVertexColor(r or 1, g or 1, b or 1)
     end
@@ -766,6 +779,78 @@ function Theme.CreateRoundRing(parent, opts)
     function ring:Hide()
         for _, texture in ipairs(self.parts) do texture:Hide() end
     end
+
+    return ring
+end
+
+---------------------------------------------------------------------------
+-- A ring made of a picture
+--
+-- CreateRoundRing draws its border out of masked circles, which is the
+-- right answer nearly everywhere: it is four pixels of the same border
+-- the bars wear, it costs nothing, and it cannot go missing. It was never
+-- the right answer for the minimap. At that size a border is just a thick
+-- line, and the minimap is the one piece of chrome a player looks at all
+-- day.
+--
+-- So the minimap gets artwork, and this wraps it in the same interface so
+-- the widget does not care which kind of ring it is holding:
+--
+--   local ring = Theme.CreateArtRing(host, {
+--       texture = Skin.MINIMAP_FRAME,
+--       widthRatio = Skin.MINIMAP_FRAME_WIDTH,
+--       heightRatio = Skin.MINIMAP_FRAME_HEIGHT,
+--       overlap = 2,
+--   })
+--   local map = ring:InnerFor(footprintWidth)
+--   ring:SetInnerSize(map)
+--
+-- The ratios are the picture's width and height measured against the hole
+-- in the middle of it, so the art is positioned by what goes inside it
+-- rather than by numbers pulled off a canvas. A frame whose decoration
+-- runs past the circle - points, tags, anything - is taller or wider than
+-- its hole, and says so in those two numbers; nothing here assumes the
+-- picture is square.
+---------------------------------------------------------------------------
+
+function Theme.CreateArtRing(parent, opts)
+    opts = opts or {}
+    local widthRatio  = opts.widthRatio or 1
+    local heightRatio = opts.heightRatio or widthRatio
+    local overlap     = opts.overlap or 0
+
+    local art = parent:CreateTexture(nil, opts.layer or "ARTWORK", nil,
+        opts.sublevel or 0)
+    art:SetTexture(opts.texture)
+
+    local ring = { art = art, parts = { art } }
+
+    -- The overlap is how far what sits inside is grown past the hole, so
+    -- its edge slides under the band instead of meeting it: the picture's
+    -- inner edge is antialiased, and two edges that merely touch leave a
+    -- seam of half-lit pixels between them.
+    function ring:InnerFor(width)
+        return math.max(1, width / widthRatio + overlap * 2)
+    end
+
+    function ring:Extent(inner)
+        local hole = math.max(1, inner - overlap * 2)
+        return hole * widthRatio, hole * heightRatio
+    end
+
+    function ring:SetInnerSize(inner)
+        local width, height = self:Extent(inner)
+        art:ClearAllPoints()
+        art:SetPoint("CENTER", opts.anchor or parent, "CENTER", 0, 0)
+        art:SetSize(width, height)
+    end
+
+    function ring:SetTint(r, g, b)
+        art:SetVertexColor(r or 1, g or 1, b or 1)
+    end
+
+    function ring:Show() art:Show() end
+    function ring:Hide() art:Hide() end
 
     return ring
 end
