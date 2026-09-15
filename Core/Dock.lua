@@ -80,6 +80,9 @@ function Dock:Attach(frame, host, opts)
         -- How much of the host's width an aligned follower takes: 1 for
         -- all of it, 2 for half. Nothing means keep your own width.
         share   = opts.share,
+        -- Space left between the things sharing a line. One number for
+        -- the line, so whoever asks for the most gets it.
+        gutter  = opts.gutter or 0,
         reserve = opts.reserve and true or false,
     }
 
@@ -411,25 +414,22 @@ local function PlaceOneEdge(host, edge)
     -- has been scaled: an action bar at 130% would leave its bars short.
     -- Convert through screen pixels, which is the space they share.
     local hostWidth = (host:GetWidth() or 0) * (host:GetEffectiveScale() or 1)
-    local offset = 0        -- how far from the host's edge we have got
     local down = (edge == "BOTTOM")
 
-    -- Followers stack, except that aligned ones sharing no ground share a
-    -- line: buffs on the left of a bar and debuffs on the right belong
-    -- beside each other, not one under the other. A line is open until
-    -- something wants an alignment already taken on it, or until
-    -- something full width turns up, which always gets a line of its own.
-    -- The line's distance from what is above it comes from whichever
-    -- follower opened it.
-    local taken = {}
-    local lineHeight, lineOpen = 0, false
-
-    local function CloseLine()
-        if not lineOpen then return end
-        offset = offset + lineHeight
-        taken = {}
-        lineHeight, lineOpen = 0, false
-    end
+    -- Which followers share which line.
+    --
+    -- Worked out before anything is placed, because a line has
+    -- properties of its own now: how tall it is, and how much space to
+    -- leave between the things on it. Neither can be known while still
+    -- streaming through the list, and the space between two halves of a
+    -- bar is one number for the line rather than one each, or setting it
+    -- on one of them would give you half of what you asked for.
+    --
+    -- A line is open until something wants an alignment already taken on
+    -- it, or until something full width turns up, which always gets a
+    -- line to itself. Its distance from what is above comes from
+    -- whichever follower opened it.
+    local lines, current, taken = {}, nil, {}
 
     for _, frame in ipairs(list) do
         local link = links[frame]
@@ -440,21 +440,42 @@ local function PlaceOneEdge(host, edge)
         -- entirely, and the next one moves up into its space.
         if visible or link.reserve then
             local slot = (link.mode ~= "stretch") and (link.align or "LEFT") or nil
-            if not slot or taken[slot] then CloseLine() end
-            if not lineOpen then
-                offset = offset + link.gap
-                lineOpen = true
+            if not current or not slot or taken[slot] then
+                current = { gap = link.gap, gutter = 0, members = {} }
+                lines[#lines + 1] = current
+                taken = {}
             end
             if slot then taken[slot] = true end
 
+            current.members[#current.members + 1] = frame
+            current.gutter = math.max(current.gutter, link.gutter or 0)
+
+            -- Full width leaves no room beside it.
+            if not slot then current, taken = nil, {} end
+        end
+    end
+
+    local offset = 0        -- how far from the host's edge we have got
+
+    for _, line in ipairs(lines) do
+        offset = offset + line.gap
+        local height = 0
+
+        for _, frame in ipairs(line.members) do
+            local link = links[frame]
+            local scale = frame:GetEffectiveScale() or 1
             frame:ClearAllPoints()
-            if link.mode == "stretch" then
-                local width = hostWidth / (frame:GetEffectiveScale() or 1)
+
+            local function Resize(width)
                 if frame.SetBarSize then
                     frame:SetBarSize(width, frame:GetHeight())
                 else
                     frame:SetWidth(width)
                 end
+            end
+
+            if link.mode == "stretch" then
+                Resize(hostWidth / scale)
                 local point = down and "TOP" or "BOTTOM"
                 link.point = point
                 frame:SetPoint(point, host, down and "BOTTOM" or "TOP",
@@ -463,14 +484,11 @@ local function PlaceOneEdge(host, edge)
                 -- An aligned follower can still be measured from its
                 -- host: half of an action bar is what two bars sharing
                 -- one line want, and neither should have to be told the
-                -- number.
+                -- number. The line's gutter comes out of the host's
+                -- width first, so two halves leave exactly that much
+                -- between them.
                 if link.share then
-                    local width = hostWidth / link.share / (frame:GetEffectiveScale() or 1)
-                    if frame.SetBarSize then
-                        frame:SetBarSize(width, frame:GetHeight())
-                    else
-                        frame:SetWidth(width)
-                    end
+                    Resize((hostWidth - line.gutter) / link.share / scale)
                 end
 
                 local point, hostPoint
@@ -485,12 +503,14 @@ local function PlaceOneEdge(host, edge)
                 frame:SetPoint(point, host, hostPoint, 0, down and -offset or offset)
             end
 
-            lineHeight = math.max(lineHeight, frame:GetHeight() or 0)
-            -- Full width leaves no room beside it.
-            if not slot then CloseLine() end
+            height = math.max(height, frame:GetHeight() or 0)
         end
 
-        -- Whatever hangs off this follower moves with it.
+        offset = offset + height
+    end
+
+    -- Whatever hangs off any of them moves with it.
+    for _, frame in ipairs(list) do
         if followers[frame] then Dock:Relayout(frame) end
     end
 end

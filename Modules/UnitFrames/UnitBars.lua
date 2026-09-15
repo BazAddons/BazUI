@@ -838,6 +838,7 @@ function UnitBars:Apply(bar)
         math.max(14, math.min(48, def.height or 24)))
     frame:SetTextMode(def.textMode or "always")
     frame:SetTicks(def.ticks or 0)
+    frame:SetFillDirection(def.fillFrom or "LEFT")
 
     -- Full width is one bar to a line; half or its own width lets two
     -- sit side by side, which is how a health bar on the left and a
@@ -849,6 +850,7 @@ function UnitBars:Apply(bar)
         mode    = (takes == "full") and "stretch" or "align",
         align   = def.align or "LEFT",
         share   = (takes == "half") and 2 or nil,
+        gutter  = def.gutter,
         order   = def.id,
         gap     = def.gap,
         reserve = def.kind == "cast",
@@ -943,6 +945,7 @@ local TAKES = {
     own  = "Its own width",
 }
 local ALIGNS = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+local FILL_FROM = { LEFT = "The left", RIGHT = "The right" }
 
 function UnitBars:EditSettings(bar)
     local def = bar.def
@@ -995,6 +998,11 @@ function UnitBars:EditSettings(bar)
           get = function() return def.textMode or "always" end,
           set = function(value) def.textMode = value Refresh() end },
 
+        { type = "dropdown", section = "Size", label = "Fills from",
+          options = ValuesArray(FILL_FROM),
+          get = function() return def.fillFrom or "LEFT" end,
+          set = function(value) def.fillFrom = value Refresh() end },
+
         { type = "slider", section = "Text", label = "Tenth marks",
           min = 0, max = 20, step = 1,
           get = function() return def.ticks or 0 end,
@@ -1012,6 +1020,12 @@ function UnitBars:EditSettings(bar)
             min = 0, max = 24, step = 1,
             get = function() return def.gap or 2 end,
             set = function(value) def.gap = value Refresh() end,
+        })
+        table.insert(widgets, 3, {
+            type = "slider", section = "Docking", label = "Space beside",
+            min = 0, max = 40, step = 1,
+            get = function() return def.gutter or 0 end,
+            set = function(value) def.gutter = value Refresh() end,
         })
         table.insert(widgets, 3, {
             type = "dropdown", section = "Docking", label = "Aligned",

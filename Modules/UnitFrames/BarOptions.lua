@@ -30,6 +30,7 @@ local TAKES = {
     own  = "Its own width",
 }
 local ALIGNS = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+local FILL_FROM = { LEFT = "The left", RIGHT = "The right" }
 
 local function Bars()
     return addon.UnitBars
@@ -161,8 +162,18 @@ local function BarArgs(def)
                 end,
                 get = Field(def, "align", "LEFT"), set = SetField(def, "align"),
             },
+            gutter = {
+                order = 15, type = "range", name = "Space beside",
+                desc = "Pixels left between this bar and the one sharing its line. One number for the line, so setting it on either of the two is enough.",
+                min = 0, max = 40, step = 1,
+                hidden = function()
+                    return not def.dock or def.dock.host == "float"
+                        or (def.takes or "full") == "full"
+                end,
+                get = Field(def, "gutter", 0), set = SetField(def, "gutter"),
+            },
             gap = {
-                order = 15, type = "range", name = "Gap",
+                order = 16, type = "range", name = "Gap",
                 desc = "Pixels between this bar and the one it is docked to. Each bar owns the space above it, so a chain is spaced by setting each bar in turn.",
                 min = 0, max = 24, step = 1,
                 hidden = function() return not def.dock or def.dock.host == "float" end,
@@ -184,6 +195,12 @@ local function BarArgs(def)
                 desc = "Four pixels a side are border, so a bar is about eight taller than the fill you want.",
                 min = 14, max = 48, step = 1,
                 get = Field(def, "height", 24), set = SetField(def, "height"),
+            },
+            fillFrom = {
+                order = 22.5, type = "select", name = "Fills from",
+                desc = "Which end the bar empties towards. Two bars sharing a line often want opposite ends, so they drain towards each other.",
+                values = FILL_FROM,
+                get = Field(def, "fillFrom", "LEFT"), set = SetField(def, "fillFrom"),
             },
             textMode = {
                 order = 23, type = "select", name = "Show text",

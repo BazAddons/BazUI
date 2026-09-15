@@ -28,6 +28,7 @@
 --   bar:SetText(text)                 nil or "" hides it
 --   bar:SetTextMode("always"|"hover"|"never")
 --   bar:SetTicks(count)               0 for none
+--   bar:SetFillDirection("LEFT"|"RIGHT")  which end it fills from
 --   bar:SetBarSize(width, height)     lays the inner parts out again
 --
 -- The frame it returns is a Button, so a caller can give it scripts. It
@@ -77,15 +78,33 @@ end
 -- which is why the bar has to know its own inner width.
 ---------------------------------------------------------------------------
 
+-- Which end the bar fills from. "LEFT" is the usual: empty on the left,
+-- filling rightward. "RIGHT" mirrors it, which is what the right-hand
+-- half of a pair of bars wants so the two drain towards each other
+-- rather than both marching the same way.
+function BarMixin:SetFillDirection(from)
+    self._reversed = (from == "RIGHT")
+    self.fill:SetReverseFill(self._reversed)
+    self:SetValue(self._value or 0)
+end
+
 function BarMixin:SetValue(fraction)
     fraction = math.max(0, math.min(1, tonumber(fraction) or 0))
     self._value = fraction
     self.fill:SetValue(fraction)
 
+    -- The spark sits at the leading edge, which is the other end when
+    -- the bar is reversed.
     if self.spark then
         self.spark:SetShown(fraction > 0.001 and fraction < 0.999)
         self.spark:ClearAllPoints()
-        self.spark:SetPoint("LEFT", self.fill, "LEFT", self._innerWidth * fraction - 1, 0)
+        if self._reversed then
+            self.spark:SetPoint("RIGHT", self.fill, "RIGHT",
+                -(self._innerWidth * fraction) + 1, 0)
+        else
+            self.spark:SetPoint("LEFT", self.fill, "LEFT",
+                self._innerWidth * fraction - 1, 0)
+        end
     end
     self:_LayoutOverlay()
 end
@@ -110,7 +129,13 @@ function BarMixin:_LayoutOverlay()
         return
     end
     self.overlay:ClearAllPoints()
-    self.overlay:SetPoint("TOPLEFT", self.fill, "TOPLEFT", self._innerWidth * value, 0)
+    if self._reversed then
+        self.overlay:SetPoint("TOPRIGHT", self.fill, "TOPRIGHT",
+            -(self._innerWidth * value), 0)
+    else
+        self.overlay:SetPoint("TOPLEFT", self.fill, "TOPLEFT",
+            self._innerWidth * value, 0)
+    end
     self.overlay:SetSize(math.max(0.01, self._innerWidth * extra), self._innerHeight)
     self.overlay:Show()
 end
