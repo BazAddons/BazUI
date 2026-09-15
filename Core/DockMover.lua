@@ -22,6 +22,8 @@
 --     opts.actions     function returning Edit Mode actions
 --     opts.onDrop      function(snap, x, y) - snap is {host, edge} or nil,
 --                      x and y the screen centre it was dropped at
+--     opts.minSize     function returning the size the handle should
+--                      never go below, for a target that shrinks to fit
 --   mover:Refresh()      size and place the handle over its target
 --   mover:ShowForEdit()  show it if Edit Mode is open and combat is not
 --   mover:ShowSnap(snap) draw or clear the landing line
@@ -184,6 +186,12 @@ function Dock:CreateMover(target, opts)
     local minWidth  = opts.minWidth  or 60
     local minHeight = opts.minHeight or 20
 
+    -- Something whose size follows its contents can supply the size it
+    -- would be when full, so its handle does not shrink to the minimum
+    -- when it happens to be empty. Two handles for two rows set up the
+    -- same way should look the same, whatever is in them at the moment.
+    local MinSize = opts.minSize
+
     local tint = mover:CreateTexture(nil, "BACKGROUND")
     tint:SetAllPoints(mover)
     tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
@@ -212,8 +220,13 @@ function Dock:CreateMover(target, opts)
     -- target by, it grows inward exactly as the row does.
     function mover:Refresh()
         if self.isDragging or self.isMoving then return end
-        self:SetSize(math.max(minWidth, target:GetWidth() or 0),
-            math.max(minHeight, target:GetHeight() or 0))
+        local floorW, floorH = minWidth, minHeight
+        if MinSize then
+            local w, h = MinSize()
+            floorW, floorH = math.max(floorW, w or 0), math.max(floorH, h or 0)
+        end
+        self:SetSize(math.max(floorW, target:GetWidth() or 0),
+            math.max(floorH, target:GetHeight() or 0))
         local point = Dock:FollowerPoint(target) or "CENTER"
         self:ClearAllPoints()
         self:SetPoint(point, target, point, 0, 0)

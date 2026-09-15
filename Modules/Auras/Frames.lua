@@ -501,6 +501,16 @@ function addon:BuildRow(def)
         name      = "BazUIAuraRowMover" .. def.id,
         label     = def.name or ("Row " .. def.id),
         addonName = "Auras",
+        -- A full row of icons, so the handle shows the space the row
+        -- can take rather than the space it happens to be using. An
+        -- empty row is one pixel tall, and a handle that size says
+        -- nothing about where the icons will land.
+        minSize   = function()
+            local size    = addon:GetSetting("iconSize") or 26
+            local spacing = addon:GetSetting("spacing") or 3
+            local perRow  = def.perRow or addon:GetSetting("perRow") or 8
+            return perRow * (size + spacing) - spacing, size
+        end,
         settings  = function() return addon:RowEditSettings(def) end,
         actions   = function() return addon:RowEditActions(def) end,
         onDrop    = function(snap, x, y) addon:RowDropped(def, snap, x, y) end,
