@@ -205,17 +205,24 @@ function BazUI.CreateStatusBar(name, parent, opts)
     local bar = CreateFrame("Button", name, parent or UIParent, opts.template)
     Mixin(bar, BarMixin)
     bar._ticks = {}
-    bar._inset = screen and 3 or 1
+    bar._inset = screen and 2 or 1
     bar._textMode = opts.textMode or "always"
 
     if screen then
         -- A dark outline so the bar reads over any ground, then the rim,
-        -- then the track it fills against.
+        -- then the track it fills against. Two pixels a side, and the
+        -- fill gets everything else.
         --
         -- All of it inside the frame. The outline used to sit two pixels
         -- beyond every edge, which made the bar visibly wider than its
         -- own box: docked to something, it matched that thing's width
-        -- exactly and still overhung it by four pixels.
+        -- exactly and still overhung it by four pixels. Bringing it in
+        -- cost the fill those pixels, and on a fourteen pixel bar losing
+        -- two of them off the middle is the whole look, so the dark ring
+        -- that used to sit between the rim and the fill is gone instead.
+        -- It was never doing much: the track behind an empty bar is the
+        -- same colour, and against the fill the rim reads better with
+        -- nothing between them.
         local shadow = Solid(bar, "BACKGROUND", SHADOW, -8)
         shadow:SetAllPoints(bar)
 
