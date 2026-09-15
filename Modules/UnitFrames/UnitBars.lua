@@ -264,8 +264,6 @@ end
 
 -- What each bar covers, and the frames that answer to it.
 local STOCK_FRAMES = {
-    xp         = { "MainMenuExpBar", "ExhaustionTick", "MainMenuBarMaxLevelBar" },
-    rep        = { "ReputationWatchBar" },
     player     = { "PlayerFrame" },
     target     = { "TargetFrame" },
     party1     = { "PartyMemberFrame1" },
@@ -286,14 +284,15 @@ local STOCK_FRAMES = {
 
 local function Covers(def)
     local kind = def.kind
-    if kind == "xp" or kind == "rep" then return kind end
+    -- Experience and reputation are not here. The game keeps both in the
+    -- furniture around its action bar, which the Bars module owns, and
+    -- they have to go away whether or not anybody is running this one.
     if kind == "cast" then return (def.unit or "player") .. "cast" end
     if kind == "health" or kind == "power" then return def.unit or "player" end
 end
 
 local hiddenStock
 local stockParents = {}
-local hookedManager
 local suppressing  = {}
 local suppressKey
 
@@ -312,19 +311,6 @@ function UnitBars:SuppressStock()
         if covers then wanted[covers] = true end
     end
 
-    -- Experience and reputation are the exception to "whatever you have
-    -- a bar for goes away". Nobody deletes their experience bar hoping
-    -- to see the game's again; they delete it because they do not want
-    -- one. So the game's stay hidden either way unless they are asked
-    -- for, and asking for them is a setting rather than a side effect of
-    -- having nothing of your own.
-    -- The setting decides, not the loop above: asking to see the game's
-    -- experience bar while keeping one of your own is a strange thing to
-    -- want, but it is unambiguous, and a toggle that does nothing when
-    -- you happen to have a bar is worse than one that does what it says.
-    wanted.xp  = addon:GetSetting("stockXP") ~= true
-    wanted.rep = addon:GetSetting("stockRep") ~= true
-
     -- Asked on every save, and a save happens every time a bar is
     -- dragged, so nothing is touched unless what we cover has changed.
     local parts = {}
@@ -333,9 +319,8 @@ function UnitBars:SuppressStock()
     local key = table.concat(parts, ",")
     if key == suppressKey then return end
 
-    -- Reparenting Blizzard's frames is protected, and so is asking the
-    -- container to lay itself out again. The key is left alone so the
-    -- next call after combat picks this up.
+    -- Reparenting Blizzard's frames is protected. The key is left alone
+    -- so the next call after combat picks this up.
     if InCombatLockdown() then return end
     for covers in pairs(STOCK_FRAMES) do suppressing[covers] = wanted[covers] end
 
@@ -343,43 +328,6 @@ function UnitBars:SuppressStock()
     -- may not exist yet the first time this runs, and remembering the
     -- answer before they turn up would mean never looking again.
     local found = false
-
-    local manager, info = _G.StatusTrackingBarManager, _G.StatusTrackingBarInfo
-    if manager and manager.CanShowBar and info and info.BarsEnum then
-        if hookedManager ~= manager then
-            hookedManager = manager
-            local original = manager.CanShowBar
-            -- Answering for only the bar we have replaced leaves the
-            -- other one to lay out in the container as it always did.
-            manager.CanShowBar = function(frame, index, ...)
-                if suppressing.xp and index == info.BarsEnum.Experience then return false end
-                if suppressing.rep and index == info.BarsEnum.Reputation then return false end
-                return original(frame, index, ...)
-            end
-        end
-        manager:UpdateBarsShown()
-    end
-
-    -- With both of them replaced the container has nothing left to
-    -- draw, but the game's own Edit Mode still offers it as "Status Bar
-    -- 1" and lays a highlight across the screen for it. Parenting it to
-    -- something hidden takes it out of both, and only when we have in
-    -- fact replaced both: covering one of the two leaves a container
-    -- that still has the other to show.
-    if manager then
-        found = true
-        local gone = suppressing.xp and suppressing.rep
-        if gone and not stockParents[manager] then
-            stockParents[manager] = manager:GetParent() or UIParent
-            manager:SetParent(HiddenStock())
-        elseif not gone and stockParents[manager] then
-            manager:SetParent(stockParents[manager])
-            stockParents[manager] = nil
-            -- It was told what to show while it was off screen, so ask
-            -- again now that it is back.
-            manager:UpdateBarsShown()
-        end
-    end
 
     for covers, names in pairs(STOCK_FRAMES) do
         for _, name in ipairs(names) do

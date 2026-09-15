@@ -33,6 +33,10 @@ addon = BazUI:RegisterModule("Bars", {
         -- UI is hidden. Edit Mode covers Bars 2-8 already; this
         -- option fills the gap for Bar 1.
         hideDefaultActionBar = false,
+        -- The game's experience and reputation bars, part of the same
+        -- furniture, hidden unless asked for.
+        stockXP              = false,
+        stockRep             = false,
         -- When true: hide just the chrome art (border frame +
         -- gryphon/wyvern endcaps) on Bar 1, leaving the buttons
         -- visible and functional. Independent of hideDefaultActionBar
@@ -475,6 +479,84 @@ local function ShowMainActionBar()
     return needsReload
 end
 
+---------------------------------------------------------------------------
+-- The game's experience and reputation bars
+--
+-- Part of the furniture around Blizzard's action bar rather than
+-- anything to do with unit frames, which is where this used to live: a
+-- player who switched the Unit Frames module off got both of them back,
+-- having never asked for either.
+--
+-- They stay hidden unless asked for, whether or not anybody has bars of
+-- their own. Nobody deletes their experience bar hoping to see the
+-- game's again.
+---------------------------------------------------------------------------
+
+local STATUS_FRAMES = {
+    xp  = { "MainMenuExpBar", "ExhaustionTick", "MainMenuBarMaxLevelBar" },
+    rep = { "ReputationWatchBar" },
+}
+
+local hookedManager
+local statusHidden = {}
+
+function addon:ApplyStatusBarVisibility()
+    if InCombatLockdown() then
+        self:On("PLAYER_REGEN_ENABLED", function() self:ApplyStatusBarVisibility() end)
+        return
+    end
+
+    local p = addon.db and addon.db.profile or {}
+    local hide = {
+        xp  = p.stockXP ~= true,
+        rep = p.stockRep ~= true,
+    }
+
+    -- Era draws both inside one shared container whose manager decides
+    -- what it will show, so it is asked about only the ones we are
+    -- hiding and lays the rest out itself.
+    local manager, info = _G.StatusTrackingBarManager, _G.StatusTrackingBarInfo
+    if manager and manager.CanShowBar and info and info.BarsEnum then
+        if hookedManager ~= manager then
+            hookedManager = manager
+            local original = manager.CanShowBar
+            manager.CanShowBar = function(frame, index, ...)
+                if statusHidden.xp and index == info.BarsEnum.Experience then return false end
+                if statusHidden.rep and index == info.BarsEnum.Reputation then return false end
+                return original(frame, index, ...)
+            end
+        end
+    end
+
+    statusHidden.xp, statusHidden.rep = hide.xp, hide.rep
+
+    if manager then
+        manager:UpdateBarsShown()
+
+        -- With both of them hidden the container has nothing left to
+        -- draw, and the game's own Edit Mode still offers it as "Status
+        -- Bar 1" with a highlight across the screen. Parking it takes it
+        -- out of both.
+        local gone = hide.xp and hide.rep
+        if gone then
+            HideOne(manager, GetHiddenParent())
+        else
+            RestoreOne(manager)
+            manager:UpdateBarsShown()
+        end
+    end
+
+    -- Older builds give them frames of their own instead.
+    for kind, names in pairs(STATUS_FRAMES) do
+        for _, name in ipairs(names) do
+            local frame = _G[name]
+            if frame then
+                if hide[kind] then HideOne(frame, GetHiddenParent()) else RestoreOne(frame) end
+            end
+        end
+    end
+end
+
 function addon:ApplyDefaultBarVisibility()
     local p = addon.db and addon.db.profile
     if not p then return end
@@ -549,6 +631,7 @@ addon.config.onReady = function(self)
     self:ResolveCharBucket()
     self.Bar:LoadAll()
     self:ApplyDefaultBarVisibility()   -- no-op unless the option is set
+    self:ApplyStatusBarVisibility()
 
     -- Abilities on the bars (AutoFill.lua): once the world is entered,
     -- spells the character doesn't know are cleared and a new
@@ -639,6 +722,7 @@ addon:OnProfileChanged(function(newProfile, oldProfile)
     -- Recreate from new profile data
     addon.Bar:LoadAll()
     addon:ApplyDefaultBarVisibility()
+    addon:ApplyStatusBarVisibility()
 
     -- Restore keybinds for new profile
     if addon.Keybinds then

@@ -53,22 +53,6 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
               for _, bar in pairs(addon.UnitBars.bars) do bar._outOfRange = nil end
               addon.UnitBars:CheckRange()
           end },
-        { key = "stockXP", label = "Show the game's experience bar", type = "toggle",
-          section = "bars", order = 4.5,
-          desc = "Off by default, and stays off whether or not you have an experience bar of your own. On puts Blizzard's back, along with its entry in the game's own Edit Mode.",
-          get = function() return addon:GetSetting("stockXP") == true end,
-          set = function(_, value)
-              addon:SetSetting("stockXP", value and true or false)
-              addon.UnitBars:SuppressStock()
-          end },
-        { key = "stockRep", label = "Show the game's reputation bar", type = "toggle",
-          section = "bars", order = 4.6,
-          desc = "As above, for reputation. Both share one container, so the container only goes away when neither is wanted.",
-          get = function() return addon:GetSetting("stockRep") == true end,
-          set = function(_, value)
-              addon:SetSetting("stockRep", value and true or false)
-              addon.UnitBars:SuppressStock()
-          end },
         { key = "preview", label = "Preview bars for absent units", type = "execute",
           section = "bars", order = 5,
           desc = "Party and target bars are hidden when there is nobody in them. This shows them as placeholders so they can be moved and docked while you are alone. Also /bazframes preview.",

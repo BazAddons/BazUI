@@ -27,10 +27,6 @@ addon = BazUI:RegisterModule("UnitFrames", {
         -- Fading someone you cannot reach, and how far to fade them.
         rangeFade    = true,
         rangeAlpha   = 0.45,
-        -- The game's own experience and reputation bars, which stay
-        -- hidden whether or not you have bars of your own.
-        stockXP      = false,
-        stockRep     = false,
     },
     slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,

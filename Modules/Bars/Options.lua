@@ -118,6 +118,24 @@ local function GetGeneralOptionsTable()
             end,
             disabled = function() return p.hideDefaultActionBar == true end,
         },
+        stockXP = {
+            order = 14, type = "toggle", name = "Show Blizzard's experience bar",
+            desc = "Off by default, and stays off whether or not you have an experience bar of your own. It lives in the furniture around Blizzard's action bar, which is why it is here.",
+            get = function() return p.stockXP == true end,
+            set = function(_, val)
+                p.stockXP = val and true or false
+                if addon.ApplyStatusBarVisibility then addon:ApplyStatusBarVisibility() end
+            end,
+        },
+        stockRep = {
+            order = 15, type = "toggle", name = "Show Blizzard's reputation bar",
+            desc = "As above, for reputation. The two share one container, so it only goes away when neither is wanted.",
+            get = function() return p.stockRep == true end,
+            set = function(_, val)
+                p.stockRep = val and true or false
+                if addon.ApplyStatusBarVisibility then addon:ApplyStatusBarVisibility() end
+            end,
+        },
         hideStanceBar = {
             order = 13, type = "toggle", name = "Hide Blizzard's stance bar",
             desc = "Stances and forms live on a BazUI bar instead; a new character's are placed there for you.",
