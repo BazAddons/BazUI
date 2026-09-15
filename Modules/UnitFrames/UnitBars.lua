@@ -541,21 +541,41 @@ local function CastTick(frame)
     frame:SetText(string.format("%s  %.1f", state.name or "", (span - elapsed) / 1000))
 end
 
+-- What to call the cast.
+--
+-- The second return is the one to show. The first is the spell's name in
+-- the client's own tables, and plenty of vanilla spells have no name
+-- there: interacting with a quest object casts one of them, and the
+-- table's placeholder for an empty name is the literal string "No Text",
+-- which is what turned up on the bar while collecting Milly's buckets.
+-- Blizzard's own cast bar shows the second return for exactly this
+-- reason. If both are useless, say what is happening rather than repeat
+-- the client's filler.
+local function CastName(display, name, channel)
+    for _, candidate in ipairs({ display, name }) do
+        if candidate and candidate ~= "" and candidate ~= "No Text" then
+            return candidate
+        end
+    end
+    return channel and "Channelling" or "Casting"
+end
+
 function UnitBars:SyncCast(bar)
     if bar.def.kind ~= "cast" then return end
     local unit, frame = bar.def.unit, bar.frame
 
-    local name, _, _, startMS, endMS = UnitCastingInfo(unit)
+    local name, display, _, startMS, endMS = UnitCastingInfo(unit)
     local channel = false
     if not name then
-        name, _, _, startMS, endMS = UnitChannelInfo(unit)
+        name, display, _, startMS, endMS = UnitChannelInfo(unit)
         channel = name ~= nil
     end
 
     if name and startMS and endMS then
         frame:SetAlpha(1)
         frame:SetFillColor(channel and CHANNEL_COLOR or CAST_COLOR)
-        frame._cast = { name = name, startMS = startMS, endMS = endMS, channel = channel }
+        frame._cast = { name = CastName(display, name, channel),
+            startMS = startMS, endMS = endMS, channel = channel }
         BazUI.Dock:SetShown(frame, true)
         CastTick(frame)
     elseif frame._cast and not frame._cast.fade then
