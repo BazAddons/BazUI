@@ -204,8 +204,17 @@ local function EnsureRing()
     ringHost:SetFrameStrata(Minimap:GetFrameStrata())
     ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
 
+    -- Two pixels of gold rather than one. The mask softens every edge by
+    -- about a pixel, so a single-pixel ring is all blend and reads
+    -- duller than the same gold on the square borders, which have hard
+    -- edges. The dark either side keeps its thickness.
     ring = BazUI.Skin.Theme.CreateRoundRing(ringHost, {
         layer = "ARTWORK", sublevel = 0, scale = RING_SCALE,
+        layers = {
+            { thickness = 2, color = { 0, 0, 0, 0.75 } },
+            { thickness = 2, color = { 0.55, 0.43, 0.25, 1 } },
+            { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },
+        },
     })
     ring:Hide()
     return ring

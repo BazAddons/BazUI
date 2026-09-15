@@ -619,9 +619,16 @@ function Theme.CreateRoundRing(parent, opts)
     local layer = opts.layer or "BACKGROUND"
     local base  = opts.sublevel or -8
 
+    -- A caller can thicken a layer without redesigning the border. The
+    -- round mask blends over roughly a pixel at every edge, so a gold
+    -- layer only one pixel wide is nearly all blend, with dark mixing in
+    -- from both sides: the same colour as the square border, and duller
+    -- to look at. Giving it a second pixel gives it one at full strength.
+    local layers = opts.layers or ROUND_RING_LAYERS
+
     local ring = { parts = {} }
 
-    for index, spec in ipairs(ROUND_RING_LAYERS) do
+    for index, spec in ipairs(layers) do
         local texture = parent:CreateTexture(nil, layer, nil, base + index - 1)
         texture:SetColorTexture(spec.color[1], spec.color[2],
             spec.color[3], spec.color[4] or 1)
@@ -644,7 +651,7 @@ function Theme.CreateRoundRing(parent, opts)
 
     function ring:Thickness()
         local total = 0
-        for _, spec in ipairs(ROUND_RING_LAYERS) do
+        for _, spec in ipairs(layers) do
             total = total + spec.thickness * scale
         end
         return total
@@ -652,7 +659,7 @@ function Theme.CreateRoundRing(parent, opts)
 
     function ring:SetInnerSize(inner)
         local out = self:Thickness()
-        for index, spec in ipairs(ROUND_RING_LAYERS) do
+        for index, spec in ipairs(layers) do
             local texture = self.parts[index]
             local diameter = inner + out * 2
             texture:ClearAllPoints()
