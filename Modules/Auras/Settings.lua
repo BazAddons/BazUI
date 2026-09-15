@@ -211,15 +211,25 @@ local function RowArgs(def, index)
                     Apply()
                 end,
             },
+            fill = {
+                order = 13, type = "toggle", name = "Fill the width",
+                desc = "The row spans whatever it is docked to, and the icons are sized to suit: icons per row decides how big they are. Off keeps the icons their own size and aligns the row to one end.",
+                hidden = function() return not Docked() end,
+                get = function() return def.fill == true end,
+                set = function(_, value)
+                    def.fill = value and true or false
+                    Apply()
+                end,
+            },
             align = {
-                order = 13, type = "select", name = "Aligned",
+                order = 14, type = "select", name = "Aligned",
                 desc = "Which end of its host the row starts from.",
                 values = addon.ROW_ALIGNS,
-                hidden = function() return not Docked() end,
+                hidden = function() return not Docked() or def.fill end,
                 get = getAlign, set = setAlign,
             },
             gap = {
-                order = 14, type = "range", name = "Gap",
+                order = 15, type = "range", name = "Gap",
                 desc = "Pixels between this row and what it is docked to.",
                 min = 0, max = 24, step = 1,
                 hidden = function() return not Docked() end,
@@ -230,6 +240,7 @@ local function RowArgs(def, index)
             iconSize = {
                 order = 21, type = "range", name = "Icon size",
                 desc = "This row only. Leave every row alone and they follow the size on the General page.",
+                hidden = function() return def.fill and Docked() end,
                 min = 12, max = 48, step = 1,
                 get = function() return addon:RowValue(def, "iconSize") end,
                 set = setIconSize,

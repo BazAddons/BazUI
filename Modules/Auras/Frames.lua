@@ -392,6 +392,7 @@ local UNIT_ORDER   = {
 local FILTER_ORDER = { "HELPFUL", "HARMFUL" }
 
 local rowFrames = {}        -- [id] = the ordinary frame that docks
+local refitting = false     -- guards the resize-begets-resize loop
 
 function addon:RowFrame(id) return rowFrames[id] end
 
@@ -415,7 +416,15 @@ local ROW_DEFAULT = {
     sortDirection = "+",
 }
 
+-- Icon size worked out from the host's width, for a row set to fill
+-- it. Kept here rather than saved: it is a consequence of the layout,
+-- not a choice, and it changes whenever the host does.
+local fillSizes = {}
+
 function addon:RowValue(def, key)
+    if key == "iconSize" and def and def.fill and fillSizes[def.id] then
+        return fillSizes[def.id]
+    end
     local value = def and def[key]
     if value ~= nil then return value end
     value = self:GetSetting(ROW_FALLBACK[key] or key)
@@ -570,6 +579,20 @@ function addon:BuildRow(def)
 
     headers[def.id]:SetParent(frame)
 
+    -- The thing this is docked to can be rescaled or resized long after
+    -- it was docked, and the dock passes that width straight down. A
+    -- filling row measures its icons again when that happens; the guard
+    -- is because sizing the row is itself a size change.
+    frame:HookScript("OnSizeChanged", function()
+        if refitting or InCombatLockdown() or not def.fill then return end
+        refitting = true
+        if addon:FitRow(def) then
+            ConfigureHeader(def, RowsBelow(def))
+            addon:SizeRows()
+        end
+        refitting = false
+    end)
+
     frame.mover = BazUI.Dock:CreateMover(frame, {
         name      = "BazUIAuraRowMover" .. def.id,
         label     = def.name or ("Row " .. def.id),
@@ -630,6 +653,28 @@ local function VisibleIcons(header)
     return count
 end
 
+-- Size the icons so a full row spans exactly what it is docked to.
+-- Returns whether the answer changed, since re-stamping the header's
+-- attributes for the same number is work nobody needs.
+function addon:FitRow(def)
+    local frame = rowFrames[def.id]
+    if not (frame and def.fill and BazUI.Dock:IsDocked(frame)) then
+        local had = fillSizes[def.id] ~= nil
+        fillSizes[def.id] = nil
+        return had
+    end
+
+    local perRow  = self:RowValue(def, "perRow")
+    local spacing = self:RowValue(def, "spacing")
+    local width   = frame:GetWidth() or 0
+    if width <= 1 or perRow < 1 then return false end
+
+    local size = math.max(8, math.floor((width - (perRow - 1) * spacing) / perRow))
+    if fillSizes[def.id] == size then return false end
+    fillSizes[def.id] = size
+    return true
+end
+
 function addon:SizeRows()
     if InCombatLockdown() then return end
 
@@ -641,18 +686,28 @@ function addon:SizeRows()
             local step    = size + spacing
             local perRow  = self:RowValue(def, "perRow")
             local count   = VisibleIcons(header)
+            -- A row that fills its host keeps the width the dock gave
+            -- it, whether or not there are enough icons to cover it.
+            -- That is the point of it: the row is as wide as the bar
+            -- above it, always, and the icons are sized to suit.
+            local filling = def.fill and BazUI.Dock:IsDocked(frame)
+
             if count == 0 then
                 -- Nothing to show, so it takes up nothing: a docked row
                 -- with no auras in it should not hold an icon's worth of
                 -- space open above whatever is under it.
-                frame:SetSize(1, 1)
+                if filling then frame:SetHeight(1) else frame:SetSize(1, 1) end
             else
                 local capped  = def.maxRows and def.maxRows > 0
                     and math.min(count, def.maxRows * perRow) or count
                 local columns = math.min(perRow, capped)
                 local rows    = math.ceil(capped / perRow)
-                frame:SetSize(math.max(1, columns * step - spacing),
-                    math.max(1, rows * step - spacing))
+                local height  = math.max(1, rows * step - spacing)
+                if filling then
+                    frame:SetHeight(height)
+                else
+                    frame:SetSize(math.max(1, columns * step - spacing), height)
+                end
             end
         end
     end
@@ -668,7 +723,7 @@ function addon:ApplyRows()
             local dock = def.dock or { host = "float" }
             BazUI.Dock:AttachTo(frame, dock.host, {
                 edge  = dock.edge or "BOTTOM",
-                mode  = "align",
+                mode  = def.fill and "stretch" or "align",
                 align = def.align or "LEFT",
                 gap   = def.gap,
                 -- Past every bar, so rows stay next to each other in the
@@ -693,9 +748,12 @@ function addon:ApplyRows()
                 BazUI:UpdateEditModeLabel(frame.mover, def.name)
                 frame.mover:ShowForEdit()
             end
+
+            -- Now that the width is settled, the icons can be measured
+            -- against it.
+            self:FitRow(def)
         end
     end
-    self:SizeRows()
 end
 
 -- Where a row ended up after a drag.
@@ -778,10 +836,21 @@ function addon:RowEditSettings(def)
                 def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
                 Refresh()
             end }
-        widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
-            options = Values(addon.ROW_ALIGNS),
-            get = function() return def.align or "LEFT" end,
-            set = function(value) def.align = value Refresh() end }
+        widgets[#widgets + 1] = { type = "checkbox", section = "Docking", label = "Fill the width",
+            get = function() return def.fill == true end,
+            set = function(value)
+                def.fill = value and true or false
+                Refresh()
+                -- Filling has no end to be aligned to, and its icon size
+                -- is no longer a choice.
+                addon:RefreshRowEditSettings()
+            end }
+        if not def.fill then
+            widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
+                options = Values(addon.ROW_ALIGNS),
+                get = function() return def.align or "LEFT" end,
+                set = function(value) def.align = value Refresh() end }
+        end
         widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Gap",
             min = 0, max = 24, step = 1,
             get = function() return def.gap or 4 end,
@@ -795,7 +864,9 @@ function addon:RowEditSettings(def)
             set = function(value) def[key] = value Refresh() end }
     end
 
-    Slider("Icon size", "iconSize", 12, 48)
+    if not (def.fill and docked) then
+        Slider("Icon size", "iconSize", 12, 48)
+    end
     Slider("Spacing", "spacing", 0, 12)
     Slider("Icons per row", "perRow", 1, 20)
 
@@ -1070,11 +1141,14 @@ function addon:ApplySettings()
     pendingApply = false
     local enabled = self:GetSetting("enabled") ~= false
 
+    -- Docking first: a row that fills its host cannot size its icons
+    -- until it knows how wide the host made it.
     self:BuildRows()
+    self:ApplyRows()
     for _, def in ipairs(self:Rows()) do
         ConfigureHeader(def, RowsBelow(def))
     end
-    self:ApplyRows()
+    self:SizeRows()
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
