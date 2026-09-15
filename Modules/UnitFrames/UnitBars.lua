@@ -700,185 +700,32 @@ end
 ---------------------------------------------------------------------------
 -- Moving one, and dropping it onto something
 --
--- The bars are secure, so they cannot be dragged during combat, and Edit
--- Mode can be open in one. Each bar therefore gets an ordinary frame
--- standing in for it: that is what Edit Mode moves, and the bar follows
--- once it is safe.
---
--- Dropping a mover near the edge of another bar or an action bar docks
--- it there, which is the way anyone would expect to arrange these. Let
--- go anywhere else and it simply floats at the position it was dropped.
+-- The handle, the snapping and the landing line all live in
+-- Core/DockMover.lua, because a row of auras wants exactly the same
+-- behaviour and should not have a second copy of it. What stays here is
+-- the part only a bar can answer: what a drop means for its definition.
 ---------------------------------------------------------------------------
-
-local SNAP_DISTANCE = 36
-
--- Frame coordinates are reported in the frame's own scale, so two frames
--- at different scales cannot be compared directly. Everything here is
--- converted to screen pixels first, which is the only space they share.
--- An action bar carries a scale of its own, so skipping this is why the
--- first attempt never matched anything.
-local function ScreenEdges(frame)
-    local scale = frame:GetEffectiveScale() or 1
-    local left, right = frame:GetLeft(), frame:GetRight()
-    local top, bottom = frame:GetTop(), frame:GetBottom()
-    if not (left and right and top and bottom) then return nil end
-    return left * scale, right * scale, top * scale, bottom * scale
-end
-
--- The closest edge worth snapping to, or nothing.
---
--- Docking below a host means this bar's top meeting the host's bottom,
--- so the comparison is edge to edge. Measuring from the middle of the
--- bar, as this first did, is half a bar's height out before anything
--- else goes wrong.
-local function NearestDock(mover, selfFrame)
-    local left, right, top, bottom = ScreenEdges(mover)
-    if not left then return nil end
-
-    local best, bestDistance
-    for _, host in ipairs(BazUI.Dock:GetHosts()) do
-        local frame = BazUI.Dock:GetHostFrame(host.id)
-        -- Never onto itself, onto something hidden, or onto something
-        -- already hanging off it, which would be a loop.
-        if frame and frame ~= selfFrame and frame:IsVisible()
-            and not BazUI.Dock:Follows(frame, selfFrame) then
-
-            local hLeft, hRight, hTop, hBottom = ScreenEdges(frame)
-            -- Any horizontal overlap at all is enough. Requiring the
-            -- centres to line up meant a wide action bar and a narrow
-            -- bar rarely agreed.
-            if hLeft and left < hRight and right > hLeft then
-                local candidates = {
-                    { edge = "BOTTOM", distance = math.abs(hBottom - top) },
-                    { edge = "TOP",    distance = math.abs(hTop - bottom) },
-                }
-                for _, candidate in ipairs(candidates) do
-                    if candidate.distance < SNAP_DISTANCE
-                        and (not bestDistance or candidate.distance < bestDistance) then
-                        best = { host = host.id, edge = candidate.edge }
-                        bestDistance = candidate.distance
-                    end
-                end
-            end
-        end
-    end
-    return best
-end
-
--- Where it will land, drawn on the host rather than on the handle.
---
--- Edit Mode puts its own overlay on top of anything registered with it,
--- so recolouring the handle is invisible: the overlay is what you are
--- looking at. Marking the target edge instead is both visible and
--- clearer about what is going to happen.
-local snapLine
-
-local function SnapLine()
-    if snapLine then return snapLine end
-    snapLine = CreateFrame("Frame", nil, UIParent)
-    snapLine:SetFrameStrata("TOOLTIP")
-    snapLine:Hide()
-
-    snapLine.bar = snapLine:CreateTexture(nil, "OVERLAY")
-    snapLine.bar:SetAllPoints()
-    snapLine.bar:SetColorTexture(0.35, 1, 0.45, 0.95)
-
-    snapLine.glow = snapLine:CreateTexture(nil, "ARTWORK")
-    snapLine.glow:SetPoint("TOPLEFT", -2, 6)
-    snapLine.glow:SetPoint("BOTTOMRIGHT", 2, -6)
-    snapLine.glow:SetColorTexture(0.35, 1, 0.45, 0.25)
-
-    snapLine.text = BazUI.Skin.Theme.FontString(snapLine, "OVERLAY", "GameFontNormal")
-    snapLine.text:SetPoint("BOTTOM", snapLine, "TOP", 0, 4)
-    snapLine.text:SetTextColor(0.5, 1, 0.55)
-    return snapLine
-end
-
-local function ShowSnapLine(snap)
-    if not snap then
-        if snapLine then snapLine:Hide() end
-        return
-    end
-    local host = BazUI.Dock:GetHostFrame(snap.host)
-    if not host then return end
-
-    local line = SnapLine()
-    local label
-    for _, entry in ipairs(BazUI.Dock:GetHosts()) do
-        if entry.id == snap.host then label = entry.label break end
-    end
-
-    line:ClearAllPoints()
-    line:SetPoint("LEFT", host, "LEFT", 0, 0)
-    line:SetPoint("RIGHT", host, "RIGHT", 0, 0)
-    line:SetHeight(3)
-    if snap.edge == "BOTTOM" then
-        line:SetPoint("TOP", host, "BOTTOM", 0, 1)
-    else
-        line:SetPoint("BOTTOM", host, "TOP", 0, -1)
-    end
-    line.text:SetText((snap.edge == "BOTTOM" and "Below " or "Above ") .. (label or "here"))
-    line:Show()
-end
 
 -- Says what the snap test can see, for when it insists nothing is near.
 function UnitBars:DescribeSnap()
-    local hosts = BazUI.Dock:GetHosts()
-    addon:Print(("Snap targets: %d"):format(#hosts))
-    for _, host in ipairs(hosts) do
-        local frame = BazUI.Dock:GetHostFrame(host.id)
-        local l, r, t, b
-        if frame then l, r, t, b = ScreenEdges(frame) end
-        addon:Print(("  %s (%s): %s"):format(host.label, host.id,
-            l and ("%d..%d wide, top %d bottom %d"):format(l, r, t, b) or "no geometry"))
-    end
+    BazUI.Dock:DescribeSnap(function(text) addon:Print(text) end)
 end
 
-function UnitBars:SavePosition(bar)
-    local mover = bar.mover
-    if not mover then return end
-    mover:StopMovingOrSizing()
-
-    -- The bar has spent the drag anchored to the handle so it could
-    -- follow it live. Put it back on the screen before anything else
-    -- runs, because Apply below re-anchors the handle to the bar, and
-    -- while the bar still points at the handle the two depend on each
-    -- other and the game refuses the second anchor outright.
-    if not InCombatLockdown() then
-        local cx, cy = bar.frame:GetCenter()
-        if cx then
-            local scale = bar.frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
-            bar.frame:ClearAllPoints()
-            bar.frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * scale, cy * scale)
-        end
-    end
-
-    local snap = NearestDock(mover, bar.frame)
+-- Where a bar ended up: docked to whatever it was dropped against, or
+-- floating at the position it was let go.
+function UnitBars:Dropped(bar, snap, x, y)
     if snap then
         bar.def.dock = { host = snap.host, edge = snap.edge }
-    else
-        local x, y = mover:GetCenter()
-        if x then
-            local factor = mover:GetEffectiveScale() / UIParent:GetEffectiveScale()
-            bar.def.dock = { host = "float", edge = bar.def.dock and bar.def.dock.edge or "BOTTOM" }
-            bar.def.position = { point = "CENTER", relPoint = "BOTTOMLEFT",
-                x = x * factor, y = y * factor }
-        end
+    elseif x then
+        bar.def.dock = { host = "float", edge = bar.def.dock and bar.def.dock.edge or "BOTTOM" }
+        bar.def.position = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
     end
     self:Save()
     self:Apply(bar)
 end
 
 function UnitBars:RefreshMover(bar)
-    local mover = bar and bar.mover
-    if not mover then return end
-    -- Mid-drag the bar is anchored to the handle, so anchoring the
-    -- handle to the bar would be circular; it would also fight the drag.
-    -- A docked bar resizing under the cursor is exactly when this fires.
-    if mover.isDragging or mover.isMoving then return end
-    mover:SetSize(math.max(60, bar.frame:GetWidth()), math.max(20, bar.frame:GetHeight()))
-    mover:ClearAllPoints()
-    mover:SetPoint("CENTER", bar.frame, "CENTER", 0, 0)
+    if bar and bar.mover then bar.mover:Refresh() end
 end
 
 
@@ -1069,103 +916,19 @@ function UnitBars:CreateMover(bar)
     if bar.mover then return bar.mover end
     local def = bar.def
 
-    local mover = CreateFrame("Frame", "BazUIStatusBarMover" .. def.id, UIParent)
-    mover:SetFrameStrata("DIALOG")
-    mover:SetMovable(true)
-    mover:SetClampedToScreen(true)
-    mover:EnableMouse(true)
-    mover:RegisterForDrag("LeftButton")
-    mover:Hide()
-
-    local tint = mover:CreateTexture(nil, "BACKGROUND")
-    tint:SetAllPoints(mover)
-    tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
-    mover.tint = tint
-
-    local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormalSmall")
-    label:SetPoint("CENTER")
-    label:SetText(def.name or ("Bar " .. def.id))
-    mover.label = label
-
-    mover:SetScript("OnDragStart", function(self)
-        if not InCombatLockdown() then self:StartMoving() end
-    end)
-    mover:SetScript("OnDragStop", function() UnitBars:SavePosition(bar) end)
-
-    -- While it is being dragged, say whether letting go would dock it,
-    -- and to what.
-    --
-    -- Edit Mode drags through an overlay of its own and marks the frame
-    -- isDragging, so that is the flag to watch; isMoving covers a drag
-    -- by the mover's own handle. Watching the wrong one is why this
-    -- never fired.
-    --
-    -- The signal is the border and the words, not the fill: the fill is
-    -- translucent and sits over the bar itself, so a green wash over a
-    -- green health bar says nothing at all.
-    mover:SetScript("OnUpdate", function(self)
-        if not (self.isDragging or self.isMoving) then
-            if self._snapShown then self:ShowSnap(nil) end
-            return
-        end
-
-        -- The bar follows the handle while it is being dragged rather
-        -- than jumping to it on release. Edit Mode moves the mover, so
-        -- for the drag the anchoring runs that way round; it is put back
-        -- the other way when the drag ends. Moving a secure frame is
-        -- protected, so none of this happens in combat.
-        if not InCombatLockdown() then
-            bar.frame:ClearAllPoints()
-            bar.frame:SetPoint("CENTER", self, "CENTER", 0, 0)
-            BazUI.Dock:Relayout(bar.frame)
-        end
-
-        self:ShowSnap(NearestDock(self, bar.frame))
-    end)
-
-    function mover:ShowSnap(snap)
-        self._snapShown = snap and true or false
-        ShowSnapLine(snap)
-    end
-
-    mover:HookScript("OnDragStart", function(self) self.isMoving = true end)
-    mover:HookScript("OnDragStop", function(self)
-        self.isMoving = false
-        self:ShowSnap(nil)
-    end)
-
-    bar.mover = mover
-
-    -- The handle is a picture of the bar, so it tracks the bar itself
-    -- rather than waiting to be told. A bar resized by its host, at any
-    -- depth of the chain, drags its handle along without every caller
-    -- having to remember to refresh it.
-    bar.frame:HookScript("OnSizeChanged", function()
-        UnitBars:RefreshMover(bar)
-    end)
-
-    BazUI:RegisterEditModeFrame(mover, {
-        label = def.name or ("Bar " .. def.id),
+    bar.mover = BazUI.Dock:CreateMover(bar.frame, {
+        name      = "BazUIStatusBarMover" .. def.id,
+        label     = def.name or ("Bar " .. def.id),
         addonName = "UnitFrames",
-        positionKey = false,
-        settings = UnitBars:EditSettings(bar),
-        actions  = UnitBars:EditActions(bar),
-        onPositionChanged = function()
-            if mover.ShowSnap then mover:ShowSnap(nil) end
-            UnitBars:SavePosition(bar)
-        end,
-        onEnter = function() UnitBars:ShowMover(bar) end,
-        onExit  = function() UnitBars:ShowMover(bar) end,
+        settings  = function() return UnitBars:EditSettings(bar) end,
+        actions   = function() return UnitBars:EditActions(bar) end,
+        onDrop    = function(snap, x, y) UnitBars:Dropped(bar, snap, x, y) end,
     })
-    return mover
+    return bar.mover
 end
 
 function UnitBars:ShowMover(bar)
-    local mover = bar and bar.mover
-    if not mover then return end
-    local editing = BazUI:IsEditMode()
-    mover:SetShown(editing and not InCombatLockdown())
-    if editing then self:RefreshMover(bar) end
+    if bar and bar.mover then bar.mover:ShowForEdit() end
 end
 
 function UnitBars:ShowAllMovers()

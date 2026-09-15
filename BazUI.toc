@@ -35,6 +35,7 @@ Skin\Nameplate.lua
 
 Core\StatusBar.lua
 Core\Dock.lua
+Core\DockMover.lua
 Core\TabStrip.lua
 Core\Options\Constants.lua
 Core\Options\WidgetFactories.lua
