@@ -819,13 +819,20 @@ local function PopulatePopup(frame, config)
         end
 
         if widget then
-            widget.onChange = function(value)
-                SetWidgetValue(widgetDef, config, value)
-            end
-
+            -- Show the current value before the widget is wired to write
+            -- one. Some widgets fire their change handler when told what
+            -- they are showing, and a panel being built would then write
+            -- every setting back as though the user had touched them -
+            -- including any that rebuild the panel, which is how a
+            -- dropdown ended up rebuilding itself until the C stack ran
+            -- out.
             local currentVal = GetWidgetValue(widgetDef, config)
             if currentVal ~= nil then
                 widget:SetValue(currentVal)
+            end
+
+            widget.onChange = function(value)
+                SetWidgetValue(widgetDef, config, value)
             end
 
             if widgetDef.type == "dropdown" and widget.Setup then

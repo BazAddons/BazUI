@@ -1145,12 +1145,24 @@ end
 -- The list of things a bar can dock to is whatever exists at the moment
 -- you look, so every bar's panel is rebuilt when Edit Mode opens and
 -- whenever a bar is made or removed.
+-- Never on the spot: a widget's setter asks for this when the choices
+-- change, and rebuilding there tears down the widget that is mid-call,
+-- whose replacement sets its value, which calls the setter again. A
+-- frame's delay lets the callback finish, and the flag coalesces a
+-- burst of changes into one rebuild.
+local refreshQueuedEdit = false
+
 function UnitBars:RefreshEditSettings()
-    for _, bar in pairs(self.bars) do
-        if bar.mover then
-            BazUI:UpdateEditModeSettings(bar.mover, self:EditSettings(bar))
+    if refreshQueuedEdit then return end
+    refreshQueuedEdit = true
+    C_Timer.After(0, function()
+        refreshQueuedEdit = false
+        for _, bar in pairs(UnitBars.bars) do
+            if bar.mover then
+                BazUI:UpdateEditModeSettings(bar.mover, UnitBars:EditSettings(bar))
+            end
         end
-    end
+    end)
 end
 
 ---------------------------------------------------------------------------

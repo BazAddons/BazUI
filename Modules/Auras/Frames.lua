@@ -823,13 +823,29 @@ function addon:ShowRowMovers()
     end
 end
 
+-- Rebuilding the panel is never done on the spot.
+--
+-- Half of these are asked for by a widget's own setter, because changing
+-- where a row docks changes which settings are worth showing. Rebuilding
+-- there tears down the widget that is mid-callback and builds a new one,
+-- which sets its value, which calls a setter, and the game runs out of C
+-- stack somewhere inside the menu code with no sign of who started it.
+-- A frame's delay lets the callback finish first, and the flag means ten
+-- changes in one frame cost one rebuild.
+local refreshQueuedEdit = false
+
 function addon:RefreshRowEditSettings()
-    for _, def in ipairs(self:Rows()) do
-        local frame = rowFrames[def.id]
-        if frame and frame.mover then
-            BazUI:UpdateEditModeSettings(frame.mover, self:RowEditSettings(def))
+    if refreshQueuedEdit then return end
+    refreshQueuedEdit = true
+    C_Timer.After(0, function()
+        refreshQueuedEdit = false
+        for _, def in ipairs(addon:Rows()) do
+            local frame = rowFrames[def.id]
+            if frame and frame.mover then
+                BazUI:UpdateEditModeSettings(frame.mover, addon:RowEditSettings(def))
+            end
         end
-    end
+    end)
 end
 
 ---------------------------------------------------------------------------
