@@ -31,6 +31,10 @@ addon = BazUI:RegisterModule("UnitFrames", {
     slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,
     commands = {
+        stacks = {
+            desc = "Print every bar and row with what it is docked to",
+            handler = function() addon:PrintStacks() end,
+        },
         preview = {
             desc = "Show bars for units that are not there, to arrange them",
             handler = function()
@@ -51,6 +55,32 @@ addon = BazUI:RegisterModule("UnitFrames", {
         self:OnProfileChanged(function() self:ApplySettings() end)
     end,
 })
+
+-- What is docked to what, as the saved definitions have it and as the
+-- dock has it. The two disagreeing is worth seeing directly rather than
+-- inferring from where things landed on screen.
+function addon:PrintStacks()
+    local UnitBars = self.UnitBars
+    for _, def in ipairs(UnitBars:Defs()) do
+        local bar = UnitBars.bars[def.id]
+        local docked = bar and BazUI.Dock:IsDocked(bar.frame) and "docked" or "loose"
+        self:Print(("%s (%s) -> %s %s [%s]"):format(
+            def.name or "?", UnitBars:HostID(def.id),
+            (def.dock and def.dock.host) or "float",
+            (def.dock and def.dock.edge) or "-", docked))
+    end
+
+    local auras = BazUI:GetModule("Auras")
+    if not (auras and auras.Rows) then return end
+    for _, def in ipairs(auras:Rows()) do
+        local frame = auras:RowFrame(def.id)
+        local docked = frame and BazUI.Dock:IsDocked(frame) and "docked" or "loose"
+        self:Print(("%s (%s) -> %s %s [%s]"):format(
+            def.name or "?", auras:RowHostID(def.id),
+            (def.dock and def.dock.host) or "float",
+            (def.dock and def.dock.edge) or "-", docked))
+    end
+end
 
 -- Everything the module owns, applied again from what is saved. Named
 -- ApplySettings because that is what the suite calls on a profile
