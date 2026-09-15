@@ -165,7 +165,7 @@ end
 -- One bar of a stack being copied. The unit is swapped if it has one
 -- and a new one was asked for; everything else about it comes across
 -- except what makes it a different bar.
-function UnitBars:CopyBar(def, unit, hostId, edge)
+function UnitBars:CopyBar(def, unit, hostId, edge, drop)
     if InCombatLockdown() then return nil end
 
     local wanted = (unit and IsUnitKind(def.kind)) and unit or def.unit
@@ -190,7 +190,7 @@ function UnitBars:CopyBar(def, unit, hostId, edge)
         local pos = def.position or { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 }
         copy.position = {
             point = pos.point, relPoint = pos.relPoint,
-            x = pos.x or 0, y = (pos.y or 0) - 80,
+            x = pos.x or 0, y = (pos.y or 0) - (drop or 80),
         }
     end
 
@@ -774,8 +774,8 @@ function UnitBars:Build(def)
 
     -- And every bar knows how to make another of itself, which is what
     -- lets a whole stack be copied for another unit.
-    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge)
-        return UnitBars:CopyBar(def, unit, hostId, edge)
+    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge, drop)
+        return UnitBars:CopyBar(def, unit, hostId, edge, drop)
     end)
 
     self:CreateMover(bar)

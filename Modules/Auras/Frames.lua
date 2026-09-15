@@ -543,7 +543,7 @@ function addon:AddRow(unit, filter)
 end
 
 -- One row of a stack being copied.
-function addon:CopyRow(def, unit, hostId, edge)
+function addon:CopyRow(def, unit, hostId, edge, drop)
     if InCombatLockdown() then return nil end
 
     local copy = self:AddRow(unit or def.unit, def.filter)
@@ -564,7 +564,7 @@ function addon:CopyRow(def, unit, hostId, edge)
         local pos = def.position or { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 }
         copy.position = {
             point = pos.point, relPoint = pos.relPoint,
-            x = pos.x or 0, y = (pos.y or 0) - 80,
+            x = pos.x or 0, y = (pos.y or 0) - (drop or 80),
         }
     end
 
@@ -653,8 +653,8 @@ function addon:BuildRow(def)
 
     -- And how to make another of itself, so a stack holding rows can be
     -- copied for somebody else along with the bars around them.
-    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge)
-        return addon:CopyRow(def, unit, hostId, edge)
+    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge, drop)
+        return addon:CopyRow(def, unit, hostId, edge, drop)
     end)
 
     -- The thing this is docked to can be rescaled or resized long after

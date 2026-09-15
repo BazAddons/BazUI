@@ -186,9 +186,32 @@ local function Plan(frame, parent, edge, out, seen)
     end
 end
 
+-- How far down to put the copy of a stack: its own height, plus a
+-- little. Eighty pixels was a guess, and a guess is wrong as soon as the
+-- stack is taller than the guess, which a health bar with a power bar
+-- and two rows of auras under it always is. Measured in screen pixels
+-- because the pieces can be at different scales, then handed back in
+-- UIParent's, which is what a saved position is in.
+local function StackHeight(plan)
+    local top, bottom = -math.huge, math.huge
+    for _, entry in ipairs(plan) do
+        local frame = entry.frame
+        local scale = frame:GetEffectiveScale() or 1
+        local frameTop, frameBottom = frame:GetTop(), frame:GetBottom()
+        if frameTop and frameBottom then
+            top = math.max(top, frameTop * scale)
+            bottom = math.min(bottom, frameBottom * scale)
+        end
+    end
+    if top <= bottom then return 0 end
+    return (top - bottom) / (UIParent:GetEffectiveScale() or 1)
+end
+
 function Dock:CopyStack(frame, unit, report)
     local plan = {}
     Plan(frame, nil, nil, plan, {})
+
+    local drop = StackHeight(plan) + 16
 
     -- Where each original's copy ended up, so a follower's copy can be
     -- told to attach to its own parent's copy rather than to anything
@@ -199,7 +222,10 @@ function Dock:CopyStack(frame, unit, report)
         local copier = copiers[entry.frame]
         if copier then
             local hostId = entry.parent and copies[entry.parent] or nil
-            local newId, newFrame = copier(unit, hostId, entry.edge)
+            -- Only the root is placed; everything else is docked to the
+            -- copy above it and goes wherever that goes.
+            local newId, newFrame = copier(unit, hostId, entry.edge,
+                (not hostId) and drop or nil)
             if newFrame then
                 copies[entry.frame] = newId
                 made = made + 1
