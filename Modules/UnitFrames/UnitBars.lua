@@ -1366,20 +1366,22 @@ local PARTY_UNITS = { "party1", "party2", "party3", "party4" }
 function UnitBars:AddPartySet()
     if InCombatLockdown() then return nil end
 
-    local previous, made = nil, 0
+    local made = 0
     for index, unit in ipairs(PARTY_UNITS) do
         local health = self:Add("health", unit)
         if health then
             made = made + 1
             health.width = 180
-            if previous then
-                -- Under the pair above, so the column stays a column
-                -- however it is moved afterwards.
-                health.dock = { host = self:HostID(previous.id), edge = "BOTTOM" }
-                health.gap = 8
-            else
-                health.position = { point = "LEFT", relPoint = "LEFT", x = 20, y = 120 }
-            end
+            -- Each member is a stack of their own, placed under the last
+            -- rather than docked to it. Chaining them together made one
+            -- tree of the whole party, which reads the same on screen and
+            -- is not the same thing at all: deleting party one's power
+            -- would take party two, three and four with it, and copying
+            -- everything under party one copies the entire party.
+            health.position = {
+                point = "LEFT", relPoint = "LEFT",
+                x = 20, y = 120 - (index - 1) * 56,
+            }
 
             local power = self:Add("power", unit)
             if power then
@@ -1388,12 +1390,8 @@ function UnitBars:AddPartySet()
                 power.height = 16
                 power.dock = { host = self:HostID(health.id), edge = "BOTTOM" }
                 power.gap = 1
-                previous = power
-            else
-                previous = health
             end
         end
-        if index == #PARTY_UNITS then break end
     end
 
     self:Save()
