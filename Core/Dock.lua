@@ -300,6 +300,23 @@ local function PlaceOneEdge(host, edge)
     local offset = 0        -- how far from the host's edge we have got
     local down = (edge == "BOTTOM")
 
+    -- Followers stack, except that aligned ones sharing no ground share a
+    -- line: buffs on the left of a bar and debuffs on the right belong
+    -- beside each other, not one under the other. A line is open until
+    -- something wants an alignment already taken on it, or until
+    -- something full width turns up, which always gets a line of its own.
+    -- The line's distance from what is above it comes from whichever
+    -- follower opened it.
+    local taken = {}
+    local lineHeight, lineOpen = 0, false
+
+    local function CloseLine()
+        if not lineOpen then return end
+        offset = offset + lineHeight
+        taken = {}
+        lineHeight, lineOpen = 0, false
+    end
+
     for _, frame in ipairs(list) do
         local link = links[frame]
         local visible = Dock:ShouldShow(frame)
@@ -308,7 +325,13 @@ local function PlaceOneEdge(host, edge)
         -- A follower that is hidden and not holding its place is skipped
         -- entirely, and the next one moves up into its space.
         if visible or link.reserve then
-            offset = offset + link.gap
+            local slot = (link.mode ~= "stretch") and (link.align or "LEFT") or nil
+            if not slot or taken[slot] then CloseLine() end
+            if not lineOpen then
+                offset = offset + link.gap
+                lineOpen = true
+            end
+            if slot then taken[slot] = true end
 
             frame:ClearAllPoints()
             if link.mode == "stretch" then
@@ -333,7 +356,9 @@ local function PlaceOneEdge(host, edge)
                 end
             end
 
-            offset = offset + (frame:GetHeight() or 0)
+            lineHeight = math.max(lineHeight, frame:GetHeight() or 0)
+            -- Full width leaves no room beside it.
+            if not slot then CloseLine() end
         end
 
         -- Whatever hangs off this follower moves with it.

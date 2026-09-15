@@ -586,7 +586,11 @@ function addon:ApplyRows()
                 mode  = "align",
                 align = def.align or "LEFT",
                 gap   = def.gap,
-                order = def.id,
+                -- Past every bar, so rows stay next to each other in the
+                -- order: two of them can only share a line if nothing
+                -- full width is sorted between them, and a bar and a row
+                -- can each number themselves 1.
+                order = 1000 + def.id,
             })
 
             if not BazUI.Dock:IsDocked(frame) then
