@@ -56,7 +56,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         },
         preview = {
             desc = "Show or hide a preview with a full spread of auras",
-            handler = function() addon:SetPreview() end,
+            handler = function() addon:SetPreviewWanted() end,
         },
     },
     onReady = function(self) self:Initialize() end,

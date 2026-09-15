@@ -1233,9 +1233,35 @@ local function LayoutDemo()
 end
 
 -- Turn the preview on or off; no argument toggles it.
+-- Asked for by hand, as opposed to asked for by Edit Mode being open.
+-- Kept apart so leaving Edit Mode does not cancel a preview somebody
+-- turned on deliberately, and so entering it does not have to remember
+-- what the answer was before.
+local previewWanted = false
+
+function addon:SetPreviewWanted(on)
+    if on == nil then on = not previewWanted end
+    previewWanted = on and true or false
+    self:RefreshPreview()
+end
+
+function addon:PreviewWanted()
+    return previewWanted
+end
+
+-- Rows are empty most of the time somebody is arranging them, and an
+-- empty row tells you nothing about where its icons will sit or how big
+-- they will be. Edit Mode therefore fills them in, the same as the bars
+-- show placeholders for units who are not there.
+function addon:RefreshPreview()
+    self:SetPreview(previewWanted or BazUI:IsEditMode())
+end
+
 function addon:SetPreview(on)
     if on == nil then on = not demoActive end
-    demoActive = on and true or false
+    on = on and true or false
+    if on == demoActive then return end
+    demoActive = on
     if demoActive then
         if not demoFrame then
             demoFrame = CreateFrame("Frame", "BazUIAurasPreview", UIParent)
@@ -1245,7 +1271,9 @@ function addon:SetPreview(on)
         end
         LayoutDemo()
         demoFrame:Show()
-        BazUI:Print("Auras preview on. It turns off when combat starts, or type /bazauras preview.")
+        if previewWanted then
+            BazUI:Print("Auras preview on. It turns off when combat starts, or type /bazauras preview.")
+        end
     elseif demoFrame then
         demoFrame:Hide()
     end
@@ -1380,17 +1408,23 @@ function addon:Initialize()
         if pendingApply then self:ApplySettings() else self:SizeRows() end
     end)
     self:On("PLAYER_REGEN_DISABLED", function()
+        -- Stand-ins have no business on screen during a fight, whoever
+        -- asked for them.
+        previewWanted = false
         if demoActive then self:SetPreview(false) end
     end)
     self:OnProfileChanged(function() self:ApplySettings() end)
 
     self:On("BAZ_EDITMODE_ENTER", function()
         self:RefreshRowEditSettings()
-        -- Empty rows stand up to their full height while arranging.
+        -- Empty rows stand up to their full height while arranging, and
+        -- fill with stand-in icons so the footprint is the real one.
+        self:RefreshPreview()
         self:SizeRows()
         self:ShowRowMovers()
     end)
     self:On("BAZ_EDITMODE_EXIT", function()
+        self:RefreshPreview()
         self:SizeRows()
         self:ShowRowMovers()
     end)
