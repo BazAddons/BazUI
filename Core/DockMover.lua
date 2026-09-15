@@ -203,12 +203,20 @@ function Dock:CreateMover(target, opts)
     -- anchoring the handle to the target would be circular, and it would
     -- fight the drag besides. A docked thing resizing under the cursor
     -- is exactly when this would otherwise fire.
+    --
+    -- A handle has a minimum size, so a small target leaves it hanging
+    -- over the edges. Centred, that reads as misalignment: a row of two
+    -- icons aligned to the right of an action bar looked like it was
+    -- past the end of the bar, because the handle was wider than the row
+    -- and centred on it. Hung by the same corner the dock hung its
+    -- target by, it grows inward exactly as the row does.
     function mover:Refresh()
         if self.isDragging or self.isMoving then return end
         self:SetSize(math.max(minWidth, target:GetWidth() or 0),
             math.max(minHeight, target:GetHeight() or 0))
+        local point = Dock:FollowerPoint(target) or "CENTER"
         self:ClearAllPoints()
-        self:SetPoint("CENTER", target, "CENTER", 0, 0)
+        self:SetPoint(point, target, point, 0, 0)
     end
 
     function mover:ShowForEdit()

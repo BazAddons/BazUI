@@ -139,6 +139,13 @@ function Dock:Follows(frame, possibleHost)
     return false
 end
 
+-- The corner a follower is hung by, for anything that has to sit over
+-- it and should grow the same way it does.
+function Dock:FollowerPoint(frame)
+    local link = links[frame]
+    return link and link.point or nil
+end
+
 function Dock:GetFollowers(host)
     return followers[host]
 end
@@ -344,8 +351,10 @@ local function PlaceOneEdge(host, edge)
                 else
                     frame:SetWidth(width)
                 end
-                frame:SetPoint(down and "TOP" or "BOTTOM", host,
-                    down and "BOTTOM" or "TOP", 0, down and -offset or offset)
+                local point = down and "TOP" or "BOTTOM"
+                link.point = point
+                frame:SetPoint(point, host, down and "BOTTOM" or "TOP",
+                    0, down and -offset or offset)
             else
                 -- An aligned follower can still be measured from its
                 -- host: half of an action bar is what two bars sharing
@@ -364,12 +373,12 @@ local function PlaceOneEdge(host, edge)
                 if link.align == "CENTER" then
                     point     = down and "TOP" or "BOTTOM"
                     hostPoint = down and "BOTTOM" or "TOP"
-                    frame:SetPoint(point, host, hostPoint, 0, down and -offset or offset)
                 else
                     point     = (down and "TOP" or "BOTTOM") .. link.align
                     hostPoint = (down and "BOTTOM" or "TOP") .. link.align
-                    frame:SetPoint(point, host, hostPoint, 0, down and -offset or offset)
                 end
+                link.point = point
+                frame:SetPoint(point, host, hostPoint, 0, down and -offset or offset)
             end
 
             lineHeight = math.max(lineHeight, frame:GetHeight() or 0)
