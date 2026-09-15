@@ -173,7 +173,7 @@ local FRAME_STYLES = {
 -- this size. They sit behind the map, since a filled circle in front of
 -- it is just a filled circle; what shows of each is the part the next
 -- one does not cover, and the map itself covers the innermost.
-local RING_SCALE = 3
+local RING_SCALE = 2
 
 local ring, ringHost
 
