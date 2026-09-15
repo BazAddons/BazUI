@@ -49,12 +49,13 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
           get = GetBool("hideBlizzard"), set = SetBool("hideBlizzard") },
 
         { key = "perRow", label = "Icons per row", type = "slider", section = "layout", order = 1,
-          desc = "What a new row starts with. Each row can be set on its own from the Rows page.",
+          desc = "Used by every row that has not been given one of its own on the Rows page.",
           min = 4, max = 16, step = 1, get = Get("perRow"), set = Set("perRow") },
         { key = "iconSize", label = "Icon size", type = "slider", section = "layout", order = 2,
+          desc = "Used by every row that has not been given one of its own.",
           min = 16, max = 40, step = 1, get = Get("iconSize"), set = Set("iconSize") },
         { key = "spacing", label = "Spacing", type = "slider", section = "layout", order = 3,
-          desc = "Pixels between icons, and between rows.",
+          desc = "Pixels between icons, and between rows. Used by every row that has not been given its own.",
           min = 0, max = 10, step = 1, get = Get("spacing"), set = Set("spacing") },
         { key = "preview", label = "Preview a full spread of auras", type = "execute", section = "layout", order = 6,
           desc = "Three rows of made-up icons on every side. Ends when combat starts.",
@@ -145,7 +146,12 @@ local function RowArgs(def, index)
         end
     end
 
-    local setPerRow, getPerRow = Field("perRow", 8)
+    local setPerRow            = Field("perRow", 8)
+    local setIconSize          = Field("iconSize", 26)
+    local setSpacing           = Field("spacing", 3)
+    local setGrow              = Field("grow", "RIGHT")
+    local setSortMethod        = Field("sortMethod", "INDEX")
+    local setSortDirection     = Field("sortDirection", "+")
     local setAlign,  getAlign  = Field("align", "LEFT")
     local setGap,    getGap    = Field("gap", 4)
     local setMine,   getMine   = Field("onlyMine", false)
@@ -220,15 +226,61 @@ local function RowArgs(def, index)
                 get = getGap, set = setGap,
             },
 
-            sizeHeader = { order = 20, type = "header", name = "Size" },
+            sizeHeader = { order = 20, type = "header", name = "Icons" },
+            iconSize = {
+                order = 21, type = "range", name = "Icon size",
+                desc = "This row only. Leave every row alone and they follow the size on the General page.",
+                min = 12, max = 48, step = 1,
+                get = function() return addon:RowValue(def, "iconSize") end,
+                set = setIconSize,
+            },
+            spacing = {
+                order = 22, type = "range", name = "Spacing",
+                desc = "Pixels between icons, and between rows of them.",
+                min = 0, max = 12, step = 1,
+                get = function() return addon:RowValue(def, "spacing") end,
+                set = setSpacing,
+            },
             perRow = {
-                order = 21, type = "range", name = "Icons per row",
+                order = 23, type = "range", name = "Icons per row",
                 desc = "How many icons fill a row before the next one starts.",
                 min = 1, max = 20, step = 1,
-                get = getPerRow, set = setPerRow,
+                get = function() return addon:RowValue(def, "perRow") end,
+                set = setPerRow,
+            },
+            grow = {
+                order = 24, type = "select", name = "Icons run",
+                desc = "Which way the icons fill from the row's anchored end.",
+                values = addon.ROW_GROWTH,
+                get = function() return def.grow or "RIGHT" end,
+                set = setGrow,
+            },
+            stack = {
+                order = 25, type = "select", name = "Rows stack",
+                desc = "Where a second row goes when the first fills up. Away from the dock keeps them off whatever the row is attached to.",
+                values = addon.ROW_STACK,
+                get = function() return def.stack or "AUTO" end,
+                set = function(_, value)
+                    def.stack = (value ~= "AUTO") and value or nil
+                    Apply()
+                end,
+            },
+
+            sortHeader = { order = 30, type = "header", name = "Sorting" },
+            sortMethod = {
+                order = 31, type = "select", name = "Sort by",
+                values = addon.ROW_SORTS,
+                get = function() return addon:RowValue(def, "sortMethod") end,
+                set = setSortMethod,
+            },
+            sortDirection = {
+                order = 32, type = "select", name = "Direction",
+                values = addon.ROW_SORT_DIRECTIONS,
+                get = function() return addon:RowValue(def, "sortDirection") end,
+                set = setSortDirection,
             },
             note = {
-                order = 30, type = "description",
+                order = 40, type = "description",
                 name = "Rows can also be made and dragged in Edit Mode: use Create, then drop one near the edge of a bar or an action bar to dock it there.",
             },
         },

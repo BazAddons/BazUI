@@ -169,7 +169,7 @@ local function UpdateButton(btn)
 end
 
 function Auras.ApplyButtonSize(btn)
-    local size = addon:GetSetting("iconSize") or 26
+    local size = addon:RowValue(addon:RowOfButton(btn), "iconSize")
     if not InCombatLockdown() then
         btn:SetSize(size, size)
     end
@@ -281,15 +281,23 @@ end
 local function ConfigureHeader(def, below)
     local h       = headers[def.id]
     if not h then return end
-    local size    = addon:GetSetting("iconSize") or 26
-    local spacing = addon:GetSetting("spacing") or 3
-    local perRow  = def.perRow or addon:GetSetting("perRow") or 8
+    local size    = addon:RowValue(def, "iconSize")
+    local spacing = addon:RowValue(def, "spacing")
+    local perRow  = addon:RowValue(def, "perRow")
     local step    = size + spacing
 
-    local point = (below and "TOP" or "BOTTOM") .. "LEFT"
+    -- Which way the icons run, and which way extra rows stack. Stacking
+    -- follows the docked edge unless the row says otherwise, since rows
+    -- growing back over what they are docked to is never what anyone
+    -- meant by it.
+    local right = (def.grow or "RIGHT") == "RIGHT"
+    if def.stack == "UP" then below = false
+    elseif def.stack == "DOWN" then below = true end
+
+    local point = (below and "TOP" or "BOTTOM") .. (right and "LEFT" or "RIGHT")
 
     h:SetAttribute("point", point)
-    h:SetAttribute("xOffset", step)
+    h:SetAttribute("xOffset", right and step or -step)
     h:SetAttribute("yOffset", 0)
     h:SetAttribute("wrapAfter", perRow)
     h:SetAttribute("wrapXOffset", 0)
@@ -297,8 +305,11 @@ local function ConfigureHeader(def, below)
     h:SetAttribute("maxWraps", 0)           -- 0 = as many rows as needed
     h:SetAttribute("minWidth", perRow * step - spacing)
     h:SetAttribute("minHeight", size)
-    h:SetAttribute("sortMethod", addon:GetSetting("sortMethod") or "INDEX")
-    h:SetAttribute("sortDirection", addon:GetSetting("sortDirection") or "+")
+    h:SetAttribute("sortMethod", addon:RowValue(def, "sortMethod"))
+    h:SetAttribute("sortDirection", addon:RowValue(def, "sortDirection"))
+    -- Which row a button belongs to, for anything that has only the
+    -- button and needs the row's settings.
+    h._bazRow = def.id
     local isPlayer = def.unit == "player"
     local weapons = isPlayer and def.filter == "HELPFUL"
         and addon:GetSetting("showWeapons") ~= false
@@ -354,6 +365,10 @@ local UNITS   = { player = "Player", target = "Target", pet = "Pet" }
 addon.ROW_FILTERS = FILTERS
 addon.ROW_UNITS   = UNITS
 addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+addon.ROW_GROWTH  = { RIGHT = "Left to right", LEFT = "Right to left" }
+addon.ROW_STACK   = { AUTO = "Away from the dock", DOWN = "Downward", UP = "Upward" }
+addon.ROW_SORTS   = { INDEX = "Order applied", TIME = "Time remaining", NAME = "Name" }
+addon.ROW_SORT_DIRECTIONS = { ["+"] = "Ascending", ["-"] = "Descending" }
 addon.ROW_EDGES   = { BOTTOM = "Below", TOP = "Above" }
 
 local UNIT_ORDER   = { "player", "target", "pet" }
@@ -362,6 +377,41 @@ local FILTER_ORDER = { "HELPFUL", "HARMFUL" }
 local rowFrames = {}        -- [id] = the ordinary frame that docks
 
 function addon:RowFrame(id) return rowFrames[id] end
+
+-- What a row has been told, or what the module says otherwise. Every
+-- layout value works this way: set it on a row and that row uses it,
+-- leave it alone and it follows the setting every row shares. That way
+-- a row can differ without every row having to be configured.
+local ROW_FALLBACK = {
+    iconSize      = "iconSize",
+    spacing       = "spacing",
+    perRow        = "perRow",
+    sortMethod    = "sortMethod",
+    sortDirection = "sortDirection",
+}
+
+local ROW_DEFAULT = {
+    iconSize      = 26,
+    spacing       = 3,
+    perRow        = 8,
+    sortMethod    = "INDEX",
+    sortDirection = "+",
+}
+
+function addon:RowValue(def, key)
+    local value = def and def[key]
+    if value ~= nil then return value end
+    value = self:GetSetting(ROW_FALLBACK[key] or key)
+    if value ~= nil then return value end
+    return ROW_DEFAULT[key]
+end
+
+-- The row a button was created for, so its own icon size reaches it.
+function addon:RowOfButton(btn)
+    local header = btn and btn:GetParent()
+    local id = header and header._bazRow
+    return id and self:Row(id) or nil
+end
 
 ---------------------------------------------------------------------------
 -- The list of rows
@@ -412,7 +462,9 @@ function addon:AddRow(unit, filter)
         id       = NextID(rows),
         unit     = unit,
         filter   = filter,
-        perRow   = self:GetSetting("perRow") or 8,
+        -- Icon size, spacing, how many per row and the sorting are left
+        -- unset on purpose: a row follows the shared settings until you
+        -- give it one of its own.
         onlyMine = false,
         align    = "LEFT",
         gap      = 4,
@@ -506,9 +558,9 @@ function addon:BuildRow(def)
         -- empty row is one pixel tall, and a handle that size says
         -- nothing about where the icons will land.
         minSize   = function()
-            local size    = addon:GetSetting("iconSize") or 26
-            local spacing = addon:GetSetting("spacing") or 3
-            local perRow  = def.perRow or addon:GetSetting("perRow") or 8
+            local size    = addon:RowValue(def, "iconSize")
+            local spacing = addon:RowValue(def, "spacing")
+            local perRow  = addon:RowValue(def, "perRow")
             return perRow * (size + spacing) - spacing, size
         end,
         settings  = function() return addon:RowEditSettings(def) end,
@@ -559,15 +611,15 @@ end
 
 function addon:SizeRows()
     if InCombatLockdown() then return end
-    local size    = self:GetSetting("iconSize") or 26
-    local spacing = self:GetSetting("spacing") or 3
-    local step    = size + spacing
 
     for _, def in ipairs(self:Rows()) do
         local frame, header = rowFrames[def.id], headers[def.id]
         if frame and header then
-            local perRow = def.perRow or self:GetSetting("perRow") or 8
-            local count  = VisibleIcons(header)
+            local size    = self:RowValue(def, "iconSize")
+            local spacing = self:RowValue(def, "spacing")
+            local step    = size + spacing
+            local perRow  = self:RowValue(def, "perRow")
+            local count   = VisibleIcons(header)
             if count == 0 then
                 -- Nothing to show, so it takes up nothing: a docked row
                 -- with no auras in it should not hold an icon's worth of
@@ -713,16 +765,43 @@ function addon:RowEditSettings(def)
             set = function(value) def.gap = value Refresh() end }
     end
 
-    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Icons per row",
-        min = 1, max = 20, step = 1,
-        get = function() return def.perRow or addon:GetSetting("perRow") or 8 end,
-        set = function(value) def.perRow = value Refresh() end }
+    local function Slider(label, key, low, high)
+        widgets[#widgets + 1] = { type = "slider", section = "Icons", label = label,
+            min = low, max = high, step = 1,
+            get = function() return addon:RowValue(def, key) end,
+            set = function(value) def[key] = value Refresh() end }
+    end
+
+    Slider("Icon size", "iconSize", 12, 48)
+    Slider("Spacing", "spacing", 0, 12)
+    Slider("Icons per row", "perRow", 1, 20)
+
+    widgets[#widgets + 1] = { type = "dropdown", section = "Icons", label = "Icons run",
+        options = Values(addon.ROW_GROWTH),
+        get = function() return def.grow or "RIGHT" end,
+        set = function(value) def.grow = value Refresh() end }
+    widgets[#widgets + 1] = { type = "dropdown", section = "Icons", label = "Rows stack",
+        options = Values(addon.ROW_STACK),
+        get = function() return def.stack or "AUTO" end,
+        set = function(value)
+            def.stack = (value ~= "AUTO") and value or nil
+            Refresh()
+        end }
 
     if def.unit ~= "player" then
         widgets[#widgets + 1] = { type = "checkbox", section = "Icons", label = "Only mine",
             get = function() return def.onlyMine == true end,
             set = function(value) def.onlyMine = value and true or false Refresh() end }
     end
+
+    widgets[#widgets + 1] = { type = "dropdown", section = "Sorting", label = "Sort by",
+        options = Values(addon.ROW_SORTS),
+        get = function() return addon:RowValue(def, "sortMethod") end,
+        set = function(value) def.sortMethod = value Refresh() end }
+    widgets[#widgets + 1] = { type = "dropdown", section = "Sorting", label = "Direction",
+        options = Values(addon.ROW_SORT_DIRECTIONS),
+        get = function() return addon:RowValue(def, "sortDirection") end,
+        set = function(value) def.sortDirection = value Refresh() end }
 
     widgets[#widgets + 1] = { type = "nudge", section = "Position" }
     return widgets
@@ -848,23 +927,25 @@ local function DemoButton(i)
 end
 
 local function LayoutDemo()
-    local size   = addon:GetSetting("iconSize") or 26
-    local perRow = addon:GetSetting("perRow") or 8
-    local count  = perRow * DEMO_ROWS
-    local now    = GetTime()
-    local used   = 0
-    -- Every row there is, rather than the four there used to be.
+    local now  = GetTime()
+    local used = 0
+    -- Every row there is, rather than the four there used to be, and
+    -- each at its own icon size rather than a shared one.
     local sides = {}
     for _, def in ipairs(addon:Rows()) do
         sides[#sides + 1] = {
             headers[def.id],
             def.filter == "HARMFUL" and DEMO_DEBUFFS or DEMO_BUFFS,
             def.filter == "HARMFUL",
+            def,
         }
     end
     for _, side in ipairs(sides) do
-        local h, icons, harmful = side[1], side[2], side[3]
+        local h, icons, harmful, def = side[1], side[2], side[3], side[4]
         if h and h:GetNumPoints() > 0 then
+            local size   = addon:RowValue(def, "iconSize")
+            local perRow = addon:RowValue(def, "perRow")
+            local count  = perRow * DEMO_ROWS
             local point = h:GetAttribute("point") or "BOTTOMLEFT"
             local xOff  = h:GetAttribute("xOffset") or 0
             local yWrap = h:GetAttribute("wrapYOffset") or 0
