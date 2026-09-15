@@ -54,6 +54,16 @@ local STATE_COLOR = {
     done   = Theme.colors.success,
 }
 
+-- The heading strip, the same on every card. Colour in this window says
+-- what a thing IS - open, closing, finished, the quality of an item - and
+-- a card's subject is not one of those. Sections used to carry a colour
+-- each, which spent the whole vocabulary on labels: with a purple heading
+-- over a green heading over a blue one, nothing was left that could mean
+-- finished. So the chrome is one colour and the readings keep the rest.
+local HEAD_BG  = { 0, 0, 0, 0.25 }
+local HEAD_LIT = { Theme.colors.bgHover[1], Theme.colors.bgHover[2],
+                   Theme.colors.bgHover[3], 0.55 }
+
 Codex.STATE_COLOR = STATE_COLOR
 
 local function ContentWidth()
@@ -206,9 +216,10 @@ local function AcquireCard()
     card.head.bg:SetAllPoints()
     card.head.bg:SetColorTexture(0, 0, 0, 0.25)
 
-    -- A band of the section's own color down the left of the card, and
-    -- a wash of it behind the heading. This is what stops six cards of
-    -- identical chrome reading as one long list.
+    -- A band down the left edge in the colour of the card's own bar:
+    -- the same reading as the bar, at the size you can see from across
+    -- the room, and the one thing keeping a column of identical cards
+    -- from reading as one long list.
     card.accent = card:CreateTexture(nil, "ARTWORK")
     card.accent:SetWidth(3)
     card.accent:SetPoint("TOPLEFT", 1, -1)
@@ -240,12 +251,10 @@ local function AcquireCard()
     card.bar:SetPoint("TOPRIGHT", -(CARD_PAD + 1), -(CARD_HEAD + CARD_PAD))
 
     card.head:SetScript("OnEnter", function(self)
-        local a = self:GetParent()._accent or Theme.colors.gold
-        self.bg:SetColorTexture(a[1] * 0.55, a[2] * 0.55, a[3] * 0.55, 0.55)
+        self.bg:SetColorTexture(unpack(HEAD_LIT))
     end)
     card.head:SetScript("OnLeave", function(self)
-        local a = self:GetParent()._accent or Theme.colors.gold
-        self.bg:SetColorTexture(a[1] * 0.35, a[2] * 0.35, a[3] * 0.35, 0.40)
+        self.bg:SetColorTexture(unpack(HEAD_BG))
     end)
     card.head:SetScript("OnClick", function(self)
         local id = self:GetParent()._sectionID
@@ -423,16 +432,18 @@ function Panel:Refresh()
         card:SetWidth(width)
         card.title:SetText(def.title or def.id)
 
-        local accent = def.accent or Theme.colors.gold
-        card._accent = accent
-        card.accent:SetColorTexture(accent[1], accent[2], accent[3], 0.85)
-        card.head.bg:SetColorTexture(accent[1] * 0.35, accent[2] * 0.35,
-            accent[3] * 0.35, 0.40)
-        card.title:SetTextColor(unpack(accent))
-        card.rule:SetColorTexture(accent[1], accent[2], accent[3], 0.45)
-
         local collapsed = Codex:IsCollapsed(def.id)
         card.chevron:SetText(collapsed and "+" or "-")
+
+        -- The bar is read before the chrome is drawn, because the chrome
+        -- takes its one colour from it.
+        local barDef = (not collapsed) and def.GetBar and def.GetBar() or nil
+        local band = (barDef and barDef.color) or Theme.colors.goldDim
+
+        card.accent:SetColorTexture(band[1], band[2], band[3], 0.85)
+        card.head.bg:SetColorTexture(unpack(HEAD_BG))
+        card.title:SetTextColor(unpack(Theme.colors.gold))
+        card.rule:SetColorTexture(unpack(Theme.colors.divider))
 
         if collapsed then
             card.bar:Hide()
@@ -442,7 +453,6 @@ function Panel:Refresh()
             local inner = CARD_HEAD
 
             -- The bar under a heading is the whole block in one reading.
-            local barDef = def.GetBar and def.GetBar() or nil
             if barDef then
                 card.bar:SetLabel(barDef.label)
                 card.bar:SetBarColor(barDef.color)
@@ -502,15 +512,22 @@ local function BuildHero(parent)
     hero:SetHeight(HERO_H)
     Theme.ApplyFlatPanel(hero, Theme.colors.bgRaised, Theme.colors.edge)
 
-    -- A band of the addon's own frame art down the right of the card,
-    -- faded almost away: enough that the hero is not a flat rectangle.
+    -- A band of the minimap's own frame down the right of the card,
+    -- faded almost away: enough that the hero is not a flat rectangle,
+    -- and the same object the player has in the corner of their screen.
+    --
+    -- The slice is the crown of the ring - the point at the top and the
+    -- arc falling away either side of it - cut to the shape of the band
+    -- it is shown in, so the circle is not squashed into an oval: 855
+    -- pixels of the picture's width by 220 of its height, which is the
+    -- 280 by 72 this sits in.
     local art = hero:CreateTexture(nil, "ARTWORK")
-    art:SetTexture(BazUI.Skin.FRAME_ART)
+    art:SetTexture(BazUI.Skin.MINIMAP_FRAME)
     art:SetPoint("TOPRIGHT", -1, -1)
     art:SetPoint("BOTTOMRIGHT", -1, 1)
     art:SetWidth(280)
     art:SetAlpha(0.09)
-    art:SetTexCoord(0.5, 1, 0.08, 0.62)
+    art:SetTexCoord(0.04, 0.96, 0, 0.202)
 
     local portrait = CreateFrame("Button", nil, hero)
     portrait:SetSize(52, 52)

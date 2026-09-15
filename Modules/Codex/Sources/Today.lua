@@ -46,7 +46,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Saved instances",
     order  = 10,
-    accent = BazUI.Skin.Theme.colors.caution,
     empty = "Nothing saved. Every raid is open to you.",
     events = { "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD", "BOSS_KILL" },
 
@@ -132,7 +131,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Resets",
     order  = 20,
-    accent = BazUI.Skin.Theme.colors.gold,
     empty = "This client reports no reset timers.",
     events = { "PLAYER_ENTERING_WORLD" },
 

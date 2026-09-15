@@ -42,9 +42,9 @@ local widgetInfo
 local minimapParentedInto = nil
 local nativeMapWidth, nativeMapHeight
 
--- Defined with the frame styles further down, called from AttachMinimap
--- above it.
-local HostRing
+-- Defined with the frame styles further down, both called from
+-- AttachMinimap above them.
+local HostRing, MapScale
 
 ---------------------------------------------------------------------------
 -- Parent the Minimap into the given frame (either the wrapper when docked,
@@ -68,10 +68,11 @@ local function AttachMinimap(parent)
     raw.ClearAllPoints(Minimap)
     raw.SetPoint(Minimap, "CENTER", parent, "CENTER", 0, 0)
 
-    -- Pin Minimap's own scale to 1.0 - the widget host's SetScale on the
-    -- wrapper handles all visual sizing. A non-1.0 Minimap scale on top
-    -- would multiply and break the layout.
-    Minimap:SetScale(1.0)
+    -- The widget host's SetScale on the wrapper handles fitting the map
+    -- to the drawer; the map's own scale is the player's, and multiplies
+    -- with it. Nothing else may set it - a scale arriving from anywhere
+    -- but here is a scale nobody asked for.
+    Minimap:SetScale(MapScale())
 
     -- Suppress Blizzard Edit Mode handling for the Minimap
     if MinimapCluster and MinimapCluster.Selection then
@@ -179,6 +180,36 @@ local function GetFrameStyle()
     return style
 end
 
+---------------------------------------------------------------------------
+-- Map scale
+--
+-- How much of the room it is given the map actually takes. The drawer
+-- stretches a widget to fill its width, so without this the only way to
+-- change the size of the map is to change the width of the drawer - and
+-- the frame costs about a fifth of that width, which is a fair reason to
+-- want some of the map back.
+--
+-- It scales the map and the frame's host together rather than resizing
+-- either. That is what makes one number mean the same thing under both
+-- styles: Blizzard's ring is part of the map's own textures, and its zoom
+-- and day/night buttons hang off them, so all of it scales at once and
+-- stays where it belongs. Resizing the map would leave that ring behind
+-- at its old size.
+--
+-- The widget still declares its full width, and only its height comes
+-- down. The declared width is what the drawer divides by, so holding it
+-- still is what turns the scale into a share of the drawer instead of
+-- something the stretch that follows cancels straight back out.
+---------------------------------------------------------------------------
+
+local MAP_SCALE_KEY = "mapScale"
+local MAP_SCALE_MIN, MAP_SCALE_MAX = 0.5, 1
+
+function MapScale()
+    local scale = tonumber(addon:GetWidgetSetting(WIDGET_ID, MAP_SCALE_KEY, 1)) or 1
+    return math.max(MAP_SCALE_MIN, math.min(MAP_SCALE_MAX, scale))
+end
+
 -- How far the map is grown past the hole in the frame, so its edge slides
 -- under the band. The art's inner edge is antialiased; an edge that only
 -- meets it leaves a seam of half-lit pixels all the way round.
@@ -200,6 +231,7 @@ end
 function HostRing(parent)
     if not (ringHost and parent and Minimap) then return end
     ringHost:SetParent(parent)
+    ringHost:SetScale(Minimap:GetScale() or 1)
     ringHost:SetFrameStrata(Minimap:GetFrameStrata())
     ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
     ringHost:ClearAllPoints()
@@ -245,13 +277,18 @@ end
 -- left inside the hole; it is taller than it is wide, because the points
 -- at the top and bottom run past the circle.
 local function Footprint()
+    local width, height
     if GetFrameStyle() == "bazui" then
         local frame = EnsureRing()
-        if frame then return frame:Extent(MapSizeFor(frame)) end
+        if frame then width, height = frame:Extent(MapSizeFor(frame)) end
     end
-    local pad = VISUAL_PAD * 2
-    return (nativeMapWidth or DEFAULT_SIZE) + pad,
-           (nativeMapHeight or DEFAULT_SIZE) + pad
+    if not width then
+        local pad = VISUAL_PAD * 2
+        width  = (nativeMapWidth  or DEFAULT_SIZE) + pad
+        height = (nativeMapHeight or DEFAULT_SIZE) + pad
+    end
+    -- Full width, scaled height: see the note on the map scale above.
+    return width, height * MapScale()
 end
 
 -- Tell the drawer what the widget wants now.
@@ -260,6 +297,16 @@ end
 -- changes the room the widget needs. Docked, the host reads the footprint
 -- back on the next reflow; floating, nothing else is going to resize the
 -- wrapper, so set it here and let the reflow ignore it.
+-- The map and the frame around it scale together, so they stay
+-- concentric: both are centred on the wrapper, and a scale changes only
+-- how big each one draws, never where its middle is.
+function MinimapWidget:ApplyScale()
+    if not Minimap then return end
+    local scale = MapScale()
+    Minimap:SetScale(scale)
+    if ringHost then ringHost:SetScale(scale) end
+end
+
 function MinimapWidget:ApplyFootprint()
     if not (wrapper and widgetInfo) then return end
     local width, height = Footprint()
@@ -289,6 +336,7 @@ function MinimapWidget:ApplyFrameStyle()
         if ring then ring:Hide() end
         if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
     end
+    self:ApplyScale()
     self:ApplyFootprint()
 end
 
@@ -376,6 +424,25 @@ function MinimapWidget:GetOptionsArgs()
                 if not FRAME_STYLES[val] then val = "default" end
                 addon:SetWidgetSetting(WIDGET_ID, FRAME_STYLE_KEY, val)
                 MinimapWidget:ApplyFrameStyle()
+            end,
+        },
+        [MAP_SCALE_KEY] = {
+            order     = 12,
+            type      = "range",
+            name      = "Map Scale",
+            desc      = "How much of the drawer's width the minimap takes. Below 100% it sits smaller, centered, with room to spare either side. For a map bigger than that, widen the drawer.",
+            min       = MAP_SCALE_MIN,
+            max       = MAP_SCALE_MAX,
+            step      = 0.05,
+            isPercent = true,
+            format    = function(value)
+                return string.format("%d%%", math.floor(value * 100 + 0.5))
+            end,
+            get       = function() return MapScale() end,
+            set       = function(_, val)
+                addon:SetWidgetSetting(WIDGET_ID, MAP_SCALE_KEY, tonumber(val) or 1)
+                MinimapWidget:ApplyScale()
+                MinimapWidget:ApplyFootprint()
             end,
         },
         buttonsHeader = {

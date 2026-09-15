@@ -50,7 +50,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Open to you",
     order  = 8,
-    accent = Theme.colors.success,
     empty  = "Nothing attuned or keyed yet that you are not already saved to.",
     events = {
         "PLAYER_ENTERING_WORLD", "UPDATE_INSTANCE_INFO", "BAG_UPDATE_DELAYED",
@@ -111,7 +110,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Working towards",
     order  = 30,
-    accent = Theme.colors.caution,
     empty  = "Nothing started. Attunements and keys show up here once you begin one.",
     events = {
         "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN",

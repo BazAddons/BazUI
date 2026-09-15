@@ -11,7 +11,8 @@
 
 local Codex = BazUI.Codex
 
-local Theme = BazUI.Skin.Theme
+local Theme = BazUI.Skin.Theme
+
 local DONE = Theme.colors.success
 
 ---------------------------------------------------------------------------
@@ -38,7 +39,6 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Titles",
     order  = 10,
-    accent = Theme.colors.success,
     empty = "No titles earned yet.",
     events = { "KNOWN_TITLES_UPDATE", "PLAYER_ENTERING_WORLD" },
 
@@ -102,7 +102,6 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Mounts",
     order  = 20,
-    accent = { 0.45, 0.68, 0.85, 1 },
     empty = "No mounts yet.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
@@ -117,7 +116,6 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Pets",
     order  = 30,
-    accent = { 0.72, 0.55, 0.85, 1 },
     empty = "No pets yet.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
@@ -178,7 +176,6 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Reputation",
     order  = 40,
-    accent = Theme.colors.caution,
     empty = "Nothing at revered yet.",
     events = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
 

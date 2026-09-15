@@ -30,11 +30,6 @@ BazUI.Skin = {
     MINIMAP_FRAME_WIDTH      = 929 / 755.4,
     MINIMAP_FRAME_HEIGHT     = 1088 / 755.4,
 
-    -- The old minimap ring. Nothing frames anything with it any more, but
-    -- the Codex's hero card uses a slice of it, faded almost to nothing,
-    -- so the card is not a flat rectangle.
-    FRAME_ART                = ASSETS .. "BazUI_Frame.png",
-
     -- Minimap button ring. 128x128, ring centered; inner edge at 70%, the
     -- outer edge touches the texture edge.
     BUTTON_RING_INNER_RATIO  = 0.70,

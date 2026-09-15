@@ -132,7 +132,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Quests",
     order  = 5,
-    accent = Theme.colors.gold,
     empty  = "Nothing in the quest log.",
     events = {
         "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED", "QUEST_ACCEPTED",

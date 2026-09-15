@@ -77,7 +77,6 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Goals",
     order  = 20,
-    accent = { 0.72, 0.55, 0.85, 1 },
     empty  = "Nothing on the go. Goals appear as your character grows into them.",
     events = EVENTS,
 
@@ -90,7 +89,6 @@ Codex:RegisterSection({
         return {
             value = string.format("%d%%", math.floor(nearest.fraction * 100 + 0.5)),
             label = "through " .. nearest.entry.name,
-            color = { 0.72, 0.55, 0.85, 1 },
         }
     end,
 
@@ -103,10 +101,9 @@ Codex:RegisterSection({
                 detail = Detail(state),
                 state  = "open",
                 tip    = Tooltip(state),
-                progress = {
-                    value = state.fraction, max = 1,
-                    color = { 0.72, 0.55, 0.85, 1 },
-                },
+                -- No colour of its own: an open goal is gold like every
+                -- other open thing, and turns green when it is done.
+                progress = { value = state.fraction, max = 1 },
             }
         end
         return rows
@@ -122,7 +119,6 @@ Codex:RegisterSection({
     tab    = "achieved",
     title  = "Goals",
     order  = 5,
-    accent = { 0.72, 0.55, 0.85, 1 },
     empty  = "Nothing finished yet.",
     events = EVENTS,
 
