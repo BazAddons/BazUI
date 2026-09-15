@@ -163,26 +163,42 @@ function UnitBars:Save()
 end
 
 ---------------------------------------------------------------------------
--- Blizzard's own experience and reputation bars
+-- Blizzard's own frames
 --
--- Whichever of the two you have made a bar for is taken off screen, and
--- the other is left alone: an experience bar of your own replaces the
--- game's, and if you never make one the game keeps drawing it. That is
--- the whole rule, so there is no setting for it.
+-- One rule, stated rather than configured: whatever you have made a bar
+-- for, the game's version of it goes away, and whatever you have not is
+-- left alone. Make a player health bar and the stock player frame goes;
+-- delete it and the frame comes back. Nothing here is a setting, because
+-- the answer is always readable from the bars you have.
 --
--- Era draws both inside one shared container whose manager decides what
--- it will show, and older builds give them frames of their own. Both are
--- handled, since which one a client has is not worth guessing at.
+-- Experience and reputation are the awkward pair. Era draws them inside
+-- one shared container whose manager decides which it will show, so it
+-- is asked about only the one we replaced; older builds give them frames
+-- of their own, and both cases are handled rather than guessed at.
 ---------------------------------------------------------------------------
 
+-- What each bar covers, and the frames that answer to it.
 local STOCK_FRAMES = {
-    xp  = { "MainMenuExpBar", "ExhaustionTick", "MainMenuBarMaxLevelBar" },
-    rep = { "ReputationWatchBar" },
+    xp         = { "MainMenuExpBar", "ExhaustionTick", "MainMenuBarMaxLevelBar" },
+    rep        = { "ReputationWatchBar" },
+    player     = { "PlayerFrame" },
+    target     = { "TargetFrame" },
+    pet        = { "PetFrame" },
+    playercast = { "CastingBarFrame", "PlayerCastingBarFrame" },
+    petcast    = { "PetCastingBarFrame" },
 }
+
+local function Covers(def)
+    local kind = def.kind
+    if kind == "xp" or kind == "rep" then return kind end
+    if kind == "cast" then return (def.unit or "player") .. "cast" end
+    if kind == "health" or kind == "power" then return def.unit or "player" end
+end
 
 local hiddenStock
 local stockParents = {}
 local hookedManager
+local petParent
 local suppressing  = {}
 local suppressKey
 
@@ -198,20 +214,24 @@ function UnitBars:SuppressStock()
     local wanted = {}
     if addon:BarMode() then
         for _, def in ipairs(self:Defs()) do
-            if def.kind == "xp" or def.kind == "rep" then wanted[def.kind] = true end
+            local covers = Covers(def)
+            if covers then wanted[covers] = true end
         end
     end
 
     -- Asked on every save, and a save happens every time a bar is
     -- dragged, so nothing is touched unless what we cover has changed.
-    local key = (wanted.xp and "x" or "") .. (wanted.rep and "r" or "")
+    local parts = {}
+    for covers in pairs(wanted) do parts[#parts + 1] = covers end
+    table.sort(parts)
+    local key = table.concat(parts, ",")
     if key == suppressKey then return end
 
     -- Reparenting Blizzard's frames is protected, and so is asking the
     -- container to lay itself out again. The key is left alone so the
     -- next call after combat picks this up.
     if InCombatLockdown() then return end
-    suppressing.xp, suppressing.rep = wanted.xp, wanted.rep
+    for covers in pairs(STOCK_FRAMES) do suppressing[covers] = wanted[covers] end
 
     -- Whether anything was actually there to act on. Blizzard's bars
     -- may not exist yet the first time this runs, and remembering the
@@ -255,15 +275,28 @@ function UnitBars:SuppressStock()
         end
     end
 
-    for kind, names in pairs(STOCK_FRAMES) do
+    -- Era hangs the pet's frame off the player's, so hiding the player's
+    -- would take a pet frame we are not replacing with it. Move it out
+    -- to the screen first, and put it back when the player's returns.
+    local playerFrame, petFrame = _G.PlayerFrame, _G.PetFrame
+    if petFrame and playerFrame and suppressing.player and not suppressing.pet
+        and petFrame:GetParent() == playerFrame then
+        petParent = playerFrame
+        petFrame:SetParent(UIParent)
+    elseif petParent and not suppressing.player then
+        petFrame:SetParent(petParent)
+        petParent = nil
+    end
+
+    for covers, names in pairs(STOCK_FRAMES) do
         for _, name in ipairs(names) do
             local frame = _G[name]
             if frame then
                 found = true
-                if suppressing[kind] and not stockParents[frame] then
+                if suppressing[covers] and not stockParents[frame] then
                     stockParents[frame] = frame:GetParent() or UIParent
                     frame:SetParent(HiddenStock())
-                elseif not suppressing[kind] and stockParents[frame] then
+                elseif not suppressing[covers] and stockParents[frame] then
                     frame:SetParent(stockParents[frame])
                     stockParents[frame] = nil
                 end
