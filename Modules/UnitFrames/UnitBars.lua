@@ -118,7 +118,9 @@ function UnitBars:Add(kind, unit)
         width      = 240,
         height     = 20,
         textMode   = "always",
-        textFormat = (kind == "power" or kind == "cast") and "current" or "namePercent",
+        textFormat = (kind == "xp" or kind == "rep") and "detailed"
+            or ((kind == "power" or kind == "cast") and "current" or "namePercent"),
+        ticks      = (kind == "xp") and 10 or 0,
         dock       = { host = "float", edge = "BOTTOM" },
         position   = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
     }
@@ -240,12 +242,26 @@ local function UpdateXP(bar)
     local maximum = math.max(0, UnitXPMax("player") or 0)
     local current = math.max(0, math.min(maximum, UnitXP("player") or 0))
     local rested = math.max(0, GetXPExhaustion() or 0)
+    local level = UnitLevel("player") or 1
+
     bar.frame:SetValue(maximum > 0 and current / maximum or 0)
     bar.frame:SetOverlay(maximum > 0 and rested / maximum or 0)
     bar.frame:SetFillColor({ 0.57, 0.16, 0.85, 1 })
-    bar.frame:SetText(maximum > 0
-        and Format(bar.def.textFormat, current, maximum, "Level " .. (UnitLevel("player") or 1))
-        or "Maximum level")
+
+    if maximum <= 0 then
+        bar.frame:SetText("Level " .. level .. "  |  Maximum level")
+        return
+    end
+
+    -- The full line the old XP bar wore, which said everything at once:
+    -- where you are, how far through, and the exact fraction. A tenth of
+    -- a percent is worth having here because a level is long.
+    if (bar.def.textFormat or "detailed") == "detailed" then
+        bar.frame:SetText(string.format("Level %d   |   %s / %s XP   |   %.1f%%",
+            level, Number(current), Number(maximum), current / maximum * 100))
+    else
+        bar.frame:SetText(Format(bar.def.textFormat, current, maximum, "Level " .. level))
+    end
 end
 
 local function UpdateRep(bar)
@@ -270,7 +286,13 @@ local function UpdateRep(bar)
     local span = math.max(1, (max or 0) - (min or 0))
     bar.frame:SetValue(math.min(1, ((value or 0) - (min or 0)) / span))
     bar.frame:SetFillColor({ 0.35, 0.65, 0.35, 1 })
-    bar.frame:SetText(Format(bar.def.textFormat, (value or 0) - (min or 0), span, name))
+    local into = (value or 0) - (min or 0)
+    if (bar.def.textFormat or "detailed") == "detailed" then
+        bar.frame:SetText(string.format("%s   |   %s / %s   |   %.1f%%",
+            name, Number(into), Number(span), into / span * 100))
+    else
+        bar.frame:SetText(Format(bar.def.textFormat, into, span, name))
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -473,6 +495,7 @@ function UnitBars:Apply(bar)
     frame:SetBarSize(math.max(60, math.min(1200, def.width or 240)),
         math.max(8, math.min(48, def.height or 20)))
     frame:SetTextMode(def.textMode or "always")
+    frame:SetTicks(def.ticks or 0)
 
     local dock = def.dock or { host = "float" }
     BazUI.Dock:AttachTo(frame, dock.host, {
@@ -690,6 +713,7 @@ end
 
 local TEXT_MODES = { always = "Always", hover = "On Hover", never = "Never" }
 local TEXT_FORMATS = {
+    detailed        = "Everything",
     ["current/max"] = "Current / Max",
     current         = "Current",
     percent         = "Percent",
@@ -750,6 +774,11 @@ function UnitBars:EditSettings(bar)
           options = ValuesArray(TEXT_FORMATS),
           get = function() return def.textFormat or "namePercent" end,
           set = function(value) def.textFormat = value Refresh() end },
+
+        { type = "slider", section = "Text", label = "Tenth marks",
+          min = 0, max = 20, step = 1,
+          get = function() return def.ticks or 0 end,
+          set = function(value) def.ticks = value Refresh() end },
 
         { type = "nudge", section = "Position" },
     }

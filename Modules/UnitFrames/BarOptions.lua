@@ -16,6 +16,7 @@ addon.BarOptions = Options
 
 local TEXT_MODES = { always = "Always", hover = "On Hover", never = "Never" }
 local FORMATS = {
+    detailed        = "Everything",
     ["current/max"] = "Current / Max",
     current         = "Current",
     percent         = "Percent",
@@ -157,9 +158,16 @@ local function BarArgs(def)
             },
             textFormat = {
                 order = 24, type = "select", name = "Text says",
+                desc = "Everything spells out the level, the values and the exact percent, which is what an experience bar wants.",
                 values = FORMATS,
                 get = Field(def, "textFormat", "namePercent"),
                 set = SetField(def, "textFormat"),
+            },
+            ticks = {
+                order = 25, type = "range", name = "Tenth marks",
+                desc = "Divider lines across the fill. Ten marks the tenths of a level.",
+                min = 0, max = 20, step = 1,
+                get = Field(def, "ticks", 0), set = SetField(def, "ticks"),
             },
         },
     }
