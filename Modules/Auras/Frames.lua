@@ -299,7 +299,17 @@ local function ConfigureHeader(def, below)
     h:SetAttribute("point", point)
     h:SetAttribute("xOffset", right and step or -step)
     h:SetAttribute("yOffset", 0)
-    h:SetAttribute("wrapAfter", perRow)
+    -- A total to show, spread evenly rather than filling rows of perRow
+    -- and overshooting: ten at eight across is two rows of five, not two
+    -- rows of eight. The header can only stop at the end of a row, so
+    -- the row length is what has to give.
+    local across, rows = perRow, def.maxRows or 0
+    if def.maxIcons and def.maxIcons > 0 then
+        rows   = math.ceil(def.maxIcons / perRow)
+        across = math.ceil(def.maxIcons / rows)
+    end
+
+    h:SetAttribute("wrapAfter", across)
     h:SetAttribute("wrapXOffset", 0)
     h:SetAttribute("wrapYOffset", below and -step or step)
     -- How many rows at most, nought for as many as there are auras. A
@@ -308,9 +318,14 @@ local function ConfigureHeader(def, below)
     -- the middle of your screen is not what anyone meant by showing
     -- them. The header does the cutting off, securely, so a limit still
     -- holds while everything else is frozen.
-    h:SetAttribute("maxWraps", def.maxRows or 0)
-    h:SetAttribute("minWidth", perRow * step - spacing)
-    h:SetAttribute("minHeight", size)
+    h:SetAttribute("maxWraps", rows)
+
+    -- No floor on the header's own size. It measures itself to the box
+    -- its buttons occupy unless these say otherwise, and that box is the
+    -- only honest answer to how big the row is: two icons should measure
+    -- two icons, not a full row's worth of mostly nothing.
+    h:SetAttribute("minWidth", 1)
+    h:SetAttribute("minHeight", 1)
     h:SetAttribute("sortMethod", addon:RowValue(def, "sortMethod"))
     h:SetAttribute("sortDirection", addon:RowValue(def, "sortDirection"))
     -- Which row a button belongs to, for anything that has only the
@@ -710,12 +725,11 @@ function addon:SizeRows()
             local filling = def.fill and BazUI.Dock:IsDocked(frame)
 
             if count == 0 then
-                -- Nothing to show, so it takes up nothing: a docked row
-                -- with no auras in it should not hold an icon's worth of
-                -- space open above whatever is under it.
-                -- Height one, so a chain closes up over it, but the
-                -- width it would have when full: something docked to
-                -- this row takes that width, and a bar squeezed to a
+                -- Nothing to show, so it takes up no height: a docked
+                -- row with no auras in it should not hold space open
+                -- above whatever is under it. The width it would have
+                -- when full is kept, because that is what anything
+                -- docked underneath takes, and a bar squeezed to a
                 -- single pixel because nobody is buffed is nonsense.
                 if filling then
                     frame:SetHeight(1)
@@ -723,15 +737,19 @@ function addon:SizeRows()
                     frame:SetSize(math.max(1, perRow * step - spacing), 1)
                 end
             else
-                local capped  = def.maxRows and def.maxRows > 0
-                    and math.min(count, def.maxRows * perRow) or count
-                local columns = math.min(perRow, capped)
-                local rows    = math.ceil(capped / perRow)
-                local height  = math.max(1, rows * step - spacing)
+                -- Ask the header. It lays the icons out and then sizes
+                -- itself to the box they occupy, so it knows exactly how
+                -- tall the row is, including any limit it applied and
+                -- any row it balanced. Working the same number out again
+                -- from counts is how a row came to sit on top of the one
+                -- it was docked under: two answers to one question, and
+                -- the icons follow the header's.
+                local width  = math.max(1, header:GetWidth() or 1)
+                local height = math.max(1, header:GetHeight() or 1)
                 if filling then
                     frame:SetHeight(height)
                 else
-                    frame:SetSize(math.max(1, columns * step - spacing), height)
+                    frame:SetSize(width, height)
                 end
             end
         end
@@ -901,10 +919,23 @@ function addon:RowEditSettings(def)
     Slider("Spacing", "spacing", 0, 12)
     Slider("Icons per row", "perRow", 1, 20)
 
-    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Rows at most",
-        min = 0, max = 6, step = 1,
-        get = function() return def.maxRows or 0 end,
-        set = function(value) def.maxRows = (value > 0) and value or nil Refresh() end }
+    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Show at most",
+        min = 0, max = 32, step = 1,
+        get = function() return def.maxIcons or 0 end,
+        set = function(value)
+            def.maxIcons = (value > 0) and value or nil
+            Refresh()
+            -- A total decides the number of rows, so the rows slider
+            -- stops being a question worth asking.
+            addon:RefreshRowEditSettings()
+        end }
+
+    if not (def.maxIcons and def.maxIcons > 0) then
+        widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Rows at most",
+            min = 0, max = 6, step = 1,
+            get = function() return def.maxRows or 0 end,
+            set = function(value) def.maxRows = (value > 0) and value or nil Refresh() end }
+    end
 
     widgets[#widgets + 1] = { type = "dropdown", section = "Icons", label = "Icons run",
         options = Values(addon.ROW_GROWTH),

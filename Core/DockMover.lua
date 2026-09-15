@@ -136,6 +136,15 @@ function Dock:ShowSnapLine(snap)
     local host = self:GetHostFrame(snap.host)
     if not host then return end
 
+    -- Draw it on the host's handle when one is showing, not on the host
+    -- itself. In Edit Mode the handle is what you can see, and it has a
+    -- minimum size: a row of auras only a pixel or two tall would put
+    -- the line through the middle of its own handle, which reads as
+    -- landing in the middle of something rather than under it.
+    if host._bazMover and host._bazMover:IsShown() then
+        host = host._bazMover
+    end
+
     local line = SnapLine()
     local label
     for _, entry in ipairs(self:GetHosts()) do
@@ -242,6 +251,9 @@ function Dock:CreateMover(target, opts)
         self._snapShown = snap and true or false
         Dock:ShowSnapLine(snap)
     end
+
+    -- So anything drawing over the target can find what stands for it.
+    target._bazMover = mover
 
     -- The handle is a picture of its target, so it follows the target's
     -- size rather than waiting to be told. Something resized by its host

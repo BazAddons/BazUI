@@ -263,8 +263,19 @@ local function RowArgs(def, index)
                 get = function() return addon:RowValue(def, "perRow") end,
                 set = setPerRow,
             },
+            maxIcons = {
+                order = 23.5, type = "range", name = "Show at most",
+                desc = "The most icons this row will ever show, nought for no limit. They are spread evenly rather than filling rows and overshooting: ten at eight across is two rows of five. The header stops at the end of a row, so the row length is what gives.",
+                min = 0, max = 32, step = 1,
+                get = function() return def.maxIcons or 0 end,
+                set = function(_, value)
+                    def.maxIcons = (value > 0) and value or nil
+                    Apply()
+                end,
+            },
             maxRows = {
                 order = 24, type = "range", name = "Rows at most",
+                hidden = function() return (def.maxIcons or 0) > 0 end,
                 desc = "Nought means as many rows as there are auras. One row is the usual choice for somebody else's debuffs: sixteen of them is a legal state of affairs, and a tower of icons is not what showing them meant.",
                 min = 0, max = 6, step = 1,
                 get = function() return def.maxRows or 0 end,
