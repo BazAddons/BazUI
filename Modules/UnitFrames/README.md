@@ -22,9 +22,15 @@ land before you let go. Health and power bars are secure unit buttons,
 so left-click targets and right-click opens the unit menu, and every
 change is made out of combat only.
 
-Whatever you make a bar for replaces the game's own version of it: a
-player health bar hides the stock player frame, a cast bar hides the
-stock cast bar, an experience bar hides the stock one and takes its Edit
-Mode entry with it. Delete the bar and the game's comes back. Nothing
-about that is a setting, since the answer is readable from the bars you
-have.
+Blizzard's own frames are put away by a switch each, on the module's
+page under Blizzard's Frames: the player and target frames, the party
+frames, the casting bars, and the tab at the left edge that slides out
+with the target markers on it. The three a new profile's starter bars
+replace are off to begin with, so a fresh install does not show two of
+everything; the rest start as the game left them.
+
+This used to be worked out from the bars you had - make a player health
+bar and the stock player frame went - which read well and behaved badly:
+a frame vanished with nothing on screen saying why, one you wanted to
+keep could not be kept, and a bar for one party member hid that member's
+frame and left the other three.

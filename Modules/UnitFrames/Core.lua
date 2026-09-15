@@ -171,7 +171,7 @@ function addon:InitializeBars()
     self:SeedBars()
     UnitBars:WatchAll()
     UnitBars:UpdateAll()
-    -- Your bars replace the game's own, so the game's go away.
+    -- Whichever of the game's own frames the player asked us to put away.
     UnitBars:SuppressStock()
 
     -- Edit Mode may open or close at any time, and the movers are the

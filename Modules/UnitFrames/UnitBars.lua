@@ -244,32 +244,73 @@ end
 
 function UnitBars:Save()
     addon:SetSetting("statusBars", self:Defs())
-    self:SuppressStock()
 end
 
 ---------------------------------------------------------------------------
 -- Blizzard's own frames
 --
--- One rule, stated rather than configured: whatever you have made a bar
--- for, the game's version of it goes away, and whatever you have not is
--- left alone. Make a player health bar and the stock player frame goes;
--- delete it and the frame comes back. Nothing here is a setting, because
--- the answer is always readable from the bars you have.
+-- One switch per frame, and nothing here reads the bars you have made.
 --
--- Experience and reputation are the awkward pair. Era draws them inside
--- one shared container whose manager decides which it will show, so it
--- is asked about only the one we replaced; older builds give them frames
--- of their own, and both cases are handled rather than guessed at.
+-- It used to work the other way: whatever you had made a bar for, the
+-- game's version of it went away. That sounds tidy and is not. A frame
+-- disappears and nothing on screen says why; a frame you wanted to keep
+-- cannot be kept; and a bar for one party member hid that member's frame
+-- and left the other three sitting there, which is how this came up.
+-- Something that changes what is on the player's screen should be a
+-- thing the player can point at.
+--
+-- The frames a new profile's starter bars replace are hidden to begin
+-- with, so a fresh install does not show two of everything. Everything
+-- else starts as the game left it.
+--
+-- They are parked under a hidden parent rather than hidden, because the
+-- game shows several of them again whenever the group changes and a
+-- child of a hidden frame does not draw whatever it believes about
+-- itself. Experience and reputation are not here: the game keeps both in
+-- the furniture around its action bar, which the Bars module owns.
 ---------------------------------------------------------------------------
 
--- What each bar covers, and the frames that answer to it.
-local STOCK_FRAMES = {
-    player     = { "PlayerFrame" },
-    target     = { "TargetFrame" },
-    party1     = { "PartyMemberFrame1" },
-    party2     = { "PartyMemberFrame2" },
-    party3     = { "PartyMemberFrame3" },
-    party4     = { "PartyMemberFrame4" },
+UnitBars.STOCK = {
+    {
+        key     = "hidePlayerFrame",
+        label   = "Player frame",
+        desc    = "The game's own portrait frame for you.",
+        default = true,
+        frames  = { "PlayerFrame" },
+    },
+    {
+        key     = "hideTargetFrame",
+        label   = "Target frame",
+        desc    = "The game's own portrait frame for your target.",
+        default = true,
+        frames  = { "TargetFrame" },
+    },
+    {
+        key     = "hidePlayerCastBar",
+        label   = "Casting bar",
+        desc    = "The game's own casting bar, under the middle of the screen.",
+        default = true,
+        frames  = { "CastingBarFrame", "PlayerCastingBarFrame" },
+    },
+    {
+        key    = "hidePartyFrames",
+        label  = "Party frames",
+        desc   = "The four portrait frames down the left in a group. Make party bars first, or a group will have nothing showing it at all.",
+        frames = { "PartyMemberFrame1", "PartyMemberFrame2",
+                   "PartyMemberFrame3", "PartyMemberFrame4" },
+    },
+    {
+        key    = "hidePetCastBar",
+        label  = "Pet casting bar",
+        desc   = "The casting bar for your pet.",
+        frames = { "PetCastingBarFrame" },
+    },
+    {
+        key    = "hideRaidManager",
+        label  = "Raid manager tab",
+        desc   = "The tab at the left edge of the screen that slides out with the target markers, group filters and ready check on it. The game shows it whenever you are in a group.",
+        frames = { "CompactRaidFrameManager" },
+    },
 
     -- Pet frames are deliberately absent. Era hangs each one off the
     -- frame of whoever owns it, so hiding the player's or a party
@@ -278,22 +319,20 @@ local STOCK_FRAMES = {
     -- the player's pet frame as it opens, and a frame an addon has
     -- reparented is tainted, so that refresh gets blocked and blamed on
     -- us. Not touching them is both simpler and correct.
-    playercast = { "CastingBarFrame", "PlayerCastingBarFrame" },
-    petcast    = { "PetCastingBarFrame" },
 }
 
-local function Covers(def)
-    local kind = def.kind
-    -- Experience and reputation are not here. The game keeps both in the
-    -- furniture around its action bar, which the Bars module owns, and
-    -- they have to go away whether or not anybody is running this one.
-    if kind == "cast" then return (def.unit or "player") .. "cast" end
-    if kind == "health" or kind == "power" then return def.unit or "player" end
+-- Saved as a real true or false once the player has touched it, so the
+-- default only answers for a switch nobody has thrown. Checked against
+-- nil rather than leaned on: `saved or default` would turn every
+-- deliberate false back on.
+function UnitBars:StockHidden(entry)
+    local saved = addon:GetSetting(entry.key)
+    if saved == nil then return entry.default and true or false end
+    return saved and true or false
 end
 
 local hiddenStock
 local stockParents = {}
-local suppressing  = {}
 local suppressKey
 
 local function HiddenStock()
@@ -305,39 +344,34 @@ local function HiddenStock()
 end
 
 function UnitBars:SuppressStock()
-    local wanted = {}
-    for _, def in ipairs(self:Defs()) do
-        local covers = Covers(def)
-        if covers then wanted[covers] = true end
-    end
-
     -- Asked on every save, and a save happens every time a bar is
-    -- dragged, so nothing is touched unless what we cover has changed.
+    -- dragged, so nothing is touched unless an answer has changed.
     local parts = {}
-    for covers in pairs(wanted) do parts[#parts + 1] = covers end
-    table.sort(parts)
-    local key = table.concat(parts, ",")
+    for _, entry in ipairs(self.STOCK) do
+        parts[#parts + 1] = self:StockHidden(entry) and "1" or "0"
+    end
+    local key = table.concat(parts)
     if key == suppressKey then return end
 
     -- Reparenting Blizzard's frames is protected. The key is left alone
     -- so the next call after combat picks this up.
     if InCombatLockdown() then return end
-    for covers in pairs(STOCK_FRAMES) do suppressing[covers] = wanted[covers] end
 
-    -- Whether anything was actually there to act on. Blizzard's bars
+    -- Whether anything was actually there to act on. Blizzard's frames
     -- may not exist yet the first time this runs, and remembering the
     -- answer before they turn up would mean never looking again.
     local found = false
 
-    for covers, names in pairs(STOCK_FRAMES) do
-        for _, name in ipairs(names) do
+    for _, entry in ipairs(self.STOCK) do
+        local hide = self:StockHidden(entry)
+        for _, name in ipairs(entry.frames) do
             local frame = _G[name]
             if frame then
                 found = true
-                if suppressing[covers] and not stockParents[frame] then
+                if hide and not stockParents[frame] then
                     stockParents[frame] = frame:GetParent() or UIParent
                     frame:SetParent(HiddenStock())
-                elseif not suppressing[covers] and stockParents[frame] then
+                elseif not hide and stockParents[frame] then
                     frame:SetParent(stockParents[frame])
                     stockParents[frame] = nil
                 end
@@ -588,21 +622,34 @@ end
 
 -- What to call the cast.
 --
--- The second return is the one to show. The first is the spell's name in
--- the client's own tables, and plenty of vanilla spells have no name
--- there: interacting with a quest object casts one of them, and the
--- table's placeholder for an empty name is the literal string "No Text",
--- which is what turned up on the bar while collecting Milly's buckets.
--- Blizzard's own cast bar shows the second return for exactly this
--- reason. If both are useless, say what is happening rather than repeat
--- the client's filler.
+-- The second return is the one to show, and Blizzard's own cast bar
+-- shows it too: it carries the spell's subtext, which in this era is the
+-- rank, so a bar reads "Frostbolt - Rank 3".
+--
+-- A spell with no subtext gets the client's placeholder for one instead
+-- of nothing, and it is joined on just the same. That is why gathering
+-- wood put "Opening - No Text" on the bar: interacting with a quest
+-- object casts a spell with no rank, so the placeholder is all the
+-- subtext there is. Cutting it off leaves "Opening", which is what the
+-- player is doing.
+--
+-- The placeholder is spell data rather than one of the client's
+-- localizable strings, so there is nothing to compare it against but
+-- itself; a client in another language will say something else here and
+-- fall through to the plain name, which is the same answer by a longer
+-- road.
+local NO_SUBTEXT = "No Text"
+
+local function Readable(candidate)
+    if type(candidate) ~= "string" then return nil end
+    candidate = candidate:gsub("%s*%-%s*" .. NO_SUBTEXT .. "$", "")
+    if candidate == "" or candidate == NO_SUBTEXT then return nil end
+    return candidate
+end
+
 local function CastName(display, name, channel)
-    for _, candidate in ipairs({ display, name }) do
-        if candidate and candidate ~= "" and candidate ~= "No Text" then
-            return candidate
-        end
-    end
-    return channel and "Channeling" or "Casting"
+    return Readable(display) or Readable(name)
+        or (channel and "Channeling" or "Casting")
 end
 
 function UnitBars:SyncCast(bar)
