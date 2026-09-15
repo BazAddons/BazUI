@@ -97,12 +97,21 @@ function addon:InitializeBars()
     -- only thing it is ever allowed to move.
     self:On("BAZ_EDITMODE_ENTER", function()
         UnitBars:RefreshEditSettings()
+        -- Bars for absent units turn up while arranging, so a party
+        -- layout can be built without a party.
+        UnitBars:SetPreview(true)
         UnitBars:ShowAllMovers()
     end)
-    self:On("BAZ_EDITMODE_EXIT",  function() UnitBars:ShowAllMovers() end)
+    self:On("BAZ_EDITMODE_EXIT",  function()
+        UnitBars:SetPreview(false)
+        UnitBars:ShowAllMovers()
+    end)
     self:On("PLAYER_REGEN_ENABLED", function()
         UnitBars:BuildAll()
         UnitBars:ApplyAll()
+        -- Showing and hiding these is protected, so whatever the preview
+        -- should have been while the fight ran, it is now.
+        UnitBars:SetPreview(BazUI:IsEditMode())
         UnitBars:ShowAllMovers()
         -- Hiding Blizzard's frames is protected, so anything that
         -- changed mid-fight has been waiting for this.

@@ -31,6 +31,10 @@ addon.UnitBars = UnitBars
 
 UnitBars.bars = {}          -- [id] = { def, frame, mover }
 
+-- Edit Mode shows bars for units that are not there, so a layout can
+-- be arranged while solo. See SetPreview.
+local previewing = false
+
 local DEAD_COLOR    = { 0.45, 0.45, 0.45, 1 }
 local OFFLINE_COLOR = { 0.35, 0.35, 0.40, 1 }
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
@@ -404,9 +408,22 @@ end
 -- Filling a bar in
 ---------------------------------------------------------------------------
 
+-- A bar for a unit that is not there, while the layout is being
+-- arranged: full, grey, and named after the slot it stands for.
+local function DrawPlaceholder(bar, fraction)
+    bar.frame:SetAlpha(1)
+    bar.frame:SetValue(fraction)
+    bar.frame:SetOverlay(0)
+    bar.frame:SetFillColor(OFFLINE_COLOR)
+    bar.frame:SetText(UnitBars.UNITS[bar.def.unit] or bar.def.unit)
+end
+
 local function UpdateHealth(bar)
     local unit = bar.def.unit
-    if not UnitExists(unit) then return end
+    if not UnitExists(unit) then
+        if previewing then DrawPlaceholder(bar, 1) end
+        return
+    end
     local maximum = math.max(1, UnitHealthMax(unit) or 1)
     local current = math.max(0, math.min(maximum, UnitHealth(unit) or 0))
     bar.frame:SetValue(current / maximum)
@@ -426,7 +443,10 @@ end
 
 local function UpdatePower(bar)
     local unit = bar.def.unit
-    if not UnitExists(unit) then return end
+    if not UnitExists(unit) then
+        if previewing then DrawPlaceholder(bar, 0.6) end
+        return
+    end
     local powerType = UnitPowerType(unit)
     local maximum = math.max(0, UnitPowerMax(unit, powerType) or 0)
 
@@ -1023,6 +1043,36 @@ end
 
 function UnitBars:ShowMover(bar)
     if bar and bar.mover then bar.mover:ShowForEdit() end
+end
+
+-- Party bars are hidden when nobody is in those slots, and a hidden
+-- bar cannot be docked to: the snap test will not offer something it
+-- cannot see, and nor should it. Arranging a party layout while solo was
+-- therefore impossible, which is when most people would do it.
+--
+-- While Edit Mode is open, a bar whose unit is absent is shown with a
+-- placeholder instead. Whether a health or power bar is on screen
+-- belongs to RegisterUnitWatch, so the watch is handed back and forth
+-- rather than fought with; both calls are out-of-combat only, which Edit
+-- Mode already is.
+function UnitBars:SetPreview(on)
+    if InCombatLockdown() then return end
+    previewing = on and true or false
+
+    for _, bar in pairs(self.bars) do
+        local def = bar.def
+        local secure = (def.kind == "health" or def.kind == "power")
+        if secure and not UnitExists(def.unit) then
+            if previewing then
+                if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
+                BazUI.Dock:SetShown(bar.frame, true)
+            else
+                BazUI.Dock:SetShown(bar.frame, false)
+                if _G.RegisterUnitWatch then _G.RegisterUnitWatch(bar.frame) end
+            end
+            self:Update(bar)
+        end
+    end
 end
 
 function UnitBars:ShowAllMovers()
