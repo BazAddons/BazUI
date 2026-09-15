@@ -307,6 +307,14 @@ local function ConfigureHeader(def, below)
     if def.maxIcons and def.maxIcons > 0 then
         rows   = math.ceil(def.maxIcons / perRow)
         across = math.ceil(def.maxIcons / rows)
+        -- Both limits hold, whichever bites first, so neither setting
+        -- has to disappear when the other is set. A control that has to
+        -- vanish is a control whose panel has to be rebuilt, and
+        -- rebuilding a panel from a slider rebuilds it on every step of
+        -- the drag.
+        if def.maxRows and def.maxRows > 0 then
+            rows = math.min(rows, def.maxRows)
+        end
     end
 
     h:SetAttribute("wrapAfter", across)
@@ -950,17 +958,12 @@ function addon:RowEditSettings(def)
         set = function(value)
             def.maxIcons = (value > 0) and value or nil
             Refresh()
-            -- A total decides the number of rows, so the rows slider
-            -- stops being a question worth asking.
-            addon:RefreshRowEditSettings()
         end }
 
-    if not (def.maxIcons and def.maxIcons > 0) then
-        widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Rows at most",
-            min = 0, max = 6, step = 1,
-            get = function() return def.maxRows or 0 end,
-            set = function(value) def.maxRows = (value > 0) and value or nil Refresh() end }
-    end
+    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Rows at most",
+        min = 0, max = 6, step = 1,
+        get = function() return def.maxRows or 0 end,
+        set = function(value) def.maxRows = (value > 0) and value or nil Refresh() end }
 
     widgets[#widgets + 1] = { type = "dropdown", section = "Icons", label = "Icons run",
         options = Values(addon.ROW_GROWTH),

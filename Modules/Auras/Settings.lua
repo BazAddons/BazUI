@@ -275,8 +275,7 @@ local function RowArgs(def, index)
             },
             maxRows = {
                 order = 24, type = "range", name = "Rows at most",
-                hidden = function() return (def.maxIcons or 0) > 0 end,
-                desc = "Nought means as many rows as there are auras. One row is the usual choice for somebody else's debuffs: sixteen of them is a legal state of affairs, and a tower of icons is not what showing them meant.",
+                desc = "Nought means as many rows as there are auras. One row is the usual choice for somebody else's debuffs: sixteen of them is a legal state of affairs, and a tower of icons is not what showing them meant. Set alongside a total, whichever limit bites first wins.",
                 min = 0, max = 6, step = 1,
                 get = function() return def.maxRows or 0 end,
                 set = function(_, value)
