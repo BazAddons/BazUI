@@ -533,6 +533,79 @@ function Theme.ApplyRing(frame, opts)
     return frame
 end
 
+-- A round border around an icon, as an object.
+--
+-- Three filled circles, each smaller than the last: what shows of each
+-- is the part the next one does not cover, which is the status bar's
+-- border bent into a circle. They go under whatever they surround,
+-- because a filled circle drawn over an icon is just a filled circle -
+-- the picture these replace could sit on top only by having a hole in
+-- the middle.
+--
+--   local ring = Theme.CreateRoundRing(parent, { sublevel = -8 })
+--   ring:SetInnerSize(26)          -- the icon's diameter
+--   ring:SetTint(1, 0.92, 0.55)    -- lands on the gold
+--
+-- The tint goes to the gold because that is the part worth colouring:
+-- the micro menu pulses a button by brightening it.
+local ROUND_RING_LAYERS = {
+    { thickness = 2, color = { 0, 0, 0, 0.75 } },
+    { thickness = 1, color = { 0.55, 0.43, 0.25, 1 } },
+    { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },
+}
+
+function Theme.CreateRoundRing(parent, opts)
+    opts = opts or {}
+    local layer = opts.layer or "BACKGROUND"
+    local base  = opts.sublevel or -8
+
+    local ring = { parts = {} }
+
+    for index, spec in ipairs(ROUND_RING_LAYERS) do
+        local texture = parent:CreateTexture(nil, layer, nil, base + index - 1)
+        texture:SetColorTexture(spec.color[1], spec.color[2],
+            spec.color[3], spec.color[4] or 1)
+        local mask = parent:CreateMaskTexture()
+        mask:SetTexture(Skin.ROUND_MASK,
+            "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        texture:AddMaskTexture(mask)
+        texture._mask = mask
+        ring.parts[index] = texture
+    end
+
+    ring.gold = ring.parts[2]
+
+    -- Four pixels of border all told, so each circle is the icon plus
+    -- twice whatever is still outside it.
+    function ring:SetInnerSize(inner)
+        local out = 0
+        for _, spec in ipairs(ROUND_RING_LAYERS) do out = out + spec.thickness end
+        for index, spec in ipairs(ROUND_RING_LAYERS) do
+            local texture = self.parts[index]
+            local diameter = inner + out * 2
+            texture:ClearAllPoints()
+            texture:SetPoint("CENTER", opts.anchor or parent, "CENTER", 0, 0)
+            texture:SetSize(diameter, diameter)
+            texture._mask:SetAllPoints(texture)
+            out = out - spec.thickness
+        end
+    end
+
+    function ring:SetTint(r, g, b)
+        self.gold:SetVertexColor(r or 1, g or 1, b or 1)
+    end
+
+    function ring:Show()
+        for _, texture in ipairs(self.parts) do texture:Show() end
+    end
+
+    function ring:Hide()
+        for _, texture in ipairs(self.parts) do texture:Hide() end
+    end
+
+    return ring
+end
+
 function Theme.ApplyRoundButton(button, icon, opts)
     opts = opts or {}
     local size  = opts.size or button:GetWidth()
