@@ -1,47 +1,72 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- The name plate
+--
+-- A panel with a name on it, sized to the name: the zone text uses one,
+-- and anything else that wants a label with a border around it can.
+--
+-- Drawn rather than painted. It used to be a picture cut into three
+-- pieces, a fixed end cap at each side and the middle stretched to fit,
+-- which is the usual way to make a plate of any width out of one image.
+-- It was also the last thing pointing at the unit frame artwork, and
+-- went green the day that artwork was retired: a missing texture in this
+-- game is bright green, which is at least easy to spot.
+--
+-- What replaces it is the border every bar and every round button wears,
+-- as a rectangle: two pixels of dark, one of gold, one of dark, around a
+-- dark interior. Nothing to ship, nothing to scale, and it cannot go
+-- missing.
+---------------------------------------------------------------------------
+
 local Theme = BazUI.Skin.Theme
 
--- Only artwork and text resize; secure unit hit areas stay unchanged in combat.
+-- parent   where the plate's pieces live
+-- root     what the plate is positioned against
+-- layout   { namePlate = {x, y, w, h}, name = {x, y, w, h} } in design pixels
+-- ratio    design pixels to screen pixels
+-- fontSize the name's size
+-- tint     kept for callers; the border does not take one
 function Theme.CreateNameplate(parent, root, layout, ratio, fontSize, tint)
-    local style = BazUI.Skin.Theme.nameplate
-    local box, label = layout.namePlate, layout.name
+    -- layout.name is no longer read: the name is centered on the plate,
+    -- and the plate is sized to the name.
+    local box = layout.namePlate
     local minimum = box.w * ratio
     local maximum = minimum * 2
-    local height = box.h * ratio
-    local cap = minimum * style.capPixels / style.width
-    local padding = cap + 5
-    local centerX = (box.x + box.w / 2) * ratio
+    local height  = box.h * ratio
+    local padding = 10
     local centerY = -(box.y + box.h / 2) * ratio
-    local pieces = {}
-    local cuts = { 0, style.capPixels, style.width - style.capPixels, style.width }
-    for i = 1, 3 do
-        local texture = parent:CreateTexture(nil, "ARTWORK")
-        texture:SetTexture(BazUI.Skin.PLAYER_NAMEPLATE)
-        texture:SetVertexColor(tint, tint, tint)
-        texture:SetTexCoord(cuts[i] / style.textureWidth, cuts[i + 1] / style.textureWidth,
-            0, style.height / style.textureHeight)
-        pieces[i] = texture
-    end
+
+    -- The plate is a frame rather than loose textures so the border can
+    -- be put around it the same way it is put around anything else.
+    local plate = CreateFrame("Frame", nil, parent)
+    plate:SetSize(minimum, height)
+    Theme.ApplyBorder(plate, { fill = Theme.colors.bg })
+
     local text = parent:CreateFontString(nil, "OVERLAY")
-    text:SetPoint("CENTER", root, "TOPLEFT", (label.x + label.w / 2) * ratio,
-        -(label.y + label.h / 2) * ratio)
-    text:SetHeight(label.h * ratio)
-    text:SetFont(BazUI.Skin.Theme.FontFile(), fontSize, "OUTLINE")
-    text:SetTextColor(unpack(BazUI.Skin.Theme.colors.goldSoft))
+    text:SetPoint("CENTER", plate, "CENTER", 0, 0)
+    text:SetFont(Theme.FontFile(), fontSize, "OUTLINE")
+    text:SetTextColor(unpack(Theme.colors.goldSoft))
     text:SetWordWrap(false)
+
     local lastName, lastWidth
     local function Update(name, containerWidth)
         name = name or ""
         if name == lastName and containerWidth == lastWidth then return end
         lastName, lastWidth = name, containerWidth
+
         local limit = containerWidth and math.min(maximum, containerWidth) or maximum
-        limit = math.max(cap * 2 + 16, limit)
+        limit = math.max(padding * 2 + 16, limit)
+
         text:SetWidth(0)
         text:SetText(name)
-        local width = math.min(limit, math.max(minimum, math.ceil(text:GetStringWidth()) + padding * 2))
+
+        local width = math.min(limit,
+            math.max(minimum, math.ceil(text:GetStringWidth()) + padding * 2))
         local available = width - padding * 2
+
         if text:GetStringWidth() > available then
-            -- Trim whole UTF-8 characters, including accented player names.
+            -- Trim whole UTF-8 characters, so an accented name loses a
+            -- letter rather than half of one.
             local chars = {}
             for char in name:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
                 chars[#chars + 1] = char
@@ -51,20 +76,15 @@ function Theme.CreateNameplate(parent, root, layout, ratio, fontSize, tint)
                 text:SetText(table.concat(chars) .. "...")
             until text:GetStringWidth() <= available or #chars == 0
         end
+
         text:SetWidth(available)
-        local widths = { cap, width - cap * 2, cap }
-        local x = (containerWidth and containerWidth / 2 or centerX) - width / 2
-        if containerWidth then
-            text:ClearAllPoints()
-            text:SetPoint("CENTER", root, "TOPLEFT", containerWidth / 2, -(label.y + label.h / 2) * ratio)
-        end
-        for i, texture in ipairs(pieces) do
-            texture:ClearAllPoints()
-            texture:SetPoint("LEFT", root, "TOPLEFT", x, centerY)
-            texture:SetSize(widths[i], height)
-            x = x + widths[i]
-        end
+        plate:SetSize(width, height)
+        plate:ClearAllPoints()
+        plate:SetPoint("CENTER", root, "TOPLEFT",
+            containerWidth and containerWidth / 2 or (box.x + box.w / 2) * ratio,
+            centerY)
     end
+
     Update("")
-    return text, Update
+    return text, Update, plate
 end

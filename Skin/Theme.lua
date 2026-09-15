@@ -533,6 +533,66 @@ function Theme.ApplyRing(frame, opts)
     return frame
 end
 
+-- The same border, square.
+--
+-- Four solid textures inset inside each other: two pixels of dark, one
+-- of gold, one of dark, then whatever the inside should be. No mask and
+-- no art, which is the whole point - this is the status bar's border
+-- with the bar taken out, so anything wearing it belongs to the same
+-- suite without anybody drawing anything.
+--
+--   Theme.ApplyBorder(frame, { fill = Theme.colors.bg, scale = 1 })
+--
+-- Drawn inside the frame's own bounds, so what the frame measures is
+-- what it covers.
+local BORDER_LAYERS = {
+    { inset = 0, color = { 0, 0, 0, 0.75 } },
+    { inset = 2, color = { 0.55, 0.43, 0.25, 1 } },
+    { inset = 3, color = { 0.035, 0.04, 0.055, 1 } },
+}
+
+function Theme.ApplyBorder(frame, opts)
+    opts = opts or {}
+    local scale = opts.scale or 1
+    local layer = opts.layer or "BACKGROUND"
+    local base  = opts.sublevel or -8
+
+    frame._bazBorder = frame._bazBorder or {}
+    local parts = frame._bazBorder
+
+    for index, spec in ipairs(BORDER_LAYERS) do
+        local texture = parts[index]
+        if not texture then
+            texture = frame:CreateTexture(nil, layer, nil, base + index - 1)
+            parts[index] = texture
+        end
+        local color = spec.color
+        texture:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+        local inset = spec.inset * scale
+        texture:ClearAllPoints()
+        texture:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
+        texture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
+    end
+
+    local fill = opts.fill
+    if fill then
+        local texture = parts[4]
+        if not texture then
+            texture = frame:CreateTexture(nil, layer, nil, base + 3)
+            parts[4] = texture
+        end
+        texture:SetColorTexture(fill[1], fill[2], fill[3], fill[4] or 1)
+        local inset = 4 * scale
+        texture:ClearAllPoints()
+        texture:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
+        texture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
+    elseif parts[4] then
+        parts[4]:Hide()
+    end
+
+    return frame
+end
+
 -- A round border around an icon, as an object.
 --
 -- Three filled circles, each smaller than the last: what shows of each
