@@ -382,10 +382,10 @@ BazUI:QueueForLogin(function()
                         -- Modules that set their fonts on every apply
                         -- change straight away; the rest draw their text
                         -- once, at login.
-                        for _, name in ipairs({ "Auras", "XPBar" }) do
-                            local mod = BazUI:GetModule(name)
-                            if mod and mod.ApplySettings then mod:ApplySettings() end
-                        end
+                        local auras = BazUI:GetModule("Auras")
+                        if auras and auras.ApplySettings then auras:ApplySettings() end
+                        local frames = BazUI:GetModule("UnitFrames")
+                        if frames and frames.UnitBars then frames.UnitBars:ApplyAll() end
                         local chat = BazUI.Chat and BazUI.Chat.Window
                         if chat and chat.ApplyAll then chat:ApplyAll() end
                         if BazUI.Confirm then

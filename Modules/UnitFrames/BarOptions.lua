@@ -164,6 +164,16 @@ local function BarArgs(def)
                 get = Field(def, "textFormat", "namePercent"),
                 set = SetField(def, "textFormat"),
             },
+            hideAtMax = {
+                order = 26, type = "toggle", name = "Hide at maximum level",
+                desc = "An experience bar has nothing to show once you stop earning any.",
+                hidden = function() return def.kind ~= "xp" end,
+                get = function() return def.hideAtMax ~= false end,
+                set = SetField(def, "hideAtMax", function(d)
+                    local bar = Bars().bars[d.id]
+                    if bar then Bars():Update(bar) end
+                end),
+            },
             ticks = {
                 order = 25, type = "range", name = "Tenth marks",
                 desc = "Divider lines across the fill. Ten marks the tenths of a level.",

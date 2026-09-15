@@ -132,6 +132,8 @@ function addon:InitializeBars()
     self:SeedBars()
     UnitBars:WatchAll()
     UnitBars:UpdateAll()
+    -- Your experience bar replaces the game's, so the game's goes away.
+    UnitBars:SuppressStock()
 
     -- Edit Mode may open or close at any time, and the movers are the
     -- only thing it is ever allowed to move.
@@ -144,5 +146,8 @@ function addon:InitializeBars()
         UnitBars:BuildAll()
         UnitBars:ApplyAll()
         UnitBars:ShowAllMovers()
+        -- Hiding Blizzard's bars is protected, so anything that changed
+        -- mid-fight has been waiting for this.
+        UnitBars:SuppressStock()
     end)
 end

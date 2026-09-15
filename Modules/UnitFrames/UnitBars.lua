@@ -159,6 +159,91 @@ end
 
 function UnitBars:Save()
     addon:SetSetting("statusBars", self:Defs())
+    self:SuppressStock()
+end
+
+---------------------------------------------------------------------------
+-- Blizzard's own experience and reputation bars
+--
+-- Whichever of the two you have made a bar for is taken off screen, and
+-- the other is left alone: an experience bar of your own replaces the
+-- game's, and if you never make one the game keeps drawing it. That is
+-- the whole rule, so there is no setting for it.
+--
+-- Era draws both inside one shared container whose manager decides what
+-- it will show, and older builds give them frames of their own. Both are
+-- handled, since which one a client has is not worth guessing at.
+---------------------------------------------------------------------------
+
+local STOCK_FRAMES = {
+    xp  = { "MainMenuExpBar", "ExhaustionTick", "MainMenuBarMaxLevelBar" },
+    rep = { "ReputationWatchBar" },
+}
+
+local hiddenStock
+local stockParents = {}
+local hookedManager
+local suppressing  = {}
+local suppressKey
+
+local function HiddenStock()
+    if not hiddenStock then
+        hiddenStock = CreateFrame("Frame")
+        hiddenStock:Hide()
+    end
+    return hiddenStock
+end
+
+function UnitBars:SuppressStock()
+    local wanted = {}
+    if addon:BarMode() then
+        for _, def in ipairs(self:Defs()) do
+            if def.kind == "xp" or def.kind == "rep" then wanted[def.kind] = true end
+        end
+    end
+
+    -- Asked on every save, and a save happens every time a bar is
+    -- dragged, so nothing is touched unless what we cover has changed.
+    local key = (wanted.xp and "x" or "") .. (wanted.rep and "r" or "")
+    if key == suppressKey then return end
+
+    -- Reparenting Blizzard's frames is protected, and so is asking the
+    -- container to lay itself out again. The key is left alone so the
+    -- next call after combat picks this up.
+    if InCombatLockdown() then return end
+    suppressKey = key
+    suppressing.xp, suppressing.rep = wanted.xp, wanted.rep
+
+    local manager, info = _G.StatusTrackingBarManager, _G.StatusTrackingBarInfo
+    if manager and manager.CanShowBar and info and info.BarsEnum then
+        if hookedManager ~= manager then
+            hookedManager = manager
+            local original = manager.CanShowBar
+            -- Answering for only the bar we have replaced leaves the
+            -- other one to lay out in the container as it always did.
+            manager.CanShowBar = function(frame, index, ...)
+                if suppressing.xp and index == info.BarsEnum.Experience then return false end
+                if suppressing.rep and index == info.BarsEnum.Reputation then return false end
+                return original(frame, index, ...)
+            end
+        end
+        manager:UpdateBarsShown()
+    end
+
+    for kind, names in pairs(STOCK_FRAMES) do
+        for _, name in ipairs(names) do
+            local frame = _G[name]
+            if frame then
+                if suppressing[kind] and not stockParents[frame] then
+                    stockParents[frame] = frame:GetParent() or UIParent
+                    frame:SetParent(HiddenStock())
+                elseif not suppressing[kind] and stockParents[frame] then
+                    frame:SetParent(stockParents[frame])
+                    stockParents[frame] = nil
+                end
+            end
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -250,7 +335,14 @@ local function UpdateXP(bar)
     bar.frame:SetOverlay(maximum > 0 and rested / maximum or 0)
     bar.frame:SetFillColor({ 0.57, 0.16, 0.85, 1 })
 
-    if maximum <= 0 then
+    -- At the cap an experience bar has nothing left to say, so unless
+    -- asked otherwise it gets out of the way. Hiding it through the dock
+    -- means anything under it closes the gap, the same as any other bar
+    -- that goes away.
+    local atMax = (maximum <= 0)
+    BazUI.Dock:SetShown(bar.frame, not (atMax and bar.def.hideAtMax ~= false))
+
+    if atMax then
         bar.frame:SetText("Level " .. level .. "  |  Maximum level")
         return
     end
@@ -743,7 +835,7 @@ function UnitBars:EditSettings(bar)
         end
     end
 
-    return {
+    local widgets = {
         { type = "dropdown", section = "Docking", label = "Dock to",
           options = dockOptions,
           get = function() return (def.dock and def.dock.host) or "float" end,
@@ -784,6 +876,24 @@ function UnitBars:EditSettings(bar)
 
         { type = "nudge", section = "Position" },
     }
+
+    -- Appended rather than written inline with a condition: a nil in the
+    -- middle of a table constructor ends the list for everything after
+    -- it, which would have quietly cost every other bar its nudge.
+    if def.kind == "xp" then
+        table.insert(widgets, #widgets, {
+            type = "checkbox", section = "Visibility",
+            label = "Hide at maximum level",
+            get = function() return def.hideAtMax ~= false end,
+            set = function(value)
+                def.hideAtMax = value
+                Refresh()
+                UnitBars:Update(bar)
+            end,
+        })
+    end
+
+    return widgets
 end
 
 
@@ -1002,6 +1112,11 @@ function UnitBars:WatchAll()
         for _, event in ipairs({
             "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION",
             "UPDATE_FACTION", "PLAYER_ENTERING_WORLD",
+            -- Resting changes the rested overlay without any experience
+            -- being gained, and a capped or disabled bar has to notice
+            -- that it is now one.
+            "PLAYER_UPDATE_RESTING", "UNIT_LEVEL",
+            "ENABLE_XP_GAIN", "DISABLE_XP_GAIN",
         }) do
             pcall(watchers._player.RegisterEvent, watchers._player, event)
         end
