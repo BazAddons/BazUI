@@ -463,6 +463,11 @@ end
 local function UpdatePower(bar)
     local unit = bar.def.unit
     if not UnitExists(unit) then
+        -- Forget that the last unit had no power. A fade left over from
+        -- a critter or a totem otherwise survives into the next target,
+        -- and the bar sits invisible until something happens to update
+        -- it again: health appears at once, power turns up late.
+        bar._noPower = false
         if previewing then DrawPlaceholder(bar, 0.6) end
         return
     end
@@ -1212,6 +1217,17 @@ function UnitBars:Watch(unit)
     if unit == "target" then frame:RegisterEvent("PLAYER_TARGET_CHANGED") end
 
     frame:SetScript("OnEvent", function(_, event)
+        -- A unit's power and auras can arrive a moment after the game
+        -- says the unit exists, so a target change is read twice: now,
+        -- and again on the next frame for whatever was not there yet.
+        if event == "PLAYER_TARGET_CHANGED" then
+            C_Timer.After(0, function()
+                for _, bar in pairs(UnitBars.bars) do
+                    if bar.def.unit == unit then UnitBars:Update(bar) end
+                end
+            end)
+        end
+
         if event:find("SPELLCAST") then
             local failed = (event == "UNIT_SPELLCAST_FAILED"
                 or event == "UNIT_SPELLCAST_INTERRUPTED")
