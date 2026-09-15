@@ -222,22 +222,27 @@ function Bar:LayoutButtons(frame, barData)
     local spacing = BazBars.GetBarSetting(barData, "spacing") or BazBars.DEFAULT_SPACING
     local rows = barData.rows
     local cols = barData.cols
-    local padding = 2
     local vertical = (barData.orientation == "vertical")
+
+    -- The frame is exactly the buttons, with nothing spare around the
+    -- outside. Anything docked to a bar takes the frame's width and sits
+    -- against its edge, so a margin here would push a health bar wider
+    -- than the row it is under and a couple of pixels further away than
+    -- the gap asked for.
 
     -- For vertical: swap how rows/cols map to screen axes
     local gridW, gridH
     if vertical then
-        gridW = padding * 2 + rows * size + (rows - 1) * spacing
-        gridH = padding * 2 + cols * size + (cols - 1) * spacing
+        gridW = rows * size + (rows - 1) * spacing
+        gridH = cols * size + (cols - 1) * spacing
     else
-        gridW = padding * 2 + cols * size + (cols - 1) * spacing
-        gridH = padding * 2 + rows * size + (rows - 1) * spacing
+        gridW = cols * size + (cols - 1) * spacing
+        gridH = rows * size + (rows - 1) * spacing
     end
     frame:SetSize(gridW, gridH)
 
-    local startX = -gridW / 2 + padding
-    local startY = gridH / 2 - padding
+    local startX = -gridW / 2
+    local startY = gridH / 2
 
     for r = 1, rows do
         for c = 1, cols do
