@@ -32,14 +32,10 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         perRow        = 8,
         iconSize      = 26,
         spacing       = 3,
-        -- Where each of the four rows sits: floating or docked, on
-        -- which edge, aligned left, centre or right, and how far from
-        -- what it is docked to. Written on first use, per group.
-        groups        = {},
-
-        -- Target
-        targetEnabled = true,   -- the target's auras under the BazUI target frame
-        targetOnlyMine = false, -- only debuffs the player applied
+        -- The rows you have made. Each carries what it shows and of
+        -- whom, where it sits, and how many icons it fits across.
+        -- Seeded with four on a new profile.
+        rows          = {},
 
         -- Icons
         showDuration  = true,
@@ -72,8 +68,9 @@ function addon:ResetLayout()
     for _, key in ipairs({ "perRow", "iconSize", "spacing" }) do
         self:SetSetting(key, self.config.defaults[key])
     end
-    -- Where the rows sit goes back to floating at their starting places,
-    -- which is the half of "layout" a reset is usually reaching for.
-    self:SetSetting("groups", {})
+    -- Rows go back to the four you started with, floating where they
+    -- began, which is the half of "layout" a reset is reaching for.
+    self:SetSetting("rows", {})
+    self:SeedRows()
     self:ApplySettings()
 end

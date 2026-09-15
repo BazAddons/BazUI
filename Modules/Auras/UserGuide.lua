@@ -12,7 +12,7 @@ BazUI:RegisterUserGuide("Auras", {
         {
             title = "Overview",
             blocks = {
-                { type = "lead", text = "There are four rows: your buffs, your debuffs, the target's buffs and the target's debuffs. Each one floats where you put it or docks to a bar or an action bar, above or below it, exactly the way the unit bars do. Eight icons per row by default, and as many rows as there are auras." },
+                { type = "lead", text = "You make rows, the way you make bars: a row shows buffs or debuffs, of the player, your target or your pet, and there can be as many as you like. Each floats where you put it or docks to a bar or an action bar, above or below it. Eight icons per row by default, and as many rows as there are auras." },
                 { type = "h2", text = "Highlights" },
                 { type = "list", items = {
                     "Right-click an icon to cancel that buff or remove a weapon enchant, in or out of combat",
@@ -35,16 +35,16 @@ BazUI:RegisterUserGuide("Auras", {
                   rows = {
                       { "|cffffd700Show BazUI auras|r",       "Turn the whole module on or off." },
                       { "|cffffd700Hide Blizzard's frames|r", "Park the stock buff and debuff frames while ours are shown. Turn off to keep both." },
-                      { "|cffffd700Icons per row|r",          "How many icons fill a row before the next row starts above it. Default 8." },
+                      { "|cffffd700Icons per row|r",          "What a new row starts with; each row can be set on its own from the Rows page." },
                       { "|cffffd700Icon size|r / |cffffd700Spacing|r", "Size of each icon and the gap between icons and rows." },
-                                            { "|cffffd700Show the target's auras|r",  "Draw the target's buffs and debuffs at all. Where they sit is on the Rows page." },
-                      { "|cffffd700Only my debuffs|r",          "Hide debuffs other players put on the target." },
-                                                                  { "|cffffd700Preview a full spread of auras|r", "Three rows of made-up icons on every side of both frames, so you can judge size and spacing. Also |cffffd700/bazauras preview|r. Ends when combat starts." },
+                                                                                        { "|cffffd700Preview a full spread of auras|r", "Three rows of made-up icons on every side of both frames, so you can judge size and spacing. Also |cffffd700/bazauras preview|r. Ends when combat starts." },
                       { "|cffffd700Time remaining|r / |cffffd700Stack counts|r", "Text on the icons." },
                       { "|cffffd700Colour debuff rims by type|r", "Off keeps every debuff rim red." },
                       { "|cffffd700Weapon enchants|r",        "Show temporary weapon enchants among the buffs." },
                       { "|cffffd700Sort by|r",                "Order applied, time remaining or name, ascending or descending." },
-                      { "|cffffd700Dock to|r / |cffffd700On the|r",   "On the Rows page: what this row attaches to, and which edge of it. Floating leaves it where you dropped it." },
+                      { "|cffffd700Shows|r / |cffffd700Of|r",         "On the Rows page: buffs or debuffs, and whose. Any number of rows, in any combination." },
+                      { "|cffffd700Dock to|r / |cffffd700On the|r",   "What this row attaches to, and which edge of it. Floating leaves it where you dropped it." },
+                      { "|cffffd700Only mine|r",               "On a row for someone else: hide auras other players applied." },
                       { "|cffffd700Aligned|r",                "Which end of its host a docked row starts from: left, centre or right." },
                       { "|cffffd700Gap|r",                    "Pixels between a docked row and what it is docked to." },
                   }},

@@ -93,10 +93,15 @@ Dictated by the aura headers, which are secure and anchored to
    onto the same system.
 4. Target, same code with the unit as a parameter.
 5. Auras re-anchored, with the unprotected wrapper for centring.
-   **Done.** Each of the four rows is a dockable of its own: the header
-   sits inside an ordinary frame, and that frame docks. Centring is a
-   SetSize on it as icons arrive, which is not protected, so a centred
-   row stays centred in combat.
+   **Done**, with one correction to the plan. Rows are dockables you
+   create: the header sits inside an ordinary frame, and that frame
+   docks. Centring is a SetSize on that frame as icons arrive - but an
+   unprotected wrapper buys a parent you may move, not one you may move
+   at any time. A secure header anchored to it makes resizing it a
+   protected action, blocked in combat like any other. Rows therefore
+   keep the size the fight started with and take the new one when it
+   ends; left and right aligned rows never needed it, since they grow
+   from their anchored end.
 6. Retire the artwork, `Layout.lua`, `TargetLayout.lua` and the design
    PNGs. **Done.** `Player.lua`, `Target.lua`, `Casting.lua`, both
    layout tables and fourteen art files are gone, and with them the

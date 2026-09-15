@@ -37,7 +37,6 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     sections = {
         general = { label = "",        order = 1 },
         layout  = { label = "Layout",  order = 2 },
-        target  = { label = "Target",  order = 3 },
         icons   = { label = "Icons",   order = 4 },
         sorting = { label = "Sorting", order = 5 },
     },
@@ -50,6 +49,7 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
           get = GetBool("hideBlizzard"), set = SetBool("hideBlizzard") },
 
         { key = "perRow", label = "Icons per row", type = "slider", section = "layout", order = 1,
+          desc = "What a new row starts with. Each row can be set on its own from the Rows page.",
           min = 4, max = 16, step = 1, get = Get("perRow"), set = Set("perRow") },
         { key = "iconSize", label = "Icon size", type = "slider", section = "layout", order = 2,
           min = 16, max = 40, step = 1, get = Get("iconSize"), set = Set("iconSize") },
@@ -66,13 +66,6 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
           func = function() addon:SetPreview(false) end },
         { key = "reset", label = "Reset layout", type = "execute", section = "layout", order = 7,
           func = function() addon:ResetLayout() end },
-
-        { key = "targetEnabled", label = "Show the target's auras", type = "toggle", section = "target", order = 1,
-          desc = "Draw the target's buffs and debuffs. Where they sit is on the Rows page.",
-          get = GetBool("targetEnabled"), set = SetBool("targetEnabled") },
-        { key = "targetOnlyMine", label = "Only my debuffs", type = "toggle", section = "target", order = 2,
-          desc = "Hide debuffs other players put on the target.",
-          get = function() return addon:GetSetting("targetOnlyMine") == true end, set = SetBool("targetOnlyMine") },
 
         { key = "showDuration", label = "Time remaining on icons", type = "toggle", section = "icons", order = 1,
           get = GetBool("showDuration"), set = SetBool("showDuration") },
@@ -106,18 +99,17 @@ BazUI:QueueForLogin(function()
     end)
     BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General", MODULE_NAME)
 
-    -- The four rows, each with where it sits. A page rather than a
-    -- section: four groups times four choices as a flat list is the grid
-    -- of dropdowns this suite keeps deciding not to have.
+    -- The rows you have made, each with its own form. A page rather
+    -- than a section, because the list can be any length.
     BazUI:RegisterOptionsTable(MODULE_NAME .. "-Groups", function()
-        return addon:BuildGroupOptions()
+        return addon:BuildRowOptions()
     end)
     BazUI:AddToSettings(MODULE_NAME .. "-Groups", "Rows", MODULE_NAME)
 end)
 
 ---------------------------------------------------------------------------
--- One row's form, in the shape the bars use: pick one from the list, and
--- everything about it appears underneath.
+-- One row's form, in the shape the bars use: a list of the rows you have
+-- made, New and Delete, and the selected one's own settings underneath.
 ---------------------------------------------------------------------------
 
 local function DockValues(frame)
@@ -129,25 +121,74 @@ local function DockValues(frame)
     return values
 end
 
-local function GroupArgs(entry, index)
-    local def = addon:GroupDef(entry.key)
-
+local function RowArgs(def, index)
     local function Apply()
-        addon:SaveGroups()
+        addon:SaveRows()
         addon:ApplySettings()
     end
 
     local function Docked() return def.dock and def.dock.host ~= "float" end
 
+    local function Field(key, fallback, after)
+        return function(_, value)
+            if InCombatLockdown() then
+                addon:Print("Change the rows after combat ends.")
+                return
+            end
+            def[key] = value
+            Apply()
+            if after then after(value) end
+        end, function()
+            local value = def[key]
+            if value == nil then return fallback end
+            return value
+        end
+    end
+
+    local setPerRow, getPerRow = Field("perRow", 8)
+    local setAlign,  getAlign  = Field("align", "LEFT")
+    local setGap,    getGap    = Field("gap", 4)
+    local setMine,   getMine   = Field("onlyMine", false)
+    local setUnit,   getUnit   = Field("unit", "player")
+    local setFilter, getFilter = Field("filter", "HELPFUL")
+
     return {
-        name = entry.label,
+        name = def.name or ("Row " .. def.id),
         type = "group",
         order = index,
+        _rowId = def.id,
         args = {
+            rowName = {
+                order = 1, type = "input", name = "Name",
+                get = function() return def.name or "" end,
+                set = function(_, value)
+                    def.name = (value ~= "" and value)
+                        or addon:DefaultRowName(def.unit, def.filter)
+                    Apply()
+                end,
+            },
+            filter = {
+                order = 2, type = "select", name = "Shows",
+                values = addon.ROW_FILTERS,
+                get = getFilter, set = setFilter,
+            },
+            unit = {
+                order = 3, type = "select", name = "Of",
+                values = addon.ROW_UNITS,
+                get = getUnit, set = setUnit,
+            },
+            onlyMine = {
+                order = 4, type = "toggle", name = "Only mine",
+                desc = "Hide auras other players applied.",
+                hidden = function() return def.unit == "player" end,
+                get = getMine, set = setMine,
+            },
+
+            dockHeader = { order = 10, type = "header", name = "Docking" },
             dockHost = {
-                order = 1, type = "select", name = "Dock to",
+                order = 11, type = "select", name = "Dock to",
                 desc = "Floating keeps it where you put it. Docked, it follows whatever it is attached to and hides when that hides.",
-                values = function() return DockValues(addon:GroupFrame(entry.key)) end,
+                values = function() return DockValues(addon:RowFrame(def.id)) end,
                 get = function() return (def.dock and def.dock.host) or "float" end,
                 set = function(_, value)
                     def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
@@ -155,7 +196,7 @@ local function GroupArgs(entry, index)
                 end,
             },
             dockEdge = {
-                order = 2, type = "select", name = "On the",
+                order = 12, type = "select", name = "On the",
                 values = { BOTTOM = "Below", TOP = "Above" },
                 hidden = function() return not Docked() end,
                 get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
@@ -165,43 +206,74 @@ local function GroupArgs(entry, index)
                 end,
             },
             align = {
-                order = 3, type = "select", name = "Aligned",
-                desc = "Which end of its host the row starts from. Centre keeps the row centred as icons come and go.",
-                values = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" },
+                order = 13, type = "select", name = "Aligned",
+                desc = "Which end of its host the row starts from.",
+                values = addon.ROW_ALIGNS,
                 hidden = function() return not Docked() end,
-                get = function() return def.align or "LEFT" end,
-                set = function(_, value) def.align = value Apply() end,
+                get = getAlign, set = setAlign,
             },
             gap = {
-                order = 4, type = "range", name = "Gap",
+                order = 14, type = "range", name = "Gap",
                 desc = "Pixels between this row and what it is docked to.",
                 min = 0, max = 24, step = 1,
                 hidden = function() return not Docked() end,
-                get = function() return def.gap or 4 end,
-                set = function(_, value) def.gap = value Apply() end,
+                get = getGap, set = setGap,
+            },
+
+            sizeHeader = { order = 20, type = "header", name = "Size" },
+            perRow = {
+                order = 21, type = "range", name = "Icons per row",
+                desc = "How many icons fill a row before the next one starts.",
+                min = 1, max = 20, step = 1,
+                get = getPerRow, set = setPerRow,
             },
             note = {
-                order = 10, type = "description",
-                name = "Rows can also be dragged in Edit Mode: drop one near the edge of a bar or an action bar to dock it there.",
+                order = 30, type = "description",
+                name = "Rows can also be made and dragged in Edit Mode: use Create, then drop one near the edge of a bar or an action bar to dock it there.",
             },
         },
     }
 end
 
-function addon:BuildGroupOptions()
-    local groups = {}
-    for index, entry in ipairs(self.GROUPS) do
-        groups[entry.key] = GroupArgs(entry, index)
+function addon:BuildRowOptions()
+    local rows = {}
+    for index, def in ipairs(self:Rows()) do
+        rows["row" .. def.id] = RowArgs(def, index)
     end
 
     return {
         name = "Rows",
         type = "group",
         args = {
+            newRow = {
+                order = 1, type = "execute", name = "New row",
+                func = function()
+                    if InCombatLockdown() then
+                        addon:Print("Create rows after combat ends.")
+                        return
+                    end
+                    local def = addon:AddRow("player", "HELPFUL")
+                    if def then addon:Print("Created " .. (def.name or "a row")) end
+                end,
+            },
             rows = {
-                order = 1, type = "group", name = "",
+                order = 10, type = "group", name = "",
                 pickerLabel = "Row",
-                args = groups,
+                emptyText = "No rows yet. Click New row to make one.",
+                args = rows,
+                itemActions = {
+                    {
+                        name = "Delete", style = "danger",
+                        confirm = true, confirmTitle = "Delete row?",
+                        confirmText = function(item)
+                            return string.format("Delete %s? It can be made again from Create.",
+                                item and item.name or "this row")
+                        end,
+                        confirmStyle = "destructive",
+                        confirmAcceptLabel = "Delete", confirmCancelLabel = "Cancel",
+                        func = function(item) addon:RemoveRow(item._rowId) end,
+                    },
+                },
             },
         },
     }

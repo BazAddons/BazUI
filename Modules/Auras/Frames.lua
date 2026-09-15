@@ -35,6 +35,7 @@ local DEBUFF_COLORS = {
 local headers = {}       -- "HELPFUL" / "HARMFUL" (player), "TARGET_HELPFUL" / "TARGET_HARMFUL"
 local buttons = {}       -- set of every button the headers have created
 local hiddenParent
+local initialized = false
 local pendingApply  = false
 local refreshQueued = false
 local applyQueued   = false
@@ -220,16 +221,55 @@ end
 -- Headers
 ---------------------------------------------------------------------------
 
-local function CreateHeader(key, unit, filter, name)
-    local h = CreateFrame("Frame", name, UIParent, "SecureAuraHeaderTemplate")
-    h:SetAttribute("unit", unit)
-    h:SetAttribute("filter", filter)
+-- Secure frames cannot be created in combat, and cannot be destroyed at
+-- all, so a deleted row's header is parked and handed to the next row
+-- that wants the same unit and filter rather than leaked.
+local parked = {}
+
+local function HeaderKey(unit, filter)
+    return (unit or "player") .. "|" .. (filter or "HELPFUL")
+end
+
+local function CreateHeader(def)
+    local key = HeaderKey(def.unit, def.filter)
+    local spare = parked[key] and table.remove(parked[key])
+    if spare then
+        headers[def.id] = spare
+        return spare
+    end
+    if InCombatLockdown() then return nil end
+
+    local h = CreateFrame("Frame", "BazUIAuraRow" .. def.id, UIParent,
+        "SecureAuraHeaderTemplate")
+    h:SetAttribute("unit", def.unit)
+    h:SetAttribute("filter", def.filter)
     h:SetAttribute("template", TEMPLATE)
     h:SetAttribute("weaponTemplate", TEMPLATE)
     h:SetAttribute("templateType", "Button")
     h:Hide()
-    headers[key] = h
+
+    -- A secure nudge when the unit dies or is revived: the attribute
+    -- change makes the header re-run its update, clearing a dead unit's
+    -- leftover buttons even if no aura event follows.
+    if def.unit ~= "player" then
+        RegisterAttributeDriver(h, "state-unitdead",
+            ("[@%s,dead] 1; 0"):format(def.unit))
+    end
+
+    headers[def.id] = h
     return h
+end
+
+local function ParkHeader(def)
+    local h = headers[def.id]
+    if not h then return end
+    headers[def.id] = nil
+    h:Hide()
+    h:ClearAllPoints()
+    h:SetParent(hiddenParent)
+    local key = HeaderKey(def.unit, def.filter)
+    parked[key] = parked[key] or {}
+    parked[key][#parked[key] + 1] = h
 end
 
 -- below: rows hang under the group's anchor and stack downward, which is
@@ -238,13 +278,13 @@ end
 -- the row sits across its host is the group's alignment, not a growth
 -- direction: the two used to be the same setting because the first icon
 -- was pinned to a portrait.
-local function ConfigureHeader(entry, below)
-    local h       = headers[entry.key]
+local function ConfigureHeader(def, below)
+    local h       = headers[def.id]
+    if not h then return end
     local size    = addon:GetSetting("iconSize") or 26
     local spacing = addon:GetSetting("spacing") or 3
-    local perRow  = addon:GetSetting("perRow") or 8
+    local perRow  = def.perRow or addon:GetSetting("perRow") or 8
     local step    = size + spacing
-    local side    = (entry.filter == "HELPFUL") and "left" or "right"
 
     local point = (below and "TOP" or "BOTTOM") .. "LEFT"
 
@@ -259,15 +299,18 @@ local function ConfigureHeader(entry, below)
     h:SetAttribute("minHeight", size)
     h:SetAttribute("sortMethod", addon:GetSetting("sortMethod") or "INDEX")
     h:SetAttribute("sortDirection", addon:GetSetting("sortDirection") or "+")
-    local isPlayer = entry.unit == "player"
-    local weapons = isPlayer and side == "left" and addon:GetSetting("showWeapons") ~= false
+    local isPlayer = def.unit == "player"
+    local weapons = isPlayer and def.filter == "HELPFUL"
+        and addon:GetSetting("showWeapons") ~= false
     h:SetAttribute("includeWeapons", weapons and 1 or nil)
-    if not isPlayer and side == "right" then
-        -- Changing the filter re-runs the header's update, which is fine
-        -- out of combat (ApplySettings never runs in combat).
-        local mine = addon:GetSetting("targetOnlyMine") == true
-        h:SetAttribute("filter", mine and "HARMFUL|PLAYER" or "HARMFUL")
-    end
+
+    -- Only mine: the header does the filtering, so this is a filter
+    -- string rather than anything we check per icon. Changing it re-runs
+    -- the header's update, which is fine out of combat, and this never
+    -- runs in combat.
+    local filter = def.filter
+    if def.onlyMine and not isPlayer then filter = filter .. "|PLAYER" end
+    h:SetAttribute("filter", filter)
     -- Buttons the header creates during combat still get the right size:
     -- this snippet runs in the header's secure environment. The
     -- template's right-click is "cancelaura", which always cancels the
@@ -282,7 +325,7 @@ local function ConfigureHeader(entry, below)
     -- Inside its group, at the corner the rows run from. Anchored once,
     -- out of combat: moving a secure header is protected, which is the
     -- whole reason the group frame exists.
-    local frame = addon:GroupFrame(entry.key)
+    local frame = addon:RowFrame(def.id)
     if frame then
         h:ClearAllPoints()
         h:SetPoint(point, frame, point, 0, 0)
@@ -305,60 +348,136 @@ end
 -- secure. That is the one thing the artwork frames could never do.
 ---------------------------------------------------------------------------
 
-local GROUPS = {
-    { key = "HELPFUL",        label = "Player Buffs",   unit = "player", filter = "HELPFUL",
-      position = { point = "CENTER", relPoint = "CENTER", x = -300, y = -230 } },
-    { key = "HARMFUL",        label = "Player Debuffs", unit = "player", filter = "HARMFUL",
-      position = { point = "CENTER", relPoint = "CENTER", x = -300, y = -270 } },
-    { key = "TARGET_HELPFUL", label = "Target Buffs",   unit = "target", filter = "HELPFUL",
-      position = { point = "CENTER", relPoint = "CENTER", x = 300, y = -230 } },
-    { key = "TARGET_HARMFUL", label = "Target Debuffs", unit = "target", filter = "HARMFUL",
-      position = { point = "CENTER", relPoint = "CENTER", x = 300, y = -270 } },
-}
-addon.GROUPS = GROUPS
+local FILTERS = { HELPFUL = "Buffs", HARMFUL = "Debuffs" }
+local UNITS   = { player = "Player", target = "Target", pet = "Pet" }
 
-addon.GROUP_ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
-addon.GROUP_EDGES  = { BOTTOM = "Below", TOP = "Above" }
+addon.ROW_FILTERS = FILTERS
+addon.ROW_UNITS   = UNITS
+addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+addon.ROW_EDGES   = { BOTTOM = "Below", TOP = "Above" }
 
-local groupFrames = {}
+local UNIT_ORDER   = { "player", "target", "pet" }
+local FILTER_ORDER = { "HELPFUL", "HARMFUL" }
 
-function addon:GroupFrame(key) return groupFrames[key] end
+local rowFrames = {}        -- [id] = the ordinary frame that docks
 
-function addon:GroupEntry(key)
-    for _, entry in ipairs(GROUPS) do
-        if entry.key == key then return entry end
+function addon:RowFrame(id) return rowFrames[id] end
+
+---------------------------------------------------------------------------
+-- The list of rows
+---------------------------------------------------------------------------
+
+function addon:Rows()
+    local rows = self:GetSetting("rows")
+    if type(rows) ~= "table" then
+        rows = {}
+        self:SetSetting("rows", rows)
+    end
+    return rows
+end
+
+function addon:Row(id)
+    for _, def in ipairs(self:Rows()) do
+        if def.id == id then return def end
     end
 end
 
--- Written on first use rather than shipped in the defaults, so a group
--- added later starts somewhere sensible instead of nowhere.
-function addon:GroupDef(key)
-    local groups = self:GetSetting("groups")
-    if type(groups) ~= "table" then
-        groups = {}
-        self:SetSetting("groups", groups)
+function addon:SaveRows()
+    self:SetSetting("rows", self:Rows())
+end
+
+local function NextID(rows)
+    local highest = 0
+    for _, def in ipairs(rows) do
+        if (def.id or 0) > highest then highest = def.id end
     end
-    local def = groups[key]
-    if not def then
-        local entry = self:GroupEntry(key)
-        def = {
-            dock     = { host = "float", edge = "BOTTOM" },
-            align    = "LEFT",
-            gap      = 4,
-            position = entry and entry.position or
-                { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 },
-        }
-        groups[key] = def
-        self:SetSetting("groups", groups)
-    end
+    return highest + 1
+end
+
+function addon:DefaultRowName(unit, filter)
+    local base = (UNITS[unit] or unit) .. " " .. (FILTERS[filter] or filter)
+    local taken = {}
+    for _, def in ipairs(self:Rows()) do taken[def.name or ""] = true end
+    local index = 1
+    while taken[base .. " " .. index] do index = index + 1 end
+    return base .. " " .. index
+end
+
+function addon:AddRow(unit, filter)
+    if InCombatLockdown() then return nil end
+    unit, filter = unit or "player", filter or "HELPFUL"
+
+    local rows = self:Rows()
+    local def = {
+        id       = NextID(rows),
+        unit     = unit,
+        filter   = filter,
+        perRow   = self:GetSetting("perRow") or 8,
+        onlyMine = false,
+        align    = "LEFT",
+        gap      = 4,
+        dock     = { host = "float", edge = "BOTTOM" },
+        position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 },
+    }
+    def.name = self:DefaultRowName(unit, filter)
+    rows[#rows + 1] = def
+    self:SaveRows()
+    self:BuildRow(def)
+    self:ApplySettings()
     return def
 end
 
-function addon:SaveGroups()
-    self:SetSetting("groups", self:GetSetting("groups"))
+function addon:RemoveRow(id)
+    if InCombatLockdown() then return false end
+    local rows = self:Rows()
+    for index, def in ipairs(rows) do
+        if def.id == id then
+            local frame = rowFrames[id]
+            if frame then
+                BazUI.Dock:Detach(frame)
+                if frame.mover then
+                    BazUI:UnregisterEditModeFrame(frame.mover)
+                    frame.mover:Hide()
+                end
+                frame:Hide()
+                rowFrames[id] = nil
+            end
+            ParkHeader(def)
+            table.remove(rows, index)
+            self:SaveRows()
+            self:ApplySettings()
+            return true
+        end
+    end
+    return false
 end
 
--- Rows run away from whatever the group is attached to: docked above
+-- What a new profile starts with: the four rows anyone expects, in the
+-- places they used to be fixed at. Making none would leave someone
+-- wondering where their buffs went.
+local STARTER_ROWS = {
+    { unit = "player", filter = "HELPFUL", x = -300, y = -230 },
+    { unit = "player", filter = "HARMFUL", x = -300, y = -270 },
+    { unit = "target", filter = "HELPFUL", x =  300, y = -230 },
+    { unit = "target", filter = "HARMFUL", x =  300, y = -270 },
+}
+
+function addon:SeedRows()
+    if #self:Rows() > 0 then return end
+    for _, seed in ipairs(STARTER_ROWS) do
+        local def = self:AddRow(seed.unit, seed.filter)
+        if def then
+            def.position = { point = "CENTER", relPoint = "CENTER", x = seed.x, y = seed.y }
+        end
+    end
+    self:SaveRows()
+end
+
+---------------------------------------------------------------------------
+-- Building one
+---------------------------------------------------------------------------
+
+-- Rows run away from whatever the row is attached to: docked above
 -- something they stack upward, everywhere else downward.
 local function RowsBelow(def)
     if def.dock and def.dock.host and def.dock.host ~= "float" then
@@ -367,29 +486,58 @@ local function RowsBelow(def)
     return true
 end
 
-local function CreateGroup(entry)
-    if groupFrames[entry.key] then return groupFrames[entry.key] end
+function addon:BuildRow(def)
+    if rowFrames[def.id] then return rowFrames[def.id] end
+    if not CreateHeader(def) then return nil end
 
-    local frame = CreateFrame("Frame", "BazUIAuraGroup" .. entry.key, UIParent)
+    local frame = CreateFrame("Frame", "BazUIAuraRowFrame" .. def.id, UIParent)
     frame:SetFrameStrata("LOW")
     frame:SetSize(26, 26)
-    groupFrames[entry.key] = frame
+    rowFrames[def.id] = frame
 
-    headers[entry.key]:SetParent(frame)
+    headers[def.id]:SetParent(frame)
 
     frame.mover = BazUI.Dock:CreateMover(frame, {
-        name      = "BazUIAuraGroupMover" .. entry.key,
-        label     = entry.label,
+        name      = "BazUIAuraRowMover" .. def.id,
+        label     = def.name or ("Row " .. def.id),
         addonName = "Auras",
-        settings  = function() return addon:GroupEditSettings(entry) end,
-        onDrop    = function(snap, x, y) addon:GroupDropped(entry, snap, x, y) end,
+        settings  = function() return addon:RowEditSettings(def) end,
+        actions   = function() return addon:RowEditActions(def) end,
+        onDrop    = function(snap, x, y) addon:RowDropped(def, snap, x, y) end,
     })
     return frame
 end
 
--- How wide and tall the group is right now, which is what its alignment
--- works from. Safe in combat: the group frame is an ordinary frame, and
--- this is the only thing that has to change while icons come and go.
+function addon:BuildRows()
+    if InCombatLockdown() then return end
+    -- Rows made before names were numbered can collide, and two entries
+    -- with one name in a list is a coin toss.
+    local seen = {}
+    for _, def in ipairs(self:Rows()) do
+        if not def.name or seen[def.name] then
+            def.name = self:DefaultRowName(def.unit, def.filter)
+        end
+        seen[def.name] = true
+        self:BuildRow(def)
+    end
+    self:SaveRows()
+end
+
+---------------------------------------------------------------------------
+-- Size and place
+---------------------------------------------------------------------------
+
+-- How wide and tall a row is right now, which is what its alignment
+-- works from.
+--
+-- Not in combat, though the frame is an ordinary one. A secure header is
+-- anchored to it, so resizing it moves something protected and the game
+-- blocks the call: an unprotected wrapper buys you a parent you may
+-- move, not a parent you may move at any time. Rows therefore keep the
+-- size they had when the fight started, icons still come and go inside
+-- them securely, and the size is taken again when combat ends. Left and
+-- right aligned rows never needed it anyway, since they grow from their
+-- anchored end; a centred one is briefly off centre.
 local function VisibleIcons(header)
     local count = 0
     for index = 1, select("#", header:GetChildren()) do
@@ -399,16 +547,17 @@ local function VisibleIcons(header)
     return count
 end
 
-function addon:SizeGroups()
+function addon:SizeRows()
+    if InCombatLockdown() then return end
     local size    = self:GetSetting("iconSize") or 26
     local spacing = self:GetSetting("spacing") or 3
-    local perRow  = self:GetSetting("perRow") or 8
     local step    = size + spacing
 
-    for _, entry in ipairs(GROUPS) do
-        local frame, header = groupFrames[entry.key], headers[entry.key]
+    for _, def in ipairs(self:Rows()) do
+        local frame, header = rowFrames[def.id], headers[def.id]
         if frame and header then
-            local count = VisibleIcons(header)
+            local perRow = def.perRow or self:GetSetting("perRow") or 8
+            local count  = VisibleIcons(header)
             if count == 0 then
                 -- Nothing to show, so it takes up nothing: a docked row
                 -- with no auras in it should not hold an icon's worth of
@@ -424,12 +573,12 @@ function addon:SizeGroups()
     end
 end
 
-function addon:ApplyGroups()
+function addon:ApplyRows()
     if InCombatLockdown() then return end
+    local enabled = self:GetSetting("enabled") ~= false
 
-    for _, entry in ipairs(GROUPS) do
-        local def   = self:GroupDef(entry.key)
-        local frame = groupFrames[entry.key]
+    for _, def in ipairs(self:Rows()) do
+        local frame = rowFrames[def.id]
         if frame then
             local dock = def.dock or { host = "float" }
             BazUI.Dock:AttachTo(frame, dock.host, {
@@ -437,7 +586,7 @@ function addon:ApplyGroups()
                 mode  = "align",
                 align = def.align or "LEFT",
                 gap   = def.gap,
-                order = 50,
+                order = def.id,
             })
 
             if not BazUI.Dock:IsDocked(frame) then
@@ -447,56 +596,70 @@ function addon:ApplyGroups()
                 frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
             end
 
-            if frame.mover then frame.mover:ShowForEdit() end
+            -- Through the dock, so a row hanging off something hidden
+            -- goes with it rather than floating over the screen alone.
+            BazUI.Dock:SetShown(frame, enabled)
+            if headers[def.id] then headers[def.id]:SetShown(enabled) end
+            if frame.mover then
+                BazUI:UpdateEditModeLabel(frame.mover, def.name)
+                frame.mover:ShowForEdit()
+            end
         end
     end
-    self:SizeGroups()
+    self:SizeRows()
 end
 
--- Where a group ended up after a drag.
-function addon:GroupDropped(entry, snap, x, y)
-    local def = self:GroupDef(entry.key)
+-- Where a row ended up after a drag.
+function addon:RowDropped(def, snap, x, y)
     if snap then
         def.dock = { host = snap.host, edge = snap.edge }
     elseif x then
         def.dock = { host = "float", edge = def.dock and def.dock.edge or "BOTTOM" }
         def.position = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
     end
-    self:SaveGroups()
-    -- Which way the rows run can have changed with the edge, so the
-    -- header is configured again rather than only re-anchored.
+    self:SaveRows()
+    -- Which way the icons stack can have changed with the edge, so the
+    -- header is configured again rather than only moved.
     self:ApplySettings()
 end
 
-function addon:ShowGroupMovers()
-    for _, entry in ipairs(GROUPS) do
-        local frame = groupFrames[entry.key]
+function addon:ShowRowMovers()
+    for _, def in ipairs(self:Rows()) do
+        local frame = rowFrames[def.id]
         if frame and frame.mover then frame.mover:ShowForEdit() end
     end
 end
 
-function addon:RefreshGroupEditSettings()
-    for _, entry in ipairs(GROUPS) do
-        local frame = groupFrames[entry.key]
+function addon:RefreshRowEditSettings()
+    for _, def in ipairs(self:Rows()) do
+        local frame = rowFrames[def.id]
         if frame and frame.mover then
-            BazUI:UpdateEditModeSettings(frame.mover, self:GroupEditSettings(entry))
+            BazUI:UpdateEditModeSettings(frame.mover, self:RowEditSettings(def))
         end
     end
 end
 
--- The same form the options page offers, for selecting a group in Edit
--- Mode. Everything about where a group sits is here; what its icons look
--- like is shared by all four and stays on the module's page.
-function addon:GroupEditSettings(entry)
-    local def = self:GroupDef(entry.key)
+---------------------------------------------------------------------------
+-- Edit Mode: one row's form, and what can be done to it
+---------------------------------------------------------------------------
 
+local function Values(map)
+    local out = {}
+    for value, label in pairs(map) do
+        out[#out + 1] = { label = label, value = value }
+    end
+    table.sort(out, function(a, b) return a.label < b.label end)
+    return out
+end
+
+function addon:RowEditSettings(def)
     local function Refresh()
-        addon:SaveGroups()
+        addon:SaveRows()
         addon:ApplySettings()
     end
 
     local dockOptions = { { label = "Floating", value = "float" } }
-    local frame = groupFrames[entry.key]
+    local frame = rowFrames[def.id]
     for _, host in ipairs(BazUI.Dock:GetHosts()) do
         local hostFrame = BazUI.Dock:GetHostFrame(host.id)
         if hostFrame and hostFrame ~= frame then
@@ -504,14 +667,7 @@ function addon:GroupEditSettings(entry)
         end
     end
 
-    local function Values(map)
-        local out = {}
-        for value, label in pairs(map) do
-            out[#out + 1] = { label = label, value = value }
-        end
-        table.sort(out, function(a, b) return a.label < b.label end)
-        return out
-    end
+    local docked = def.dock and def.dock.host and def.dock.host ~= "float"
 
     local widgets = {
         { type = "dropdown", section = "Docking", label = "Dock to",
@@ -520,20 +676,21 @@ function addon:GroupEditSettings(entry)
           set = function(value)
               def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
               Refresh()
-              addon:RefreshGroupEditSettings()
+              -- Floating and docked do not offer the same choices.
+              addon:RefreshRowEditSettings()
           end },
     }
 
-    if def.dock and def.dock.host and def.dock.host ~= "float" then
+    if docked then
         widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
-            options = Values(addon.GROUP_EDGES),
+            options = Values(addon.ROW_EDGES),
             get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
             set = function(value)
                 def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
                 Refresh()
             end }
         widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
-            options = Values(addon.GROUP_ALIGNS),
+            options = Values(addon.ROW_ALIGNS),
             get = function() return def.align or "LEFT" end,
             set = function(value) def.align = value Refresh() end }
         widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Gap",
@@ -542,8 +699,83 @@ function addon:GroupEditSettings(entry)
             set = function(value) def.gap = value Refresh() end }
     end
 
+    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Icons per row",
+        min = 1, max = 20, step = 1,
+        get = function() return def.perRow or addon:GetSetting("perRow") or 8 end,
+        set = function(value) def.perRow = value Refresh() end }
+
+    if def.unit ~= "player" then
+        widgets[#widgets + 1] = { type = "checkbox", section = "Icons", label = "Only mine",
+            get = function() return def.onlyMine == true end,
+            set = function(value) def.onlyMine = value and true or false Refresh() end }
+    end
+
     widgets[#widgets + 1] = { type = "nudge", section = "Position" }
     return widgets
+end
+
+function addon:RowEditActions(def)
+    return {
+        {
+            label = "Duplicate",
+            onClick = function()
+                if InCombatLockdown() then
+                    addon:Print("Create rows after combat ends.")
+                    return
+                end
+                local copy = addon:AddRow(def.unit, def.filter)
+                if not copy then return end
+                for key, value in pairs(def) do
+                    if key ~= "id" and key ~= "name"
+                        and key ~= "dock" and key ~= "position" then
+                        copy[key] = value
+                    end
+                end
+                addon:SaveRows()
+                addon:ApplySettings()
+                addon:Print("Duplicated " .. (def.name or "row"))
+            end,
+        },
+        {
+            label = "|cffff4444Delete This Row|r",
+            onClick = function()
+                if not BazUI.Confirm then return end
+                BazUI:Confirm({
+                    title       = "Delete row?",
+                    body        = ("Delete %s? Anything docked to it goes back to floating. Can't be undone."):format(def.name or "this row"),
+                    acceptLabel = "Delete",
+                    acceptStyle = "destructive",
+                    onAccept    = function()
+                        local frame = rowFrames[def.id]
+                        if frame and frame.mover then BazUI:DeselectEditFrame(frame.mover) end
+                        addon:RemoveRow(def.id)
+                    end,
+                })
+            end,
+        },
+    }
+end
+
+-- Every kind of row, offered on Edit Mode's Create button beside the
+-- bars, because a row of auras is the same sort of thing as a bar.
+function addon:RegisterRowCreator()
+    BazUI:RegisterEditModeCreator("Aura rows", function()
+        local items = {}
+        for _, filter in ipairs(FILTER_ORDER) do
+            local submenu = {}
+            for _, unit in ipairs(UNIT_ORDER) do
+                submenu[#submenu + 1] = {
+                    label = UNITS[unit],
+                    onClick = function()
+                        local def = addon:AddRow(unit, filter)
+                        if def then addon:Print("Created " .. def.name) end
+                    end,
+                }
+            end
+            items[#items + 1] = { label = FILTERS[filter], submenu = submenu }
+        end
+        return items
+    end)
 end
 
 local function SetBlizzardHidden(hide)
@@ -607,12 +839,15 @@ local function LayoutDemo()
     local count  = perRow * DEMO_ROWS
     local now    = GetTime()
     local used   = 0
-    local sides = {
-        { headers.HELPFUL,        DEMO_BUFFS,   false },
-        { headers.HARMFUL,        DEMO_DEBUFFS, true  },
-        { headers.TARGET_HELPFUL, DEMO_BUFFS,   false },
-        { headers.TARGET_HARMFUL, DEMO_DEBUFFS, true  },
-    }
+    -- Every row there is, rather than the four there used to be.
+    local sides = {}
+    for _, def in ipairs(addon:Rows()) do
+        sides[#sides + 1] = {
+            headers[def.id],
+            def.filter == "HARMFUL" and DEMO_DEBUFFS or DEMO_BUFFS,
+            def.filter == "HARMFUL",
+        }
+    end
     for _, side in ipairs(sides) do
         local h, icons, harmful = side[1], side[2], side[3]
         if h and h:GetNumPoints() > 0 then
@@ -692,10 +927,7 @@ function addon:RefreshAll()
     for btn in pairs(buttons) do
         if btn:IsShown() then UpdateButton(btn) end
     end
-    -- A group is only as wide as the icons in it, which is what its
-    -- alignment measures from. Resizing an ordinary frame is not
-    -- protected, so a row centred under a bar stays centred mid-fight.
-    self:SizeGroups()
+    self:SizeRows()
 end
 
 function addon:QueueRefresh()
@@ -708,38 +940,24 @@ function addon:QueueRefresh()
 end
 
 function addon:ApplySettings()
-    if not headers.HELPFUL then return end
     if InCombatLockdown() then
         pendingApply = true
         return
     end
     pendingApply = false
     local enabled = self:GetSetting("enabled") ~= false
-    local targetOn = enabled and self:GetSetting("targetEnabled") ~= false
 
-    for _, entry in ipairs(GROUPS) do
-        ConfigureHeader(entry, RowsBelow(self:GroupDef(entry.key)))
+    self:BuildRows()
+    for _, def in ipairs(self:Rows()) do
+        ConfigureHeader(def, RowsBelow(def))
     end
-    self:ApplyGroups()
+    self:ApplyRows()
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
         -- Buttons that already exist get the same treatment as new ones.
         if ButtonUnit(btn) ~= "player" and btn:GetAttribute("type2") then
             btn:SetAttribute("type2", nil)
-        end
-    end
-    headers.HELPFUL:SetShown(enabled)
-    headers.HARMFUL:SetShown(enabled)
-    headers.TARGET_HELPFUL:SetShown(targetOn)
-    headers.TARGET_HARMFUL:SetShown(targetOn)
-
-    -- Through the dock, so a group hanging off something hidden goes
-    -- with it rather than floating on its own over the screen.
-    for _, entry in ipairs(GROUPS) do
-        local frame = self:GroupFrame(entry.key)
-        if frame then
-            BazUI.Dock:SetShown(frame, entry.unit == "target" and targetOn or enabled)
         end
     end
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
@@ -764,31 +982,23 @@ function addon:QueueApply()
 end
 
 function addon:Initialize()
-    if headers.HELPFUL then return end
+    if initialized then return end
+    initialized = true
     -- Secure frames must not be created in combat.
     if InCombatLockdown() then
-        self:On("PLAYER_REGEN_ENABLED", function()
-            if not headers.HELPFUL then self:Initialize() end
-        end)
+        initialized = false
+        self:On("PLAYER_REGEN_ENABLED", function() self:Initialize() end)
         return
     end
 
     hiddenParent = CreateFrame("Frame")
     hiddenParent:Hide()
-    CreateHeader("HELPFUL", "player", "HELPFUL", "BazUIAurasBuffs")
-    CreateHeader("HARMFUL", "player", "HARMFUL", "BazUIAurasDebuffs")
-    CreateHeader("TARGET_HELPFUL", "target", "HELPFUL", "BazUIAurasTargetBuffs")
-    CreateHeader("TARGET_HARMFUL", "target", "HARMFUL", "BazUIAurasTargetDebuffs")
-    -- A secure nudge when the target dies or is revived: the attribute
-    -- change makes the header re-run its update, hiding a dead unit's
-    -- leftover buttons even if no aura event follows.
-    for _, key in ipairs({ "TARGET_HELPFUL", "TARGET_HARMFUL" }) do
-        RegisterAttributeDriver(headers[key], "state-targetdead", "[@target,dead] 1; 0")
-    end
 
-    -- Every header lives inside a group frame, which is the thing that
+    -- Every header lives inside a row frame, which is the thing that
     -- docks and the thing Edit Mode moves.
-    for _, entry in ipairs(GROUPS) do CreateGroup(entry) end
+    self:RegisterRowCreator()
+    self:BuildRows()
+    self:SeedRows()
 
     -- One ticker for every duration label.
     local ticker = CreateFrame("Frame")
@@ -821,7 +1031,7 @@ function addon:Initialize()
     end)
     self:On("PLAYER_ENTERING_WORLD", function() self:QueueRefresh() end)
     self:On("PLAYER_REGEN_ENABLED", function()
-        if pendingApply then self:ApplySettings() end
+        if pendingApply then self:ApplySettings() else self:SizeRows() end
     end)
     self:On("PLAYER_REGEN_DISABLED", function()
         if demoActive then self:SetPreview(false) end
@@ -829,10 +1039,10 @@ function addon:Initialize()
     self:OnProfileChanged(function() self:ApplySettings() end)
 
     self:On("BAZ_EDITMODE_ENTER", function()
-        self:RefreshGroupEditSettings()
-        self:ShowGroupMovers()
+        self:RefreshRowEditSettings()
+        self:ShowRowMovers()
     end)
-    self:On("BAZ_EDITMODE_EXIT", function() self:ShowGroupMovers() end)
+    self:On("BAZ_EDITMODE_EXIT", function() self:ShowRowMovers() end)
 
     -- Follow the unit frames: a bar a group is docked to can move or
     -- resize, and the dock passes that down, but a group floating beside
