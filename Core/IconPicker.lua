@@ -316,7 +316,7 @@ local function BuildPicker()
     title:SetTextColor(1, 0.82, 0)
 
     -- Close button
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    local close = BazUI.Skin.Theme.CreateCloseButton(f)
     close:SetPoint("TOPRIGHT", -2, -2)
 
     -- Category tabs

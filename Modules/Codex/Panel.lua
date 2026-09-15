@@ -591,7 +591,7 @@ local function Build()
     titleRule:SetColorTexture(Theme.colors.divider[1], Theme.colors.divider[2],
         Theme.colors.divider[3], Theme.colors.divider[4])
 
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    local close = BazUI.Skin.Theme.CreateCloseButton(frame)
     close:SetPoint("TOPRIGHT", -2, -2)
     close:SetScript("OnClick", function() Codex:Hide() end)
 

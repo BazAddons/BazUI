@@ -551,7 +551,12 @@ function Theme.CreateIconButton(parent, opts)
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetPoint("CENTER")
     icon:SetSize(opts.iconSize or (size - 4), opts.iconSize or (size - 4))
-    if opts.atlas then
+    -- An atlas where the client has one, a plain texture where it does
+    -- not: the Classic flavours are missing plenty of atlases the rest
+    -- of the game takes for granted.
+    if opts.atlas and BazUI.SetAtlasOrTexture then
+        BazUI.SetAtlasOrTexture(icon, opts.atlas, opts.texture, false)
+    elseif opts.atlas then
         icon:SetAtlas(opts.atlas)
     else
         icon:SetTexture(opts.texture)
@@ -591,6 +596,25 @@ function Theme.CreateSettingsButton(parent, opts)
     opts = opts or {}
     opts.texture = opts.texture or "Interface\\Buttons\\UI-OptionsButton"
     opts.tooltip = opts.tooltip or "Settings"
+    return Theme.CreateIconButton(parent, opts)
+end
+
+-- The X in the corner of a window.
+--
+-- Blizzard's UIPanelCloseButton is a perfectly good button and looks
+-- like a perfectly good Blizzard button, which is the problem: ten
+-- windows of ours wore it, and none of them matched the window it was
+-- sitting on. Same treatment as the gear, and it hides its parent unless
+-- told to do something else, since that is what the template did and
+-- half the callers relied on it.
+function Theme.CreateCloseButton(parent, opts)
+    opts = opts or {}
+    opts.atlas    = opts.atlas   or "common-icon-redx"
+    opts.texture  = opts.texture or "Interface\\RAIDFRAME\\ReadyCheck-NotReady"
+    opts.tooltip  = opts.tooltip or "Close"
+    opts.size     = opts.size or 22
+    opts.iconSize = opts.iconSize or 14
+    opts.onClick  = opts.onClick or function() parent:Hide() end
     return Theme.CreateIconButton(parent, opts)
 end
 

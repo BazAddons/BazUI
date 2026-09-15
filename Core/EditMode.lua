@@ -710,7 +710,7 @@ local function BuildPopup()
     title:SetPoint("TOP", 0, -15)
     f.title = title
 
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    local close = BazUI.Skin.Theme.CreateCloseButton(f)
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function()
         if selectedFrame then

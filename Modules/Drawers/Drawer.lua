@@ -127,11 +127,17 @@ function Drawer:Build()
     display.lockButton:SetFrameLevel((chrome:GetFrameLevel() or 0) + 2)
     display.lockButton:SetPoint("RIGHT", chrome, "RIGHT", -4, 0)
     display.lockButton.icon = display.lockButton:CreateTexture(nil, "ARTWORK")
-    display.lockButton.icon:SetAllPoints()
+    display.lockButton.icon:SetPoint("CENTER")
+    display.lockButton.icon:SetSize(16, 16)
+    -- Same treatment as the gear beside it: the icon's own colour off,
+    -- ours on, muted until the mouse is over it.
+    display.lockButton.icon:SetDesaturated(true)
+    display.lockButton.icon:SetVertexColor(unpack(BazUI.Skin.Theme.colors.textSoft))
     display.lockButton:SetScript("OnClick", function()
         Drawer:ToggleLock()
     end)
     display.lockButton:SetScript("OnEnter", function(self)
+        self.icon:SetVertexColor(unpack(BazUI.Skin.Theme.colors.gold))
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         if addon:GetSetting("locked") then
             GameTooltip:SetText("Drawer Locked")
@@ -142,7 +148,10 @@ function Drawer:Build()
         end
         GameTooltip:Show()
     end)
-    display.lockButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    display.lockButton:SetScript("OnLeave", function(self)
+        self.icon:SetVertexColor(unpack(BazUI.Skin.Theme.colors.textSoft))
+        GameTooltip:Hide()
+    end)
 
     -- A gear, not Blizzard's round "i": this opens the drawer's settings,
     -- and an information icon on a settings button is the sort of thing
@@ -623,12 +632,17 @@ function Drawer:ApplyLockUI(skipFade)
     local locked = addon:GetSetting("locked") and true or false
     local hovered = Drawer:IsHovered()
 
-    -- Swap the lock icon's atlas based on state
+    -- Swap the lock icon's atlas based on state, keeping the tint: the
+    -- icon is desaturated and coloured like every other small button,
+    -- and setting a new atlas would otherwise bring its own colour back.
     local lb = display.lockButton
     if lb and lb.icon then
         BazUI.SetAtlasOrTexture(lb.icon,
             locked and LOCK_ATLAS_LOCKED or LOCK_ATLAS_UNLOCKED,
             locked and LOCK_FILE_LOCKED or LOCK_FILE_UNLOCKED, false)
+        lb.icon:SetDesaturated(true)
+        lb.icon:SetVertexColor(unpack(lb:IsMouseOver()
+            and BazUI.Skin.Theme.colors.gold or BazUI.Skin.Theme.colors.textSoft))
     end
 
     -- Hide/show the rest of the chrome based on the lock state.

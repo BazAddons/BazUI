@@ -38,7 +38,7 @@ local function CreateMacrotextFrame()
     title:SetText("Edit Button Macrotext")
     f.title = title
 
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    local close = BazUI.Skin.Theme.CreateCloseButton(f)
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function() f:Hide() end)
 
@@ -203,7 +203,7 @@ function Dialogs:ShowExportString(str)
         title:SetPoint("TOP", 0, -15)
         title:SetText("Export Bar Config")
 
-        local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        local close = BazUI.Skin.Theme.CreateCloseButton(f)
         close:SetPoint("TOPRIGHT", 0, 0)
         close:SetScript("OnClick", function() f:Hide() end)
 
@@ -250,7 +250,7 @@ function Dialogs:ShowImportDialog()
         title:SetPoint("TOP", 0, -15)
         title:SetText("Import Bar Config")
 
-        local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        local close = BazUI.Skin.Theme.CreateCloseButton(f)
         close:SetPoint("TOPRIGHT", 0, 0)
         close:SetScript("OnClick", function() f:Hide() end)
 

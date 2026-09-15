@@ -19,7 +19,7 @@
 --   └────────────────────────────────┘
 --
 -- Visual primitives match the rest of BazUI - UIPanelButtonTemplate,
--- InputBoxTemplate, UICheckButtonTemplate, UIPanelCloseButton, the
+-- InputBoxTemplate, UICheckButtonTemplate, the
 -- the shared flat chrome with DIALOG_BG/DIALOG_BORDER colors, fonts
 -- from O.HEADER_FONT/O.LABEL_FONT - so popups feel native to the
 -- BazUI options window, not bolted on.
@@ -155,7 +155,7 @@ local function CreatePopupFrame()
     f.title:SetTextColor(unpack(O.GOLD))
 
     -- Close X (top-right)
-    local x = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    local x = BazUI.Skin.Theme.CreateCloseButton(f)
     x:SetPoint("TOPRIGHT", 0, 0)
     x:SetScript("OnClick", CloseHandler)
     f.closeX = x

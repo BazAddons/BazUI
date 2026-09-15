@@ -93,7 +93,7 @@ local function CreateDialog()
     f.subtitle:SetTextColor(0.75, 0.75, 0.75)
 
     -- Top-right close X
-    local x = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    local x = BazUI.Skin.Theme.CreateCloseButton(f)
     x:SetPoint("TOPRIGHT", 0, 0)
     x:SetScript("OnClick", close)
 

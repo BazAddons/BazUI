@@ -667,7 +667,7 @@ local function EnsurePopup()
     popup.title = title
 
     -- Close button (top-right).
-    local close = CreateFrame("Button", nil, popup, "UIPanelCloseButton")
+    local close = BazUI.Skin.Theme.CreateCloseButton(popup)
     close:SetPoint("TOPRIGHT", 2, 2)
     close:SetScript("OnClick", function() popup:Hide() end)
 
