@@ -67,10 +67,18 @@ function Dock:NearestSnap(frame, ignore)
     local best, bestDistance
     for _, host in ipairs(self:GetHosts()) do
         local hostFrame = self:GetHostFrame(host.id)
-        -- Never onto itself, onto something hidden, or onto something
-        -- already hanging off it, which would be a loop.
-        if hostFrame and hostFrame ~= ignore and hostFrame ~= frame
-            and hostFrame:IsVisible()
+        -- Never onto itself, onto something there is no sign of, or
+        -- onto something already hanging off it, which would be a loop.
+        --
+        -- A handle counts as a sign of it. A bar for a unit who is not
+        -- there is hidden, and in Edit Mode its handle is all you can
+        -- see: refusing to snap to it means a party layout cannot be
+        -- arranged unless the party is standing there, which is the
+        -- opposite of when anyone arranges one.
+        local shown = hostFrame and (hostFrame:IsVisible()
+            or (hostFrame._bazMover and hostFrame._bazMover:IsShown()))
+
+        if hostFrame and shown and hostFrame ~= ignore and hostFrame ~= frame
             and not (ignore and self:Follows(hostFrame, ignore)) then
 
             local hLeft, hRight, hTop, hBottom = ScreenEdges(hostFrame)

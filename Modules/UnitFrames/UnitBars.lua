@@ -143,6 +143,11 @@ function UnitBars:Add(kind, unit)
     defs[#defs + 1] = def
     self:Save()
     self:Build(def)
+    -- A bar made while absent units are being previewed joins the
+    -- preview now rather than at the next time something turns it on.
+    -- Made in Edit Mode for a unit who is not there, it would otherwise
+    -- be invisible with only a handle to show for it.
+    self:RefreshPreview()
     return def
 end
 
