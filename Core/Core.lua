@@ -113,7 +113,16 @@ function BazUI:SetModuleEnabled(name, enabled)
     if ALWAYS_ON[name] then return end
     local flags = ModuleFlags()
     if not flags then return end
-    flags[name] = enabled and nil or false
+
+    -- Written out rather than `enabled and nil or false`, which cannot
+    -- work: `true and nil` is nil, nil is false, and the `or` takes over
+    -- every time. That idiom can never yield nil, so ticking a module
+    -- switched it off again.
+    if enabled then
+        flags[name] = nil
+    else
+        flags[name] = false
+    end
 end
 
 function BazUI:RegisterModule(name, config)
