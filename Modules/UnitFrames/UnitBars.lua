@@ -41,7 +41,7 @@ UnitBars.KINDS = {
     health = "Health",
     power  = "Power",
     cast   = "Casting",
-    xp     = "Experience",
+    xp     = "XP",
     rep    = "Reputation",
 }
 
@@ -83,11 +83,23 @@ function UnitBars:NextID()
     return highest + 1
 end
 
+-- Names are how one bar refers to another when docking, so two bars
+-- called the same thing would make that list a guess. Every name carries
+-- the next free number for its kind.
 function UnitBars:DefaultName(kind, unit)
+    local base
     if IsUnitKind(kind) then
-        return (self.UNITS[unit] or unit) .. " " .. (self.KINDS[kind] or kind)
+        base = (self.UNITS[unit] or unit) .. " " .. (self.KINDS[kind] or kind)
+    else
+        base = (self.KINDS[kind] or kind) .. " Bar"
     end
-    return self.KINDS[kind] or kind
+
+    local taken = {}
+    for _, def in ipairs(self:Defs()) do taken[def.name or ""] = true end
+
+    local index = 1
+    while taken[base .. " " .. index] do index = index + 1 end
+    return base .. " " .. index
 end
 
 function UnitBars:HostID(id)
@@ -422,6 +434,18 @@ end
 
 function UnitBars:BuildAll()
     if InCombatLockdown() then return end
+
+    -- Bars made before names were numbered can collide, and a docking
+    -- list with two identical entries is a coin toss. Repair on load.
+    local seen = {}
+    for _, def in ipairs(self:Defs()) do
+        if not def.name or seen[def.name] then
+            def.name = self:DefaultName(def.kind, def.unit)
+        end
+        seen[def.name] = true
+    end
+    self:Save()
+
     for _, def in ipairs(self:Defs()) do self:Build(def) end
     self:UpdateAll()
 end
@@ -731,6 +755,49 @@ function UnitBars:EditSettings(bar)
     }
 end
 
+
+-- What the panel can do to this bar, rather than change about it. Edit
+-- Mode renders these as their own Actions section, which is where an
+-- action bar keeps its delete, so the two read alike.
+function UnitBars:EditActions(bar)
+    local def = bar.def
+    return {
+        {
+            label = "Duplicate",
+            onClick = function()
+                if InCombatLockdown() then
+                    addon:Print("Create bars after combat ends.")
+                    return
+                end
+                local copy = UnitBars:Add(def.kind, def.unit)
+                if not copy then return end
+                copy.width, copy.height = def.width, def.height
+                copy.textMode, copy.textFormat = def.textMode, def.textFormat
+                UnitBars:Save()
+                local made = UnitBars.bars[copy.id]
+                if made then UnitBars:Apply(made) end
+                addon:Print("Duplicated " .. (def.name or "bar"))
+            end,
+        },
+        {
+            label = "|cffff4444Delete This Bar|r",
+            onClick = function()
+                if not BazUI.Confirm then return end
+                BazUI:Confirm({
+                    title       = "Delete bar?",
+                    body        = ("Delete %s? Anything docked to it goes back to floating. Can't be undone."):format(def.name or "this bar"),
+                    acceptLabel = "Delete",
+                    acceptStyle = "destructive",
+                    onAccept    = function()
+                        BazUI:DeselectEditFrame(bar.mover)
+                        UnitBars:Remove(def.id)
+                    end,
+                })
+            end,
+        },
+    }
+end
+
 function UnitBars:CreateMover(bar)
     if bar.mover then return bar.mover end
     local def = bar.def
@@ -815,6 +882,7 @@ function UnitBars:CreateMover(bar)
         addonName = "UnitFrames",
         positionKey = false,
         settings = UnitBars:EditSettings(bar),
+        actions  = UnitBars:EditActions(bar),
         onPositionChanged = function()
             if mover.ShowSnap then mover:ShowSnap(nil) end
             UnitBars:SavePosition(bar)
