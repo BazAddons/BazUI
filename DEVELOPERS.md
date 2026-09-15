@@ -14,7 +14,7 @@ BazUI/
     Options/           options window, page builders, user guide renderer
     ...                Edit Mode, popups, UI helpers, timers, formatting
   Skin/
-    Skin.lua           BazUI.Skin: texture paths, ratios, brand colours
+    Skin.lua           BazUI.Skin: texture paths, ratios, brand colors
     Assets/            power-of-two PNGs
   Modules/
     Drawers/           from BazWidgetDrawers (Era file set); Widgets/ also holds the BazWidgets pack (bazdrawer_ ids) and Broker.lua (LibDataBroker feeds, bazdrawer_ldb_ ids; library not embedded)
@@ -73,13 +73,13 @@ Notifications sources describe their events with `{ type = "event", show, toast,
 
 ## Skin
 
-Every texture and brand colour lives in `BazUI.Skin`. Modules reference `BazUI.Skin.MINIMAP_RING` and friends rather than paths. New assets go in `Skin/Assets` at power-of-two sizes; document their geometry (inner/outer ratios) next to the constant.
+Every texture and brand color lives in `BazUI.Skin`. Modules reference `BazUI.Skin.MINIMAP_RING` and friends rather than paths. New assets go in `Skin/Assets` at power-of-two sizes; document their geometry (inner/outer ratios) next to the constant.
 
-`Skin/Theme.lua` holds the shared look: the colour palette (`BazUI.Skin.Theme.colors`), the gold-edged panel backdrop (`Theme.ApplyPanel`), a flat inner backdrop, and the round ring-framed button treatment (`Theme.ApplyRoundButton`). New module UI should draw from it rather than define its own colours.
+`Skin/Theme.lua` holds the shared look: the color palette (`BazUI.Skin.Theme.colors`), the gold-edged panel backdrop (`Theme.ApplyPanel`), a flat inner backdrop, and the round ring-framed button treatment (`Theme.ApplyRoundButton`). New module UI should draw from it rather than define its own colors.
 
 ### Tabs
 
-`BazUI.CreateTabStrip(name, parent, opts)` in `Core/TabStrip.lua` builds every row of tabs. It speaks the same API as Blizzard's `TabSystemTemplate`, which Classic ships in source but does not load: `AddTab`, `SetTab`, `SetTabSelectedCallback`, `SetTabVisuallySelected`, `ClearTabs`, `MarkDirty`, plus `tab.layoutIndex` so a drag placeholder can slot in. Two looks via `opts.style`: `"panel"` for tabs that sit above a page (the options canvas, the chat dock) and `"underline"` for tabs inside a panel (the notification centre). Colours come from the theme.
+`BazUI.CreateTabStrip(name, parent, opts)` in `Core/TabStrip.lua` builds every row of tabs. It speaks the same API as Blizzard's `TabSystemTemplate`, which Classic ships in source but does not load: `AddTab`, `SetTab`, `SetTabSelectedCallback`, `SetTabVisuallySelected`, `ClearTabs`, `MarkDirty`, plus `tab.layoutIndex` so a drag placeholder can slot in. Two looks via `opts.style`: `"panel"` for tabs that sit above a page (the options canvas, the chat dock) and `"underline"` for tabs inside a panel (the notification center). Colors come from the theme.
 
 The drawer's tab rail is deliberately not this. It is a vertical column of icon buttons on the drawer's edge whose click switches drawer or toggles the panel, and whose slots stay reserved when the drawer opens. It shares the idea of "one of these is current" and nothing else, so it stays its own component in `Modules/Drawers/Drawer.lua`.
 

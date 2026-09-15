@@ -116,7 +116,7 @@ function Item.isInRange(data, unit)
     -- Calling it on a friendly target mid-combat raises
     -- ADDON_ACTION_BLOCKED, which pcall cannot catch. Return nil
     -- ("unknown") like the no-target case so the button keeps its
-    -- usability colour. Same guard LibRangeCheck-3.0 uses.
+    -- usability color. Same guard LibRangeCheck-3.0 uses.
     if InCombatLockdown() and not UnitCanAttack("player", unit) then return nil end
     return C_Item.IsItemInRange(data.id, unit)
 end

@@ -4,7 +4,7 @@
 --
 -- The suite's shared look: dark, warm panel interiors with a gold metal
 -- edge, gold headings, and round ring-framed buttons (the minimap ring,
--- the portrait ring, the minimap buttons). Modules pull colours,
+-- the portrait ring, the minimap buttons). Modules pull colors,
 -- backdrops and the round-button treatment from here so a panel in one
 -- module reads the same as a panel in another.
 ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ Theme.colors = {
     textMuted = { 0.60, 0.55, 0.45, 1.00 },
 
     -- Readings that mean something. A bar or a number takes one of
-    -- these rather than a colour of its own, so green means finished
+    -- these rather than a color of its own, so green means finished
     -- everywhere in the suite and amber always means running out.
     success   = { 0.45, 0.78, 0.48, 1.00 },  -- done, earned, collected
     caution   = { 0.95, 0.72, 0.20, 1.00 },  -- a window closing
@@ -44,7 +44,7 @@ Theme.colors = {
     danger    = { 0.85, 0.30, 0.30, 1.00 },
 }
 
--- Mix two colours. Used for readings that shift as they run: a reset
+-- Mix two colors. Used for readings that shift as they run: a reset
 -- clock warming from gold to amber as its window closes.
 function Theme.Blend(from, to, t)
     t = math.max(0, math.min(1, tonumber(t) or 0))
@@ -109,7 +109,7 @@ end
 --
 -- Code that calls SetFontObject(GameFontNormal) can't take a file the
 -- way SetFont does, so ask for Theme.FontObject("GameFontNormal") and
--- get an object with the same size, flags, colour and justification,
+-- get an object with the same size, flags, color and justification,
 -- drawn in the suite's face. The object is shared and edited in place,
 -- so every string using it follows when the switch changes: flipping
 -- it calls RefreshFontObjects and the text redraws with no reload.
@@ -197,7 +197,7 @@ function Theme.ApplyFlatPanel(frame, bgColor, edgeColor)
     for _, edge in ipairs(art.edges) do edge:Show() end
 end
 
--- Recolour a flat panel's interior without rebuilding it (hover states,
+-- Recolor a flat panel's interior without rebuilding it (hover states,
 -- an opacity slider). Silently does nothing on a frame that never had
 -- ApplyFlatPanel, so callers can stay simple.
 function Theme.SetFlatPanelColor(frame, bgColor, alpha)
@@ -208,8 +208,8 @@ function Theme.SetFlatPanelColor(frame, bgColor, alpha)
     Theme.SetFlatPanelAlpha(frame)
 end
 
--- Fade the interior and the edge independently, keeping both colours.
--- Pass nothing to redraw at the colours' own alpha; the drawer tweens
+-- Fade the interior and the edge independently, keeping both colors.
+-- Pass nothing to redraw at the colors' own alpha; the drawer tweens
 -- these two as it fades in and out.
 function Theme.SetFlatPanelAlpha(frame, bgAlpha, edgeAlpha)
     local art = frame._bazFlatPanel

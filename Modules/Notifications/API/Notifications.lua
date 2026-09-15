@@ -133,7 +133,7 @@ function BNC:Push(data)
 
     -- Where this one goes. A source names the event it came from, and
     -- the three destination switches for that event decide the rest. A
-    -- source that names nothing keeps the old behaviour: the panel, and
+    -- source that names nothing keeps the old behavior: the panel, and
     -- a toast unless it asked to be silent.
     local def = data.event and BNC:GetEventDef(data.module, data.event) or nil
     local toPanel = true

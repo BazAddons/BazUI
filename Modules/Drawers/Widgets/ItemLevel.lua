@@ -6,7 +6,7 @@
 -- gentle nudge that better gear is sitting in your bags.
 --
 -- Optional: overlay each item's iLevel onto its character-pane slot,
--- coloured by item quality (toggleable via the widget's settings).
+-- colored by item quality (toggleable via the widget's settings).
 
 local addon = BazUI:GetModule("Drawers")
 if not addon then return end
@@ -103,7 +103,7 @@ end
 -- Paper-doll overlay
 --
 -- For each equipped slot on the Character pane, drop a small text label
--- in the top-right corner showing the item's iLevel coloured by quality
+-- in the top-right corner showing the item's iLevel colored by quality
 -- (purple for epic, blue for rare, etc.). Toggleable per-widget so users
 -- who already use Pawn / ItemLevelDisplay can leave it off.
 ---------------------------------------------------------------------------

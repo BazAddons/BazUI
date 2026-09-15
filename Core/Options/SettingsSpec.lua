@@ -62,7 +62,7 @@
 -- Common fields:
 --   get        - function() -> current value
 --   set        - function(_, value) -- save the new value
---   disabled   - function() -> bool (live grey-out check)
+--   disabled   - function() -> bool (live gray-out check)
 --   hidden     - bool or function() -> bool (Options page only)
 --   disabledLabel - string shown in editMode dropdowns when disabled
 --

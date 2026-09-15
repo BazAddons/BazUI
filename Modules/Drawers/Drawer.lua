@@ -600,7 +600,7 @@ end
 --   * The chrome title-bar contents (label, count, info button) are
 --     hidden. Only the lock button remains, and only while the drawer
 --     is being hovered by the cursor.
---   * Fade/opacity settings are greyed out in the options panel.
+--   * Fade/opacity settings are grayed out in the options panel.
 ---------------------------------------------------------------------------
 
 -- Atlas pair for the lock icon. Both are stock Blizzard atlases.

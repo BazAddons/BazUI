@@ -198,7 +198,7 @@ end
 -- container. Tabs:AddFor uses that field to add the tab to the right
 -- strip; chat windows SetAllPoints to that dockID's frame. Both kinds
 -- go through Window:CreateDockInstance(id, opts) so chrome / strip /
--- edit-mode behaviour matches between the dock and any popped window.
+-- edit-mode behavior matches between the dock and any popped window.
 --
 -- Window.dock is a convenience alias pointing at the main dock's
 -- frame. AutoHide, CombatLog, TabDrag, and a few slash commands

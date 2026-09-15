@@ -747,8 +747,8 @@ end
 -- Range ticker
 --
 -- Range is a distance, so it changes as either of you moves, with no
--- event to announce it: the only way to keep the colour honest is to
--- poll. It used to poll in combat only, which left the colour frozen
+-- event to announce it: the only way to keep the color honest is to
+-- poll. It used to poll in combat only, which left the color frozen
 -- at whatever it was when the target was picked - walk into range out
 -- of combat and the button stayed red, walk out of range and it stayed
 -- white. So it now runs whenever a target exists, in or out of combat,

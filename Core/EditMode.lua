@@ -374,7 +374,7 @@ local function CreateSettingDropdown(parent, widgetDef)
 
     -- Refresh enabled-state from widgetDef.disabled() callback. Polled
     -- via OnUpdate (throttled) so the dropdown reacts live to other
-    -- widgets toggling its disabled state. Greyed visually + click
+    -- widgets toggling its disabled state. Grayed visually + click
     -- disabled + (optional) `disabledLabel` shown instead of value.
     row.UpdateDisabled = function(self)
         local isDisabled = (widgetDef.disabled and widgetDef.disabled())

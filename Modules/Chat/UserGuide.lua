@@ -19,7 +19,7 @@ BazUI:RegisterUserGuide("Chat", {
             title = "Welcome",
             blocks = {
                 { type = "lead",
-                  text = "BazUIChat replaces the default Blizzard chat with its own windows. The look is the same — gold names, hyperlinks, system colours — but you get per-tab channel filtering, configurable timestamps, history that survives /reload, click-to-copy, and the combat log embedded as a real tab." },
+                  text = "BazUIChat replaces the default Blizzard chat with its own windows. The look is the same — gold names, hyperlinks, system colors — but you get per-tab channel filtering, configurable timestamps, history that survives /reload, click-to-copy, and the combat log embedded as a real tab." },
 
                 { type = "note", style = "info",
                   text = "Open settings via |cffffd700/bazchat|r or |cffffd700/bc|r, or find Chat under BazUI in Options > AddOns." },
@@ -118,11 +118,11 @@ BazUI:RegisterUserGuide("Chat", {
                     "|cffffd700Named channels|r — one row per joined channel (General, Trade, LocalDefense, custom channels). Toggle individually so you can have a Trade-only tab or mute LocalDefense globally.",
                 }},
 
-                { type = "h2", text = "Channel-coloured gutter bar" },
+                { type = "h2", text = "Channel-colored gutter bar" },
                 { type = "paragraph",
-                  text = "When timestamps are on, every chat line gets a thin vertical bar in the left gutter coloured to match the message's chat-type colour (green for guild, pink for whispers, yellow for system, the channel's custom colour for numbered channels). The bar spans the full height of the message including wrapped lines, so multi-line entries stay anchored to their timestamp." },
+                  text = "When timestamps are on, every chat line gets a thin vertical bar in the left gutter colored to match the message's chat-type color (green for guild, pink for whispers, yellow for system, the channel's custom color for numbered channels). The bar spans the full height of the message including wrapped lines, so multi-line entries stay anchored to their timestamp." },
                 { type = "note", style = "info",
-                  text = "Bar colours come from Blizzard's chat-type table and update live when you change a channel's colour via the |cffffd700/chat|r config — no /reload needed." },
+                  text = "Bar colors come from Blizzard's chat-type table and update live when you change a channel's color via the |cffffd700/chat|r config — no /reload needed." },
 
                 { type = "h2", text = "Guild MOTD" },
                 { type = "paragraph",
@@ -158,7 +158,7 @@ BazUI:RegisterUserGuide("Chat", {
             title = "Timestamps",
             blocks = {
                 { type = "lead",
-                  text = "BazUIChat puts timestamps in a left-side gutter rather than as an inline prefix. Wrapped lines stay flush with the message body, with the channel-coloured bar tying them visually to the timestamp." },
+                  text = "BazUIChat puts timestamps in a left-side gutter rather than as an inline prefix. Wrapped lines stay flush with the message body, with the channel-colored bar tying them visually to the timestamp." },
 
                 { type = "h2", text = "Format" },
                 { type = "paragraph",
@@ -195,7 +195,7 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "h2", text = "What's saved" },
                 { type = "list", items = {
                     "Message text (raw, without timestamp prefix — the gutter renders fresh)",
-                    "Chat-type colour (so the gutter bar reproduces correctly)",
+                    "Chat-type color (so the gutter bar reproduces correctly)",
                     "Original unix capture time (used to re-render historic timestamps)",
                 }},
 
@@ -244,7 +244,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "What's stripped" },
                 { type = "paragraph",
-                  text = "Copies always strip Blizzard's colour escapes so the result pastes cleanly into Discord, a bug report, or a forum post. Hyperlinks (item / spell / quest) keep their human-readable text." },
+                  text = "Copies always strip Blizzard's color escapes so the result pastes cleanly into Discord, a bug report, or a forum post. Hyperlinks (item / spell / quest) keep their human-readable text." },
             },
         },
 
@@ -258,7 +258,7 @@ BazUI:RegisterUserGuide("Chat", {
                   text = "Background panel, tab strip, and scrollbar each have their own visibility mode. Mix and match for the chrome look you want." },
 
                 { type = "table",
-                  columns = { "Mode", "Behaviour" },
+                  columns = { "Mode", "Behavior" },
                   rows = {
                       { "Always",    "Visible at all times. (Default for everything.)" },
                       { "On hover",  "Faded in when the cursor is over the chat or tab strip; held for 2 seconds after the last hover; then faded out." },
@@ -269,7 +269,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Unified background + tabs" },
                 { type = "paragraph",
-                  text = "The |cffffd700Unified|r dropdown overrides Background and Tabs visibility together. Set it to |cffffd700On hover|r and both elements fade in lockstep — a common preference for a minimal look. The individual dropdowns grey out while Unified is active." },
+                  text = "The |cffffd700Unified|r dropdown overrides Background and Tabs visibility together. Set it to |cffffd700On hover|r and both elements fade in lockstep — a common preference for a minimal look. The individual dropdowns gray out while Unified is active." },
 
                 { type = "note", style = "info",
                   text = "Edit Mode forces all elements visible while you're laying out the dock — so you don't lose the chat in the fog while positioning it." },
@@ -283,7 +283,7 @@ BazUI:RegisterUserGuide("Chat", {
             title = "Profiles",
             blocks = {
                 { type = "paragraph",
-                  text = "BazUIChat uses BazUI's profile system. Create per-character or per-spec profiles to keep different tab setups, colour schemes, fade behaviours, and more." },
+                  text = "BazUIChat uses BazUI's profile system. Create per-character or per-spec profiles to keep different tab setups, color schemes, fade behaviors, and more." },
                 { type = "paragraph",
                   text = "Open |cffffd700Settings → BazUI Chat → Profiles|r to create, switch, copy, reset, or delete profiles. Profiles are per-addon — switching your BazUI Chat profile doesn't affect any other Baz addon." },
             },

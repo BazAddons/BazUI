@@ -108,7 +108,7 @@ local function ResetHistoryCard(card)
     card.priorityBar:Hide()
     card.isSeparator = false
     -- The card already has the backdrop applied from creation - just
-    -- restore the colours, which are the only thing that ever changes
+    -- restore the colors, which are the only thing that ever changes
     -- (separator rows tint differently). Re-applying SetBackdrop on
     -- every release was rebuilding the 9-slice frame structure for no
     -- reason.

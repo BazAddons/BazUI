@@ -17,7 +17,7 @@
 -- "icon for cell N", "cell N was clicked", and "something was dropped
 -- on cell N". The popup handles:
 --
---   * The suite's flat chrome around the grid (colours overridable
+--   * The suite's flat chrome around the grid (colors overridable
 --     per-popup)
 --   * Grid layout from rows × cols, with extra cells filling remaining
 --     positions in row-major order
@@ -84,8 +84,8 @@
 --                                      -- fires from OnReceiveDrag.
 --     emptyIcon    = textureID,        -- shown for cells with nil data
 --     hideOnCast   = true,             -- auto-hide popup after a click
---     chrome       = {                 -- colour overrides; omit for the
---       bgColor   = { r, g, b, a },    -- suite's own panel colours
+--     chrome       = {                 -- color overrides; omit for the
+--       bgColor   = { r, g, b, a },    -- suite's own panel colors
 --       edgeColor = { r, g, b, a },
 --     },
 --   }
@@ -124,7 +124,7 @@ local GetOrCreateProxy
 
 -- The popup wears the suite's flat chrome, the same interior and
 -- one-pixel gold edge as the tooltips and every panel. Consumers can
--- override either colour; there is no nine-slice to swap because the
+-- override either color; there is no nine-slice to swap because the
 -- theme draws the frame itself.
 local Theme = BazUI.Skin and BazUI.Skin.Theme
 

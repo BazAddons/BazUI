@@ -45,7 +45,7 @@ local liveCards, liveTiles = {}, {}
 local refreshQueued = false
 
 ---------------------------------------------------------------------------
--- What a state means, in colour
+-- What a state means, in color
 ---------------------------------------------------------------------------
 
 local STATE_COLOR = {
@@ -80,7 +80,7 @@ local function AcquireRow(parent)
         Theme.colors.bgHover[3], 0.55)
     row.hover:Hide()
 
-    -- A stripe down the left edge in the state's colour: the one part of
+    -- A stripe down the left edge in the state's color: the one part of
     -- a row you can read without reading it.
     row.stripe = row:CreateTexture(nil, "ARTWORK")
     row.stripe:SetWidth(2)
@@ -206,7 +206,7 @@ local function AcquireCard()
     card.head.bg:SetAllPoints()
     card.head.bg:SetColorTexture(0, 0, 0, 0.25)
 
-    -- A band of the section's own colour down the left of the card, and
+    -- A band of the section's own color down the left of the card, and
     -- a wash of it behind the heading. This is what stops six cards of
     -- identical chrome reading as one long list.
     card.accent = card:CreateTexture(nil, "ARTWORK")

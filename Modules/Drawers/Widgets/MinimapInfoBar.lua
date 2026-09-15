@@ -53,7 +53,7 @@ local function AttachFrames()
     -- secure/protected button and reparenting it taints Blizzard code
     -- paths (notably Edit Mode and any scroll list that inspects frame
     -- attributes downstream). Instead we build a plain Button that
-    -- mimics its behaviour: day-of-month label + click to open calendar
+    -- mimics its behavior: day-of-month label + click to open calendar
     -- + red glow when invites are pending.
     local calendarBtn = CreateFrame("Button", nil, wrapper)
     calendarBtn:SetSize(iconSize, iconSize)

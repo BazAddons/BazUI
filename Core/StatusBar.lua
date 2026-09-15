@@ -23,7 +23,7 @@
 --   bar:SetValue(fraction)            0..1
 --   bar:SetOverlay(fraction)          a second segment beyond the fill
 --                                     (rested experience, cast delay)
---   bar:SetFillColor(color)           a Theme colour or {r,g,b,a}
+--   bar:SetFillColor(color)           a Theme color or {r,g,b,a}
 --   bar:SetOverlayColor(color)
 --   bar:SetText(text)                 nil or "" hides it
 --   bar:SetTextMode("always"|"hover"|"never")
@@ -52,7 +52,7 @@ end
 local BarMixin = {}
 
 ---------------------------------------------------------------------------
--- Colour
+-- Color
 ---------------------------------------------------------------------------
 
 function BarMixin:SetFillColor(color)

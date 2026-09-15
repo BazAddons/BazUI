@@ -72,7 +72,7 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
           get = GetBool("showDuration"), set = SetBool("showDuration") },
         { key = "showCount", label = "Stack counts", type = "toggle", section = "icons", order = 2,
           get = GetBool("showCount"), set = SetBool("showCount") },
-        { key = "debuffBorders", label = "Colour debuff rims by type", type = "toggle", section = "icons", order = 3,
+        { key = "debuffBorders", label = "Color debuff rims by type", type = "toggle", section = "icons", order = 3,
           desc = "Blue for Magic, purple for Curse, brown for Disease, green for Poison, red for everything else. Off keeps every debuff rim red.",
           get = GetBool("debuffBorders"), set = SetBool("debuffBorders") },
         { key = "showWeapons", label = "Weapon enchants with the buffs", type = "toggle", section = "icons", order = 4,

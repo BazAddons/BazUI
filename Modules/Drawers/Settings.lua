@@ -179,7 +179,7 @@ local function GetSettingsOptionsTable()
         widgetsHeader = { order = 40, type = "header", name = "All widgets" },
         widgetsDesc = {
             order = 41, type = "description",
-            name = "Force one value on every widget. A widget's own setting is greyed out while its override is on.",
+            name = "Force one value on every widget. A widget's own setting is grayed out while its override is on.",
         },
     }
 

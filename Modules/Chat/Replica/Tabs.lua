@@ -31,7 +31,7 @@ addon.Tabs = Tabs
 --
 -- Registered against the shared "chat-tab" scope so the BazChat
 -- entries (Channels / Clear / Delete) sit alongside any other addon
--- that wants to extend tab behaviour (BazTooltipEditor's Inspect,
+-- that wants to extend tab behavior (BazTooltipEditor's Inspect,
 -- a future log-archiver, etc.). Tabs.lua's OnMouseUp hook below
 -- opens the menu on right-click.
 ---------------------------------------------------------------------------

@@ -21,7 +21,7 @@
 --     opts.settings    function returning Edit Mode widgets
 --     opts.actions     function returning Edit Mode actions
 --     opts.onDrop      function(snap, x, y) - snap is {host, edge} or nil,
---                      x and y the screen centre it was dropped at
+--                      x and y the screen center it was dropped at
 --     opts.minSize     function returning the size the handle should
 --                      never go below, for a target that shrinks to fit
 --   mover:Refresh()      size and place the handle over its target
@@ -75,7 +75,7 @@ function Dock:NearestSnap(frame, ignore)
 
             local hLeft, hRight, hTop, hBottom = ScreenEdges(hostFrame)
             -- Any horizontal overlap at all is enough. Requiring the
-            -- centres to line up meant a wide action bar and a narrow
+            -- centers to line up meant a wide action bar and a narrow
             -- bar rarely agreed.
             if hLeft and left < hRight and right > hLeft then
                 local candidates = {
@@ -99,7 +99,7 @@ end
 -- Saying so before it happens
 --
 -- Drawn on the host rather than on the handle. Edit Mode puts its own
--- overlay on top of anything registered with it, so recolouring the
+-- overlay on top of anything registered with it, so recoloring the
 -- handle is invisible: the overlay is what you are looking at. Marking
 -- the target edge instead is both visible and clearer about what will
 -- happen, since it says where rather than whether.
@@ -213,10 +213,10 @@ function Dock:CreateMover(target, opts)
     -- is exactly when this would otherwise fire.
     --
     -- A handle has a minimum size, so a small target leaves it hanging
-    -- over the edges. Centred, that reads as misalignment: a row of two
+    -- over the edges. Centered, that reads as misalignment: a row of two
     -- icons aligned to the right of an action bar looked like it was
     -- past the end of the bar, because the handle was wider than the row
-    -- and centred on it. Hung by the same corner the dock hung its
+    -- and centered on it. Hung by the same corner the dock hung its
     -- target by, it grows inward exactly as the row does.
     function mover:Refresh()
         if self.isDragging or self.isMoving then return end

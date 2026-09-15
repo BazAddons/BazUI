@@ -29,7 +29,7 @@ local TAKES = {
     half = "Half the width",
     own  = "Its own width",
 }
-local ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+local ALIGNS = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
 
 local function Bars()
     return addon.UnitBars

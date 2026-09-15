@@ -3,7 +3,7 @@
 -- BazUI: Skin
 --
 -- One place for the BazUI look. Every module draws its textures and brand
--- colours from here so the whole addon changes together. Assets live in
+-- colors from here so the whole addon changes together. Assets live in
 -- Skin\Assets as power-of-two PNGs (the client rejects other sizes).
 ---------------------------------------------------------------------------
 
@@ -12,11 +12,11 @@ local ASSETS = "Interface\\AddOns\\BazUI\\Skin\\Assets\\"
 BazUI.Skin = {
     ASSETS = ASSETS,
 
-    -- Minimap ring. 1024x1024, ring centred; the theme carries the
+    -- Minimap ring. 1024x1024, ring centered; the theme carries the
     -- inner-edge ratios.
     MINIMAP_RING             = ASSETS .. "BazUI_Frame.png",
 
-    -- Minimap button ring. 128x128, ring centred; inner edge at 70%, the
+    -- Minimap button ring. 128x128, ring centered; inner edge at 70%, the
     -- outer edge touches the texture edge.
     BUTTON_RING              = ASSETS .. "minimapButtonFrame.png",
     BUTTON_RING_INNER_RATIO  = 0.70,
@@ -27,7 +27,7 @@ BazUI.Skin = {
 
     BUTTON_BACKDROP_COLOR = { 0.07, 0.07, 0.09, 1 },
 
-    -- Brand colours (hex, for |cff.. escapes)
+    -- Brand colors (hex, for |cff.. escapes)
 }
 
 -- Continuous XP fill: built-in texture, no segmented Classic artwork.

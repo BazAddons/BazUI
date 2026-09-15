@@ -31,7 +31,7 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
           get = Get("unitTooltips"), set = Set("unitTooltips") },
         { key = "classColor", label = "Class color on player health", type = "toggle",
           section = "bars", order = 2,
-          desc = "Health bars for players take the class colour instead of green.",
+          desc = "Health bars for players take the class color instead of green.",
           get = Get("classColor"), set = Set("classColor") },
         { key = "rangeFade", label = "Fade units out of range", type = "toggle",
           section = "bars", order = 3,

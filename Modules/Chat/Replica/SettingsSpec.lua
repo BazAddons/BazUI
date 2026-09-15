@@ -221,7 +221,7 @@ local SPEC = {
 
         { key = "chromeFadeMode", label = "Unified background + tabs", section = "appearance",
           type = "select", order = 23,
-          desc = "Force background and tabs to share a fade mode.\n\nIndependent: each is controlled separately.\nAlways / On hover / Never: both forced to that mode (the individual dropdowns above grey out).",
+          desc = "Force background and tabs to share a fade mode.\n\nIndependent: each is controlled separately.\nAlways / On hover / Never: both forced to that mode (the individual dropdowns above gray out).",
           surfaces = { options = true, editMode = true },
           values = {
               off     = "Independent",

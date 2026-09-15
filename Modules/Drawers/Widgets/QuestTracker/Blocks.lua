@@ -167,7 +167,7 @@ function QT.CreateBlock()
             if C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
                 C_SuperTrack.SetSuperTrackedQuestID(block._questID)
             end
-            -- Toggle behaviour: clicking the quest that's currently
+            -- Toggle behavior: clicking the quest that's currently
             -- showing in the detail panel closes the whole map. Any
             -- other click routes through Blizzard's standard tracker-
             -- click entry point so the side panel and detail view
@@ -581,9 +581,9 @@ function QT.PopulateBlock(block, quest)
                 stageLbl = string.format(fmt, quest.currentStage)
             end
 
-            -- Match Blizzard's stage-name font + colour. The default
+            -- Match Blizzard's stage-name font + color. The default
             -- title font (ObjectiveTrackerHeaderFont) was too big and
-            -- coloured wrong (we previously inherited the gold of
+            -- colored wrong (we previously inherited the gold of
             -- regular quest titles).
             block.title.text:SetFontObject(_G.GameFontNormal)
             block.title.text:SetTextColor(1.0, 0.831, 0.380)
@@ -591,14 +591,14 @@ function QT.PopulateBlock(block, quest)
             if stageLbl and stageLbl ~= "" then
                 block.title.stageLabel:SetText(stageLbl)
                 block.title.stageLabel:ClearAllPoints()
-                -- Vertically centre the (stageLabel + gap + text)
+                -- Vertically center the (stageLabel + gap + text)
                 -- stack inside block.title (which fills the inner
                 -- area of stageBg with a 8 px inset). Anchoring both
                 -- to title's LEFT/RIGHT (vertical mid-line) puts the
                 -- stack symmetrically around the box's vertical
-                -- centre - Blizzard uses fixed pixel offsets from
+                -- center - Blizzard uses fixed pixel offsets from
                 -- TOPLEFT, but their atlas dimensions don't match
-                -- ours exactly, so a centred anchor adapts.
+                -- ours exactly, so a centered anchor adapts.
                 local gap = 4
                 block.title.stageLabel:SetPoint("BOTTOMLEFT",  block.title, "LEFT",  0, gap / 2)
                 block.title.stageLabel:SetPoint("BOTTOMRIGHT", block.title, "RIGHT", 0, gap / 2)
@@ -638,11 +638,11 @@ function QT.PopulateBlock(block, quest)
     -- the stage *description* (the lore line, e.g. "Assist the
     -- haranir as they battle against unknown attackers.") only on
     -- hover; we used to render it as an extra objective bullet, which
-    -- was visually noisy and didn't match Blizzard's behaviour.
+    -- was visually noisy and didn't match Blizzard's behavior.
     --
     -- The tooltip's anchor flips based on which edge the drawer is
     -- docked to: drawer on the right > tooltip pops to the LEFT
-    -- (toward screen centre), drawer on the left > tooltip pops to
+    -- (toward screen center), drawer on the left > tooltip pops to
     -- the RIGHT. Anchoring the same direction as the drawer would
     -- push the tooltip off-screen / off the edge of the drawer.
     -- Anchored to block.stageBg rather than block.title so the
@@ -837,7 +837,7 @@ function QT.PopulateBlock(block, quest)
         end
 
         if obj.finished or obj.hideDash then
-            -- Completion lines (hideDash) use the "Complete" colour
+            -- Completion lines (hideDash) use the "Complete" color
             -- the same way Blizzard's tracker does.
             line.text:SetTextColor(QT.GetObjectiveDone())
         else

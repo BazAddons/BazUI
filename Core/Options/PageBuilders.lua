@@ -91,7 +91,7 @@
 --                        --   When set, every row in the left list gets up /
 --                        --   down arrow buttons on its right edge. Topmost
 --                        --   and bottommost rows render their boundary arrow
---                        --   greyed out so the affordance is still visible.
+--                        --   grayed out so the affordance is still visible.
 --                        --   The callback receives the same `item` object
 --                        --   getItems returned, so the caller can swap order
 --                        --   with the adjacent neighbour and refresh. Replaces
@@ -141,7 +141,7 @@ function BazUI:CreateManagedListPage(addonName, config)
             }
         end
 
-        -- Resolve the auto-h1 detail title behaviour up front.
+        -- Resolve the auto-h1 detail title behavior up front.
         --   nil / true  -> "h1" (default - matches User Manual)
         --   false       -> no auto-title
         --   "h2"/"h3"   -> use that heading level

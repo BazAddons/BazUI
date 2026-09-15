@@ -14,7 +14,7 @@
 --
 -- opts = {
 --   title       = "...",          -- required, big gold text at top
---   subtitle    = "...",          -- optional small grey instruction line
+--   subtitle    = "...",          -- optional small gray instruction line
 --
 --   content     = "...",          -- pre-fill text. For export, the data
 --                                 -- you want the user to copy. For import,

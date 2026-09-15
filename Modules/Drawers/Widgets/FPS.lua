@@ -23,7 +23,7 @@ local FPS = {}
 addon.FPSWidget = FPS
 
 ---------------------------------------------------------------------------
--- Color thresholds (mirror Performance widget so the colours mean the
+-- Color thresholds (mirror Performance widget so the colors mean the
 -- same thing whichever readout the user is looking at).
 ---------------------------------------------------------------------------
 

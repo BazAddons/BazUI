@@ -28,7 +28,7 @@ Core\ButtonGlow.lua
 Core\EditMode.lua
 Core\Serialization.lua
 Core\Widgets.lua
-# Skin - textures and colours shared by every module.
+# Skin - textures and colors shared by every module.
 Skin\Skin.lua
 Skin\Theme.lua
 Skin\Nameplate.lua

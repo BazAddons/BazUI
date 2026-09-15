@@ -123,7 +123,7 @@ function Button:UpdateUsable(btn)
     local outOfRange = btn._outOfRange and true or false
     -- "Tint the whole button when out of range" off leaves the icon and
     -- frame alone and reddens only the keybind text, so the usable
-    -- colours below still have to run in that case.
+    -- colors below still have to run in that case.
     local tintAll = outOfRange and addon.db.profile.fullRangeColor ~= false
 
     if tintAll then
@@ -268,8 +268,8 @@ end
 ---------------------------------------------------------------------------
 
 -- Blizzard's own flyout arrow, which is bright gold art. That matters:
--- a texture's colour multiplies its vertex colour, so grey art can only
--- ever be made into dark gold, however bright a colour you ask for.
+-- a texture's color multiplies its vertex color, so gray art can only
+-- ever be made into dark gold, however bright a color you ask for.
 local FLYOUT_ARROW = "Interface\\Buttons\\ActionBarFlyoutButton"
 
 -- The arrow's corner of the sheet, pointing up.
@@ -317,7 +317,7 @@ function Button:UpdateFlyoutArrow(btn)
     -- this takes effect without rebuilding the bars.
     arrow:SetSize(look.w, look.h)
     arrow:SetTexCoord(unpack(look.coords))
-    -- The art is already the colour it should be; tinting it only ever
+    -- The art is already the color it should be; tinting it only ever
     -- made it darker.
     arrow:SetVertexColor(1, 1, 1)
     arrow:ClearAllPoints()

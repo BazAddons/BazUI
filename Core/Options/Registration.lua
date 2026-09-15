@@ -307,7 +307,7 @@ local function CreateCanvas(moduleKey)
     canvas.tabKeys   = {}
 
     -- The suite's tab strip (Core/TabStrip.lua) in the same underline
-    -- look the notification centre wears: these sit on a solid panel, so
+    -- look the notification center wears: these sit on a solid panel, so
     -- they need no plate of their own. It sizes itself to its tabs, so
     -- only the anchor is set.
     local strip = BazUI.CreateTabStrip(nil, canvas, {

@@ -164,7 +164,7 @@ local FRAME_STYLES = {
     bazui   = "BazUI",
 }
 
--- Assets\BazUI_Frame.png is 1024x1024 with the ring centred. Its inner
+-- Assets\BazUI_Frame.png is 1024x1024 with the ring centered. Its inner
 -- edge is 87% of the texture width; the N tag and
 -- outer rim stay outside the map. Sized so the inner edge overlaps by a
 -- few pixels to hide the mask's anti-aliasing.

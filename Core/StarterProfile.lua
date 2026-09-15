@@ -43,7 +43,7 @@ BazUI.StarterProfile = {
     Auras = { iconSize = 40 },
 
     Bars = {
-        -- A 14-slot main bar centred along the bottom and a 6-slot bar on
+        -- A 14-slot main bar centered along the bottom and a 6-slot bar on
         -- each side of the player frame. Blizzard's own bar is hidden:
         -- BazUI's bars are the action bars, and the empty slots show
         -- where abilities go.

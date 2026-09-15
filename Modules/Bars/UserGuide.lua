@@ -78,7 +78,7 @@ BazUI:RegisterUserGuide("Bars", {
                     { type = "list", ordered = true, items = {
                         "Scroll to the bottom of the Edit Mode panel",
                         "Click the |cffffd700Create New BazBar|r button",
-                        "A new bar spawns at the centre of your screen",
+                        "A new bar spawns at the center of your screen",
                         "Drag it where you want, then click it again to open settings",
                     }},
                 }),
@@ -96,12 +96,12 @@ BazUI:RegisterUserGuide("Bars", {
                 { type = "lead", text = "Drag almost anything onto a button slot." },
                 { type = "h2", text = "Drag sources" },
                 { type = "table",
-                  columns = { "Source", "Behaviour" },
+                  columns = { "Source", "Behavior" },
                   rows = {
                       { "Spells",          "From your spellbook" },
                       { "Items",           "From your bags — shows live stack counts" },
                       { "Macros",          "From the macro window — name displays under icon" },
-                      { "Mounts",          "From the mount journal, including Random Favourite" },
+                      { "Mounts",          "From the mount journal, including Random Favorite" },
                       { "Equipment Sets",  "From the character pane" },
                   },
                 },
@@ -122,7 +122,7 @@ BazUI:RegisterUserGuide("Bars", {
                 { type = "note", style = "warning", text = "If you have Blizzard's |cffffd700Cast on Key Down|r option enabled, plain click-drag will fire the ability before the drag starts. Use |cffffd700Shift+drag|r to rearrange buttons in that mode." },
                 { type = "note", style = "tip", text = "To stop slips from pulling abilities off your bars, turn on |cffffd700Drag buttons only while Shift is held|r under Bars > General. Plain drags then do nothing; Shift+drag moves a button, and dropping something onto a bar still works. Each bar's own |cffffd700Lock buttons|r switch blocks dragging entirely." },
                 { type = "h2", text = "Filled for you" },
-                { type = "paragraph", text = "A new character logs in with its abilities already on the bars: forms, stances, auras and stealth on the first side bar, everything else on the main bar. Each spell you learn afterwards takes the first empty slot, a new rank of a spell you already have just starts casting from the same button, and anything you no longer know is cleared at login and after a respec. Blizzard's stance bar is hidden, since your stances are here; both behaviours and the stance bar have switches under |cffffd700Bars > General|r, and |cffffd700Fill empty slots|r there does the same pass for an existing character." },
+                { type = "paragraph", text = "A new character logs in with its abilities already on the bars: forms, stances, auras and stealth on the first side bar, everything else on the main bar. Each spell you learn afterwards takes the first empty slot, a new rank of a spell you already have just starts casting from the same button, and anything you no longer know is cleared at login and after a respec. Blizzard's stance bar is hidden, since your stances are here; both behaviors and the stance bar have switches under |cffffd700Bars > General|r, and |cffffd700Fill empty slots|r there does the same pass for an existing character." },
             },
         },
 
@@ -167,7 +167,7 @@ BazUI:RegisterUserGuide("Bars", {
             blocks = {
                 ImageRow("bar-settings-popup", "Per-bar settings popup. Selected bar highlighted yellow; everything you can configure for the bar is here.", {
                     { type = "paragraph", text = "While in Edit Mode, click any BazBar to select it (yellow highlight). Click again to open its settings popup." },
-                    { type = "paragraph", text = "Every per-bar option lives here: layout, visibility, keybinds, appearance, behaviour, and actions like duplicate / export / delete." },
+                    { type = "paragraph", text = "Every per-bar option lives here: layout, visibility, keybinds, appearance, behavior, and actions like duplicate / export / delete." },
                 }),
                 { type = "h2", text = "Layout" },
                 { type = "list", items = {
@@ -202,7 +202,7 @@ BazUI:RegisterUserGuide("Bars", {
                     "|cffffd700Masque skinning|r — per-bar Masque support (when Masque is installed)",
                     "Cooldown sweep + hotkey text visibility",
                 }},
-                { type = "h2", text = "Behaviour" },
+                { type = "h2", text = "Behavior" },
                 { type = "list", items = {
                     "|cffffd700Right-Click Self-Cast|r — cast helpful spells / use items on yourself with right-click on any button",
                     "|cffffd700Edit Button Macrotext|r — write a custom |cff00ff00/cast|r conditional macro per button. Supports |cff00ff00#showtooltip SpellName|r so the icon and tooltip update to whichever spell the macro will cast.",
@@ -212,7 +212,7 @@ BazUI:RegisterUserGuide("Bars", {
                   columns = { "Action", "What it does" },
                   rows = {
                       { "|cffffd700Revert Changes|r",      "Undo every change made since selecting the bar" },
-                      { "|cffffd700Reset Position|r",      "Snap the bar back to the centre of the screen" },
+                      { "|cffffd700Reset Position|r",      "Snap the bar back to the center of the screen" },
                       { "|cffffd700BazUI Bars Settings|r",    "Jump to the full options panel" },
                       { "|cffffd700Export Bar Config|r",   "Copy the bar's complete layout + buttons + settings as a shareable string" },
                       { "|cffffd700Duplicate This Bar|r",  "Clone the bar with all its assignments in one click" },
@@ -258,7 +258,7 @@ BazUI:RegisterUserGuide("Bars", {
                 { type = "h2", text = "Importing" },
                 { type = "list", items = {
                     "|cff00ff00/bb import|r opens an empty paste dialog",
-                    "Paste the shared string and confirm — a new bar with the imported config spawns at the centre of your screen",
+                    "Paste the shared string and confirm — a new bar with the imported config spawns at the center of your screen",
                     "Drag it where you want and you're done",
                 }},
                 { type = "h2", text = "Duplicating" },
@@ -313,9 +313,9 @@ BazUI:RegisterUserGuide("Bars", {
                 { type = "list", items = {
                     "Use a visibility macro like |cffffd700[combat] show; hide|r to make a bar appear only in combat",
                     "Items show live bag counts — handy for tracking herbs, ore, or potion stacks while farming",
-                    "Random Favourite Mount works as a button — one click to roll a random mount",
+                    "Random Favorite Mount works as a button — one click to roll a random mount",
                     "Bars don't take action slots, so all 120 default slots stay free",
-                    "Combine Bars with the Drawers module for a fully customised UI without Blizzard slot constraints",
+                    "Combine Bars with the Drawers module for a fully customized UI without Blizzard slot constraints",
                 }},
             },
         },

@@ -171,7 +171,7 @@ function UnitBars:Remove(id)
                 -- whether it is on screen: RegisterUnitWatch does, in
                 -- the secure environment, and it goes on showing the
                 -- frame whenever the unit exists. Hiding a deleted bar
-                -- without cancelling that is why one stayed on screen
+                -- without canceling that is why one stayed on screen
                 -- with no handle to grab, until a reload.
                 if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
                 bar.frame:SetAttribute("unit", nil)
@@ -363,8 +363,8 @@ local function Number(n)
 end
 
 local function HealthColor(unit)
-    -- Offline reads as grey whatever else is true of them: a party
-    -- member's last known health is not worth colouring as if it were
+    -- Offline reads as gray whatever else is true of them: a party
+    -- member's last known health is not worth coloring as if it were
     -- current.
     if UnitIsConnected and not UnitIsConnected(unit) then return OFFLINE_COLOR end
     if addon:GetSetting("classColor") and UnitIsPlayer(unit) then
@@ -417,7 +417,7 @@ end
 ---------------------------------------------------------------------------
 
 -- A bar for a unit that is not there, while the layout is being
--- arranged: full, grey, and named after the slot it stands for.
+-- arranged: full, gray, and named after the slot it stands for.
 local function DrawPlaceholder(bar, fraction)
     -- Nothing that made it fade still applies: there is no unit to be
     -- out of range of, and no resource to be missing.
@@ -603,7 +603,7 @@ local function CastName(display, name, channel)
             return candidate
         end
     end
-    return channel and "Channelling" or "Casting"
+    return channel and "Channeling" or "Casting"
 end
 
 function UnitBars:SyncCast(bar)
@@ -817,7 +817,7 @@ end
 --
 -- The handle, the snapping and the landing line all live in
 -- Core/DockMover.lua, because a row of auras wants exactly the same
--- behaviour and should not have a second copy of it. What stays here is
+-- behavior and should not have a second copy of it. What stays here is
 -- the part only a bar can answer: what a drop means for its definition.
 ---------------------------------------------------------------------------
 
@@ -879,7 +879,7 @@ local TAKES = {
     half = "Half the width",
     own  = "Its own width",
 }
-local ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+local ALIGNS = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
 
 function UnitBars:EditSettings(bar)
     local def = bar.def

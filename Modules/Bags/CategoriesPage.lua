@@ -32,7 +32,7 @@ local function ItemDisplayName(itemID)
     if not itemID then return "?" end
     local name, link = C_Item.GetItemInfo(itemID)
     if name then
-        -- Prefer the colored link if available so quality colours come through.
+        -- Prefer the colored link if available so quality colors come through.
         return link or name
     end
     return "Item " .. itemID
@@ -261,7 +261,7 @@ local function CreateRuleRowWidget(parent, opt, contentWidth)
                     -- Replace with a default-shaped tag for the new
                     -- type. The existing op/value almost certainly
                     -- don't translate (e.g. switching from Quality to
-                    -- Name) so the cleanest behaviour is a fresh
+                    -- Name) so the cleanest behavior is a fresh
                     -- starter the user can refine.
                     addon.Categories.UpdateTag(key, idx,
                         addon.Categories.MakeDefaultTag(t.value))
@@ -404,7 +404,7 @@ local function BuildCategoryDetail(item)
 
     blocks[#blocks+1] = {
         type  = "note", style = "tip",
-        text  = "Lower numbers match first. Independent of where this category sits in the bag panel - so a custom \"PoE Equipment\" category can live at the bottom of the bag (priority 5) and still claim items before \"Equipment\" (priority 10) does. Junk ships at priority 5 so grey items always vendor together regardless of bag layout.",
+        text  = "Lower numbers match first. Independent of where this category sits in the bag panel - so a custom \"PoE Equipment\" category can live at the bottom of the bag (priority 5) and still claim items before \"Equipment\" (priority 10) does. Junk ships at priority 5 so gray items always vendor together regardless of bag layout.",
     }
 
     blocks[#blocks+1] = {
@@ -601,7 +601,7 @@ if BazUI.QueueForLogin then
             intro    = "Categories group items by what they are. Default categories auto-classify by item type; custom categories collect items you pin to them. Pick a category on the left to rename it, reorder it, pin items, or delete it.",
 
             getItems    = function()
-                -- Decorate the list with grey suffixes so the user
+                -- Decorate the list with gray suffixes so the user
                 -- can see at a glance which categories are hidden
                 -- from the bag panel and which are protected
                 -- (catch-all only, currently just Other).
@@ -647,7 +647,7 @@ if BazUI.QueueForLogin then
             -- slider in the detail pane. Click the arrow, the row jumps
             -- one slot, the bag panel re-renders. Top/bottom rows
             -- render their boundary arrow disabled automatically (the
-            -- shared row renderer handles the greying based on whether
+            -- shared row renderer handles the graying based on whether
             -- we hand it a callback for that direction).
             onMoveUp = function(item)
                 addon.Categories.MoveUp(item.key)

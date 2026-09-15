@@ -41,7 +41,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         showDuration  = true,
         showCount     = true,
         showWeapons   = true,   -- weapon enchants (poisons, sharpening stones) among the buffs
-        debuffBorders = true,   -- colour debuff rims by dispel type (Magic, Curse, Disease, Poison)
+        debuffBorders = true,   -- color debuff rims by dispel type (Magic, Curse, Disease, Poison)
 
         -- Sorting (the header's own sort: INDEX = order applied, TIME, NAME)
         sortMethod    = "INDEX",

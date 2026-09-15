@@ -118,7 +118,7 @@ Codex.addon = addon
 --     tip = "Resets Wednesday", icon = "Interface\\Icons\\..." }
 --
 -- state is "open" (available), "locked" (on cooldown or saved), "done"
--- (finished) or nil (no state colour).
+-- (finished) or nil (no state color).
 ---------------------------------------------------------------------------
 
 Codex.sections = Codex.sections or {}

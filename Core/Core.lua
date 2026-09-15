@@ -328,7 +328,7 @@ BazUI:QueueForLogin(function()
 
     -- (the rest of this callback registers BazUI's own pages -
     -- Landing, Settings subcategory, Profiles subcategory)
-    -- Labelled "BazUISelfPages" so the memory-log phase markers
+    -- Labeled "BazUISelfPages" so the memory-log phase markers
     -- attribute any allocation that happens here cleanly.
 
     -- Root entry. BazUI's own pages (General Settings, Profiles, User
@@ -545,7 +545,7 @@ BazUI:QueueForLogin(function()
                     print("  target exists:", UnitExists("target"), " charmed:", UnitIsCharmed("player"), " spell targeting:", _G.SpellIsTargeting())
                     local casting = _G.UnitCastingInfo and _G.UnitCastingInfo("player")
                     local channel = _G.UnitChannelInfo and _G.UnitChannelInfo("player")
-                    print("  casting:", tostring(casting), " channelling:", tostring(channel), " (Esc stops a cast before it clears the target)")
+                    print("  casting:", tostring(casting), " channeling:", tostring(channel), " (Esc stops a cast before it clears the target)")
                     print("  in combat lockdown:", InCombatLockdown())
                     local root = _G.BazUITargetFrame
                     if root then

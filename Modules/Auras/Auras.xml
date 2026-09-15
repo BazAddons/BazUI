@@ -6,7 +6,7 @@
         <Layers>
             <Layer level="BACKGROUND" textureSubLevel="-1">
                 <!-- Rim: a rounded square two pixels larger than the icon,
-                     dark for buffs, coloured by dispel type for debuffs. -->
+                     dark for buffs, colored by dispel type for debuffs. -->
                 <Texture parentKey="Border">
                     <Anchors>
                         <Anchor point="TOPLEFT" x="-2" y="2"/>

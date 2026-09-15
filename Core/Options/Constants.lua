@@ -61,7 +61,7 @@ O.PANEL_BORDER   = { 0.25, 0.25, 0.3, 0.6 }
 O.LIST_BG        = { 0.03, 0.03, 0.05, 0.6 }
 O.HEADER_LINE    = { 0.62, 0.48, 0.20, 0.55 }
 
--- Floating-dialog colours (Popup, CopyDialog, IconPicker). Brighter
+-- Floating-dialog colors (Popup, CopyDialog, IconPicker). Brighter
 -- and more opaque than the inline PANEL_* tones so a popup floating
 -- over arbitrary game content (the world, a Blizzard frame, etc.)
 -- stays clearly delineated. Inline panels keep PANEL_BG / PANEL_BORDER
@@ -110,7 +110,7 @@ end
 -- Returns a {textures...} group that the caller toggles via Show()/Hide()
 -- when the row's selection state changes. Mirrors the highlight used by
 -- Traveler's Log + Quest tracker dialogues - two horizontal bands
--- fading inward to a centre crest, plus thin gold lines at top + bottom
+-- fading inward to a center crest, plus thin gold lines at top + bottom
 -- that fade to transparent at each edge.
 --
 -- Used by both the User Manual tree (Options/UserGuide.lua) and the
@@ -238,7 +238,7 @@ O.SECTION_HEADER_HEIGHT = (O.LIST_ITEM_HEIGHT or 28) + 4
 -- O.RenderListRows — one shared row builder for every list/sidebar in
 -- the suite. Pages converted their domain-specific data (tree nodes,
 -- option-table groups, top-level sub-categories) into a flat array of
--- row specs and hand it off here, which means visuals + behaviour stay
+-- row specs and hand it off here, which means visuals + behavior stay
 -- in lockstep across:
 --   * The standalone window's left sidebar (Registration.lua)
 --   * The User Manual tree (UserGuide.lua)
@@ -248,14 +248,14 @@ O.SECTION_HEADER_HEIGHT = (O.LIST_ITEM_HEIGHT or 28) + 4
 --   {
 --     key        = unique string,
 --     label      = display text,
---     count      = optional number (rendered as "  (N)" suffix in grey),
+--     count      = optional number (rendered as "  (N)" suffix in gray),
 --     isParent   = true for chapter-divider headers (BG + accent +
 --                  bottom rule + +/- chevron). Default false.
 --     expanded   = parent rows: true shows minus, false shows plus.
 --                  Ignored for non-parent rows.
 --     isSelected = true to draw the gold-gradient highlight + white
 --                  text. Parent rows skip the gradient (chapter chrome
---                  is enough) but still get the white text colour.
+--                  is enough) but still get the white text color.
 --     depth      = optional indentation level (0 = flush left).
 --     indent     = optional extra pixels of indent on top of depth.
 --     onClick    = function() called on left-click.
@@ -339,7 +339,7 @@ function O.RenderListRows(listContent, rows, opts)
         -- Move-up / move-down arrows on the right edge. Rendered as
         -- child Buttons so clicking an arrow doesn't trigger the row's
         -- OnClick. A nil callback on either side draws the arrow
-        -- disabled (greyed out, non-clickable) so the user still sees
+        -- disabled (grayed out, non-clickable) so the user still sees
         -- the affordance but understands they're at a list boundary.
         -- Only emitted when the spec sets either callback - rows
         -- without ordering (User Manual tree, source headers) skip
@@ -347,8 +347,8 @@ function O.RenderListRows(listContent, rows, opts)
         --
         -- Style: custom 32x32 PNGs (one set per direction) under
         -- Textures/Sort_Arrows/. Each direction has Normal/Hover/Pressed
-        -- variants; disabled state is the Normal texture greyed via
-        -- vertex colour. Drawing both directions explicitly (instead of
+        -- variants; disabled state is the Normal texture grayed via
+        -- vertex color. Drawing both directions explicitly (instead of
         -- rotating one) keeps any baked-in gloss / shading naturally
         -- oriented and avoids the asymmetry-under-rotation issues we
         -- had with common-dropdown-a-button.

@@ -199,7 +199,7 @@ end
 
 -- Two position shapes: the starter profile anchors the bar to a screen
 -- edge ({ point, relPoint, x, y }), and BazUI Edit Mode saves the bar's
--- centre as a screen-pixel offset from the centre of UIParent ({ x, y }).
+-- center as a screen-pixel offset from the center of UIParent ({ x, y }).
 local function ApplyPosition()
     bar:ClearAllPoints()
     local pos = addon:GetSetting("position")
@@ -311,7 +311,7 @@ function addon:PrintDebug()
     self:Print(("settings: enabled=%s mouseoverFade=%s fadeAlpha=%s size=%s spacing=%s position=%s"):format(
         tostring(self:GetSetting("enabled")), tostring(self:GetSetting("mouseoverFade")), tostring(self:GetSetting("fadeAlpha")),
         tostring(self:GetSetting("buttonSize")), tostring(self:GetSetting("spacing")),
-        pos and (pos.point and ("%s %s %s,%s"):format(pos.point, pos.relPoint or pos.point, pos.x, pos.y) or ("centre %.0f,%.0f"):format(pos.x or 0, pos.y or 0)) or "nil"))
+        pos and (pos.point and ("%s %s %s,%s"):format(pos.point, pos.relPoint or pos.point, pos.x, pos.y) or ("center %.0f,%.0f"):format(pos.x or 0, pos.y or 0)) or "nil"))
 end
 
 local function SetBlizzardHidden(hide)

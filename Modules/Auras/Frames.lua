@@ -359,8 +359,8 @@ end
 --
 -- The secure header is not what moves. It cannot be, in combat. Each
 -- group is an ordinary frame with the header anchored inside it at the
--- corner its rows run from, and the frame is what docks. Centring then
--- costs nothing: the frame is anchored centre to centre, so widening it
+-- corner its rows run from, and the frame is what docks. Centering then
+-- costs nothing: the frame is anchored center to center, so widening it
 -- as icons arrive spreads the row evenly without touching anything
 -- secure. That is the one thing the artwork frames could never do.
 ---------------------------------------------------------------------------
@@ -378,7 +378,7 @@ local UNITS   = {
 
 addon.ROW_FILTERS = FILTERS
 addon.ROW_UNITS   = UNITS
-addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
 addon.ROW_GROWTH  = { RIGHT = "Left to right", LEFT = "Right to left" }
 addon.ROW_STACK   = { AUTO = "Away from the dock", DOWN = "Downward", UP = "Upward" }
 addon.ROW_SORTS   = { INDEX = "Order applied", TIME = "Time remaining", NAME = "Name" }
@@ -395,6 +395,14 @@ local rowFrames = {}        -- [id] = the ordinary frame that docks
 local refitting = false     -- guards the resize-begets-resize loop
 
 function addon:RowFrame(id) return rowFrames[id] end
+
+-- Whether anything on screen cares about this unit's auras.
+function addon:HasRowFor(unit)
+    for _, def in ipairs(self:Rows()) do
+        if def.unit == unit then return true end
+    end
+    return false
+end
 
 -- What a row has been told, or what the module says otherwise. Every
 -- layout value works this way: set it on a row and that row uses it,
@@ -643,7 +651,7 @@ end
 -- size they had when the fight started, icons still come and go inside
 -- them securely, and the size is taken again when combat ends. Left and
 -- right aligned rows never needed it anyway, since they grow from their
--- anchored end; a centred one is briefly off centre.
+-- anchored end; a centered one is briefly off center.
 local function VisibleIcons(header)
     local count = 0
     for index = 1, select("#", header:GetChildren()) do
@@ -1005,7 +1013,7 @@ local DEMO_BUFFS = {
     "Spell_Holy_Renew", "Spell_Nature_Thorns", "Spell_Holy_SealOfMight",
     "Spell_Nature_StrengthOfEarthTotem02", "Ability_Hunter_AspectOfTheMonkey", "Spell_Fire_FireArmor",
 }
--- Icon and dispel type, so the rim colours show.
+-- Icon and dispel type, so the rim colors show.
 local DEMO_DEBUFFS = {
     { "Spell_Shadow_CurseOfTounges", "Curse" },      { "Spell_Nature_CorrosiveBreath", "Poison" },
     { "Spell_Shadow_CallofBone", "Disease" },        { "Spell_Fire_Immolation", "Magic" },
@@ -1219,10 +1227,16 @@ function addon:Initialize()
         end
     end)
 
+    -- Any unit somebody has made a row for, not the two there used to
+    -- be. A party row that never heard about its member's auras kept the
+    -- size it had while empty, so the icons ran out of a one-pixel frame
+    -- and a centered row was centered on nothing.
     self:On("UNIT_AURA", function(_, unit)
-        if unit == "player" or unit == "target" then self:QueueRefresh() end
+        if unit and self:HasRowFor(unit) then self:QueueRefresh() end
     end)
     self:On("PLAYER_TARGET_CHANGED", function() self:QueueRefresh() end)
+    -- Party slots change hands without any unit event of their own.
+    self:On("GROUP_ROSTER_UPDATE", function() self:QueueRefresh() end)
     self:On("UNIT_INVENTORY_CHANGED", function(_, unit)
         if unit == "player" then self:QueueRefresh() end
     end)

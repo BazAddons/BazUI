@@ -305,9 +305,9 @@ local function Render(content, width)
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
             or "Interface\\Icons\\INV_Misc_QuestionMark")
         row.label:SetText(name or entry.name)
-        local colour = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
-        if colour then
-            row.label:SetTextColor(colour.r, colour.g, colour.b)
+        local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+        if color then
+            row.label:SetTextColor(color.r, color.g, color.b)
         else
             row.label:SetTextColor(unpack(Theme.colors.text))
         end

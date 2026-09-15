@@ -26,9 +26,9 @@
 --                along the top of the selected tab. Tabs that sit above
 --                a page: the options canvas, the chat dock.
 --   "underline"  Text alone, the selected one bright over a gold rule.
---                Tabs inside a panel: the notification centre.
+--                Tabs inside a panel: the notification center.
 --
--- Colours come from the shared theme, so a tab reads like everything
+-- Colors come from the shared theme, so a tab reads like everything
 -- else in the suite.
 ---------------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ function Underline.Create(strip)
     SetTexColor(tab.underline, Theme.colors.gold)
     tab.underline:Hide()
 
-    -- Hover previews the selected colour without moving the rule.
+    -- Hover previews the selected color without moving the rule.
     tab:HookScript("OnEnter", function(self)
         if not self.isSelected then self.Text:SetTextColor(unpack(Theme.colors.gold)) end
     end)

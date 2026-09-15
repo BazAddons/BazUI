@@ -54,7 +54,7 @@ local function BuildRow(parent, opt, contentWidth, ctrlWidth)
     return frame, h
 end
 
--- Control anchor: vertically centred on the first line of the row.
+-- Control anchor: vertically centered on the first line of the row.
 local function AnchorControl(frame, control, width, height)
     control:SetSize(width, height)
     control:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -O.ROW_PAD, -((O.ROW_H - height) / 2))
@@ -394,7 +394,7 @@ end
 -- Registry
 
 ---------------------------------------------------------------------------
--- Flags: one row, several small labelled checkboxes
+-- Flags: one row, several small labeled checkboxes
 --
 -- For a setting that is not one yes-or-no but a handful of independent
 -- ones that belong together, where splitting them into a row each would

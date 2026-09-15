@@ -170,7 +170,7 @@ BazUI:RegisterUserGuide("Drawers", {
                     "Drawer cannot collapse",
                     "All chrome is hidden (label, widget count, info button)",
                     "Widget title-bar space collapses so widgets pack flush",
-                    "Fade settings are greyed out in the options panel",
+                    "Fade settings are grayed out in the options panel",
                 }},
                 { type = "h2", text = "Unlocking" },
                 { type = "paragraph", text = "Hover anywhere on the drawer — the lock icon reappears. Click it to unlock and restore chrome." },
@@ -201,7 +201,7 @@ BazUI:RegisterUserGuide("Drawers", {
                     "|cffffd700Same title bar fade on every widget|r — one switch for every widget's title bar",
                     "|cffffd700Same background fade on every widget|r — one switch for every widget's background",
                 }},
-                { type = "note", style = "tip", text = "While a shared switch is on, that setting is greyed out on each widget's own page. Turn it off to return every widget to its own setting." },
+                { type = "note", style = "tip", text = "While a shared switch is on, that setting is grayed out on each widget's own page. Turn it off to return every widget to its own setting." },
             },
         },
 
@@ -215,7 +215,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "h2", text = "Dungeon Finder" },
                 { type = "lead", text = "Dormant queue status panel - appears when you queue through the group finder." },
                 { type = "list", items = {
-                    "Role fill indicators (tank / healer / DPS) with colour-coded counts",
+                    "Role fill indicators (tank / healer / DPS) with color-coded counts",
                     "Average wait time estimate and a live queue timer in the title bar",
                     "Dungeon name subtitle and a Leave Queue button",
                     "Title turns green on Group Found",
@@ -234,7 +234,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "h2", text = "Reset Timers" },
                 { type = "list", items = {
                     "Countdown to the next daily and weekly reset",
-                    "Colour shifts from green to yellow to red as the deadline approaches",
+                    "Color shifts from green to yellow to red as the deadline approaches",
                 }},
             },
         },
@@ -244,7 +244,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "h2", text = "Repair" },
                 { type = "list", items = {
                     "Durability display: paper doll, damaged-slot list and durability percent",
-                    "Worst-damaged slots first, colour-graded green to red; average durability in the title bar",
+                    "Worst-damaged slots first, color-graded green to red; average durability in the title bar",
                     "Three paper-doll modes: icon grid, Blizzard's DurabilityFrame, or none",
                     "Optional suppression of Blizzard's default durability figure",
                 }},
@@ -310,10 +310,10 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "h2", text = "To-Do List" },
                 { type = "list", items = { "Type and Enter to add a task, tick to complete, X to delete; saved per character" } },
                 { type = "h2", text = "Calculator" },
-                { type = "list", items = { "A 5x4 calculator with colour-coded operators, equals and function keys" } },
+                { type = "list", items = { "A 5x4 calculator with color-coded operators, equals and function keys" } },
                 { type = "h2", text = "Performance and FPS" },
                 { type = "list", items = {
-                    "Performance: frame rate plus home and world latency, colour-coded",
+                    "Performance: frame rate plus home and world latency, color-coded",
                     "FPS: frame rate only, with a rolling one-minute low and high",
                 }},
             },
@@ -343,7 +343,7 @@ BazUI:RegisterUserGuide("Drawers", {
         {
             title = "Profiles",
             blocks = {
-                { type = "paragraph", text = "Drawers uses BazUI's profile system. Each character can have its own profile — different drawers, different widget loadouts, different fade behaviours." },
+                { type = "paragraph", text = "Drawers uses BazUI's profile system. Each character can have its own profile — different drawers, different widget loadouts, different fade behaviors." },
                 { type = "paragraph", text = "Open |cffffd700Settings → BazUI → Profiles|r to create, switch, copy from, reset, or delete profiles." },
                 { type = "note", style = "tip", text = "One profile covers every BazUI module, so switching profiles changes Drawers, Chat and Bags together." },
             },

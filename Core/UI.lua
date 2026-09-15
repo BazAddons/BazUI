@@ -246,7 +246,7 @@ function BazUI:CreatePortraitWindow(globalName, opts)
 
     -- Position handling. With savedAddon + savedKey we restore the
     -- last-used position on creation and persist on drag-stop.
-    -- Without them the frame is just centred and drag is ephemeral.
+    -- Without them the frame is just centered and drag is ephemeral.
     local savedAddon = opts.savedAddon
     local savedKey   = opts.savedKey
     do
@@ -394,7 +394,7 @@ function BazUI:CreateItemButton(parent, opts)
     btn.icon:Hide()
 
     -- Quality border (default on). WhiteIconFrame is the same texture
-    -- Blizzard's ItemButton uses; vertex-tinted per quality colour.
+    -- Blizzard's ItemButton uses; vertex-tinted per quality color.
     if opts.quality ~= false then
         btn.IconBorder = btn:CreateTexture(nil, "OVERLAY")
         btn.IconBorder:SetTexture("Interface/Common/WhiteIconFrame")

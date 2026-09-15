@@ -20,7 +20,7 @@
 --
 -- Visual primitives match the rest of BazUI - UIPanelButtonTemplate,
 -- InputBoxTemplate, UICheckButtonTemplate, UIPanelCloseButton, the
--- the shared flat chrome with DIALOG_BG/DIALOG_BORDER colours, fonts
+-- the shared flat chrome with DIALOG_BG/DIALOG_BORDER colors, fonts
 -- from O.HEADER_FONT/O.LABEL_FONT - so popups feel native to the
 -- BazUI options window, not bolted on.
 --

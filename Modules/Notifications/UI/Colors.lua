@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
--- Notification colours, all drawn from the shared BazUI theme so the
+-- Notification colors, all drawn from the shared BazUI theme so the
 -- bell, toasts and panel match the rest of the suite.
 local addon = BazUI.Notifications
 local T = BazUI.Skin.Theme.colors

@@ -17,12 +17,12 @@ rest of the suite already reads that way.
 
 ## What a dockable is
 
-One contract, two behaviours against a host:
+One contract, two behaviors against a host:
 
-| Behaviour | Who uses it | What it does |
+| Behavior | Who uses it | What it does |
 |---|---|---|
 | Stretch | bars | Takes the host's width, sits on its top or bottom edge |
-| Align | auras | Sits left, right or centre within the host's width |
+| Align | auras | Sits left, right or center within the host's width |
 
 A host is an action bar, another dockable, or nothing (floating).
 
@@ -52,12 +52,12 @@ Configuration being out of combat handles everything the player changes.
 It does not touch what the game changes mid-fight, and both of these have
 to be built the right way from the start:
 
-1. **A centred aura row moves whenever the aura count changes**, which is
+1. **A centered aura row moves whenever the aura count changes**, which is
    constantly, in combat. A secure frame cannot be repositioned then. The
    answer is to put the secure header inside an ordinary frame and move
    that: an unprotected parent can be repositioned in combat even when
    its children are protected. Left and right alignment need none of
-   this, so if centring ever misbehaves it degrades to a fixed edge.
+   this, so if centering ever misbehaves it degrades to a fixed edge.
 2. **A target bar appears and disappears with the target.** That is the
    gap rule above, and it resolves in a layout pass, not a settings one.
 
@@ -92,10 +92,10 @@ Dictated by the aura headers, which are secure and anchored to
 3. Player health, power and cast as dockables. XP and reputation move
    onto the same system.
 4. Target, same code with the unit as a parameter.
-5. Auras re-anchored, with the unprotected wrapper for centring.
+5. Auras re-anchored, with the unprotected wrapper for centering.
    **Done**, with one correction to the plan. Rows are dockables you
    create: the header sits inside an ordinary frame, and that frame
-   docks. Centring is a SetSize on that frame as icons arrive - but an
+   docks. Centering is a SetSize on that frame as icons arrive - but an
    unprotected wrapper buys a parent you may move, not one you may move
    at any time. A secure header anchored to it makes resizing it a
    protected action, blocked in combat like any other. Rows therefore

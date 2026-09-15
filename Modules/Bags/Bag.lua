@@ -170,7 +170,7 @@ local function GetOrCreateSlotButton(bagID, slotID)
     -- Shift+right-click > category context menu. PreClick fires before
     -- the secure action handler (which would normally use the item on
     -- right-click), so we can show our menu without losing the rest of
-    -- the slot's standard behaviour. shift+right is unbound by default
+    -- the slot's standard behavior. shift+right is unbound by default
     -- in modern WoW so this doesn't compete with use-item / split-stack.
     btn:HookScript("PreClick", function(self, mouseBtn)
         if mouseBtn == "RightButton" and IsShiftKeyDown() then
@@ -352,7 +352,7 @@ local function UpdateSlot(btn, bagID, slotID)
         end
     end
 
-    -- New-item glow, Blizzard's rules: quality-coloured atlas, one flash,
+    -- New-item glow, Blizzard's rules: quality-colored atlas, one flash,
     -- then the slow pulse until the item is touched.
     local newTex, flash, glow = btn.NewItemTexture, btn.flashAnim, btn.newitemglowAnim
     if newTex then
@@ -544,7 +544,7 @@ local function BuildFrame()
     -- setting (Refresh applies SetAlpha to both).
     --
     -- Uses Blizzard's "spec-background" atlas - the same textured
-    -- mid-grey backdrop the BazUI standalone options window uses,
+    -- mid-gray backdrop the BazUI standalone options window uses,
     -- so the bag panel reads as part of the game UI rather than a
     -- stark dark void.
     frame.solidBg = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
@@ -558,11 +558,11 @@ local function BuildFrame()
     -- whole row at the bottom of the panel.
     --
     -- Anchored by its RIGHT (right-middle) edge instead of TOPRIGHT so
-    -- the vertical centre lines up with the search bar's centre
+    -- the vertical center lines up with the search bar's center
     -- regardless of the money frame's intrinsic height (which varies
-    -- with Blizzard's template). Search bar centre:
-    --   TOPLEFT y = -37, height 18  >  centre y = -46
-    -- Pinning money's right-middle to (-12, -46) puts both centres on
+    -- with Blizzard's template). Search bar center:
+    --   TOPLEFT y = -37, height 18  >  center y = -46
+    -- Pinning money's right-middle to (-12, -46) puts both centers on
     -- the same horizontal line.
     frame.money = CreateFrame("Frame", "BazUIBagsMoneyFrame", frame, "SmallMoneyFrameTemplate")
     frame.money:ClearAllPoints()
@@ -922,7 +922,7 @@ function Bag:Refresh()
 
     -- Pin the frame to its current top-left corner before any resize
     -- so width/height changes grow toward bottom-right rather than
-    -- expanding outward from the centre. Without this, toggling
+    -- expanding outward from the center. Without this, toggling
     -- Categorize mode (or any setting that changes height) visually
     -- shifts the title bar / portrait icon - reads as jittery.
     -- BazUI's drag-stop handler re-saves whichever anchor GetPoint

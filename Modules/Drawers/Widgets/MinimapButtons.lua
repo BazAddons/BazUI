@@ -2,7 +2,7 @@
 -- BazUI Drawers Widget: MinimapButtons
 --
 -- Scans the Minimap for addon buttons and reparents them into a grid
--- inside the drawer. LibDBIcon buttons are recognised by name
+-- inside the drawer. LibDBIcon buttons are recognized by name
 -- (LibDBIcon10_<Name>). Addons that roll their own button (Vaultloom,
 -- Zygor, ...) are caught by a conservative heuristic: a *named* Button
 -- child of Minimap, roughly minimap-button sized, whose name doesn't
@@ -198,7 +198,7 @@ local adopted = {}
 -- Every addon ships its own minimap button art: LibDBIcon's 31px button
 -- with a 17px icon, a tracking-border ring and a background disc, plus
 -- countless hand-rolled variants. The optional BazUI style unifies them:
--- the icon is centred, cropped and clipped to a circle, the addon's own
+-- the icon is centered, cropped and clipped to a circle, the addon's own
 -- ring / background textures are faded out, and Assets\\minimapButtonFrame.png
 -- is drawn over the top so every button wears the same brass ring.
 --
@@ -214,7 +214,7 @@ local BUTTON_STYLES = {
     bazui   = "BazUI",
 }
 
--- minimapButtonFrame.png is 128x128 with the ring centred; its inner edge
+-- minimapButtonFrame.png is 128x128 with the ring centered; its inner edge
 -- is 70% of the texture and its outer edge touches the texture edge, so
 -- SetAllPoints(button) makes the ring exactly one slot wide.
 local BAZUI_BUTTON_RING_FILE = BazUI.Skin.BUTTON_RING
@@ -407,7 +407,7 @@ local function ApplyButtonSkin(btn)
 
     -- Icons the addon already masks (BazUI's own button uses SetMask,
     -- for one) reject SetTexCoord outright. Those keep their coords and
-    -- their shape - we only centre them and draw the ring. Detected by
+    -- their shape - we only center them and draw the ring. Detected by
     -- counting mask textures and, because SetMask masks don't count,
     -- by probing SetTexCoord with the coords it already has. The wrapper
     -- isn't installed yet here, so the probe hits the real method.

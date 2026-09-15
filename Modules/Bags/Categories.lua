@@ -30,7 +30,7 @@ local Categories = addon.Categories
 -- numbers match first. Decoupled from `order` (the bag panel display
 -- position) so a category can sit at the bottom of the bag visually
 -- but still capture items before broader rules above it. Defaults
--- ship with matchPriority == order so the existing behaviour is
+-- ship with matchPriority == order so the existing behavior is
 -- preserved on first install; users who want specificity-over-position
 -- override matchPriority via the detail page.
 Categories.FACTORY_DEFAULTS = {
@@ -77,10 +77,10 @@ Categories.FACTORY_DEFAULTS = {
     },
     {
         -- Junk sits at display order 50 (low in the bag panel) but
-        -- gets matchPriority 5 - it has to claim grey items before
-        -- Equipment / Consumables / etc. would, otherwise a grey
+        -- gets matchPriority 5 - it has to claim gray items before
+        -- Equipment / Consumables / etc. would, otherwise a gray
         -- weapon lands in Equipment instead of Junk and the user
-        -- can't bulk-vendor greys.
+        -- can't bulk-vendor grays.
         key = "junk", name = "Junk", order = 50, matchPriority = 5,
         matchMode = "all",
         tags = {
@@ -193,7 +193,7 @@ function Categories.EnsureDefaults()
             -- Backfill matchPriority on installs that pre-date the
             -- decoupled-priority feature. Defaults get their factory
             -- priority; everything else falls back to its display
-            -- order so behaviour stays identical until the user
+            -- order so behavior stays identical until the user
             -- explicitly changes it.
             if cats[def.key].matchPriority == nil then
                 cats[def.key].matchPriority = def.matchPriority
@@ -309,7 +309,7 @@ end
 -- orderings shuffle to match.
 --
 -- Both no-op cleanly at the list edges, matching the renderer which
--- greys out the boundary arrow.
+-- grays out the boundary arrow.
 ---------------------------------------------------------------------------
 
 local function SwapOrders(keyA, keyB)
@@ -348,7 +348,7 @@ end
 
 -- Hidden categories still exist in the data model - items can still be
 -- classified/pinned to them - but the bag layout skips them entirely
--- (no divider, no items, no drop slot). Useful for "Junk" so grey
+-- (no divider, no items, no drop slot). Useful for "Junk" so gray
 -- items don't visually clutter the bag while still occupying their
 -- real container slots, and for stashing items the user wants out of
 -- the way without permanently removing them.
@@ -539,7 +539,7 @@ Categories.EQUIP_SLOT_OPTIONS = {
 }
 
 Categories.QUALITY_OPTIONS = {
-    { value = 0, label = "Poor (Grey)"        },
+    { value = 0, label = "Poor (Gray)"        },
     { value = 1, label = "Common (White)"     },
     { value = 2, label = "Uncommon (Green)"   },
     { value = 3, label = "Rare (Blue)"        },
@@ -962,7 +962,7 @@ function Categories.Classify(itemID, quality, classID)
     -- 2. Tag-based matching for ALL categories (default + custom).
     -- Walk by matchPriority ASC (NOT display order); first category
     -- whose tags match wins. Junk's factory matchPriority is 5 so a
-    -- grey weapon lands in Junk before Equipment (priority 10) gets
+    -- gray weapon lands in Junk before Equipment (priority 10) gets
     -- a look, even though Junk's display order is 50 (low in the
     -- bag panel). Categories with no tags (e.g. "Other" by design)
     -- are skipped so they only ever match via the catch-all below.

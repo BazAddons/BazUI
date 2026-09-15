@@ -4,13 +4,13 @@
 --
 -- Bars and aura blocks attach to things. A health bar sits under an
 -- action bar and takes its width; a power bar sits under the health bar;
--- a block of auras sits above one of them, aligned to an edge or centred.
+-- a block of auras sits above one of them, aligned to an edge or centered.
 -- Anything can also float, which is just being docked to nothing.
 --
--- Two behaviours against a host, declared by the follower:
+-- Two behaviors against a host, declared by the follower:
 --
 --   "stretch"  take the host's width and sit on its edge. Bars.
---   "align"    keep your own width and sit left, right or centre within
+--   "align"    keep your own width and sit left, right or center within
 --              the host's. Aura blocks.
 --
 -- Rules the suite settled on:

@@ -29,7 +29,7 @@ end
 -- "Same on every bar"
 --
 -- An override forces one value onto every bar; each bar's own setting
--- is greyed out while it is on and comes back when it is turned off.
+-- is grayed out while it is on and comes back when it is turned off.
 -- The bar helpers (SetScale, Resize, SetBarAlpha) save whatever value
 -- they apply, so applying an override runs them with the bar's own
 -- values snapshotted and restored around the call.
@@ -194,7 +194,7 @@ local function GetGeneralOptionsTable()
         allBarsHeader = { order = 30, type = "header", name = "All bars" },
         allBarsDesc = {
             order = 31, type = "description",
-            name = "Force one value on every bar. A bar's own setting is greyed out while its override is on.",
+            name = "Force one value on every bar. A bar's own setting is grayed out while its override is on.",
         },
 
         abilitiesHeader = { order = 44, type = "header", name = "Abilities" },
@@ -459,7 +459,7 @@ local function BuildBarArgs(id, bd)
             end,
         },
 
-        behaviourHeader = { order = 40, type = "header", name = "Behaviour" },
+        behaviorHeader = { order = 40, type = "header", name = "Behavior" },
         locked = {
             order = 41, type = "toggle", name = "Lock buttons",
             desc = "Buttons can't be dragged off or swapped.",

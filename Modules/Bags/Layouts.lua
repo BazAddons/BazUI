@@ -129,7 +129,7 @@ local function GetOrCreateDropSlot(parent, key, slotSize)
 
     -- Gold "+" centered in the slot. GameFontNormalHuge is gold by
     -- default; SetTextColor pins the exact suite gold so it tracks
-    -- the divider title colour even if the font is themed.
+    -- the divider title color even if the font is themed.
     slot.plus = BazUI.Skin.Theme.FontString(slot, "OVERLAY", "GameFontNormalHuge")
     slot.plus:SetPoint("CENTER", 0, 1)
     slot.plus:SetText("+")
@@ -346,7 +346,7 @@ function Layouts.Render(ctx)
     -- A `hidden = true` flag on a category suppresses it from the bag
     -- panel during normal use - no divider, no items, no drop slot.
     -- During categorize mode hidden categories DO render (so the user
-    -- can pin items into them by drop slot) but get a grey "(hidden)"
+    -- can pin items into them by drop slot) but get a gray "(hidden)"
     -- tag on the divider so they're visually distinguishable.
     local hiddenByKey = {}
     for _, info in ipairs(Categories.GetAll()) do
@@ -383,7 +383,7 @@ function Layouts.Render(ctx)
             local collapsed = IsCollapsed(cat.key)
 
             -- Divider row spans the full width. Hidden categories get
-            -- a grey "(hidden)" tag during categorize mode so the user
+            -- a gray "(hidden)" tag during categorize mode so the user
             -- can tell at a glance which ones are excluded from
             -- normal display.
             local titleText = cat.title or cat.name or cat.key
