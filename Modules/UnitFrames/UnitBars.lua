@@ -133,6 +133,17 @@ function UnitBars:Add(kind, unit)
     return def
 end
 
+-- Where deleted bars go. One frame, made when the first bar is deleted.
+local retiredParent
+
+local function RetiredParent()
+    if not retiredParent then
+        retiredParent = CreateFrame("Frame")
+        retiredParent:Hide()
+    end
+    return retiredParent
+end
+
 function UnitBars:Remove(id)
     if InCombatLockdown() then return false end
     local defs = self:Defs()
@@ -142,7 +153,24 @@ function UnitBars:Remove(id)
             if bar then
                 BazUI.Dock:Detach(bar.frame)
                 BazUI.Dock:UnregisterHost(self:HostID(id))
+
+                -- A health or power bar does not decide for itself
+                -- whether it is on screen: RegisterUnitWatch does, in
+                -- the secure environment, and it goes on showing the
+                -- frame whenever the unit exists. Hiding a deleted bar
+                -- without cancelling that is why one stayed on screen
+                -- with no handle to grab, until a reload.
+                if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
+                bar.frame:SetAttribute("unit", nil)
+                bar.frame:SetScript("OnUpdate", nil)
                 bar.frame:Hide()
+
+                -- Secure frames cannot be destroyed, so it is parked out
+                -- of the way rather than left loose under UIParent where
+                -- something could show it again.
+                bar.frame:ClearAllPoints()
+                bar.frame:SetParent(RetiredParent())
+
                 if bar.mover then
                     BazUI:UnregisterEditModeFrame(bar.mover)
                     bar.mover:Hide()
