@@ -310,6 +310,19 @@ function UnitBars:SuppressStock()
         if covers then wanted[covers] = true end
     end
 
+    -- Experience and reputation are the exception to "whatever you have
+    -- a bar for goes away". Nobody deletes their experience bar hoping
+    -- to see the game's again; they delete it because they do not want
+    -- one. So the game's stay hidden either way unless they are asked
+    -- for, and asking for them is a setting rather than a side effect of
+    -- having nothing of your own.
+    -- The setting decides, not the loop above: asking to see the game's
+    -- experience bar while keeping one of your own is a strange thing to
+    -- want, but it is unambiguous, and a toggle that does nothing when
+    -- you happen to have a bar is worse than one that does what it says.
+    wanted.xp  = addon:GetSetting("stockXP") ~= true
+    wanted.rep = addon:GetSetting("stockRep") ~= true
+
     -- Asked on every save, and a save happens every time a bar is
     -- dragged, so nothing is touched unless what we cover has changed.
     local parts = {}
