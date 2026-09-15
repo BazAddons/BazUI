@@ -212,11 +212,9 @@ end
 
 function UnitBars:SuppressStock()
     local wanted = {}
-    if addon:BarMode() then
-        for _, def in ipairs(self:Defs()) do
-            local covers = Covers(def)
-            if covers then wanted[covers] = true end
-        end
+    for _, def in ipairs(self:Defs()) do
+        local covers = Covers(def)
+        if covers then wanted[covers] = true end
     end
 
     -- Asked on every save, and a save happens every time a bar is

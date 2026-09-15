@@ -1,4 +1,20 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Unit Frames
+--
+-- A unit is drawn as bars you make yourself: health, power, casting,
+-- experience and reputation, each one floating or docked to an action
+-- bar or to another bar. There is no portrait and no frame around it,
+-- which is exactly what lets any of them dock to anything else.
+--
+-- Almost nothing is configured here as a result. What a bar reads, how
+-- wide it is, where it sits and what its text says are properties of
+-- that bar and are kept on it; this page holds only the few things that
+-- are true of all of them.
+--
+-- See REDESIGN.md for how this replaced the artwork frames.
+---------------------------------------------------------------------------
+
 local addon
 addon = BazUI:RegisterModule("UnitFrames", {
     title = "Unit Frames",
@@ -6,84 +22,27 @@ addon = BazUI:RegisterModule("UnitFrames", {
     minimap = { label = "Unit Frames", icon = "Interface\\Icons\\INV_Misc_Head_Human_01" },
     profiles = true,
     defaults = {
-        enabled = true,
-        scale = 1,
-        -- The bar redesign. On means the unit is drawn as bars
-        -- that dock; off falls back to the artwork frames until
-        -- those are retired.
-        barMode = true,
-        barWidth = 240,
-        barHeight = 20,
-        barText = "always",
-        healthText = "namePercent",
-        powerText = "current",
+        classColor   = false,
         unitTooltips = true,
-        playerBarPos = { point = "CENTER", relPoint = "CENTER", x = -260, y = -160 },
-        targetBarPos = { point = "CENTER", relPoint = "CENTER", x = 260, y = -160 },
-        portraitStyle = "3d",
-        modelLayer = "above",
-        modelScale = 1,
-        modelX = 0,
-        modelY = 0,
-        modelDistance = 0.7,
-        showValues = true,
-        classColor = false,
-        castEnabled = true,
-        castOpacity = 0.55,
-        castSwirl = 0.75,
-        castColor = "gold",
-        castText = true,
-        position = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 170 },
-        targetEnabled = true,
-        targetScale = 1,
-        targetPortraitStyle = "3d",
-        targetModelLayer = "below",
-        targetModelScale = 1,
-        targetModelX = 0,
-        targetModelY = -5,
-        targetModelDistance = 0.98,
-        targetShowValues = true,
-        targetClassColor = false,
-        targetPosition = { point = "TOP", relPoint = "TOP", x = 0, y = -30 },
     },
-    slash = { "/bazplayer", "/bazframes" },
+    slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,
-    commands = {
-        portraitinfo = { desc = "Print player portrait placement", handler = function() addon:PrintPortraitPlacement() end },
-        targetportraitinfo = { desc = "Print target portrait placement", handler = function() addon.Target:PrintPortraitPlacement() end },
-        reset = { desc = "Reset player frame position and scale", handler = function() addon:ResetLayout() end },
-        unlock = { desc = "Drag the player frame outside combat", handler = function() addon:SetUnlocked(true) end },
-        lock = { desc = "Finish moving the player frame", handler = function() addon:SetUnlocked(false) end },
-        targetunlock = { desc = "Move the target frame", handler = function() addon.Target:SetUnlocked(true) end },
-        targetlock = { desc = "Lock the target frame", handler = function() addon.Target:SetUnlocked(false) end },
-        targetreset = { desc = "Reset the target frame", handler = function() addon.Target:ResetLayout() end },
-    },
     onReady = function(self)
-        self:Initialize()
-        self.Target:Initialize()
         self:InitializeBars()
-        self:OnProfileChanged(function() self:ApplySettings(); self.Target:ApplySettings() end)
+        self:OnProfileChanged(function() self:ApplySettings() end)
     end,
 })
 
-addon.ASSETS = "Interface\\AddOns\\BazUI\\Modules\\UnitFrames\\Assets\\"
-
-function addon:ResetLayout()
-    self:SetSetting("scale", 1)
-    self:SetSetting("position", { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 170 })
-    self:ApplySettings()
-end
-
----------------------------------------------------------------------------
--- The bar redesign
---
--- Builds the player's readings as docked bars. The artwork frames stand
--- down while this is on; they are still here only until step six of
--- REDESIGN.md retires them.
----------------------------------------------------------------------------
-
-function addon:BarMode()
-    return self:GetSetting("barMode") ~= false
+-- Everything the module owns, applied again from what is saved. Named
+-- ApplySettings because that is what the suite calls on a profile
+-- change, and safe to call twice: every bar is laid out from its own
+-- definition rather than from wherever it happens to be.
+function addon:ApplySettings()
+    local UnitBars = self.UnitBars
+    if not UnitBars then return end
+    UnitBars:ApplyAll()
+    UnitBars:UpdateAll()
+    UnitBars:SuppressStock()
 end
 
 -- The set a new profile starts with: the readings almost everyone wants,
@@ -120,7 +79,6 @@ function addon:SeedBars()
 end
 
 function addon:InitializeBars()
-    if not self:BarMode() then return end
     if InCombatLockdown() then
         self:On("PLAYER_REGEN_ENABLED", function() self:InitializeBars() end)
         return
@@ -132,7 +90,7 @@ function addon:InitializeBars()
     self:SeedBars()
     UnitBars:WatchAll()
     UnitBars:UpdateAll()
-    -- Your experience bar replaces the game's, so the game's goes away.
+    -- Your bars replace the game's own, so the game's go away.
     UnitBars:SuppressStock()
 
     -- Edit Mode may open or close at any time, and the movers are the
@@ -146,8 +104,8 @@ function addon:InitializeBars()
         UnitBars:BuildAll()
         UnitBars:ApplyAll()
         UnitBars:ShowAllMovers()
-        -- Hiding Blizzard's bars is protected, so anything that changed
-        -- mid-fight has been waiting for this.
+        -- Hiding Blizzard's frames is protected, so anything that
+        -- changed mid-fight has been waiting for this.
         UnitBars:SuppressStock()
     end)
 end

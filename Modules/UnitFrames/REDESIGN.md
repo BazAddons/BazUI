@@ -93,9 +93,15 @@ Dictated by the aura headers, which are secure and anchored to
    onto the same system.
 4. Target, same code with the unit as a parameter.
 5. Auras re-anchored, with the unprotected wrapper for centring.
+   **Still to do.** Until it is done they fall back to their own
+   position, since the frames they used to hang off are gone.
 6. Retire the artwork, `Layout.lua`, `TargetLayout.lua` and the design
-   PNGs. This is also where the addon's 26 remaining lint warnings go,
-   since all of them come from globals the old frames create in XML.
+   PNGs. **Done.** `Player.lua`, `Target.lua`, `Casting.lua`, both
+   layout tables and fourteen art files are gone, and with them the
+   module's whole settings page bar two toggles: everything else it
+   offered described a portrait frame nothing draws any more. The
+   addon's 26 lint warnings went with them, as predicted, since all of
+   them were globals those frames created in XML.
 
 ## Open
 
