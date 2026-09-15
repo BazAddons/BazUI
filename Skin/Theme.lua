@@ -557,8 +557,12 @@ function Theme.ApplyRoundButton(button, icon, opts)
         --
         -- The gold one is called _bazRing because it is the one worth
         -- tinting: the micro menu pulses a button by colouring it.
+        -- Underneath the icon, not over it. The ring these replace was a
+        -- picture with a hole in the middle, so it could sit on top; a
+        -- filled circle on top is just a filled circle, which is what
+        -- swallowed every icon the moment it drew.
         local function Circle(sublevel)
-            local texture = button:CreateTexture(nil, "OVERLAY", nil, sublevel)
+            local texture = button:CreateTexture(nil, "BACKGROUND", nil, sublevel)
             local mask = button:CreateMaskTexture()
             mask:SetTexture(Skin.ROUND_MASK,
                 "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -567,11 +571,11 @@ function Theme.ApplyRoundButton(button, icon, opts)
             return texture
         end
 
-        local ringOuter = Circle(5)
+        local ringOuter = Circle(-4)
         ringOuter:SetColorTexture(0, 0, 0, 0.75)
-        local ring = Circle(6)
+        local ring = Circle(-3)
         ring:SetColorTexture(0.55, 0.43, 0.25, 1)
-        local ringInner = Circle(7)
+        local ringInner = Circle(-2)
         ringInner:SetColorTexture(0.035, 0.04, 0.055, 1)
 
         button._bazRingOuter, button._bazRingInner = ringOuter, ringInner
