@@ -302,7 +302,13 @@ local function ConfigureHeader(def, below)
     h:SetAttribute("wrapAfter", perRow)
     h:SetAttribute("wrapXOffset", 0)
     h:SetAttribute("wrapYOffset", below and -step or step)
-    h:SetAttribute("maxWraps", 0)           -- 0 = as many rows as needed
+    -- How many rows at most, nought for as many as there are auras. A
+    -- row on somebody else wants a limit: sixteen debuffs on a party
+    -- member is a legal state of affairs and a tower of icons through
+    -- the middle of your screen is not what anyone meant by showing
+    -- them. The header does the cutting off, securely, so a limit still
+    -- holds while everything else is frozen.
+    h:SetAttribute("maxWraps", def.maxRows or 0)
     h:SetAttribute("minWidth", perRow * step - spacing)
     h:SetAttribute("minHeight", size)
     h:SetAttribute("sortMethod", addon:RowValue(def, "sortMethod"))
@@ -477,6 +483,10 @@ function addon:AddRow(unit, filter)
         -- unset on purpose: a row follows the shared settings until you
         -- give it one of its own.
         onlyMine = false,
+        -- Your own buffs are worth every row they need; a party
+        -- member's debuffs are worth one. That is what every raid UI
+        -- worth copying does, and it is only a default.
+        maxRows  = (unit ~= "player") and 1 or nil,
         align    = "LEFT",
         gap      = 4,
         dock     = { host = "float", edge = "BOTTOM" },
@@ -637,8 +647,10 @@ function addon:SizeRows()
                 -- space open above whatever is under it.
                 frame:SetSize(1, 1)
             else
-                local columns = math.min(perRow, count)
-                local rows    = math.ceil(count / perRow)
+                local capped  = def.maxRows and def.maxRows > 0
+                    and math.min(count, def.maxRows * perRow) or count
+                local columns = math.min(perRow, capped)
+                local rows    = math.ceil(capped / perRow)
                 frame:SetSize(math.max(1, columns * step - spacing),
                     math.max(1, rows * step - spacing))
             end
@@ -786,6 +798,11 @@ function addon:RowEditSettings(def)
     Slider("Icon size", "iconSize", 12, 48)
     Slider("Spacing", "spacing", 0, 12)
     Slider("Icons per row", "perRow", 1, 20)
+
+    widgets[#widgets + 1] = { type = "slider", section = "Icons", label = "Rows at most",
+        min = 0, max = 6, step = 1,
+        get = function() return def.maxRows or 0 end,
+        set = function(value) def.maxRows = (value > 0) and value or nil Refresh() end }
 
     widgets[#widgets + 1] = { type = "dropdown", section = "Icons", label = "Icons run",
         options = Values(addon.ROW_GROWTH),

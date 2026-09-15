@@ -248,15 +248,25 @@ local function RowArgs(def, index)
                 get = function() return addon:RowValue(def, "perRow") end,
                 set = setPerRow,
             },
+            maxRows = {
+                order = 24, type = "range", name = "Rows at most",
+                desc = "Nought means as many rows as there are auras. One row is the usual choice for somebody else's debuffs: sixteen of them is a legal state of affairs, and a tower of icons is not what showing them meant.",
+                min = 0, max = 6, step = 1,
+                get = function() return def.maxRows or 0 end,
+                set = function(_, value)
+                    def.maxRows = (value > 0) and value or nil
+                    Apply()
+                end,
+            },
             grow = {
-                order = 24, type = "select", name = "Icons run",
+                order = 25, type = "select", name = "Icons run",
                 desc = "Which way the icons fill from the row's anchored end.",
                 values = addon.ROW_GROWTH,
                 get = function() return def.grow or "RIGHT" end,
                 set = setGrow,
             },
             stack = {
-                order = 25, type = "select", name = "Rows stack",
+                order = 26, type = "select", name = "Rows stack",
                 desc = "Where a second row goes when the first fills up. Away from the dock keeps them off whatever the row is attached to.",
                 values = addon.ROW_STACK,
                 get = function() return def.stack or "AUTO" end,
