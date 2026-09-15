@@ -295,8 +295,15 @@ UnitBars.STOCK = {
     {
         key    = "hidePartyFrames",
         label  = "Party frames",
-        desc   = "The four portrait frames down the left in a group. Make party bars first, or a group will have nothing showing it at all.",
-        frames = { "PartyMemberFrame1", "PartyMemberFrame2",
+        desc   = "The portrait frames down the left in a group. Make party bars first, or a group will have nothing showing it at all.",
+        -- The container, because on this client there is nothing else to
+        -- take hold of: the member frames come out of a pool on
+        -- PartyFrame and are given parent keys rather than names, so the
+        -- PartyMemberFrame1..4 globals every older build had are not
+        -- there to be hidden. They are listed anyway for the builds that
+        -- do have them, where a name that does not exist costs nothing.
+        frames = { "PartyFrame",
+                   "PartyMemberFrame1", "PartyMemberFrame2",
                    "PartyMemberFrame3", "PartyMemberFrame4" },
     },
     {
@@ -882,6 +889,7 @@ function UnitBars:Apply(bar)
         gutter  = def.gutter,
         order   = def.id,
         gap     = def.gap,
+        offset  = dock.offset,
         reserve = def.kind == "cast",
     })
 
@@ -1175,6 +1183,14 @@ function UnitBars:CreateMover(bar)
         settings  = function() return UnitBars:EditSettings(bar) end,
         actions   = function() return UnitBars:EditActions(bar) end,
         onDrop    = function(snap, x, y) UnitBars:Dropped(bar, snap, x, y) end,
+        onOffset  = function(x, y)
+            -- Kept with the dock it belongs to, so undocking takes the
+            -- nudge with it rather than leaving it to surprise whoever
+            -- docks the bar somewhere else later.
+            def.dock = def.dock or { host = "float" }
+            def.dock.offset = (x ~= 0 or y ~= 0) and { x = x, y = y } or nil
+            UnitBars:Save()
+        end,
     })
     return bar.mover
 end

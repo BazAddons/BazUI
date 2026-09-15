@@ -42,9 +42,9 @@ local widgetInfo
 local minimapParentedInto = nil
 local nativeMapWidth, nativeMapHeight
 
--- Defined with the frame styles further down, both called from
--- AttachMinimap above them.
-local HostRing, MapScale
+-- Defined with the frame styles further down, called from AttachMinimap
+-- above it.
+local MapScale
 
 ---------------------------------------------------------------------------
 -- Parent the Minimap into the given frame (either the wrapper when docked,
@@ -79,10 +79,6 @@ local function AttachMinimap(parent)
         MinimapCluster.Selection:Hide()
         MinimapCluster.Selection.Show = MinimapCluster.Selection.Hide
     end
-
-    -- The frame is drawn behind the map on a host of its own, which has
-    -- to follow it.
-    HostRing(parent)
 
     minimapParentedInto = parent
 end
@@ -210,54 +206,47 @@ function MapScale()
     return math.max(MAP_SCALE_MIN, math.min(MAP_SCALE_MAX, scale))
 end
 
--- How far the map is grown past the hole in the frame, so its edge slides
--- under the band. The art's inner edge is antialiased and the map's
--- circle does not quite reach the edge of the frame it is drawn in, so an
--- edge that only meets the art leaves a ring of background showing
--- through between the two.
---
--- In design pixels, which the drawer multiplies along with everything
--- else, so this is a few more on screen than it says. Two was not enough
--- to clear the gap; five is, and it costs a sliver of the band's inner
--- edge, which is the widest part of the picture and has it to spare. The
--- map comes out a little bigger for it, which is the other thing wanted.
-local FRAME_OVERLAP = 5
+-- How far the map runs past the frame's solid edge, so the two do not
+-- merely meet: the last few steps of the artwork's alpha would otherwise
+-- show as a hairline. Small, because the frame is drawn over the map now
+-- and anything past this is hidden under the brass anyway.
+local FRAME_OVERLAP = 2
 
-local ring, ringHost
+local ring
 
 local function BlizzardRingTextures()
     return { MinimapBorder, MinimapNorthTag, MinimapCompassTexture }
 end
 
--- Put the ring's host behind the map, wherever the map currently lives.
+-- Where the frame is drawn.
 --
--- Behind, which means not a child of the Minimap: anything parented to it
--- draws over the map itself. Behind is also what keeps Blizzard's zoom
--- and day/night buttons usable. Those hang off MinimapBackdrop, out at
--- the ring's own radius, which is exactly where our band is - a frame
--- drawn over the map would bury them in it.
-function HostRing(parent)
-    if not (ringHost and parent and Minimap) then return end
-    ringHost:SetParent(parent)
-    ringHost:SetScale(Minimap:GetScale() or 1)
-    ringHost:SetFrameStrata(Minimap:GetFrameStrata())
-    ringHost:SetFrameLevel(math.max(0, (Minimap:GetFrameLevel() or 1) - 1))
-    ringHost:ClearAllPoints()
-    ringHost:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+-- On MinimapBackdrop, which is the frame Blizzard draws its own ring on,
+-- so ours inherits exactly the layering theirs had: over the map surface,
+-- under the buttons that live out on the ring. That matters twice over.
+-- The zoom and day/night buttons hang off this frame at the ring's own
+-- radius, which is where our brass is, and a frame drawn over the whole
+-- lot would bury them. And the artwork casts a shadow inwards, which is
+-- only a shadow if it falls on the map - drawn behind, the map covers it
+-- and the picture loses the thing that made it sit in the frame rather
+-- than beside it.
+--
+-- A texture on that frame rather than a child frame of it: a texture
+-- cannot come out above the buttons, and a child frame's level would be
+-- ours to get wrong. Being inside the Minimap, it also takes the map's
+-- own scale without being told.
+local function RingParent()
+    return MinimapBackdrop or Minimap
 end
 
 local function EnsureRing()
     if ring then return ring end
     if not Minimap then return nil end
 
-    ringHost = CreateFrame("Frame", nil, Minimap:GetParent() or UIParent)
-    ringHost:SetSize(1, 1)
-    HostRing(Minimap:GetParent() or UIParent)
-
     local Skin = BazUI.Skin
-    ring = Skin.Theme.CreateArtRing(ringHost, {
+    ring = Skin.Theme.CreateArtRing(RingParent(), {
         layer       = "ARTWORK",
-        sublevel    = 0,
+        sublevel    = 2,
+        anchor      = Minimap,
         texture     = Skin.MINIMAP_FRAME,
         widthRatio  = Skin.MINIMAP_FRAME_WIDTH,
         heightRatio = Skin.MINIMAP_FRAME_HEIGHT,
@@ -310,9 +299,9 @@ end
 -- how big each one draws, never where its middle is.
 function MinimapWidget:ApplyScale()
     if not Minimap then return end
-    local scale = MapScale()
-    Minimap:SetScale(scale)
-    if ringHost then ringHost:SetScale(scale) end
+    -- One call: the frame is drawn inside the Minimap, so it takes this
+    -- with everything else the map carries.
+    Minimap:SetScale(MapScale())
 end
 
 function MinimapWidget:ApplyFootprint()

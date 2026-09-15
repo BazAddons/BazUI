@@ -20,15 +20,23 @@ BazUI.Skin = {
     -- from. The drawn border is right for a bar or a button and was never
     -- right for something this size.
     --
-    -- Measured, not guessed. The hole the map sits in is 757.9 x 752.9
-    -- pixels of a 929 x 1088 canvas, centred in it to within two pixels -
-    -- under half a pixel at any size we draw it, so the art is simply
-    -- centred on the map. The ratios are the picture's width and height
-    -- against that hole, which is all anything needs to size it: give the
-    -- frame a footprint and the hole in the middle follows.
+    -- Measured, not guessed, and measured again whenever the picture
+    -- changes. The number wanted is where the brass turns solid - 756
+    -- pixels across, of a 929 x 1088 canvas, centred in it to within a
+    -- pixel - because that is where the map has to reach.
+    --
+    -- Not where the picture stops being transparent, which is a long way
+    -- further in: the ring casts a shadow onto the map, and a shadow is
+    -- only a shadow if there is map underneath it. Measuring to the
+    -- middle of that shadow reads as a much thicker ring, sizes the map
+    -- to the wrong circle and leaves the shadow falling on the
+    -- background.
+    --
+    -- Nothing reads these off the file at run time, so a new picture
+    -- needs them measured with it.
     MINIMAP_FRAME            = ASSETS .. "mapFrame.png",
-    MINIMAP_FRAME_WIDTH      = 929 / 755.4,
-    MINIMAP_FRAME_HEIGHT     = 1088 / 755.4,
+    MINIMAP_FRAME_WIDTH      = 929 / 756,
+    MINIMAP_FRAME_HEIGHT     = 1088 / 756,
 
     -- Minimap button ring. 128x128, ring centered; inner edge at 70%, the
     -- outer edge touches the texture edge.

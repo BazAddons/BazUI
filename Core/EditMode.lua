@@ -162,6 +162,12 @@ local function NudgeFrame(frame, dx, dy)
     local config = registeredFrames[frame]
     if not config then return end
 
+    -- A frame somebody else places gets nudged through them. Moving it
+    -- here would last until their next layout pass and no longer: a
+    -- docked bar is put where the dock says, so the nudge has to become
+    -- part of what the dock says.
+    if config.onNudge and config.onNudge(dx, dy) then return end
+
     local es = frame:GetEffectiveScale()
     local cx, cy = frame:GetCenter()
     if not (cx and cy) then return end
@@ -475,7 +481,7 @@ local function CreateSettingInput(parent, widgetDef)
     return row
 end
 
-local function CreateNudgeWidget(parent)
+local function CreateNudgeWidget(parent, config)
     local row = CreateFrame("Frame", nil, parent)
     row:SetSize(POPUP_WIDTH - 30, ROW_HEIGHT)
 
@@ -513,7 +519,28 @@ local function CreateNudgeWidget(parent)
     local b1 = MakeNudgeBtn(label, math.pi / 2, -1, 0)    -- Left
     local b2 = MakeNudgeBtn(b1, -math.pi / 2, 1, 0)       -- Right
     local b3 = MakeNudgeBtn(b2, 0, 0, 1)                    -- Up
-    MakeNudgeBtn(b3, math.pi, 0, -1)                        -- Down
+    local b4 = MakeNudgeBtn(b3, math.pi, 0, -1)             -- Down
+
+    -- Back to where it would have been. Only offered where that means
+    -- something: a frame the dock places has a position to go back to,
+    -- and a frame the player dragged anywhere they liked has not.
+    local canReset = config and config.onNudgeReset
+        and (not config.canNudgeReset or config.canNudgeReset())
+    if canReset then
+        local reset = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        reset:SetSize(NUDGE_SIZE + 12, NUDGE_SIZE)
+        reset:SetPoint("LEFT", b4, "RIGHT", 6, 0)
+        reset:SetText("Reset")
+        reset:SetScript("OnClick", function()
+            if selectedFrame then config.onNudgeReset() end
+        end)
+        reset:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Clear the nudge and sit where the dock puts it.")
+            GameTooltip:Show()
+        end)
+        reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
 
     row.SetValue = function() end
     row.GetValue = function() return nil end
@@ -815,7 +842,7 @@ local function PopulatePopup(frame, config)
         elseif widgetDef.type == "color" then
             widget = CreateSettingColorPicker(popup, widgetDef)
         elseif widgetDef.type == "nudge" then
-            widget = CreateNudgeWidget(popup)
+            widget = CreateNudgeWidget(popup, config)
         end
 
         if widget then

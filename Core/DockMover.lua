@@ -22,6 +22,8 @@
 --     opts.actions     function returning Edit Mode actions
 --     opts.onDrop      function(snap, x, y) - snap is {host, edge} or nil,
 --                      x and y the screen center it was dropped at
+--     opts.onOffset    function(x, y) - the nudge on a docked target
+--                      changed, and wants saving alongside its dock
 --     opts.minSize     function returning the size the handle should
 --                      never go below, for a target that shrinks to fit
 --   mover:Refresh()      size and place the handle over its target
@@ -334,12 +336,38 @@ function Dock:CreateMover(target, opts)
 
     mover:SetScript("OnDragStop", function(self) self:Drop() end)
 
+    -- Nudging a docked target is the dock's business, not the mover's:
+    -- the dock places it, so an adjustment that is not part of what the
+    -- dock knows lasts exactly until the next layout pass. Answering
+    -- false hands a floating target back to Edit Mode, which moves it the
+    -- ordinary way.
+    local function Nudge(dx, dy)
+        if not Dock:IsDocked(target) then return false end
+        local x, y = Dock:Nudge(target, dx, dy)
+        if opts.onOffset then opts.onOffset(x, y) end
+        mover:Refresh()
+        return true
+    end
+
+    local function ResetNudge()
+        if not Dock:IsDocked(target) then return end
+        local x, y = Dock:SetOffset(target, 0, 0)
+        if opts.onOffset then opts.onOffset(x, y) end
+        mover:Refresh()
+    end
+
     BazUI:RegisterEditModeFrame(mover, {
         label = opts.label,
         addonName = opts.addonName,
         positionKey = false,
         settings = opts.settings and opts.settings() or nil,
         actions  = opts.actions and opts.actions() or nil,
+        onNudge = Nudge,
+        onNudgeReset = ResetNudge,
+        -- Asked when the panel opens rather than answered now: a target
+        -- is not docked yet when its mover is made, and it docks and
+        -- undocks all afternoon after that.
+        canNudgeReset = function() return Dock:IsDocked(target) end,
         onPositionChanged = function() mover:Drop() end,
         onEnter = function() mover:ShowForEdit() end,
         onExit  = function() mover:ShowForEdit() end,

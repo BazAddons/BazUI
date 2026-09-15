@@ -720,6 +720,14 @@ function addon:BuildRow(def)
         settings  = function() return addon:RowEditSettings(def) end,
         actions   = function() return addon:RowEditActions(def) end,
         onDrop    = function(snap, x, y) addon:RowDropped(def, snap, x, y) end,
+        onOffset  = function(x, y)
+            -- Kept with the dock it belongs to, so undocking takes the
+            -- nudge with it rather than leaving it to surprise whoever
+            -- docks the row somewhere else later.
+            def.dock = def.dock or { host = "float" }
+            def.dock.offset = (x ~= 0 or y ~= 0) and { x = x, y = y } or nil
+            addon:SaveRows()
+        end,
     })
     return frame
 end
@@ -864,6 +872,7 @@ function addon:ApplyRows()
                 mode  = def.fill and "stretch" or "align",
                 align = def.align or "LEFT",
                 gap   = def.gap,
+                offset = dock.offset,
                 -- Past every bar, so rows stay next to each other in the
                 -- order: two of them can only share a line if nothing
                 -- full width is sorted between them, and a bar and a row

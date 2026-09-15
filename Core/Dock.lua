@@ -42,6 +42,10 @@ local followers = {}
 
 local DEFAULT_GAP = 2
 
+-- True while the dock is showing or hiding a follower itself, so the
+-- events that causes can be told apart from the ones the game causes.
+local settingShown = false
+
 ---------------------------------------------------------------------------
 -- Registration
 ---------------------------------------------------------------------------
@@ -52,6 +56,7 @@ local DEFAULT_GAP = 2
 --   align    for "align": "LEFT", "RIGHT" or "CENTER"
 --   order    lower sits nearer the host
 --   gap      pixels between this and whatever it follows
+--   offset   { x, y } nudged off where the dock would otherwise put it
 --   reserve  true to hold its place in the stack while hidden
 function Dock:Attach(frame, host, opts)
     if not frame then return end
@@ -83,6 +88,13 @@ function Dock:Attach(frame, host, opts)
         -- Space left between the things sharing a line. One number for
         -- the line, so whoever asks for the most gets it.
         gutter  = opts.gutter or 0,
+        -- Where the follower sits relative to where the dock would put
+        -- it. The dock decides the place; this is the hand adjustment on
+        -- top, and it is deliberately left out of the stack's own
+        -- arithmetic - nudging one bar moves that bar, not everything
+        -- hanging below it.
+        offsetX = opts.offset and opts.offset.x or 0,
+        offsetY = opts.offset and opts.offset.y or 0,
         reserve = opts.reserve and true or false,
     }
 
@@ -116,6 +128,28 @@ function Dock:Detach(frame, quiet)
         self:Relayout(oldHost)
         self:Relayout(frame)
     end
+end
+
+-- The hand adjustment on a docked frame, and how to change it. Nudging
+-- something the dock places cannot work by moving the frame: the next
+-- layout pass puts it back. It has to be the dock that knows.
+function Dock:GetOffset(frame)
+    local link = links[frame]
+    if not link then return 0, 0 end
+    return link.offsetX or 0, link.offsetY or 0
+end
+
+function Dock:SetOffset(frame, x, y)
+    local link = links[frame]
+    if not link then return 0, 0 end
+    link.offsetX, link.offsetY = x or 0, y or 0
+    self:Relayout(link.host)
+    return link.offsetX, link.offsetY
+end
+
+function Dock:Nudge(frame, dx, dy)
+    local x, y = self:GetOffset(frame)
+    return self:SetOffset(frame, x + (dx or 0), y + (dy or 0))
 end
 
 function Dock:GetHost(frame)
@@ -434,7 +468,12 @@ local function PlaceOneEdge(host, edge)
     for _, frame in ipairs(list) do
         local link = links[frame]
         local visible = Dock:ShouldShow(frame)
+        -- Ours, so nothing hears about it. The show and hide events are
+        -- how a frame the secure environment revealed gets noticed, and
+        -- the ones we cause here are not news.
+        settingShown = true
         frame:SetShown(visible)
+        settingShown = false
 
         -- A follower that is hidden and not holding its place is skipped
         -- entirely, and the next one moves up into its space.
@@ -479,7 +518,8 @@ local function PlaceOneEdge(host, edge)
                 local point = down and "TOP" or "BOTTOM"
                 link.point = point
                 frame:SetPoint(point, host, down and "BOTTOM" or "TOP",
-                    0, down and -offset or offset)
+                    link.offsetX or 0,
+                    (down and -offset or offset) + (link.offsetY or 0))
             else
                 -- An aligned follower can still be measured from its
                 -- host: half of an action bar is what two bars sharing
@@ -500,7 +540,9 @@ local function PlaceOneEdge(host, edge)
                     hostPoint = (down and "BOTTOM" or "TOP") .. link.align
                 end
                 link.point = point
-                frame:SetPoint(point, host, hostPoint, 0, down and -offset or offset)
+                frame:SetPoint(point, host, hostPoint,
+                    link.offsetX or 0,
+                    (down and -offset or offset) + (link.offsetY or 0))
             end
 
             height = math.max(height, frame:GetHeight() or 0)
@@ -534,8 +576,20 @@ end
 -- A host whose size or visibility changed tells the dock, rather than
 -- the dock watching every frame in the interface.
 function Dock:HostChanged(host)
-    if not followers[host] then return end
-    self:Relayout(host)
+    if settingShown then return end
+
+    -- Whatever hangs off it.
+    if followers[host] then self:Relayout(host) end
+
+    -- And it, if it hangs off something. A follower that is hidden is
+    -- skipped by the layout entirely, so it comes back at whatever size
+    -- it had when it went away - and health and power bars are shown by
+    -- RegisterUnitWatch, in the secure environment, which tells us
+    -- nothing. Its own show is the only notice there is, and until this
+    -- it went nowhere: the bar sat at a stale width until something else
+    -- happened to re-lay it, which in practice meant a reload.
+    local link = links[host]
+    if link and link.host then self:Relayout(link.host) end
 end
 
 -- Hosts that can change on their own get hooked once, so a bar docked to
