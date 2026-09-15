@@ -159,7 +159,8 @@ local function BarArgs(def)
             },
             textFormat = {
                 order = 24, type = "select", name = "Text says",
-                desc = "Everything spells out the level, the values and the exact percent, which is what an experience bar wants.",
+                desc = "Everything spells out the name, the values and the exact percent.",
+                hidden = function() return def.kind == "cast" end,
                 values = FORMATS,
                 get = Field(def, "textFormat", "namePercent"),
                 set = SetField(def, "textFormat"),

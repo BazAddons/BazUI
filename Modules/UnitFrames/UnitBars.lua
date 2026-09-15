@@ -332,6 +332,10 @@ end
 
 -- What a bar says about itself. A health bar has more to say than an
 -- experience bar, so the wording is the bar's own setting.
+-- Fields in a line of bar text are separated by this, which is what the
+-- experience bar has always used.
+local SEP = "   •   "
+
 local function Format(mode, current, maximum, name)
     if mode == "name" then return name or "" end
     if maximum <= 0 then return "" end
@@ -339,6 +343,19 @@ local function Format(mode, current, maximum, name)
     if mode == "percent" then return percent .. "%" end
     if mode == "current" then return Number(current) end
     if mode == "namePercent" then return string.format("%s  %d%%", name or "", percent) end
+
+    -- "Everything" is the experience bar's line applied to a unit: who
+    -- it is, the numbers, and the percent. It used to fall through to
+    -- current-over-maximum, so a health bar asked for everything showed
+    -- the same "82 / 82" as the setting above it.
+    if mode == "detailed" then
+        local values = string.format("%s / %s", Number(current), Number(maximum))
+        if name and name ~= "" then
+            return name .. SEP .. values .. SEP .. percent .. "%"
+        end
+        return values .. SEP .. percent .. "%"
+    end
+
     return string.format("%s / %s", Number(current), Number(maximum))
 end
 
@@ -381,7 +398,7 @@ local function UpdatePower(bar)
     local current = math.max(0, math.min(maximum, UnitPower(unit, powerType) or 0))
     bar.frame:SetValue(current / maximum)
     bar.frame:SetFillColor(PowerColor(unit))
-    bar.frame:SetText(Format(bar.def.textFormat, current, maximum))
+    bar.frame:SetText(Format(bar.def.textFormat, current, maximum, UnitName(unit)))
 end
 
 local function UpdateXP(bar)
@@ -941,10 +958,6 @@ function UnitBars:EditSettings(bar)
           options = ValuesArray(TEXT_MODES),
           get = function() return def.textMode or "always" end,
           set = function(value) def.textMode = value Refresh() end },
-        { type = "dropdown", section = "Text", label = "Text says",
-          options = ValuesArray(TEXT_FORMATS),
-          get = function() return def.textFormat or "namePercent" end,
-          set = function(value) def.textFormat = value Refresh() end },
 
         { type = "slider", section = "Text", label = "Tenth marks",
           min = 0, max = 20, step = 1,
@@ -957,6 +970,23 @@ function UnitBars:EditSettings(bar)
     -- Appended rather than written inline with a condition: a nil in the
     -- middle of a table constructor ends the list for everything after
     -- it, which would have quietly cost every other bar its nudge.
+    -- A cast bar's text is the spell and the countdown, written as the
+    -- cast runs, so it never reads a format and is not offered one.
+    if def.kind ~= "cast" then
+        -- Where it reads, under "Show text", rather than wherever an
+        -- append happens to land.
+        local at = #widgets
+        for index, widget in ipairs(widgets) do
+            if widget.label == "Tenth marks" then at = index break end
+        end
+        table.insert(widgets, at, {
+            type = "dropdown", section = "Text", label = "Text says",
+            options = ValuesArray(TEXT_FORMATS),
+            get = function() return def.textFormat or "namePercent" end,
+            set = function(value) def.textFormat = value Refresh() end,
+        })
+    end
+
     if def.kind == "xp" then
         table.insert(widgets, #widgets, {
             type = "checkbox", section = "Visibility",
