@@ -215,9 +215,7 @@ local BUTTON_STYLES = {
 }
 
 -- minimapButtonFrame.png is 128x128 with the ring centered; its inner edge
--- is 70% of the texture and its outer edge touches the texture edge, so
--- SetAllPoints(button) makes the ring exactly one slot wide.
-local BAZUI_BUTTON_RING_FILE = BazUI.Skin.BUTTON_RING
+-- is 70% of the button, which is what the drawn ring is sized around.
 local RING_INNER_RATIO = 0.70
 local ICON_OVERLAP     = 1     -- px the icon extends under the ring, per side
 local ICON_CROP        = 0.06  -- texcoord inset (on top of the addon's own) trimming baked-in icon borders
@@ -345,16 +343,16 @@ local function ApplyBackdrop(btn, s)
         return
     end
     if not s.backdrop then
-        s.backdrop = btn:CreateTexture(nil, "BACKGROUND", nil, -8)
+        s.backdrop = btn:CreateTexture(nil, "BACKGROUND", nil, -5)
         s.backdrop:SetTexture(ICON_MASK_FILE)
         s.backdrop:SetVertexColor(unpack(BACKDROP_COLOR))
     end
     -- An icon that itself sits at the very bottom of BACKGROUND would tie
     -- with the disc; lift it one sublevel (restored on unskin).
     local layer, sublevel = s.icon:GetDrawLayer()
-    if layer == "BACKGROUND" and (sublevel or 0) <= -8 and not s.iconLayer then
+    if layer == "BACKGROUND" and (sublevel or 0) <= -5 and not s.iconLayer then
         s.iconLayer = { layer, sublevel }
-        s.icon:SetDrawLayer("BACKGROUND", -7)
+        s.icon:SetDrawLayer("BACKGROUND", -4)
     end
     s.backdrop:ClearAllPoints()
     s.backdrop:SetAllPoints(s.icon)
@@ -387,9 +385,11 @@ local function ApplyButtonSkin(btn)
         end
         s.mask = btn:CreateMaskTexture()
         s.mask:SetTexture(ICON_MASK_FILE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        s.ring = btn:CreateTexture(nil, "OVERLAY", nil, 7)
-        s.ring:SetTexture(BAZUI_BUTTON_RING_FILE)
-        s.ring:SetAllPoints(btn)
+        -- Drawn rather than a picture of a ring: three filled circles,
+        -- the same border the status bars wear. They sit under the icon,
+        -- since a filled circle drawn over one hides it; the picture
+        -- they replace could sit on top only because it had a hole.
+        s.ring = BazUI.Skin.Theme.CreateRoundRing(btn, { sublevel = -8 })
         s.ring:Hide()
     end
 
@@ -404,6 +404,15 @@ local function ApplyButtonSkin(btn)
     icon:ClearAllPoints()
     icon:SetPoint("CENTER", btn, "CENTER", 0, 0)
     icon:SetSize(size, size)
+    s.ring:SetInnerSize(size)
+
+    -- The rings take the bottom three sublevels, so an icon sitting down
+    -- there has to come up or it draws inside its own border.
+    local iconLayer, iconSub = icon:GetDrawLayer()
+    if iconLayer == "BACKGROUND" and (iconSub or 0) <= -6 and not s.iconLayer then
+        s.iconLayer = { iconLayer, iconSub }
+        icon:SetDrawLayer("BACKGROUND", -5)
+    end
 
     -- Icons the addon already masks (BazUI's own button uses SetMask,
     -- for one) reject SetTexCoord outright. Those keep their coords and

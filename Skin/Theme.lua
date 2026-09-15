@@ -549,37 +549,15 @@ function Theme.ApplyRoundButton(button, icon, opts)
         iconMask:SetTexture(Skin.ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         icon:AddMaskTexture(iconMask)
 
-        -- Three circles rather than a picture of a ring, the same
-        -- border the status bars wear: two pixels of dark, one of gold,
-        -- one of dark. Each is a solid colour wearing the round mask,
-        -- and each sits over the last, so what is left of the ones
-        -- underneath are rings.
-        --
-        -- The gold one is called _bazRing because it is the one worth
-        -- tinting: the micro menu pulses a button by colouring it.
-        -- Underneath the icon, not over it. The ring these replace was a
-        -- picture with a hole in the middle, so it could sit on top; a
-        -- filled circle on top is just a filled circle, which is what
-        -- swallowed every icon the moment it drew.
-        local function Circle(sublevel)
-            local texture = button:CreateTexture(nil, "BACKGROUND", nil, sublevel)
-            local mask = button:CreateMaskTexture()
-            mask:SetTexture(Skin.ROUND_MASK,
-                "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-            texture:AddMaskTexture(mask)
-            texture._mask = mask
-            return texture
-        end
+        local ringObject = Theme.CreateRoundRing(button, { sublevel = -6 })
+        button._bazRingObject = ringObject
 
-        local ringOuter = Circle(-4)
-        ringOuter:SetColorTexture(0, 0, 0, 0.75)
-        local ring = Circle(-3)
-        ring:SetColorTexture(0.55, 0.43, 0.25, 1)
-        local ringInner = Circle(-2)
-        ringInner:SetColorTexture(0.035, 0.04, 0.055, 1)
-
-        button._bazRingOuter, button._bazRingInner = ringOuter, ringInner
-        button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing = disc, discMask, iconMask, ring
+        -- The gold circle answers to the name the old ring texture had,
+        -- since callers tint it and that is the part worth tinting.
+        button._bazRingOuter = ringObject.parts[1]
+        button._bazRingInner = ringObject.parts[3]
+        button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing =
+            disc, discMask, iconMask, ringObject.gold
 
         -- Press feedback: the icon and its disc sink a pixel down-right
         -- and darken while the mouse button is held; the ring stays put
@@ -592,18 +570,7 @@ function Theme.ApplyRoundButton(button, icon, opts)
     end
     button._bazIcon = icon
 
-    -- Sized from the icon outward, so the border is the same four
-    -- pixels whatever the button is: dark, dark, gold, dark.
-    local function Place(texture, diameter)
-        texture:ClearAllPoints()
-        texture:SetPoint("CENTER")
-        texture:SetSize(diameter, diameter)
-        texture._mask:SetAllPoints(texture)
-    end
-
-    Place(button._bazRingOuter, inner + 8)
-    Place(button._bazRing,      inner + 4)
-    Place(button._bazRingInner, inner + 2)
+    button._bazRingObject:SetInnerSize(inner)
 
     icon:SetSize(inner, inner)
     button._bazDisc:SetSize(inner + 2, inner + 2)
