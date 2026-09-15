@@ -32,6 +32,7 @@ addon.UnitBars = UnitBars
 UnitBars.bars = {}          -- [id] = { def, frame, mover }
 
 local DEAD_COLOR    = { 0.45, 0.45, 0.45, 1 }
+local OFFLINE_COLOR = { 0.35, 0.35, 0.40, 1 }
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
 local CHANNEL_COLOR = { 0.45, 0.68, 0.85, 1 }
 local FAILED_COLOR  = { 0.85, 0.30, 0.30, 1 }
@@ -49,6 +50,10 @@ UnitBars.UNITS = {
     player = "Player",
     target = "Target",
     pet    = "Pet",
+    party1 = "Party 1",
+    party2 = "Party 2",
+    party3 = "Party 3",
+    party4 = "Party 4",
 }
 
 local function IsUnitKind(kind)
@@ -212,6 +217,10 @@ local STOCK_FRAMES = {
     player     = { "PlayerFrame" },
     target     = { "TargetFrame" },
     pet        = { "PetFrame" },
+    party1     = { "PartyMemberFrame1" },
+    party2     = { "PartyMemberFrame2" },
+    party3     = { "PartyMemberFrame3" },
+    party4     = { "PartyMemberFrame4" },
     playercast = { "CastingBarFrame", "PlayerCastingBarFrame" },
     petcast    = { "PetCastingBarFrame" },
 }
@@ -342,6 +351,10 @@ local function Number(n)
 end
 
 local function HealthColor(unit)
+    -- Offline reads as grey whatever else is true of them: a party
+    -- member's last known health is not worth colouring as if it were
+    -- current.
+    if UnitIsConnected and not UnitIsConnected(unit) then return OFFLINE_COLOR end
     if addon:GetSetting("classColor") and UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
         local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -400,7 +413,9 @@ local function UpdateHealth(bar)
     bar.frame:SetFillColor(HealthColor(unit))
 
     local name = UnitName(unit) or ""
-    if UnitIsGhost(unit) then
+    if UnitIsConnected and not UnitIsConnected(unit) then
+        bar.frame:SetText(name ~= "" and (name .. "  Offline") or "Offline")
+    elseif UnitIsGhost(unit) then
         bar.frame:SetText(name ~= "" and (name .. "  Ghost") or "Ghost")
     elseif UnitIsDead(unit) then
         bar.frame:SetText(name ~= "" and (name .. "  Dead") or "Dead")
@@ -1065,6 +1080,9 @@ function UnitBars:WatchAll()
             -- that it is now one.
             "PLAYER_UPDATE_RESTING", "UNIT_LEVEL",
             "ENABLE_XP_GAIN", "DISABLE_XP_GAIN",
+            -- Who is in the group is not a unit event: party2 becoming
+            -- somebody else fires nothing about party2.
+            "GROUP_ROSTER_UPDATE",
         }) do
             pcall(watchers._player.RegisterEvent, watchers._player, event)
         end
@@ -1084,7 +1102,59 @@ end
 ---------------------------------------------------------------------------
 
 local KIND_ORDER = { "health", "power", "cast", "xp", "rep" }
-local UNIT_ORDER = { "player", "target", "pet" }
+local UNIT_ORDER = {
+    "player", "target", "pet",
+    "party1", "party2", "party3", "party4",
+}
+
+-- The four party slots, as the group fills them. A bar for one of these
+-- shows itself when that slot is occupied and hides when it is not, and
+-- the game does the showing: RegisterUnitWatch is already how every
+-- health and power bar decides, so a party bar needs nothing extra to
+-- appear when somebody joins mid-fight.
+local PARTY_UNITS = { "party1", "party2", "party3", "party4" }
+
+-- Health and power for each of the four slots, power docked under
+-- health and each pair under the last, in a column. Made in one go
+-- because the shape is the same every time and nobody wants to place
+-- eight bars to find out whether they like it.
+function UnitBars:AddPartySet()
+    if InCombatLockdown() then return nil end
+
+    local previous, made = nil, 0
+    for index, unit in ipairs(PARTY_UNITS) do
+        local health = self:Add("health", unit)
+        if health then
+            made = made + 1
+            health.width = 180
+            if previous then
+                -- Under the pair above, so the column stays a column
+                -- however it is moved afterwards.
+                health.dock = { host = self:HostID(previous.id), edge = "BOTTOM" }
+                health.gap = 8
+            else
+                health.position = { point = "LEFT", relPoint = "LEFT", x = 20, y = 120 }
+            end
+
+            local power = self:Add("power", unit)
+            if power then
+                made = made + 1
+                power.width = 180
+                power.height = 16
+                power.dock = { host = self:HostID(health.id), edge = "BOTTOM" }
+                power.gap = 1
+                previous = power
+            else
+                previous = health
+            end
+        end
+        if index == #PARTY_UNITS then break end
+    end
+
+    self:Save()
+    self:ApplyAll()
+    return made
+end
 
 function UnitBars:RegisterCreator()
     BazUI:RegisterEditModeCreator("Bars and readouts", function()
@@ -1113,6 +1183,15 @@ function UnitBars:RegisterCreator()
                 }
             end
         end
+        items[#items + 1] = {
+            label = "Party frames (all four)",
+            onClick = function()
+                local made = UnitBars:AddPartySet()
+                if made then
+                    addon:Print(("Created %d party bars"):format(made))
+                end
+            end,
+        }
         return items
     end)
 end
