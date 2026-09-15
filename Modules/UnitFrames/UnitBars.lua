@@ -35,8 +35,9 @@ UnitBars.bars = {}          -- [id] = { def, frame, mover }
 -- be arranged while solo. See SetPreview.
 local previewing = false
 
-local DEAD_COLOR    = { 0.45, 0.45, 0.45, 1 }
-local OFFLINE_COLOR = { 0.35, 0.35, 0.40, 1 }
+-- Offline is here because a placeholder bar wears it before there is a
+-- unit to ask about. The rest of the unit colours live in Core/Units.lua.
+local OFFLINE_COLOR = BazUI.UNIT_COLORS.offline
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
 local CHANNEL_COLOR = { 0.45, 0.68, 0.85, 1 }
 local FAILED_COLOR  = { 0.85, 0.30, 0.30, 1 }
@@ -397,18 +398,12 @@ local function Number(n)
     return BreakUpLargeNumbers and BreakUpLargeNumbers(n) or tostring(math.floor(n))
 end
 
+-- Offline and dead read as gray whatever else is true of them: a party
+-- member's last known health is not worth colouring as if it were
+-- current. The rule lives in Core/Units.lua so the name plates paint the
+-- same unit the same way.
 local function HealthColor(unit)
-    -- Offline reads as gray whatever else is true of them: a party
-    -- member's last known health is not worth coloring as if it were
-    -- current.
-    if UnitIsConnected and not UnitIsConnected(unit) then return OFFLINE_COLOR end
-    if addon:GetSetting("classColor") and UnitIsPlayer(unit) then
-        local _, class = UnitClass(unit)
-        local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-        if color then return { color.r, color.g, color.b, 1 } end
-    end
-    if UnitIsDeadOrGhost(unit) then return DEAD_COLOR end
-    return { 0.1, 0.8, 0.15, 1 }
+    return BazUI.UnitColor(unit, { classColor = addon:GetSetting("classColor") })
 end
 
 local function PowerColor(unit)

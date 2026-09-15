@@ -72,6 +72,7 @@ local QUEUE_EYE_EVENTS = {
 
 -- Non-LibDBIcon minimap buttons from known addons that we always adopt.
 local KNOWN_MINIMAP_BUTTONS = {
+    ["LFGMinimapFrame"]            = true,
     ["BazUIMinimapButton"]       = true,
     ["ZygorGuidesViewerMapIcon"]   = true,
     ["VaultloomMinimapButton"]     = true,
@@ -110,7 +111,12 @@ local function IsAdoptable(frame)
     if not frame or not frame.IsObjectType or not frame:IsObjectType("Button") then
         return false
     end
-    if frame:GetParent() ~= Minimap then return false end
+    -- Either of the minimap's two homes for a button. Blizzard hangs
+    -- several of its own off MinimapBackdrop rather than the Minimap -
+    -- the group finder eye among them, which is how that one went on
+    -- sitting loose on the map while everything else was collected.
+    local parent = frame:GetParent()
+    if parent ~= Minimap and parent ~= MinimapBackdrop then return false end
     local name = frame:GetName()
     if not name or name == "" then return false end
 
@@ -260,7 +266,8 @@ end
 
 -- The button's icon: the conventional `icon` key first, then the largest
 -- texture that isn't chrome or one of the button's state textures, then
--- the normal texture for buttons that use it as their icon.
+-- a texture one level down in a child frame, then the normal texture for
+-- buttons that use it as their icon.
 local function FindIcon(btn)
     local icon = btn.icon or btn.Icon
     if IsTexture(icon) then return icon end
@@ -283,6 +290,24 @@ local function FindIcon(btn)
         end
     end
     if best then return best end
+
+    -- A button whose icon is not on the button. The group finder eye is
+    -- a child frame with an animated sheet inside it, so nothing on the
+    -- button itself is the icon and the whole thing went unskinned: raw
+    -- artwork at its own size, sitting over our ring rather than in it.
+    -- One level is enough for the shape; going deeper would start
+    -- finding things that are not icons.
+    for _, child in ipairs({ btn:GetChildren() }) do
+        local named = child.Texture or child.icon or child.Icon
+        if IsTexture(named) then return named end
+        for _, region in ipairs({ child:GetRegions() }) do
+            if IsTexture(region) and not IsChromeTexture(region)
+                and region:GetDrawLayer() ~= "HIGHLIGHT" then
+                return region
+            end
+        end
+    end
+
     return btn.GetNormalTexture and btn:GetNormalTexture() or nil
 end
 
@@ -532,6 +557,26 @@ function MinimapButtonsWidget:AdoptButton(btn, opts)
     end
     adopted[btn] = orig
 
+    -- Some buttons are adopted long before they are ever shown: the
+    -- group finder eye exists from login and turns up at level ten, and
+    -- LibDBIcon hides one whenever its addon is told to. The grid counts
+    -- only what is visible, so it has to be laid out again when that
+    -- changes - debounced, since a button that shows usually brings
+    -- others with it.
+    if not btn._bazVisibilityHooked then
+        btn._bazVisibilityHooked = true
+        local function Relayout()
+            if MinimapButtonsWidget._relayoutPending then return end
+            MinimapButtonsWidget._relayoutPending = true
+            C_Timer.After(0, function()
+                MinimapButtonsWidget._relayoutPending = false
+                MinimapButtonsWidget:LayoutButtons()
+            end)
+        end
+        btn:HookScript("OnShow", Relayout)
+        btn:HookScript("OnHide", Relayout)
+    end
+
     -- Preliminary parenting to the widget frame so the button's z-order
     -- and scale inheritance are correct before it's assigned to a slot
     -- in LayoutButtons (which re-parents to the slot frame).
@@ -764,11 +809,12 @@ local function AdoptQueueEye(widget)
 end
 
 function MinimapButtonsWidget:Scan()
-    -- Normal minimap-child scan
-    if Minimap then
-        for _, child in ipairs({ Minimap:GetChildren() }) do
-            if IsAdoptable(child) then
-                self:AdoptButton(child)
+    for _, host in ipairs({ Minimap, MinimapBackdrop }) do
+        if host then
+            for _, child in ipairs({ host:GetChildren() }) do
+                if IsAdoptable(child) then
+                    self:AdoptButton(child)
+                end
             end
         end
     end

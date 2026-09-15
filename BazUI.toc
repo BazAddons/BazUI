@@ -23,6 +23,7 @@ Core\UI.lua
 Core\Timers.lua
 Core\ObjectPool.lua
 Core\Format.lua
+Core\Units.lua
 Core\MinimapButton.lua
 Core\ButtonGlow.lua
 Core\EditMode.lua
@@ -148,6 +149,18 @@ Modules\UnitFrames\UnitBars.lua
 Modules\UnitFrames\BarOptions.lua
 Modules\UnitFrames\Settings.lua
 Modules\UnitFrames\Nameplate.lua
+
+# Name plates - the bar over a unit's head. Unrelated to
+# Skin\Nameplate.lua, which is a panel with a name on it.
+Modules\Nameplates\Core.lua
+Modules\Nameplates\Plates.lua
+Modules\Nameplates\Settings.lua
+
+# Quality of life - small changes to how the game behaves, each one
+# a switch of its own.
+Modules\QoL\Core.lua
+Modules\QoL\Tweaks.lua
+Modules\QoL\Settings.lua
 
 Modules\Auras\Core.lua
 Modules\Auras\Auras.xml

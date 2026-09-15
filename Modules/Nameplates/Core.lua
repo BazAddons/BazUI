@@ -1,0 +1,51 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Nameplates
+--
+-- The bar over a unit's head, in the suite's own look: a health bar, the
+-- name, the level, and a mark for the one you are targeting.
+--
+-- The game makes and moves the plates. It keeps a pool of them, hands one
+-- to a unit when it comes into view and takes it back when it goes, and
+-- positions every one of them in the world every frame - none of which an
+-- addon can do, and all of which is the hard part. What this module does
+-- is take over what a plate looks like: Blizzard's own is put away and
+-- ours is hung on the same frame, so it inherits the position, the
+-- fading, the clicking and the stacking for nothing.
+--
+-- "Nameplate" was already taken, by a panel with a name on it that the
+-- zone text uses (Skin\Nameplate.lua). This module is the plural, and
+-- they are unrelated.
+---------------------------------------------------------------------------
+
+local addon
+addon = BazUI:RegisterModule("Nameplates", {
+    title = "Nameplates",
+    icon = "Interface\\Icons\\Ability_Hunter_SniperShot",
+    minimap = { label = "Nameplates", icon = "Interface\\Icons\\Ability_Hunter_SniperShot" },
+    profiles = true,
+    defaults = {
+        width        = 110,
+        height       = 10,
+        nameSize     = 9,
+        showLevel    = true,
+        classColor   = true,
+        -- Every unit that gets a plate from the game gets one of ours.
+        -- Which units those are is the game's own setting, not ours:
+        -- there are checkboxes for it in Interface Options and CVars
+        -- behind them, and a second set here that disagreed would only
+        -- be a way to have plates you cannot explain.
+        showFriendly = true,
+        targetMark   = true,
+    },
+    slash = { "/bazplates" },
+    defaultHandler = function() BazUI:OpenOptionsPanel("Nameplates") end,
+    onReady = function(self)
+        self.Plates:Initialize()
+        self:OnProfileChanged(function() self:ApplySettings() end)
+    end,
+})
+
+function addon:ApplySettings()
+    if self.Plates then self.Plates:ApplyAll() end
+end
