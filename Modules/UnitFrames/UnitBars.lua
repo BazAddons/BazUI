@@ -211,8 +211,12 @@ function UnitBars:SuppressStock()
     -- container to lay itself out again. The key is left alone so the
     -- next call after combat picks this up.
     if InCombatLockdown() then return end
-    suppressKey = key
     suppressing.xp, suppressing.rep = wanted.xp, wanted.rep
+
+    -- Whether anything was actually there to act on. Blizzard's bars
+    -- may not exist yet the first time this runs, and remembering the
+    -- answer before they turn up would mean never looking again.
+    local found = false
 
     local manager, info = _G.StatusTrackingBarManager, _G.StatusTrackingBarInfo
     if manager and manager.CanShowBar and info and info.BarsEnum then
@@ -230,10 +234,32 @@ function UnitBars:SuppressStock()
         manager:UpdateBarsShown()
     end
 
+    -- With both of them replaced the container has nothing left to
+    -- draw, but the game's own Edit Mode still offers it as "Status Bar
+    -- 1" and lays a highlight across the screen for it. Parenting it to
+    -- something hidden takes it out of both, and only when we have in
+    -- fact replaced both: covering one of the two leaves a container
+    -- that still has the other to show.
+    if manager then
+        found = true
+        local gone = suppressing.xp and suppressing.rep
+        if gone and not stockParents[manager] then
+            stockParents[manager] = manager:GetParent() or UIParent
+            manager:SetParent(HiddenStock())
+        elseif not gone and stockParents[manager] then
+            manager:SetParent(stockParents[manager])
+            stockParents[manager] = nil
+            -- It was told what to show while it was off screen, so ask
+            -- again now that it is back.
+            manager:UpdateBarsShown()
+        end
+    end
+
     for kind, names in pairs(STOCK_FRAMES) do
         for _, name in ipairs(names) do
             local frame = _G[name]
             if frame then
+                found = true
                 if suppressing[kind] and not stockParents[frame] then
                     stockParents[frame] = frame:GetParent() or UIParent
                     frame:SetParent(HiddenStock())
@@ -244,6 +270,8 @@ function UnitBars:SuppressStock()
             end
         end
     end
+
+    if found then suppressKey = key end
 end
 
 ---------------------------------------------------------------------------
@@ -343,7 +371,7 @@ local function UpdateXP(bar)
     BazUI.Dock:SetShown(bar.frame, not (atMax and bar.def.hideAtMax ~= false))
 
     if atMax then
-        bar.frame:SetText("Level " .. level .. "  |  Maximum level")
+        bar.frame:SetText("Level " .. level .. "  •  Maximum level")
         return
     end
 
@@ -351,7 +379,7 @@ local function UpdateXP(bar)
     -- where you are, how far through, and the exact fraction. A tenth of
     -- a percent is worth having here because a level is long.
     if (bar.def.textFormat or "detailed") == "detailed" then
-        bar.frame:SetText(string.format("Level %d   |   %s / %s XP   |   %.1f%%",
+        bar.frame:SetText(string.format("Level %d   •   %s / %s XP   •   %.1f%%",
             level, Number(current), Number(maximum), current / maximum * 100))
     else
         bar.frame:SetText(Format(bar.def.textFormat, current, maximum, "Level " .. level))
@@ -382,7 +410,7 @@ local function UpdateRep(bar)
     bar.frame:SetFillColor({ 0.35, 0.65, 0.35, 1 })
     local into = (value or 0) - (min or 0)
     if (bar.def.textFormat or "detailed") == "detailed" then
-        bar.frame:SetText(string.format("%s   |   %s / %s   |   %.1f%%",
+        bar.frame:SetText(string.format("%s   •   %s / %s   •   %.1f%%",
             name, Number(into), Number(span), into / span * 100))
     else
         bar.frame:SetText(Format(bar.def.textFormat, into, span, name))
@@ -1120,7 +1148,10 @@ function UnitBars:WatchAll()
         }) do
             pcall(watchers._player.RegisterEvent, watchers._player, event)
         end
-        watchers._player:SetScript("OnEvent", function() UnitBars:UpdateAll() end)
+        watchers._player:SetScript("OnEvent", function()
+            UnitBars:UpdateAll()
+            UnitBars:SuppressStock()
+        end)
     end
 end
 
