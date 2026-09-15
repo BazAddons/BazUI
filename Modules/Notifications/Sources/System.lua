@@ -79,18 +79,27 @@ local function SetupHook()
             return origFunc(self, msg, r, g, b, ...)
         end
 
-        local shouldIntercept = true
+        -- Two separate questions, which used to be one.
+        --
+        -- Whether we raise a notification of our own is the Toast
+        -- switch. Whether Blizzard's red text still appears in the
+        -- middle of the screen is the Default switch. Deciding both from
+        -- the first meant turning a category's toast off handed the
+        -- message back to Blizzard, so "You have no target" came up in
+        -- the middle of the screen with all three switches unticked -
+        -- the one arrangement that plainly means show me nothing.
         local category = CategorizeMessage(msg)
+        local raise = true
 
         if category == "danger" and GetSetting("showDanger") == false then
-            shouldIntercept = false
+            raise = false
         elseif category == "errors" and GetSetting("showErrors") == false then
-            shouldIntercept = false
+            raise = false
         elseif category == "info" and GetSetting("showInfo") == false then
-            shouldIntercept = false
+            raise = false
         end
 
-        if shouldIntercept then
+        if raise then
             -- A repeat inside the dedup window gets no second card, but
             -- it must still be hidden: letting it fall through here is
             -- how "Spell is not ready yet" showed up in red after the
@@ -107,10 +116,11 @@ local function SetupHook()
                     silent = GetSetting("toastsEnabled") == false,
                 })
             end
+        end
 
-            if GetSetting("hideDefaultText") ~= false then
-                return
-            end
+        -- Blizzard's own display, asked once, whatever we did above.
+        if GetSetting("hideDefaultText") ~= false then
+            return
         end
 
         return origFunc(self, msg, r, g, b, ...)
