@@ -731,10 +731,19 @@ function addon:SizeRows()
                 -- when full is kept, because that is what anything
                 -- docked underneath takes, and a bar squeezed to a
                 -- single pixel because nobody is buffed is nonsense.
+                --
+                -- Except while it is being arranged. A row is empty most
+                -- of the time you are laying one out: solo, nobody in
+                -- the party, nothing on anybody. A stack of one pixel
+                -- rows puts every handle on top of the last, since a
+                -- handle is an icon tall whatever it stands for, so with
+                -- Edit Mode open an empty row holds a row's height and
+                -- the handles are spaced the way the icons will be.
+                local empty = (BazUI:IsEditMode() or demoActive) and size or 1
                 if filling then
-                    frame:SetHeight(1)
+                    frame:SetHeight(empty)
                 else
-                    frame:SetSize(math.max(1, perRow * step - spacing), 1)
+                    frame:SetSize(math.max(1, perRow * step - spacing), empty)
                 end
             else
                 -- Ask the header. It lays the icons out and then sizes
@@ -1321,9 +1330,14 @@ function addon:Initialize()
 
     self:On("BAZ_EDITMODE_ENTER", function()
         self:RefreshRowEditSettings()
+        -- Empty rows stand up to their full height while arranging.
+        self:SizeRows()
         self:ShowRowMovers()
     end)
-    self:On("BAZ_EDITMODE_EXIT", function() self:ShowRowMovers() end)
+    self:On("BAZ_EDITMODE_EXIT", function()
+        self:SizeRows()
+        self:ShowRowMovers()
+    end)
 
     -- Follow the unit frames: a bar a group is docked to can move or
     -- resize, and the dock passes that down, but a group floating beside
