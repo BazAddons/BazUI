@@ -41,9 +41,6 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
         sorting = { label = "Sorting", order = 5 },
     },
     entries = {
-        { key = "enabled", label = "Show BazUI auras", type = "toggle", section = "general", order = 1,
-          desc = "Draw your buffs and debuffs on the player frame.",
-          get = GetBool("enabled"), set = SetBool("enabled") },
         { key = "hideBlizzard", label = "Hide Blizzard's buff and debuff frames", type = "toggle", section = "general", order = 2,
           desc = "Park the stock frames by the minimap while BazUI auras are shown. Turn off to keep both.",
           get = GetBool("hideBlizzard"), set = SetBool("hideBlizzard") },

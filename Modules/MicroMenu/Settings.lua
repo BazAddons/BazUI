@@ -33,8 +33,6 @@ local function SetBool(key)
 end
 
 local entries = {
-    { key = "enabled", label = "Show the BazUI micro menu", type = "toggle", section = "general", order = 1,
-      get = GetBool("enabled"), set = SetBool("enabled") },
     { key = "hideBlizzard", label = "Hide Blizzard's micro menu", type = "toggle", section = "general", order = 2,
       desc = "Park the stock micro menu container in the bottom right. Its buttons live on the BazUI bar either way.",
       get = GetBool("hideBlizzard"), set = SetBool("hideBlizzard") },

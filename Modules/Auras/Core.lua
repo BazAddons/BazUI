@@ -70,6 +70,15 @@ function addon:ResetLayout()
     end
     -- Rows go back to the four you started with, floating where they
     -- began, which is the half of "layout" a reset is reaching for.
+    --
+    -- Taken down one at a time rather than by emptying the list. The
+    -- list is what says which rows exist; the frames and headers built
+    -- from it are elsewhere, and dropping the list without taking those
+    -- down leaves them on screen with nothing to delete them by.
+    local ids = {}
+    for _, def in ipairs(self:Rows()) do ids[#ids + 1] = def.id end
+    for _, id in ipairs(ids) do self:RemoveRow(id) end
+
     self:SetSetting("rows", {})
     self:SeedRows()
     self:ApplySettings()

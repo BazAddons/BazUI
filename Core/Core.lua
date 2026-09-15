@@ -70,6 +70,52 @@ end
 -- keeps working.
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- Turning a module off
+--
+-- Off means not built, rather than built and then hidden. A module that
+-- is off never runs its onReady, claims no slash command, adds no
+-- minimap entry and no settings pages: it costs what an unticked box
+-- ought to cost. That also means turning one back on takes a reload,
+-- since what it would have built during login cannot be conjured
+-- afterwards, and half of it is secure and could not be unbuilt anyway.
+--
+-- Kept per profile, like everything else here, so a raiding profile can
+-- drop what a levelling one keeps.
+---------------------------------------------------------------------------
+
+-- Modules nobody should be able to switch off. The Codex is a window you
+-- open rather than something on screen, and it is where the manual and
+-- the item lookup live.
+local ALWAYS_ON = { Codex = true, Tooltip = true }
+
+local function ModuleFlags()
+    local sv = _G.BazUIDB
+    if not (sv and sv.profiles and sv.activeProfile) then return nil end
+    local profile = sv.profiles[sv.activeProfile]
+    if not profile then return nil end
+    profile.Core = profile.Core or {}
+    profile.Core.modules = profile.Core.modules or {}
+    return profile.Core.modules
+end
+
+function BazUI:ModuleCanBeDisabled(name)
+    return not ALWAYS_ON[name]
+end
+
+function BazUI:IsModuleEnabled(name)
+    if ALWAYS_ON[name] then return true end
+    local flags = ModuleFlags()
+    return not (flags and flags[name] == false)
+end
+
+function BazUI:SetModuleEnabled(name, enabled)
+    if ALWAYS_ON[name] then return end
+    local flags = ModuleFlags()
+    if not flags then return end
+    flags[name] = enabled and nil or false
+end
+
 function BazUI:RegisterModule(name, config)
     self.addons[name] = config
 
@@ -142,6 +188,15 @@ function BazUI:RegisterModule(name, config)
             if BazUI.CreateDBProxy then
                 addon.db = BazUI:CreateDBProxy(name)
             end
+        end
+
+        -- Switched off in this profile: the settings above are still
+        -- set up, so what it remembers survives being turned off and on
+        -- again, and nothing else about it happens.
+        if not BazUI:IsModuleEnabled(name) then
+            addon.disabled = true
+            addon.loaded = true
+            return
         end
 
         -- onLoad callback (SV ready, before UI)
@@ -341,7 +396,7 @@ BazUI:QueueForLogin(function()
 
     -- Settings subcategory
     BazUI:RegisterOptionsTable("BazUI-Settings", function()
-        return {
+        local options = {
             name = "General",
             type = "group",
             args = {
@@ -367,6 +422,16 @@ BazUI:QueueForLogin(function()
                     desc = "The line in chat at login saying BazUI loaded.",
                     get = function() return BazUIDB.welcomeMessage end,
                     set = function(_, val) BazUIDB.welcomeMessage = val end,
+                },
+                modulesHeader = {
+                    order = 10,
+                    type = "header",
+                    name = "Modules",
+                },
+                modulesNote = {
+                    order = 11,
+                    type = "description",
+                    name = "Unticking one stops it loading at all, in this profile. It takes a reload either way: what a module builds at login cannot be put back without one.",
                 },
                 bazFont = {
                     order = 3,
@@ -401,6 +466,35 @@ BazUI:QueueForLogin(function()
                 },
             },
         }
+
+        -- One tick box per module, made from the modules there are
+        -- rather than a list written here that would go stale the first
+        -- time one was added.
+        local names = {}
+        for moduleName in pairs(BazUI.addons or {}) do
+            if BazUI:ModuleCanBeDisabled(moduleName) then
+                names[#names + 1] = moduleName
+            end
+        end
+        table.sort(names)
+
+        for index, moduleName in ipairs(names) do
+            local config = BazUI.addons[moduleName]
+            options.args["module" .. moduleName] = {
+                order = 12 + index,
+                type  = "toggle",
+                name  = config and config.title or moduleName,
+                get   = function() return BazUI:IsModuleEnabled(moduleName) end,
+                set   = function(_, value)
+                    BazUI:SetModuleEnabled(moduleName, value)
+                    BazUI:PromptReload(value
+                        and "Turning a module on needs a reload before it can build anything."
+                        or "It stops loading at the next reload.")
+                end,
+            }
+        end
+
+        return options
     end)
     BazUI:AddToSettings("BazUI-Settings", "General", "BazUI")
 

@@ -408,6 +408,16 @@ function BazUI:AddToSettings(key, displayName, parentKey, order)
     entry.order = order
 
     local moduleKey = parentKey or key
+
+    -- A module that is switched off adds no pages. Settings for
+    -- something that is not running are settings that do nothing, and
+    -- the switch that brings it back lives on the General page rather
+    -- than inside the module it turns off.
+    if BazUI.addons and BazUI.addons[moduleKey]
+        and BazUI.IsModuleEnabled and not BazUI:IsModuleEnabled(moduleKey) then
+        return
+    end
+
     EnsureModule(moduleKey)
 
     local canvas = canvases[moduleKey]
