@@ -134,11 +134,15 @@ local function SetActive(entry, active, size)
         Theme.ApplyRoundButton(b, entry.icon, { size = size })
         entry.icon:Show()
         b._bazRing:Show()
+        if b._bazRingOuter then b._bazRingOuter:Show() end
+        if b._bazRingInner then b._bazRingInner:Show() end
         b._bazDisc:Show()
         RefreshState(entry)
     else
         entry.active = false
         if b._bazRing then b._bazRing:Hide() end
+        if b._bazRingOuter then b._bazRingOuter:Hide() end
+        if b._bazRingInner then b._bazRingInner:Hide() end
         if b._bazDisc then b._bazDisc:Hide() end
         entry.icon:Hide()
         SetChromeHidden(entry, false)

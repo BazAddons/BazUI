@@ -455,6 +455,84 @@ end
 -- a masked texture rejects SetTexCoord.
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- The bar's border, bent into a circle
+--
+-- There is no way to draw a shape in this UI: everything on screen is a
+-- texture, and a circle normally means an artist and a PNG per size. The
+-- game ships a circular alpha mask, though, and a solid colour wearing
+-- that mask is a filled circle at whatever size you make it. Three of
+-- them, each smaller than the last and drawn over it, leave two rings
+-- and a hole - which is a border.
+--
+-- The recipe is the status bar's, outside in: two pixels of dark, one of
+-- gold, one of dark. The gold is a single pixel and only reads as a
+-- border with dark on both sides of it, which is the whole reason the
+-- bars look the way they do.
+--
+--   Theme.ApplyRing(frame, { scale = 1 })
+--
+-- Draws around the frame's edges, outside them, so whatever the frame
+-- holds keeps every pixel it had. Call it again after a resize; the
+-- textures anchor to the frame, so a resize alone needs nothing.
+---------------------------------------------------------------------------
+
+-- Same numbers as Core/StatusBar.lua. If those ever move, these move.
+local RING_LAYERS = {
+    { thickness = 2, color = { 0, 0, 0, 0.75 } },            -- outline
+    { thickness = 1, color = { 0.55, 0.43, 0.25, 1 } },      -- rim
+    { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },    -- the line inside it
+}
+
+function Theme.ApplyRing(frame, opts)
+    opts = opts or {}
+    local scale  = opts.scale or 1
+    local layers = opts.layers or RING_LAYERS
+
+    frame._bazRingParts = frame._bazRingParts or {}
+    local parts = frame._bazRingParts
+
+    -- How far out the outermost ring reaches, so each one can be placed
+    -- by how much is left outside it.
+    local total = 0
+    for _, layer in ipairs(layers) do total = total + layer.thickness * scale end
+
+    local out = total
+    for index, layer in ipairs(layers) do
+        local part = parts[index]
+        if not part then
+            part = frame:CreateTexture(nil, "BACKGROUND", nil, -8 + index)
+            local mask = frame:CreateMaskTexture()
+            mask:SetTexture(Skin.ROUND_MASK,
+                "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            part:AddMaskTexture(mask)
+            part._mask = mask
+            parts[index] = part
+        end
+
+        local color = layer.color
+        part:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+
+        -- Each circle reaches `out` beyond the frame on every side, and
+        -- the next one in covers all but its own thickness.
+        part:ClearAllPoints()
+        part:SetPoint("TOPLEFT", frame, "TOPLEFT", -out, out)
+        part:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out, -out)
+        part._mask:ClearAllPoints()
+        part._mask:SetAllPoints(part)
+
+        out = out - layer.thickness * scale
+    end
+
+    -- Anything left over from a shorter list of layers.
+    for index = #layers + 1, #parts do
+        parts[index]:Hide()
+    end
+    for index = 1, #layers do parts[index]:Show() end
+
+    return frame
+end
+
 function Theme.ApplyRoundButton(button, icon, opts)
     opts = opts or {}
     local size  = opts.size or button:GetWidth()
@@ -471,9 +549,32 @@ function Theme.ApplyRoundButton(button, icon, opts)
         iconMask:SetTexture(Skin.ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         icon:AddMaskTexture(iconMask)
 
-        local ring = button:CreateTexture(nil, "OVERLAY", nil, 7)
-        ring:SetTexture(Skin.BUTTON_RING)
+        -- Three circles rather than a picture of a ring, the same
+        -- border the status bars wear: two pixels of dark, one of gold,
+        -- one of dark. Each is a solid colour wearing the round mask,
+        -- and each sits over the last, so what is left of the ones
+        -- underneath are rings.
+        --
+        -- The gold one is called _bazRing because it is the one worth
+        -- tinting: the micro menu pulses a button by colouring it.
+        local function Circle(sublevel)
+            local texture = button:CreateTexture(nil, "OVERLAY", nil, sublevel)
+            local mask = button:CreateMaskTexture()
+            mask:SetTexture(Skin.ROUND_MASK,
+                "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            texture:AddMaskTexture(mask)
+            texture._mask = mask
+            return texture
+        end
 
+        local ringOuter = Circle(5)
+        ringOuter:SetColorTexture(0, 0, 0, 0.75)
+        local ring = Circle(6)
+        ring:SetColorTexture(0.55, 0.43, 0.25, 1)
+        local ringInner = Circle(7)
+        ringInner:SetColorTexture(0.035, 0.04, 0.055, 1)
+
+        button._bazRingOuter, button._bazRingInner = ringOuter, ringInner
         button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing = disc, discMask, iconMask, ring
 
         -- Press feedback: the icon and its disc sink a pixel down-right
@@ -487,9 +588,18 @@ function Theme.ApplyRoundButton(button, icon, opts)
     end
     button._bazIcon = icon
 
-    button._bazRing:ClearAllPoints()
-    button._bazRing:SetPoint("CENTER")
-    button._bazRing:SetSize(size, size)
+    -- Sized from the icon outward, so the border is the same four
+    -- pixels whatever the button is: dark, dark, gold, dark.
+    local function Place(texture, diameter)
+        texture:ClearAllPoints()
+        texture:SetPoint("CENTER")
+        texture:SetSize(diameter, diameter)
+        texture._mask:SetAllPoints(texture)
+    end
+
+    Place(button._bazRingOuter, inner + 8)
+    Place(button._bazRing,      inner + 4)
+    Place(button._bazRingInner, inner + 2)
 
     icon:SetSize(inner, inner)
     button._bazDisc:SetSize(inner + 2, inner + 2)
