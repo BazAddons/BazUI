@@ -1410,6 +1410,24 @@ end
 -- the units are named.
 ---------------------------------------------------------------------------
 
+-- Copy, then say what happened to each piece. Anything that was given a
+-- host and came out loose is called out: on screen it looks the same as
+-- something that was never told where to go, which is exactly how a
+-- broken copy passes for a working one.
+function UnitBars:RunCopy(frame, unit)
+    local report = {}
+    local _, made = BazUI.Dock:CopyStack(frame, unit, nil, nil, report)
+    addon:Print(("Copied %d%s."):format(made or 0,
+        unit and (" for " .. (UnitBars.UNITS[unit] or unit)) or ""))
+
+    for _, entry in ipairs(report) do
+        if entry.host and not entry.docked then
+            addon:Print(("  %s was told to dock to %s and did not."):format(
+                entry.id or "?", entry.host))
+        end
+    end
+end
+
 function UnitBars:RegisterCopyMenu()
     BazUI:RegisterContextMenuSection("bazui-copystack", "Copy for", function(frame)
         local items = {}
@@ -1417,19 +1435,12 @@ function UnitBars:RegisterCopyMenu()
 
         items[#items + 1] = {
             label = "The same units",
-            onClick = function()
-                local _, made = BazUI.Dock:CopyStack(frame, nil)
-                addon:Print(("Copied %d."):format(made or 0))
-            end,
+            onClick = function() UnitBars:RunCopy(frame, nil) end,
         }
         for _, unit in ipairs(UNIT_ORDER) do
             items[#items + 1] = {
                 label = UnitBars.UNITS[unit],
-                onClick = function()
-                    local _, made = BazUI.Dock:CopyStack(frame, unit)
-                    addon:Print(("Copied %d for %s."):format(made or 0,
-                        UnitBars.UNITS[unit] or unit))
-                end,
+                onClick = function() UnitBars:RunCopy(frame, unit) end,
             }
         end
         return items

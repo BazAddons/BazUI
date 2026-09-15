@@ -166,13 +166,25 @@ function Dock:CanCopy(frame)
     return copiers[frame] ~= nil
 end
 
-function Dock:CopyStack(frame, unit, hostId, edge)
+function Dock:CopyStack(frame, unit, hostId, edge, report)
     local copier = copiers[frame]
     if not copier then return nil, 0 end
 
     local newId, newFrame = copier(unit, hostId, edge)
     if not newFrame then return nil, 0 end
     local made = 1
+
+    -- Say what each piece was asked to attach to and whether it did.
+    -- A copy that comes out loose when a host was named is the only
+    -- interesting failure here, and it is invisible from the screen:
+    -- a loose bar looks exactly like one that was never told.
+    if report then
+        report[#report + 1] = {
+            id     = newId,
+            host   = hostId,
+            docked = self:IsDocked(newFrame),
+        }
+    end
 
     -- A snapshot: every copy attaches to the copy above it, which adds
     -- to the follower lists as we go.
@@ -183,7 +195,7 @@ function Dock:CopyStack(frame, unit, hostId, edge)
         for _, follower in ipairs(snapshot) do
             local link = links[follower]
             local _, count = Dock:CopyStack(follower, unit, newId,
-                link and link.edge or "BOTTOM")
+                link and link.edge or "BOTTOM", report)
             made = made + (count or 0)
         end
     end
