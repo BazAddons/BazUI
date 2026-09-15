@@ -672,6 +672,7 @@ function UnitBars:Apply(bar)
         edge    = dock.edge or "BOTTOM",
         mode    = "stretch",
         order   = def.id,
+        gap     = def.gap,
         reserve = def.kind == "cast",
     })
 
@@ -936,6 +937,8 @@ function UnitBars:EditSettings(bar)
           set = function(value)
               def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
               Refresh()
+              -- Floating and docked do not offer the same choices.
+              UnitBars:RefreshEditSettings()
           end },
         { type = "dropdown", section = "Docking", label = "On the",
           options = ValuesArray(EDGES),
@@ -970,6 +973,15 @@ function UnitBars:EditSettings(bar)
     -- Appended rather than written inline with a condition: a nil in the
     -- middle of a table constructor ends the list for everything after
     -- it, which would have quietly cost every other bar its nudge.
+    if def.dock and def.dock.host and def.dock.host ~= "float" then
+        table.insert(widgets, 3, {
+            type = "slider", section = "Docking", label = "Gap",
+            min = 0, max = 24, step = 1,
+            get = function() return def.gap or 2 end,
+            set = function(value) def.gap = value Refresh() end,
+        })
+    end
+
     -- A cast bar's text is the spell and the countdown, written as the
     -- cast runs, so it never reads a format and is not offered one.
     if def.kind ~= "cast" then
@@ -1019,8 +1031,15 @@ function UnitBars:EditActions(bar)
                 end
                 local copy = UnitBars:Add(def.kind, def.unit)
                 if not copy then return end
-                copy.width, copy.height = def.width, def.height
-                copy.textMode, copy.textFormat = def.textMode, def.textFormat
+                -- Everything except what makes it a different bar: its
+                -- own id and name, and where it sits. Listing the fields
+                -- to copy meant a new one was always a field behind.
+                for key, value in pairs(def) do
+                    if key ~= "id" and key ~= "name"
+                        and key ~= "dock" and key ~= "position" then
+                        copy[key] = value
+                    end
+                end
                 UnitBars:Save()
                 local made = UnitBars.bars[copy.id]
                 if made then UnitBars:Apply(made) end

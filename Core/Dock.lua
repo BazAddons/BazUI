@@ -64,13 +64,19 @@ function Dock:Attach(frame, host, opts)
         return
     end
 
+    -- Nought is a gap somebody asked for, so it cannot be treated as
+    -- nothing having been asked for: `or DEFAULT_GAP` would quietly put
+    -- two pixels back between bars meant to touch.
+    local gap = opts.gap
+    if gap == nil then gap = DEFAULT_GAP end
+
     links[frame] = {
         host    = host,
         edge    = opts.edge or "BOTTOM",
         mode    = opts.mode or "stretch",
         align   = opts.align or "LEFT",
         order   = opts.order or 100,
-        gap     = opts.gap or DEFAULT_GAP,
+        gap     = gap,
         reserve = opts.reserve and true or false,
     }
 

@@ -138,6 +138,13 @@ local function BarArgs(def)
                     if bar then UnitBars:Apply(bar) end
                 end,
             },
+            gap = {
+                order = 13, type = "range", name = "Gap",
+                desc = "Pixels between this bar and the one it is docked to. Each bar owns the space above it, so a chain is spaced by setting each bar in turn.",
+                min = 0, max = 24, step = 1,
+                hidden = function() return not def.dock or def.dock.host == "float" end,
+                get = Field(def, "gap", 2), set = SetField(def, "gap"),
+            },
             lookHeader = { order = 20, type = "header", name = "Size and text" },
             width = {
                 order = 21, type = "range", name = "Width",
