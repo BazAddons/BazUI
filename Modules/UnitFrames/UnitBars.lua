@@ -157,6 +157,44 @@ local function RetiredParent()
     return retiredParent
 end
 
+-- One bar of a stack being copied. The unit is swapped if it has one
+-- and a new one was asked for; everything else about it comes across
+-- except what makes it a different bar.
+function UnitBars:CopyBar(def, unit, hostId, edge)
+    if InCombatLockdown() then return nil end
+
+    local wanted = (unit and IsUnitKind(def.kind)) and unit or def.unit
+    local copy = self:Add(def.kind, wanted)
+    if not copy then return nil end
+
+    for key, value in pairs(def) do
+        if key ~= "id" and key ~= "name" and key ~= "unit"
+            and key ~= "dock" and key ~= "position" then
+            copy[key] = value
+        end
+    end
+    copy.name = self:DefaultName(copy.kind, copy.unit)
+
+    if hostId then
+        copy.dock = { host = hostId, edge = edge or "BOTTOM" }
+    else
+        -- The root of the copy floats a little below the original,
+        -- rather than exactly on top of it where it would look like
+        -- nothing had happened.
+        copy.dock = { host = "float", edge = (def.dock and def.dock.edge) or "BOTTOM" }
+        local pos = def.position or { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 }
+        copy.position = {
+            point = pos.point, relPoint = pos.relPoint,
+            x = pos.x or 0, y = (pos.y or 0) - 80,
+        }
+    end
+
+    self:Save()
+    local bar = self.bars[copy.id]
+    if bar then self:Apply(bar) end
+    return self:HostID(copy.id), bar and bar.frame
+end
+
 function UnitBars:Remove(id)
     if InCombatLockdown() then return false end
     local defs = self:Defs()
@@ -166,6 +204,7 @@ function UnitBars:Remove(id)
             if bar then
                 BazUI.Dock:Detach(bar.frame)
                 BazUI.Dock:UnregisterHost(self:HostID(id))
+                BazUI.Dock:UnregisterCopier(bar.frame)
 
                 -- A health or power bar does not decide for itself
                 -- whether it is on screen: RegisterUnitWatch does, in
@@ -728,6 +767,12 @@ function UnitBars:Build(def)
     BazUI.Dock:RegisterHost(self:HostID(def.id), frame,
         def.name or ("Bar " .. def.id), 30)
 
+    -- And every bar knows how to make another of itself, which is what
+    -- lets a whole stack be copied for another unit.
+    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge)
+        return UnitBars:CopyBar(def, unit, hostId, edge)
+    end)
+
     self:CreateMover(bar)
     self:Apply(bar)
     return bar
@@ -1009,6 +1054,12 @@ end
 function UnitBars:EditActions(bar)
     local def = bar.def
     return {
+        {
+            label = "Copy this and everything under it...",
+            onClick = function(mover)
+                BazUI:OpenCopyStackMenu(bar.frame, mover)
+            end,
+        },
         {
             label = "Duplicate",
             onClick = function()
@@ -1348,6 +1399,52 @@ function UnitBars:AddPartySet()
     self:Save()
     self:ApplyAll()
     return made
+end
+
+---------------------------------------------------------------------------
+-- Copying a stack, and what to point it at
+--
+-- Set up party one exactly as you want it and the same arrangement is
+-- wanted three more times. The dock does the walking; this is the list
+-- of units to point the copy at, which lives here because this is where
+-- the units are named.
+---------------------------------------------------------------------------
+
+function UnitBars:RegisterCopyMenu()
+    BazUI:RegisterContextMenuSection("bazui-copystack", "Copy for", function(frame)
+        local items = {}
+        if not frame then return items end
+
+        items[#items + 1] = {
+            label = "The same units",
+            onClick = function()
+                local _, made = BazUI.Dock:CopyStack(frame, nil)
+                addon:Print(("Copied %d."):format(made or 0))
+            end,
+        }
+        for _, unit in ipairs(UNIT_ORDER) do
+            items[#items + 1] = {
+                label = UnitBars.UNITS[unit],
+                onClick = function()
+                    local _, made = BazUI.Dock:CopyStack(frame, unit)
+                    addon:Print(("Copied %d for %s."):format(made or 0,
+                        UnitBars.UNITS[unit] or unit))
+                end,
+            }
+        end
+        return items
+    end)
+end
+
+-- Opened from an Actions button, which is handed the handle rather than
+-- the thing itself, so that is what the menu hangs off.
+function BazUI:OpenCopyStackMenu(frame, anchor)
+    if InCombatLockdown() then
+        BazUI:Print("Copy things after combat ends.")
+        return
+    end
+    BazUI:OpenContextMenu("bazui-copystack", anchor or UIParent, frame,
+        { title = "Copy for" })
 end
 
 function UnitBars:RegisterCreator()

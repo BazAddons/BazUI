@@ -542,6 +542,37 @@ function addon:AddRow(unit, filter)
     return def
 end
 
+-- One row of a stack being copied.
+function addon:CopyRow(def, unit, hostId, edge)
+    if InCombatLockdown() then return nil end
+
+    local copy = self:AddRow(unit or def.unit, def.filter)
+    if not copy then return nil end
+
+    for key, value in pairs(def) do
+        if key ~= "id" and key ~= "name" and key ~= "unit"
+            and key ~= "dock" and key ~= "position" then
+            copy[key] = value
+        end
+    end
+    copy.name = self:DefaultRowName(copy.unit, copy.filter)
+
+    if hostId then
+        copy.dock = { host = hostId, edge = edge or "BOTTOM" }
+    else
+        copy.dock = { host = "float", edge = (def.dock and def.dock.edge) or "BOTTOM" }
+        local pos = def.position or { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 }
+        copy.position = {
+            point = pos.point, relPoint = pos.relPoint,
+            x = pos.x or 0, y = (pos.y or 0) - 80,
+        }
+    end
+
+    self:SaveRows()
+    self:ApplySettings()
+    return self:RowHostID(copy.id), rowFrames[copy.id]
+end
+
 function addon:RemoveRow(id)
     if InCombatLockdown() then return false end
     local rows = self:Rows()
@@ -551,6 +582,7 @@ function addon:RemoveRow(id)
             if frame then
                 BazUI.Dock:Detach(frame)
                 BazUI.Dock:UnregisterHost(self:RowHostID(id))
+                BazUI.Dock:UnregisterCopier(frame)
                 if frame.mover then
                     BazUI:UnregisterEditModeFrame(frame.mover)
                     frame.mover:Hide()
@@ -618,6 +650,12 @@ function addon:BuildRow(def)
     -- was nothing to attach it to, because only bars ever registered.
     BazUI.Dock:RegisterHost(addon:RowHostID(def.id), frame,
         def.name or ("Row " .. def.id), 40)
+
+    -- And how to make another of itself, so a stack holding rows can be
+    -- copied for somebody else along with the bars around them.
+    BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge)
+        return addon:CopyRow(def, unit, hostId, edge)
+    end)
 
     -- The thing this is docked to can be rescaled or resized long after
     -- it was docked, and the dock passes that width straight down. A
@@ -998,6 +1036,13 @@ end
 
 function addon:RowEditActions(def)
     return {
+        {
+            label = "Copy this and everything under it...",
+            onClick = function(mover)
+                local frame = rowFrames[def.id]
+                if frame then BazUI:OpenCopyStackMenu(frame, mover) end
+            end,
+        },
         {
             label = "Duplicate",
             onClick = function()

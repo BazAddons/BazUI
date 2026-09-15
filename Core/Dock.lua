@@ -139,6 +139,57 @@ function Dock:Follows(frame, possibleHost)
     return false
 end
 
+---------------------------------------------------------------------------
+-- Copying a stack
+--
+-- A chain is usually built once and then wanted again for somebody else:
+-- party one's health, power and auras, arranged just so, and now the
+-- same for party two. The dock is the only thing that knows the shape of
+-- a chain, and it knows nothing about what is in one, so each module
+-- says how to copy its own kind of thing and the dock walks the tree.
+---------------------------------------------------------------------------
+
+local copiers = {}
+
+-- fn(unit, hostId, edge) makes a copy of this frame, docks it where it
+-- is told, and returns the copy's host id and frame. A nil hostId means
+-- the copy floats, which is what happens to the root of a stack.
+function Dock:RegisterCopier(frame, fn)
+    if frame then copiers[frame] = fn end
+end
+
+function Dock:UnregisterCopier(frame)
+    if frame then copiers[frame] = nil end
+end
+
+function Dock:CanCopy(frame)
+    return copiers[frame] ~= nil
+end
+
+function Dock:CopyStack(frame, unit, hostId, edge)
+    local copier = copiers[frame]
+    if not copier then return nil, 0 end
+
+    local newId, newFrame = copier(unit, hostId, edge)
+    if not newFrame then return nil, 0 end
+    local made = 1
+
+    -- A snapshot: every copy attaches to the copy above it, which adds
+    -- to the follower lists as we go.
+    local list = followers[frame]
+    if list then
+        local snapshot = {}
+        for index = 1, #list do snapshot[index] = list[index] end
+        for _, follower in ipairs(snapshot) do
+            local link = links[follower]
+            local _, count = Dock:CopyStack(follower, unit, newId,
+                link and link.edge or "BOTTOM")
+            made = made + (count or 0)
+        end
+    end
+    return newId, made
+end
+
 -- The corner a follower is hung by, for anything that has to sit over
 -- it and should grow the same way it does.
 function Dock:FollowerPoint(frame)

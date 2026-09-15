@@ -105,6 +105,7 @@ function addon:InitializeBars()
 
     local UnitBars = self.UnitBars
     UnitBars:RegisterCreator()
+    UnitBars:RegisterCopyMenu()
     UnitBars:BuildAll()
     self:SeedBars()
     UnitBars:WatchAll()
