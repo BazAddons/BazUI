@@ -144,13 +144,19 @@ function Drawer:Build()
     end)
     display.lockButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    display.infoButton = CreateFrame("Button", nil, chrome, "UIPanelInfoButton")
+    -- A gear, not Blizzard's round "i": this opens the drawer's settings,
+    -- and an information icon on a settings button is the sort of thing
+    -- that only makes sense to whoever put it there.
+    display.infoButton = BazUI.Skin.Theme.CreateSettingsButton(chrome, {
+        size = 20,
+        tooltip = "Drawer Settings",
+        onClick = function()
+            if BazUI.OpenOptionsPanel then
+                BazUI:OpenOptionsPanel("Drawers")
+            end
+        end,
+    })
     display.infoButton:SetPoint("RIGHT", display.lockButton, "LEFT", -4, 0)
-    display.infoButton:SetScript("OnClick", function()
-        if BazUI.OpenOptionsPanel then
-            BazUI:OpenOptionsPanel("Drawers")
-        end
-    end)
 
     display.countLabel = chrome:CreateFontString(nil, "ARTWORK", "GameFontNormalMed3")
     display.countLabel:SetPoint("RIGHT", display.infoButton, "LEFT", -6, 0)

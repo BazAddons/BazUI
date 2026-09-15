@@ -381,32 +381,17 @@ local function CreatePanel()
     panel.titleText:SetTextColor(unpack(Colors.accent))
     panel.titleText:SetText("Notifications")
 
-    -- Settings gear button
-    panel.gearBtn = CreateFrame("Button", nil, panel.header)
-    panel.gearBtn:SetSize(20, 20)
-
-    panel.gearBtn.icon = panel.gearBtn:CreateTexture(nil, "ARTWORK")
-    panel.gearBtn.icon:SetSize(16, 16)
-    panel.gearBtn.icon:SetPoint("CENTER", panel.gearBtn, "CENTER", 0, 0)
-    panel.gearBtn.icon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
-    panel.gearBtn.icon:SetDesaturated(true)
-    panel.gearBtn.icon:SetVertexColor(unpack(Colors.textMuted))
-
-    panel.gearBtn:SetScript("OnEnter", function(self)
-        self.icon:SetVertexColor(unpack(Colors.accent))
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Settings")
-        GameTooltip:Show()
-    end)
-    panel.gearBtn:SetScript("OnLeave", function(self)
-        self.icon:SetVertexColor(unpack(Colors.textMuted))
-        self.icon:SetDesaturated(true)
-        GameTooltip:Hide()
-    end)
-    panel.gearBtn:SetScript("OnClick", function()
-        addon.TogglePanel()  -- close panel
-        if addon.OpenOptions then addon.OpenOptions() end
-    end)
+    -- Settings gear, the shared one: the drawer wears the same button,
+    -- and anything that wants one later gets it without choosing an icon.
+    panel.gearBtn = BazUI.Skin.Theme.CreateSettingsButton(panel.header, {
+        size = 20,
+        color = Colors.textMuted,
+        hoverColor = Colors.accent,
+        onClick = function()
+            addon.TogglePanel()  -- close panel
+            if addon.OpenOptions then addon.OpenOptions() end
+        end,
+    })
 
     -- Clear / Purge button (changes based on tab)
     panel.actionBtn = CreateFrame("Button", nil, panel.header)

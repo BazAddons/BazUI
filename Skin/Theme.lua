@@ -526,6 +526,74 @@ function Theme.ApplyRing(frame, opts)
     return frame
 end
 
+---------------------------------------------------------------------------
+-- Small icon buttons
+--
+-- A gear that opens settings should be the same gear everywhere. It was
+-- not: the notification panel drew one, the drawer used Blizzard's round
+-- info button - an "i", for a button that opens settings - and anything
+-- added later would have picked whichever it saw first.
+--
+--   Theme.CreateSettingsButton(parent, { size = 20, onClick = fn })
+--
+-- Muted until the mouse is on it, gold while it is, with a tooltip
+-- saying what it does. Theme.CreateIconButton takes any texture or atlas
+-- and behaves the same way.
+---------------------------------------------------------------------------
+
+function Theme.CreateIconButton(parent, opts)
+    opts = opts or {}
+    local size = opts.size or 20
+
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(size, size)
+
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetPoint("CENTER")
+    icon:SetSize(opts.iconSize or (size - 4), opts.iconSize or (size - 4))
+    if opts.atlas then
+        icon:SetAtlas(opts.atlas)
+    else
+        icon:SetTexture(opts.texture)
+    end
+
+    -- Blizzard's icons carry their own colour; desaturating first means
+    -- the tint is the only colour on them, so they sit in our palette
+    -- rather than beside it.
+    icon:SetDesaturated(true)
+    icon:SetVertexColor(unpack(opts.color or Theme.colors.textSoft))
+    button.icon = icon
+
+    button:SetScript("OnEnter", function(self)
+        self.icon:SetVertexColor(unpack(opts.hoverColor or Theme.colors.gold))
+        if opts.tooltip then
+            GameTooltip:SetOwner(self, opts.tooltipAnchor or "ANCHOR_BOTTOM")
+            GameTooltip:SetText(opts.tooltip)
+            if opts.tooltipLine then
+                GameTooltip:AddLine(opts.tooltipLine, 1, 1, 1, true)
+            end
+            GameTooltip:Show()
+        end
+    end)
+
+    button:SetScript("OnLeave", function(self)
+        self.icon:SetVertexColor(unpack(opts.color or Theme.colors.textSoft))
+        GameTooltip:Hide()
+    end)
+
+    if opts.onClick then button:SetScript("OnClick", opts.onClick) end
+
+    return button
+end
+
+-- The gear, everywhere it is wanted.
+function Theme.CreateSettingsButton(parent, opts)
+    opts = opts or {}
+    opts.texture = opts.texture or "Interface\\Buttons\\UI-OptionsButton"
+    opts.tooltip = opts.tooltip or "Settings"
+    return Theme.CreateIconButton(parent, opts)
+end
+
 -- The same border, square.
 --
 -- Four solid textures inset inside each other: two pixels of dark, one
