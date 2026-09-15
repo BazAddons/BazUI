@@ -821,6 +821,20 @@ function UnitBars:SavePosition(bar)
     if not mover then return end
     mover:StopMovingOrSizing()
 
+    -- The bar has spent the drag anchored to the handle so it could
+    -- follow it live. Put it back on the screen before anything else
+    -- runs, because Apply below re-anchors the handle to the bar, and
+    -- while the bar still points at the handle the two depend on each
+    -- other and the game refuses the second anchor outright.
+    if not InCombatLockdown() then
+        local cx, cy = bar.frame:GetCenter()
+        if cx then
+            local scale = bar.frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+            bar.frame:ClearAllPoints()
+            bar.frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx * scale, cy * scale)
+        end
+    end
+
     local snap = NearestDock(mover, bar.frame)
     if snap then
         bar.def.dock = { host = snap.host, edge = snap.edge }
@@ -840,6 +854,10 @@ end
 function UnitBars:RefreshMover(bar)
     local mover = bar and bar.mover
     if not mover then return end
+    -- Mid-drag the bar is anchored to the handle, so anchoring the
+    -- handle to the bar would be circular; it would also fight the drag.
+    -- A docked bar resizing under the cursor is exactly when this fires.
+    if mover.isDragging or mover.isMoving then return end
     mover:SetSize(math.max(60, bar.frame:GetWidth()), math.max(20, bar.frame:GetHeight()))
     mover:ClearAllPoints()
     mover:SetPoint("CENTER", bar.frame, "CENTER", 0, 0)
