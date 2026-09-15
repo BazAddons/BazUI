@@ -85,7 +85,7 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     },
 })
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Auras", function()
     -- The module entry itself never renders: its pages are tabs.
     BazUI:RegisterOptionsTable(MODULE_NAME, function()
         return { name = "Auras", type = "group", args = {} }

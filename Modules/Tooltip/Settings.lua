@@ -41,7 +41,7 @@ BazUI:RegisterSettingsSpec("Tooltip", {
           disabled = InCombatLockdown, func = function() addon:Preview() end },
     },
 })
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Tooltip", function()
     BazUI:RegisterOptionsTable("Tooltip", function() return { name = "Tooltip", type = "group", args = {} } end)
     BazUI:AddToSettings("Tooltip", "Tooltip")
     BazUI:RegisterOptionsTable("Tooltip-Settings", function()

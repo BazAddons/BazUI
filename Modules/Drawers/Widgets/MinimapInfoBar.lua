@@ -317,6 +317,6 @@ function InfoBarWidget:Init()
     AttachFrames()
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     C_Timer.After(0.2, function() InfoBarWidget:Init() end)
 end)

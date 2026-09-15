@@ -96,7 +96,7 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
     },
 })
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("UnitFrames", function()
     BazUI:RegisterOptionsTable("UnitFrames", function()
         return BazUI:BuildOptionsTableFromSpec("UnitFrames", { name = "Unit Frames" })
     end)

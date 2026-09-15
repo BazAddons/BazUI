@@ -1039,6 +1039,6 @@ end
 -- ready by the time we read/write settings.
 ---------------------------------------------------------------------------
 
-if BazUI.QueueForLogin then
-    BazUI:QueueForLogin(function() Categories.EnsureDefaults() end)
+if BazUI.QueueForModule then
+    BazUI:QueueForModule("Bags", function() Categories.EnsureDefaults() end)
 end

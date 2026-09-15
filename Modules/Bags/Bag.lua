@@ -1324,4 +1324,4 @@ local function HookBlizzardBagToggles()
     CloseBag      = Wrap(origCloseBag)
 end
 
-BazUI:QueueForLogin(HookBlizzardBagToggles)
+BazUI:QueueForModule("Bags", HookBlizzardBagToggles)

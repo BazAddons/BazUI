@@ -366,6 +366,6 @@ function DFWidget:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     C_Timer.After(0.3, function() DFWidget:Init() end)
 end)

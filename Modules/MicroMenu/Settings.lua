@@ -79,7 +79,7 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     entries = entries,
 })
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("MicroMenu", function()
     -- The module entry itself never renders: its pages are tabs.
     BazUI:RegisterOptionsTable(MODULE_NAME, function()
         return { name = "Micro Menu", type = "group", args = {} }

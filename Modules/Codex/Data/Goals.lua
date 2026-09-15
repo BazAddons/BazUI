@@ -137,7 +137,7 @@ function Goals.All()
     return out
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     C_Timer.After(6, function()
         Goals.Validate()
         if Codex.Panel and Codex:IsShown() then Codex.Panel:QueueRefresh() end

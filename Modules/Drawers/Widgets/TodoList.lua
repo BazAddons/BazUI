@@ -176,4 +176,4 @@ function TodoWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() TodoWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() TodoWidget:Init() end)

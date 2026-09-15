@@ -138,4 +138,4 @@ function Pull:Init()
     })
 end
 
-BazUI:QueueForLogin(function() Pull:Init() end)
+BazUI:QueueForModule("Drawers", function() Pull:Init() end)

@@ -20,7 +20,7 @@ local PAGE_KEY = "BazUIChat-Settings"
 -- Register with BazUI
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Chat", function()
     if not BazUI.RegisterOptionsTable then return end
     if not BazUI.BuildOptionsTableFromSpec then return end
 

@@ -116,4 +116,4 @@ function SpeedWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() SpeedWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() SpeedWidget:Init() end)

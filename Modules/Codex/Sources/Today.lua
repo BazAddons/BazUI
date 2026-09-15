@@ -160,6 +160,6 @@ Codex:RegisterSection({
 
 -- The server only sends lockout data when asked. Ask on login, and the
 -- codex asks again whenever it opens.
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     if RequestRaidInfo then pcall(RequestRaidInfo) end
 end)

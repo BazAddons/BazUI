@@ -121,4 +121,4 @@ function StopwatchWidget:Init()
     })
 end
 
-BazUI:QueueForLogin(function() StopwatchWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() StopwatchWidget:Init() end)

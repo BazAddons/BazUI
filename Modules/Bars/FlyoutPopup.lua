@@ -189,7 +189,7 @@ function FlyoutPopup:HideFor(button)
     if popup then popup:SafeHide() end
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Bars", function()
     addon:On("PLAYER_REGEN_ENABLED", function()
         for button in pairs(waitingForCombatEnd) do
             if button.action and button.action.type == "flyout" then
@@ -203,7 +203,7 @@ end)
 -- An open popup follows the bags: use one of a stack from inside it and
 -- the number on the cell should change with it rather than at the next
 -- time the grid happens to be rebuilt.
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Bars", function()
     local watcher = CreateFrame("Frame")
     watcher:RegisterEvent("BAG_UPDATE_DELAYED")
     watcher:SetScript("OnEvent", function()

@@ -155,4 +155,4 @@ function FPS:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() FPS:Init() end)
+BazUI:QueueForModule("Drawers", function() FPS:Init() end)

@@ -121,4 +121,4 @@ function Bags:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() Bags:Init() end)
+BazUI:QueueForModule("Drawers", function() Bags:Init() end)

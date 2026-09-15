@@ -391,7 +391,7 @@ function MinimapWidget:Init()
     self:ApplyHideSettings()
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     -- Small delay gives Blizzard Minimap finish init before we grab it.
     C_Timer.After(0.2, function() MinimapWidget:Init() end)
 end)

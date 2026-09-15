@@ -140,4 +140,4 @@ function Perf:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() Perf:Init() end)
+BazUI:QueueForModule("Drawers", function() Perf:Init() end)

@@ -288,4 +288,4 @@ function Tooltip:Init()
     InstallHooks()
 end
 
-BazUI:QueueForLogin(function() Tooltip:Init() end)
+BazUI:QueueForModule("Drawers", function() Tooltip:Init() end)

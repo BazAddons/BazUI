@@ -105,4 +105,4 @@ function CoordsWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() CoordsWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() CoordsWidget:Init() end)

@@ -571,4 +571,4 @@ function RepairWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() RepairWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() RepairWidget:Init() end)

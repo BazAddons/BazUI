@@ -146,7 +146,7 @@ function Replica:IsRunning() return started end
 -- Boot
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Chat", function()
     if not addon.core then return end
     if not addon.core:GetSetting("enabled") then return end
     Replica:Start()

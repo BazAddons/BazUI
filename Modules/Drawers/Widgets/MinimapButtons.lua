@@ -984,4 +984,4 @@ function MinimapButtonsWidget:Init()
     end
 end
 
-BazUI:QueueForLogin(function() MinimapButtonsWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() MinimapButtonsWidget:Init() end)

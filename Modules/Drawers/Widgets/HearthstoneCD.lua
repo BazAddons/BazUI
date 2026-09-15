@@ -142,4 +142,4 @@ function Hearth:Init()
     })
 end
 
-BazUI:QueueForLogin(function() Hearth:Init() end)
+BazUI:QueueForModule("Drawers", function() Hearth:Init() end)

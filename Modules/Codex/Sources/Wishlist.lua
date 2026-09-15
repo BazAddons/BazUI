@@ -364,7 +364,7 @@ Codex.customTabs.wishlist = {
 }
 
 -- Picking something up off the list is worth noticing.
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     local watcher = CreateFrame("Frame")
     watcher:RegisterEvent("BAG_UPDATE_DELAYED")
     watcher:SetScript("OnEvent", function()

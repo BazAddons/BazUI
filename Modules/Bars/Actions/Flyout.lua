@@ -265,7 +265,7 @@ function Flyout.pickup(data)
     f:Show()
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Bars", function()
     if ClearCursor then
         hooksecurefunc("ClearCursor", function()
             if pending then Flyout.ClearPending() end
@@ -588,7 +588,7 @@ function Flyout:SetShape(button, key, value)
 end
 
 -- Anything the popup could not re-point during combat catches up here.
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Bars", function()
     addon:On("PLAYER_REGEN_ENABLED", function()
         for button in pairs(pendingApply) do
             if button.action and button.action.type == "flyout" then

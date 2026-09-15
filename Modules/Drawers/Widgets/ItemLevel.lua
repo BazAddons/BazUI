@@ -267,6 +267,6 @@ function ItemLevel:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     C_Timer.After(0.5, function() ItemLevel:Init() end)
 end)

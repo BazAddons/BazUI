@@ -242,7 +242,7 @@ end
 -- Register
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Chat", function()
     if not BazUI.RegisterOptionsTable then return end
     if not BazUI.CreateManagedListPage then return end
 

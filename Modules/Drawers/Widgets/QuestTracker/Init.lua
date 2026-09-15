@@ -627,4 +627,4 @@ function QT.Init()
     end)
 end
 
-BazUI:QueueForLogin(function() QT.Init() end)
+BazUI:QueueForModule("Drawers", function() QT.Init() end)

@@ -319,4 +319,4 @@ function Rep:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() Rep:Init() end)
+BazUI:QueueForModule("Drawers", function() Rep:Init() end)

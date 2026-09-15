@@ -133,4 +133,4 @@ function Reset:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() Reset:Init() end)
+BazUI:QueueForModule("Drawers", function() Reset:Init() end)

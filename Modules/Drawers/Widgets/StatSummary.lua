@@ -144,4 +144,4 @@ function StatWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() StatWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() StatWidget:Init() end)

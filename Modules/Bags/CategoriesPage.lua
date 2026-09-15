@@ -592,8 +592,8 @@ end
 -- Register
 ---------------------------------------------------------------------------
 
-if BazUI.QueueForLogin then
-    BazUI:QueueForLogin(function()
+if BazUI.QueueForModule then
+    BazUI:QueueForModule("Bags", function()
         if not BazUI.RegisterOptionsTable then return end
 
         local pageFunc = BazUI:CreateManagedListPage(MODULE_NAME, {

@@ -306,7 +306,7 @@ end
 -- Lifecycle
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     local ldb = GetLDB()
     if not ldb then return end
     -- Many addons register their feed after login; catch those as they arrive.

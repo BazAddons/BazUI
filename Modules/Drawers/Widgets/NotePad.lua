@@ -89,4 +89,4 @@ function NoteWidget:Init()
     })
 end
 
-BazUI:QueueForLogin(function() NoteWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() NoteWidget:Init() end)

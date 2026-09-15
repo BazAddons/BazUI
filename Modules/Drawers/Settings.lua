@@ -607,7 +607,7 @@ end
 -- Register pages
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Drawers", function()
     if not BazUI.RegisterOptionsTable then return end
 
     -- The module entry itself never renders: its pages are tabs.

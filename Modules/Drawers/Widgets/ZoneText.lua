@@ -139,4 +139,4 @@ function ZoneWidget:Init()
     C_Timer.After(0.2, function() ZoneWidget:Refresh() end)
 end
 
-BazUI:QueueForLogin(function() ZoneWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() ZoneWidget:Init() end)

@@ -229,4 +229,4 @@ function Trinket:Init()
     self:Refresh()
 end
 
-BazUI:QueueForLogin(function() Trinket:Init() end)
+BazUI:QueueForModule("Drawers", function() Trinket:Init() end)

@@ -53,7 +53,7 @@ BazUI:RegisterSettingsSpec("Codex", {
     },
 })
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     BazUI:RegisterOptionsTable("Codex", function()
         return BazUI:BuildOptionsTableFromSpec("Codex", { name = "Codex" })
     end)

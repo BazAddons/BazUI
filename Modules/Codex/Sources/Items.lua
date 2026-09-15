@@ -555,7 +555,7 @@ Codex.customTabs.items = {
 -- other people post.
 ---------------------------------------------------------------------------
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     local watcher = CreateFrame("Frame")
     watcher:RegisterEvent("BAG_UPDATE_DELAYED")
     watcher:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")

@@ -185,7 +185,7 @@ function Access.All()
     return out
 end
 
-BazUI:QueueForLogin(function()
+BazUI:QueueForModule("Codex", function()
     -- Item and quest names arrive over the wire, so the first pass runs
     -- once the client has had a moment to answer.
     C_Timer.After(6, function()

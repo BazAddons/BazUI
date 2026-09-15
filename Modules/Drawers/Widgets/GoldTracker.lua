@@ -187,4 +187,4 @@ function GoldWidget:Init()
     self:Update()
 end
 
-BazUI:QueueForLogin(function() GoldWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() GoldWidget:Init() end)

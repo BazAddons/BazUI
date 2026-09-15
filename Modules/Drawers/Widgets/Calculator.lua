@@ -237,4 +237,4 @@ function CalcWidget:Init()
     })
 end
 
-BazUI:QueueForLogin(function() CalcWidget:Init() end)
+BazUI:QueueForModule("Drawers", function() CalcWidget:Init() end)
