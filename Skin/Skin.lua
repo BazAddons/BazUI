@@ -14,11 +14,13 @@ BazUI.Skin = {
 
     -- Minimap ring. 1024x1024, ring centered; the theme carries the
     -- inner-edge ratios.
+    -- The old minimap ring. Nothing frames anything with it any more -
+    -- borders are drawn - but the Codex's hero card uses a slice of it,
+    -- faded almost to nothing, so the card is not a flat rectangle.
     MINIMAP_RING             = ASSETS .. "BazUI_Frame.png",
 
     -- Minimap button ring. 128x128, ring centered; inner edge at 70%, the
     -- outer edge touches the texture edge.
-    BUTTON_RING              = ASSETS .. "minimapButtonFrame.png",
     BUTTON_RING_INNER_RATIO  = 0.70,
 
     -- Blizzard's round portrait mask: clips icons to circles and, drawn as

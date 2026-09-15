@@ -171,10 +171,6 @@ local FRAME_STYLES = {
     bazui   = "BazUI",
 }
 
--- Assets\BazUI_Frame.png is 1024x1024 with the ring centered. Its inner
--- edge is 87% of the texture width; the N tag and
--- outer rim stay outside the map. Sized so the inner edge overlaps by a
--- few pixels to hide the mask's anti-aliasing.
 -- The ring is drawn rather than painted: three circles around the map,
 -- the same border the status bars wear, at a scale that suits something
 -- this size. They sit behind the map, since a filled circle in front of

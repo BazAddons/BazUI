@@ -199,7 +199,7 @@ local adopted = {}
 -- with a 17px icon, a tracking-border ring and a background disc, plus
 -- countless hand-rolled variants. The optional BazUI style unifies them:
 -- the icon is centered, cropped and clipped to a circle, the addon's own
--- ring / background textures are faded out, and Assets\\minimapButtonFrame.png
+-- ring / background textures are faded out, and a drawn border
 -- is drawn over the top so every button wears the same brass ring.
 --
 -- Everything touched is recorded per button so switching back to Blizzard
@@ -214,8 +214,7 @@ local BUTTON_STYLES = {
     bazui   = "BazUI",
 }
 
--- minimapButtonFrame.png is 128x128 with the ring centered; its inner edge
--- is 70% of the button, which is what the drawn ring is sized around.
+-- The icon is 70% of the button, and the drawn border goes around it.
 local RING_INNER_RATIO = 0.70
 local ICON_OVERLAP     = 1     -- px the icon extends under the ring, per side
 local ICON_CROP        = 0.06  -- texcoord inset (on top of the addon's own) trimming baked-in icon borders

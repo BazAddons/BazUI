@@ -505,7 +505,7 @@ local function BuildHero(parent)
     -- A band of the addon's own frame art down the right of the card,
     -- faded almost away: enough that the hero is not a flat rectangle.
     local art = hero:CreateTexture(nil, "ARTWORK")
-    art:SetTexture("Interface\\AddOns\\BazUI\\Skin\\Assets\\BazUI_Frame.png")
+    art:SetTexture(BazUI.Skin.MINIMAP_RING)
     art:SetPoint("TOPRIGHT", -1, -1)
     art:SetPoint("BOTTOMRIGHT", -1, 1)
     art:SetWidth(280)
