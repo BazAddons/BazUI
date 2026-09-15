@@ -38,7 +38,6 @@ local hiddenParent
 local pendingApply  = false
 local refreshQueued = false
 local applyQueued   = false
-local targetAnchored = false   -- the target headers sit on a BazUI target frame
 
 -- Preview state (see "Preview" below).
 local demoFrame
@@ -233,26 +232,24 @@ local function CreateHeader(key, unit, filter, name)
     return h
 end
 
--- side: "left" for buffs (by the health bar), "right" for debuffs (by
--- the power bar). below: rows hang under the bars and stack downward
--- (the target frame) instead of sitting above and stacking upward (the
--- player frame). Returns the header's own anchor point.
-local function ConfigureHeader(h, side, below)
+-- below: rows hang under the group's anchor and stack downward, which is
+-- what a group docked to the bottom of something wants; a group docked
+-- above stacks upward instead. Icons always run left to right, and where
+-- the row sits across its host is the group's alignment, not a growth
+-- direction: the two used to be the same setting because the first icon
+-- was pinned to a portrait.
+local function ConfigureHeader(entry, below)
+    local h       = headers[entry.key]
     local size    = addon:GetSetting("iconSize") or 26
     local spacing = addon:GetSetting("spacing") or 3
     local perRow  = addon:GetSetting("perRow") or 8
-    local growth  = addon:GetSetting("growth") or "portrait"
     local step    = size + spacing
+    local side    = (entry.filter == "HELPFUL") and "left" or "right"
 
-    -- "portrait" puts the first icon beside the portrait and grows away
-    -- from it: buffs (left side) grow left, debuffs grow right. "edge"
-    -- is the mirror image.
-    local growRight = (growth == "portrait") == (side == "right")
-    local vertical = below and "TOP" or "BOTTOM"
-    local point = vertical .. (growRight and "LEFT" or "RIGHT")
+    local point = (below and "TOP" or "BOTTOM") .. "LEFT"
 
     h:SetAttribute("point", point)
-    h:SetAttribute("xOffset", growRight and step or -step)
+    h:SetAttribute("xOffset", step)
     h:SetAttribute("yOffset", 0)
     h:SetAttribute("wrapAfter", perRow)
     h:SetAttribute("wrapXOffset", 0)
@@ -262,7 +259,7 @@ local function ConfigureHeader(h, side, below)
     h:SetAttribute("minHeight", size)
     h:SetAttribute("sortMethod", addon:GetSetting("sortMethod") or "INDEX")
     h:SetAttribute("sortDirection", addon:GetSetting("sortDirection") or "+")
-    local isPlayer = h:GetAttribute("unit") == "player"
+    local isPlayer = entry.unit == "player"
     local weapons = isPlayer and side == "left" and addon:GetSetting("showWeapons") ~= false
     h:SetAttribute("includeWeapons", weapons and 1 or nil)
     if not isPlayer and side == "right" then
@@ -281,120 +278,272 @@ local function ConfigureHeader(h, side, below)
         snippet = snippet .. '; self:SetAttribute("type2", nil)'
     end
     h:SetAttribute("initialConfigFunction", snippet)
-    return point
-end
 
--- The BazUI player frame and its layout table, when that module is
--- present and replacing the stock frame.
-local function PlayerRoot()
-    local root = _G.BazUIPlayerFrame
-    local uf = BazUI:GetModule("UnitFrames")
-    if root and uf and uf.Layout and uf.GetSetting and uf:GetSetting("enabled") ~= false then
-        return root, uf.Layout
+    -- Inside its group, at the corner the rows run from. Anchored once,
+    -- out of combat: moving a secure header is protected, which is the
+    -- whole reason the group frame exists.
+    local frame = addon:GroupFrame(entry.key)
+    if frame then
+        h:ClearAllPoints()
+        h:SetPoint(point, frame, point, 0, 0)
     end
 end
 
--- The BazUI target frame and its layout table. Target auras exist only
--- with it: the stock target frame draws its own.
-local function TargetRoot()
-    local root = _G.BazUITargetFrame
-    local uf = BazUI:GetModule("UnitFrames")
-    local target = uf and uf.Target
-    if root and uf and uf.TargetLayout and target and target.GetSetting and target:GetSetting("enabled") ~= false then
-        return root, uf.TargetLayout
+---------------------------------------------------------------------------
+-- Groups
+--
+-- A row of auras is a dockable, the same as a bar: it floats where you
+-- put it or attaches to an action bar or a bar, above or below, and Edit
+-- Mode drags it with the same handle and the same snapping, because that
+-- all lives in the dock now rather than in the bars.
+--
+-- The secure header is not what moves. It cannot be, in combat. Each
+-- group is an ordinary frame with the header anchored inside it at the
+-- corner its rows run from, and the frame is what docks. Centring then
+-- costs nothing: the frame is anchored centre to centre, so widening it
+-- as icons arrive spreads the row evenly without touching anything
+-- secure. That is the one thing the artwork frames could never do.
+---------------------------------------------------------------------------
+
+local GROUPS = {
+    { key = "HELPFUL",        label = "Player Buffs",   unit = "player", filter = "HELPFUL",
+      position = { point = "CENTER", relPoint = "CENTER", x = -300, y = -230 } },
+    { key = "HARMFUL",        label = "Player Debuffs", unit = "player", filter = "HARMFUL",
+      position = { point = "CENTER", relPoint = "CENTER", x = -300, y = -270 } },
+    { key = "TARGET_HELPFUL", label = "Target Buffs",   unit = "target", filter = "HELPFUL",
+      position = { point = "CENTER", relPoint = "CENTER", x = 300, y = -230 } },
+    { key = "TARGET_HARMFUL", label = "Target Debuffs", unit = "target", filter = "HARMFUL",
+      position = { point = "CENTER", relPoint = "CENTER", x = 300, y = -270 } },
+}
+addon.GROUPS = GROUPS
+
+addon.GROUP_ALIGNS = { LEFT = "Left", CENTER = "Centre", RIGHT = "Right" }
+addon.GROUP_EDGES  = { BOTTOM = "Below", TOP = "Above" }
+
+local groupFrames = {}
+
+function addon:GroupFrame(key) return groupFrames[key] end
+
+function addon:GroupEntry(key)
+    for _, entry in ipairs(GROUPS) do
+        if entry.key == key then return entry end
     end
 end
 
--- Left edge or right edge of a bar, in source pixels, for a header that
--- anchors by `point`.
-local function BarEdge(bar, point)
-    if point:find("LEFT", 1, true) then return bar.x end
-    return bar.x + bar.w
+-- Written on first use rather than shipped in the defaults, so a group
+-- added later starts somewhere sensible instead of nowhere.
+function addon:GroupDef(key)
+    local groups = self:GetSetting("groups")
+    if type(groups) ~= "table" then
+        groups = {}
+        self:SetSetting("groups", groups)
+    end
+    local def = groups[key]
+    if not def then
+        local entry = self:GroupEntry(key)
+        def = {
+            dock     = { host = "float", edge = "BOTTOM" },
+            align    = "LEFT",
+            gap      = 4,
+            position = entry and entry.position or
+                { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 },
+        }
+        groups[key] = def
+        self:SetSetting("groups", groups)
+    end
+    return def
 end
 
--- Source pixels the target auras keep clear of the name plate's edge;
--- the plate's wings reach a little past its box.
-local PLATE_MARGIN = 16
+function addon:SaveGroups()
+    self:SetSetting("groups", self:GetSetting("groups"))
+end
 
-local function AnchorTargetHeaders(buffPoint, debuffPoint)
-    local buffs, debuffs = headers.TARGET_HELPFUL, headers.TARGET_HARMFUL
-    buffs:ClearAllPoints()
-    debuffs:ClearAllPoints()
-    local root, L = TargetRoot()
-    if not root then return false end
-
-    local gap     = addon:GetSetting("targetGap") or 12
-    local size    = addon:GetSetting("iconSize") or 26
-    local spacing = addon:GetSetting("spacing") or 3
-    local perRow  = addon:GetSetting("perRow") or 8
-    local step    = size + spacing
-    local R = root:GetWidth() / L.width
-    local level = root:GetFrameLevel() + 10
-    buffs:SetParent(root)
-    debuffs:SetParent(root)
-    buffs:SetFrameLevel(level)
-    debuffs:SetFrameLevel(level)
-
-    -- Below the bars the name plate sits between them, so the inner end
-    -- of each side is the plate's edge, not the bar's. Each side runs
-    -- from the bar's outer end to that edge.
-    local plate = L.namePlate
-    local buffInner   = math.min(L.health.x + L.health.w, plate.x - PLATE_MARGIN)
-    local debuffInner = math.max(L.power.x, plate.x + plate.w + PLATE_MARGIN)
-    local bx = buffPoint:find("LEFT", 1, true) and L.health.x or buffInner
-    local px = debuffPoint:find("LEFT", 1, true) and debuffInner or (L.power.x + L.power.w)
-
-    -- A row that starts at the outer end and fills inward must stop
-    -- before the plate; one that starts at the plate may run off the
-    -- frame's edge, which is harmless.
-    local function Fit(h, point, avail)
-        local fits = math.max(1, math.floor((avail * R + spacing) / step))
-        local outward = (point:find("LEFT", 1, true) ~= nil) == (h == debuffs)
-        local cols = outward and perRow or math.min(perRow, fits)
-        h:SetAttribute("wrapAfter", cols)
-        h:SetAttribute("minWidth", cols * step - spacing)
+-- Rows run away from whatever the group is attached to: docked above
+-- something they stack upward, everywhere else downward.
+local function RowsBelow(def)
+    if def.dock and def.dock.host and def.dock.host ~= "float" then
+        return def.dock.edge ~= "TOP"
     end
-    Fit(buffs, buffPoint, buffInner - L.health.x)
-    Fit(debuffs, debuffPoint, (L.power.x + L.power.w) - debuffInner)
-
-    -- First row hangs from the bottom of the bars; later rows stack down.
-    buffs:SetPoint(buffPoint, root, "TOPLEFT", bx * R, -((L.health.y + L.health.h) * R) - gap)
-    debuffs:SetPoint(debuffPoint, root, "TOPLEFT", px * R, -((L.power.y + L.power.h) * R) - gap)
     return true
 end
 
-local function AnchorHeaders(buffPoint, debuffPoint)
-    local gap     = addon:GetSetting("gap") or 8
-    local spacing = addon:GetSetting("spacing") or 3
-    local buffs, debuffs = headers.HELPFUL, headers.HARMFUL
-    buffs:ClearAllPoints()
-    debuffs:ClearAllPoints()
+local function CreateGroup(entry)
+    if groupFrames[entry.key] then return groupFrames[entry.key] end
 
-    local root, L = PlayerRoot()
-    if root then
-        -- Layout coordinates are source pixels of the artwork; the root
-        -- frame is the artwork scaled to its width.
-        local R = root:GetWidth() / L.width
-        local level = root:GetFrameLevel() + 6
-        buffs:SetParent(root)
-        debuffs:SetParent(root)
-        buffs:SetFrameLevel(level)
-        debuffs:SetFrameLevel(level)
-        buffs:SetPoint(buffPoint, root, "TOPLEFT", BarEdge(L.health, buffPoint) * R, -(L.health.y * R) + gap)
-        debuffs:SetPoint(debuffPoint, root, "TOPLEFT", BarEdge(L.power, debuffPoint) * R, -(L.power.y * R) + gap)
-    else
-        -- No BazUI player frame: sit above the stock one, debuffs on
-        -- top of the buffs.
-        local pf = _G.PlayerFrame or UIParent
-        buffs:SetParent(UIParent)
-        debuffs:SetParent(UIParent)
-        if buffPoint == "BOTTOMLEFT" then
-            buffs:SetPoint("BOTTOMLEFT", pf, "TOPLEFT", 20, gap)
-        else
-            buffs:SetPoint("BOTTOMRIGHT", pf, "TOPRIGHT", -20, gap)
-        end
-        debuffs:SetPoint(debuffPoint, buffs, debuffPoint == "BOTTOMLEFT" and "TOPLEFT" or "TOPRIGHT", 0, spacing)
+    local frame = CreateFrame("Frame", "BazUIAuraGroup" .. entry.key, UIParent)
+    frame:SetFrameStrata("LOW")
+    frame:SetSize(26, 26)
+    groupFrames[entry.key] = frame
+
+    headers[entry.key]:SetParent(frame)
+
+    frame.mover = BazUI.Dock:CreateMover(frame, {
+        name      = "BazUIAuraGroupMover" .. entry.key,
+        label     = entry.label,
+        addonName = "Auras",
+        settings  = function() return addon:GroupEditSettings(entry) end,
+        onDrop    = function(snap, x, y) addon:GroupDropped(entry, snap, x, y) end,
+    })
+    return frame
+end
+
+-- How wide and tall the group is right now, which is what its alignment
+-- works from. Safe in combat: the group frame is an ordinary frame, and
+-- this is the only thing that has to change while icons come and go.
+local function VisibleIcons(header)
+    local count = 0
+    for index = 1, select("#", header:GetChildren()) do
+        local child = select(index, header:GetChildren())
+        if child:IsShown() then count = count + 1 end
     end
+    return count
+end
+
+function addon:SizeGroups()
+    local size    = self:GetSetting("iconSize") or 26
+    local spacing = self:GetSetting("spacing") or 3
+    local perRow  = self:GetSetting("perRow") or 8
+    local step    = size + spacing
+
+    for _, entry in ipairs(GROUPS) do
+        local frame, header = groupFrames[entry.key], headers[entry.key]
+        if frame and header then
+            local count = VisibleIcons(header)
+            if count == 0 then
+                -- Nothing to show, so it takes up nothing: a docked row
+                -- with no auras in it should not hold an icon's worth of
+                -- space open above whatever is under it.
+                frame:SetSize(1, 1)
+            else
+                local columns = math.min(perRow, count)
+                local rows    = math.ceil(count / perRow)
+                frame:SetSize(math.max(1, columns * step - spacing),
+                    math.max(1, rows * step - spacing))
+            end
+        end
+    end
+end
+
+function addon:ApplyGroups()
+    if InCombatLockdown() then return end
+
+    for _, entry in ipairs(GROUPS) do
+        local def   = self:GroupDef(entry.key)
+        local frame = groupFrames[entry.key]
+        if frame then
+            local dock = def.dock or { host = "float" }
+            BazUI.Dock:AttachTo(frame, dock.host, {
+                edge  = dock.edge or "BOTTOM",
+                mode  = "align",
+                align = def.align or "LEFT",
+                gap   = def.gap,
+                order = 50,
+            })
+
+            if not BazUI.Dock:IsDocked(frame) then
+                local pos = def.position or
+                    { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 }
+                frame:ClearAllPoints()
+                frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+            end
+
+            if frame.mover then frame.mover:ShowForEdit() end
+        end
+    end
+    self:SizeGroups()
+end
+
+-- Where a group ended up after a drag.
+function addon:GroupDropped(entry, snap, x, y)
+    local def = self:GroupDef(entry.key)
+    if snap then
+        def.dock = { host = snap.host, edge = snap.edge }
+    elseif x then
+        def.dock = { host = "float", edge = def.dock and def.dock.edge or "BOTTOM" }
+        def.position = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
+    end
+    self:SaveGroups()
+    -- Which way the rows run can have changed with the edge, so the
+    -- header is configured again rather than only re-anchored.
+    self:ApplySettings()
+end
+
+function addon:ShowGroupMovers()
+    for _, entry in ipairs(GROUPS) do
+        local frame = groupFrames[entry.key]
+        if frame and frame.mover then frame.mover:ShowForEdit() end
+    end
+end
+
+function addon:RefreshGroupEditSettings()
+    for _, entry in ipairs(GROUPS) do
+        local frame = groupFrames[entry.key]
+        if frame and frame.mover then
+            BazUI:UpdateEditModeSettings(frame.mover, self:GroupEditSettings(entry))
+        end
+    end
+end
+
+-- The same form the options page offers, for selecting a group in Edit
+-- Mode. Everything about where a group sits is here; what its icons look
+-- like is shared by all four and stays on the module's page.
+function addon:GroupEditSettings(entry)
+    local def = self:GroupDef(entry.key)
+
+    local function Refresh()
+        addon:SaveGroups()
+        addon:ApplySettings()
+    end
+
+    local dockOptions = { { label = "Floating", value = "float" } }
+    local frame = groupFrames[entry.key]
+    for _, host in ipairs(BazUI.Dock:GetHosts()) do
+        local hostFrame = BazUI.Dock:GetHostFrame(host.id)
+        if hostFrame and hostFrame ~= frame then
+            dockOptions[#dockOptions + 1] = { label = host.label, value = host.id }
+        end
+    end
+
+    local function Values(map)
+        local out = {}
+        for value, label in pairs(map) do
+            out[#out + 1] = { label = label, value = value }
+        end
+        table.sort(out, function(a, b) return a.label < b.label end)
+        return out
+    end
+
+    local widgets = {
+        { type = "dropdown", section = "Docking", label = "Dock to",
+          options = dockOptions,
+          get = function() return (def.dock and def.dock.host) or "float" end,
+          set = function(value)
+              def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
+              Refresh()
+              addon:RefreshGroupEditSettings()
+          end },
+    }
+
+    if def.dock and def.dock.host and def.dock.host ~= "float" then
+        widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
+            options = Values(addon.GROUP_EDGES),
+            get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
+            set = function(value)
+                def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
+                Refresh()
+            end }
+        widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
+            options = Values(addon.GROUP_ALIGNS),
+            get = function() return def.align or "LEFT" end,
+            set = function(value) def.align = value Refresh() end }
+        widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Gap",
+            min = 0, max = 24, step = 1,
+            get = function() return def.gap or 4 end,
+            set = function(value) def.gap = value Refresh() end }
+    end
+
+    widgets[#widgets + 1] = { type = "nudge", section = "Position" }
+    return widgets
 end
 
 local function SetBlizzardHidden(hide)
@@ -459,14 +608,14 @@ local function LayoutDemo()
     local now    = GetTime()
     local used   = 0
     local sides = {
-        { headers.HELPFUL,        DEMO_BUFFS,   false, false },
-        { headers.HARMFUL,        DEMO_DEBUFFS, true,  false },
-        { headers.TARGET_HELPFUL, DEMO_BUFFS,   false, true },
-        { headers.TARGET_HARMFUL, DEMO_DEBUFFS, true,  true },
+        { headers.HELPFUL,        DEMO_BUFFS,   false },
+        { headers.HARMFUL,        DEMO_DEBUFFS, true  },
+        { headers.TARGET_HELPFUL, DEMO_BUFFS,   false },
+        { headers.TARGET_HARMFUL, DEMO_DEBUFFS, true  },
     }
     for _, side in ipairs(sides) do
-        local h, icons, harmful, isTarget = side[1], side[2], side[3], side[4]
-        if h and h:GetNumPoints() > 0 and (not isTarget or targetAnchored) then
+        local h, icons, harmful = side[1], side[2], side[3]
+        if h and h:GetNumPoints() > 0 then
             local point = h:GetAttribute("point") or "BOTTOMLEFT"
             local xOff  = h:GetAttribute("xOffset") or 0
             local yWrap = h:GetAttribute("wrapYOffset") or 0
@@ -543,6 +692,10 @@ function addon:RefreshAll()
     for btn in pairs(buttons) do
         if btn:IsShown() then UpdateButton(btn) end
     end
+    -- A group is only as wide as the icons in it, which is what its
+    -- alignment measures from. Resizing an ordinary frame is not
+    -- protected, so a row centred under a bar stays centred mid-fight.
+    self:SizeGroups()
 end
 
 function addon:QueueRefresh()
@@ -562,14 +715,12 @@ function addon:ApplySettings()
     end
     pendingApply = false
     local enabled = self:GetSetting("enabled") ~= false
-    local buffPoint   = ConfigureHeader(headers.HELPFUL, "left")
-    local debuffPoint = ConfigureHeader(headers.HARMFUL, "right")
-    AnchorHeaders(buffPoint, debuffPoint)
+    local targetOn = enabled and self:GetSetting("targetEnabled") ~= false
 
-    local tBuffPoint   = ConfigureHeader(headers.TARGET_HELPFUL, "left", true)
-    local tDebuffPoint = ConfigureHeader(headers.TARGET_HARMFUL, "right", true)
-    targetAnchored = AnchorTargetHeaders(tBuffPoint, tDebuffPoint)
-    local targetOn = enabled and targetAnchored and self:GetSetting("targetEnabled") ~= false
+    for _, entry in ipairs(GROUPS) do
+        ConfigureHeader(entry, RowsBelow(self:GroupDef(entry.key)))
+    end
+    self:ApplyGroups()
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
@@ -582,6 +733,15 @@ function addon:ApplySettings()
     headers.HARMFUL:SetShown(enabled)
     headers.TARGET_HELPFUL:SetShown(targetOn)
     headers.TARGET_HARMFUL:SetShown(targetOn)
+
+    -- Through the dock, so a group hanging off something hidden goes
+    -- with it rather than floating on its own over the screen.
+    for _, entry in ipairs(GROUPS) do
+        local frame = self:GroupFrame(entry.key)
+        if frame then
+            BazUI.Dock:SetShown(frame, entry.unit == "target" and targetOn or enabled)
+        end
+    end
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
     self:RefreshAll()
     if demoActive then LayoutDemo() end
@@ -626,6 +786,10 @@ function addon:Initialize()
         RegisterAttributeDriver(headers[key], "state-targetdead", "[@target,dead] 1; 0")
     end
 
+    -- Every header lives inside a group frame, which is the thing that
+    -- docks and the thing Edit Mode moves.
+    for _, entry in ipairs(GROUPS) do CreateGroup(entry) end
+
     -- One ticker for every duration label.
     local ticker = CreateFrame("Frame")
     ticker.elapsed = 0
@@ -664,14 +828,18 @@ function addon:Initialize()
     end)
     self:OnProfileChanged(function() self:ApplySettings() end)
 
-    -- Follow the unit frames: whenever Unit Frames re-applies either
-    -- frame (enable, disable, scale, position), re-anchor after it.
+    self:On("BAZ_EDITMODE_ENTER", function()
+        self:RefreshGroupEditSettings()
+        self:ShowGroupMovers()
+    end)
+    self:On("BAZ_EDITMODE_EXIT", function() self:ShowGroupMovers() end)
+
+    -- Follow the unit frames: a bar a group is docked to can move or
+    -- resize, and the dock passes that down, but a group floating beside
+    -- one still wants re-applying after the bars settle.
     local uf = BazUI:GetModule("UnitFrames")
     if uf and uf.ApplySettings then
         hooksecurefunc(uf, "ApplySettings", function() addon:QueueApply() end)
-    end
-    if uf and uf.Target and uf.Target.ApplySettings then
-        hooksecurefunc(uf.Target, "ApplySettings", function() addon:QueueApply() end)
     end
 
     self:ApplySettings()

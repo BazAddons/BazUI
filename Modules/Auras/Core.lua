@@ -2,11 +2,11 @@
 ---------------------------------------------------------------------------
 -- BazUI Auras
 --
--- Buffs and debuffs drawn as rounded icons attached to the BazUI unit
--- frames. On the player frame they sit above the bars (buffs over the
--- health bar on the left, debuffs over the power bar on the right) with
--- rows stacking upward; on the target frame they hang below the bars
--- with rows stacking downward. Eight per row, as many rows as needed.
+-- Buffs and debuffs drawn as rounded icons in four rows: the player's
+-- buffs and debuffs, and the target's. Each row floats where you put it
+-- or docks to a bar or an action bar the same way a unit bar does, with
+-- its own edge, alignment and gap. Eight per row, as many rows as there
+-- are auras.
 --
 -- Blizzard's secure aura header (SecureAuraHeaderTemplate) creates the
 -- icon buttons, sorts them, lays them out and owns the right-click
@@ -32,14 +32,14 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         perRow        = 8,
         iconSize      = 26,
         spacing       = 3,
-        gap           = 8,      -- pixels between the top of the bars and the first row
-        growth        = "portrait",  -- "portrait": first icon next to the portrait, later ones move
-                                     --   outward. "edge": first icon at the outer end of the bar.
+        -- Where each of the four rows sits: floating or docked, on
+        -- which edge, aligned left, centre or right, and how far from
+        -- what it is docked to. Written on first use, per group.
+        groups        = {},
 
         -- Target
         targetEnabled = true,   -- the target's auras under the BazUI target frame
         targetOnlyMine = false, -- only debuffs the player applied
-        targetGap     = 12,     -- pixels between the bottom of the bars and the first row
 
         -- Icons
         showDuration  = true,
@@ -69,8 +69,11 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 addon.MODULE_NAME = MODULE_NAME
 
 function addon:ResetLayout()
-    for _, key in ipairs({ "perRow", "iconSize", "spacing", "gap", "growth", "targetGap" }) do
+    for _, key in ipairs({ "perRow", "iconSize", "spacing" }) do
         self:SetSetting(key, self.config.defaults[key])
     end
+    -- Where the rows sit goes back to floating at their starting places,
+    -- which is the half of "layout" a reset is usually reaching for.
+    self:SetSetting("groups", {})
     self:ApplySettings()
 end
