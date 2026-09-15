@@ -268,15 +268,18 @@ local STOCK_FRAMES = {
     rep        = { "ReputationWatchBar" },
     player     = { "PlayerFrame" },
     target     = { "TargetFrame" },
-    pet        = { "PetFrame" },
     party1     = { "PartyMemberFrame1" },
     party2     = { "PartyMemberFrame2" },
     party3     = { "PartyMemberFrame3" },
     party4     = { "PartyMemberFrame4" },
-    partypet1  = { "PartyMemberFrame1PetFrame" },
-    partypet2  = { "PartyMemberFrame2PetFrame" },
-    partypet3  = { "PartyMemberFrame3PetFrame" },
-    partypet4  = { "PartyMemberFrame4PetFrame" },
+
+    -- Pet frames are deliberately absent. Era hangs each one off the
+    -- frame of whoever owns it, so hiding the player's or a party
+    -- member's takes their pet's with it, and touching a pet frame
+    -- ourselves is worse than useless: the game's Edit Mode refreshes
+    -- the player's pet frame as it opens, and a frame an addon has
+    -- reparented is tainted, so that refresh gets blocked and blamed on
+    -- us. Not touching them is both simpler and correct.
     playercast = { "CastingBarFrame", "PlayerCastingBarFrame" },
     petcast    = { "PetCastingBarFrame" },
 }
@@ -291,7 +294,6 @@ end
 local hiddenStock
 local stockParents = {}
 local hookedManager
-local petParent
 local suppressing  = {}
 local suppressKey
 
@@ -377,19 +379,6 @@ function UnitBars:SuppressStock()
             -- again now that it is back.
             manager:UpdateBarsShown()
         end
-    end
-
-    -- Era hangs the pet's frame off the player's, so hiding the player's
-    -- would take a pet frame we are not replacing with it. Move it out
-    -- to the screen first, and put it back when the player's returns.
-    local playerFrame, petFrame = _G.PlayerFrame, _G.PetFrame
-    if petFrame and playerFrame and suppressing.player and not suppressing.pet
-        and petFrame:GetParent() == playerFrame then
-        petParent = playerFrame
-        petFrame:SetParent(UIParent)
-    elseif petParent and not suppressing.player then
-        petFrame:SetParent(petParent)
-        petParent = nil
     end
 
     for covers, names in pairs(STOCK_FRAMES) do
