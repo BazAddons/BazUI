@@ -24,6 +24,9 @@ addon = BazUI:RegisterModule("UnitFrames", {
     defaults = {
         classColor   = false,
         unitTooltips = true,
+        -- Fading someone you cannot reach, and how far to fade them.
+        rangeFade    = true,
+        rangeAlpha   = 0.45,
     },
     slash = { "/bazframes", "/bazplayer" },
     defaultHandler = function() BazUI:OpenOptionsPanel("UnitFrames") end,

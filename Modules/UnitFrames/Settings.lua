@@ -33,8 +33,28 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
           section = "bars", order = 2,
           desc = "Health bars for players take the class colour instead of green.",
           get = Get("classColor"), set = Set("classColor") },
-        { key = "preview", label = "Preview bars for absent units", type = "execute",
+        { key = "rangeFade", label = "Fade units out of range", type = "toggle",
           section = "bars", order = 3,
+          desc = "A party member you cannot reach fades, so you know before you start casting. The game only answers this for people in your group, so nothing else is affected.",
+          get = function() return addon:GetSetting("rangeFade") ~= false end,
+          set = function(_, value)
+              addon:SetSetting("rangeFade", value and true or false)
+              addon.UnitBars:CheckRange()
+          end },
+        { key = "rangeAlpha", label = "Faded opacity", type = "slider",
+          section = "bars", order = 4,
+          min = 0.1, max = 1, step = 0.05, format = "percent",
+          hidden = function() return addon:GetSetting("rangeFade") == false end,
+          get = function() return addon:GetSetting("rangeAlpha") or 0.45 end,
+          set = function(_, value)
+              addon:SetSetting("rangeAlpha", value)
+              -- Every faded bar has to be told again; nothing about the
+              -- unit changed, only what faded means.
+              for _, bar in pairs(addon.UnitBars.bars) do bar._outOfRange = nil end
+              addon.UnitBars:CheckRange()
+          end },
+        { key = "preview", label = "Preview bars for absent units", type = "execute",
+          section = "bars", order = 5,
           desc = "Party and target bars are hidden when there is nobody in them. This shows them as placeholders so they can be moved and docked while you are alone. Also /bazframes preview.",
           hidden = function()
               local bars = addon.UnitBars
@@ -43,7 +63,7 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
           disabled = InCombatLockdown,
           func = function() addon.UnitBars:SetPreviewWanted(true) end },
         { key = "previewOff", label = "Stop previewing", type = "execute",
-          section = "bars", order = 3,
+          section = "bars", order = 5,
           desc = "Hide the placeholder bars again.",
           hidden = function()
               local bars = addon.UnitBars
@@ -51,7 +71,7 @@ BazUI:RegisterSettingsSpec("UnitFrames", {
           end,
           disabled = InCombatLockdown,
           func = function() addon.UnitBars:SetPreviewWanted(false) end },
-        { key = "help", type = "note", section = "bars", order = 4, style = "info",
+        { key = "help", type = "note", section = "bars", order = 6, style = "info",
           text = "Bars are made and arranged on the Bars page, or in Edit Mode: "
               .. "drag one near the edge of an action bar or another bar to dock "
               .. "it there. Whatever you make a bar for replaces the game's own "

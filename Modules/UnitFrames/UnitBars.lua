@@ -58,6 +58,10 @@ UnitBars.UNITS = {
     party2 = "Party 2",
     party3 = "Party 3",
     party4 = "Party 4",
+    partypet1 = "Party 1's Pet",
+    partypet2 = "Party 2's Pet",
+    partypet3 = "Party 3's Pet",
+    partypet4 = "Party 4's Pet",
 }
 
 local function IsUnitKind(kind)
@@ -225,6 +229,10 @@ local STOCK_FRAMES = {
     party2     = { "PartyMemberFrame2" },
     party3     = { "PartyMemberFrame3" },
     party4     = { "PartyMemberFrame4" },
+    partypet1  = { "PartyMemberFrame1PetFrame" },
+    partypet2  = { "PartyMemberFrame2PetFrame" },
+    partypet3  = { "PartyMemberFrame3PetFrame" },
+    partypet4  = { "PartyMemberFrame4PetFrame" },
     playercast = { "CastingBarFrame", "PlayerCastingBarFrame" },
     petcast    = { "PetCastingBarFrame" },
 }
@@ -411,6 +419,9 @@ end
 -- A bar for a unit that is not there, while the layout is being
 -- arranged: full, grey, and named after the slot it stands for.
 local function DrawPlaceholder(bar, fraction)
+    -- Nothing that made it fade still applies: there is no unit to be
+    -- out of range of, and no resource to be missing.
+    bar._noPower, bar._outOfRange = false, false
     bar.frame:SetAlpha(1)
     bar.frame:SetValue(fraction)
     bar.frame:SetOverlay(0)
@@ -441,6 +452,20 @@ local function UpdateHealth(bar)
     end
 end
 
+-- How solid a bar should be. A power bar for something with no power
+-- at all disappears rather than sitting at nought, and a unit out of
+-- range fades. Both are alpha, which is not protected, so this is one of
+-- the few things that can still change mid-fight.
+local function RefreshAlpha(bar)
+    if bar._noPower then
+        bar.frame:SetAlpha(0)
+    elseif bar._outOfRange then
+        bar.frame:SetAlpha(addon:GetSetting("rangeAlpha") or 0.45)
+    else
+        bar.frame:SetAlpha(1)
+    end
+end
+
 local function UpdatePower(bar)
     local unit = bar.def.unit
     if not UnitExists(unit) then
@@ -452,7 +477,8 @@ local function UpdatePower(bar)
 
     -- A unit with no power keeps its slot and fades. Hiding would be a
     -- protected call; alpha is not, so this still works mid-fight.
-    bar.frame:SetAlpha(maximum > 0 and 1 or 0)
+    bar._noPower = (maximum <= 0)
+    RefreshAlpha(bar)
     if maximum <= 0 then
         bar.frame:SetText("")
         return
@@ -1168,6 +1194,52 @@ function UnitBars:Watch(unit)
     end)
 end
 
+---------------------------------------------------------------------------
+-- Range
+--
+-- A party member you cannot reach is worth knowing about before you
+-- start casting at them, so their bars fade. UnitInRange answers only
+-- for people in your group, which is the right restriction rather than a
+-- limitation: "in range" of a target you are fighting means nothing, and
+-- the second return says whether the question applied at all.
+--
+-- Fading is alpha, so unlike almost everything else here it keeps
+-- working in combat, which is the only time it matters.
+---------------------------------------------------------------------------
+
+local RANGE_INTERVAL = 0.2
+local rangeTicker
+
+function UnitBars:CheckRange()
+    local fade = addon:GetSetting("rangeFade") ~= false
+    for _, bar in pairs(self.bars) do
+        local def = bar.def
+        if def.kind == "health" or def.kind == "power" then
+            local out = false
+            if fade and def.unit ~= "player" and UnitExists(def.unit) then
+                local inRange, checked = UnitInRange(def.unit)
+                out = (checked and not inRange) or false
+            end
+            if out ~= bar._outOfRange then
+                bar._outOfRange = out
+                RefreshAlpha(bar)
+            end
+        end
+    end
+end
+
+function UnitBars:WatchRange()
+    if rangeTicker then return end
+    rangeTicker = CreateFrame("Frame")
+    rangeTicker.elapsed = 0
+    rangeTicker:SetScript("OnUpdate", function(self, elapsed)
+        self.elapsed = self.elapsed + elapsed
+        if self.elapsed < RANGE_INTERVAL then return end
+        self.elapsed = 0
+        UnitBars:CheckRange()
+    end)
+end
+
 function UnitBars:WatchAll()
     local seen = {}
     for _, def in ipairs(self:Defs()) do
@@ -1176,6 +1248,8 @@ function UnitBars:WatchAll()
             self:Watch(def.unit)
         end
     end
+
+    self:WatchRange()
 
     if not watchers._player then
         watchers._player = CreateFrame("Frame")
@@ -1212,6 +1286,7 @@ local KIND_ORDER = { "health", "power", "cast", "xp", "rep" }
 local UNIT_ORDER = {
     "player", "target", "pet",
     "party1", "party2", "party3", "party4",
+    "partypet1", "partypet2", "partypet3", "partypet4",
 }
 
 -- The four party slots, as the group fills them. A bar for one of these

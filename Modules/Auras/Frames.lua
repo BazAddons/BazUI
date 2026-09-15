@@ -360,7 +360,15 @@ end
 ---------------------------------------------------------------------------
 
 local FILTERS = { HELPFUL = "Buffs", HARMFUL = "Debuffs" }
-local UNITS   = { player = "Player", target = "Target", pet = "Pet" }
+local UNITS   = {
+    player = "Player",
+    target = "Target",
+    pet    = "Pet",
+    party1 = "Party 1",
+    party2 = "Party 2",
+    party3 = "Party 3",
+    party4 = "Party 4",
+}
 
 addon.ROW_FILTERS = FILTERS
 addon.ROW_UNITS   = UNITS
@@ -371,7 +379,10 @@ addon.ROW_SORTS   = { INDEX = "Order applied", TIME = "Time remaining", NAME = "
 addon.ROW_SORT_DIRECTIONS = { ["+"] = "Ascending", ["-"] = "Descending" }
 addon.ROW_EDGES   = { BOTTOM = "Below", TOP = "Above" }
 
-local UNIT_ORDER   = { "player", "target", "pet" }
+local UNIT_ORDER   = {
+    "player", "target", "pet",
+    "party1", "party2", "party3", "party4",
+}
 local FILTER_ORDER = { "HELPFUL", "HARMFUL" }
 
 local rowFrames = {}        -- [id] = the ordinary frame that docks
