@@ -180,7 +180,11 @@ local FRAME_STYLES = {
 -- this size. They sit behind the map, since a filled circle in front of
 -- it is just a filled circle; what shows of each is the part the next
 -- one does not cover, and the map itself covers the innermost.
-local RING_SCALE = 2
+-- One, not two or three. The drawer magnifies the whole widget to fill
+-- its width - close to three times, at a drawer this wide - so whatever
+-- this says is multiplied before anybody sees it. Four pixels of border
+-- here is a dozen on screen, which is already heavier than the bars.
+local RING_SCALE = 1
 
 local ring, ringHost
 
