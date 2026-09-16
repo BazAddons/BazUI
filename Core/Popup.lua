@@ -145,7 +145,7 @@ local function CreatePopupFrame()
     -- floating dialog so the border needs to read clearly against
     -- arbitrary game content behind it, and the bg should be solid
     -- enough to feel modal rather than translucent over the world.
-    BazUI.Skin.Theme.ApplyFlatPanel(f, O.DIALOG_BG, O.DIALOG_BORDER)
+    BazUI.Skin.Theme.ApplyDialog(f, O.DIALOG_BG)
     f:SetPoint("CENTER")
     f:Hide()
 

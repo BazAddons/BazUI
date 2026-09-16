@@ -57,7 +57,10 @@ BazUI.Skin = {
     -- Brand colors (hex, for |cff.. escapes)
 }
 
--- Continuous XP fill: built-in texture, no segmented Classic artwork.
+-- The fill every status bar in the suite is drawn with, as it stands: a
+-- smooth built-in texture, tinted per bar, with no segmented Classic
+-- artwork. Skin/Fills.lua keeps the list of the others and writes the
+-- chosen one here, so this is the answer rather than the setting.
 BazUI.Skin.XP_FILL = "Interface\\TargetingFrame\\UI-StatusBar"
 
 -- Portrait casting: 256x256 RGBA procedural textures; circle + rising mask

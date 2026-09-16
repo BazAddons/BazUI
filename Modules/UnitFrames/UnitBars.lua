@@ -881,12 +881,16 @@ function UnitBars:Apply(bar)
     local wasDocked = BazUI.Dock:IsDocked(frame)
     local goingFloat = not def.dock or def.dock.host == "float"
     if wasDocked and goingFloat then
-        local width = frame:GetWidth()
+        -- The fill's width, not the frame's: the number kept here is the
+        -- one handed back to SetBarSize, and the frame is that plus the
+        -- border. Reading the frame would grow the bar every time it was
+        -- undocked.
+        local width = frame.GetFillSize and frame:GetFillSize() or frame:GetWidth()
         if width and width > 0 then def.width = math.floor(width + 0.5) end
     end
 
-    frame:SetBarSize(math.max(60, math.min(1200, def.width or 240)),
-        math.max(14, math.min(48, def.height or 24)))
+    frame:SetBarSize(math.max(1, math.min(1200, def.width or 240)),
+        math.max(1, math.min(48, def.height or 24)))
     frame:SetTextMode(def.textMode or "always")
     frame:SetTicks(def.ticks or 0)
     frame:SetFillDirection(def.fillFrom or "LEFT")
@@ -1041,7 +1045,7 @@ function UnitBars:EditSettings(bar)
           get = function() return def.width or 240 end,
           set = function(value) def.width = value Refresh() end },
         { type = "slider", section = "Size", label = "Height",
-          min = 14, max = 48, step = 1,
+          min = 1, max = 48, step = 1,
           get = function() return def.height or 24 end,
           set = function(value) def.height = value Refresh() end },
 

@@ -13,6 +13,9 @@ local Skin = BazUI.Skin
 local Theme = {}
 Skin.Theme = Theme
 
+-- The palette. A skin repaints these tables in place rather than
+-- replacing them (see Skin\Skins.lua), so hold a reference to one and
+-- read it as you draw; taking a copy of the numbers opts out of skinning.
 Theme.colors = {
     gold      = { 1.00, 0.82, 0.00, 1.00 },  -- headings, selected state (the |cffffd700 gold)
     goldSoft  = { 1.00, 0.84, 0.50, 1.00 },  -- names and labels on artwork
@@ -58,6 +61,160 @@ Theme.BACKDROP_FLAT = {
 }
 
 ---------------------------------------------------------------------------
+-- The border
+--
+-- Every edge in the suite - a bar's, a panel's, a round button's - is the
+-- same recipe: bands of solid color laid one outside the next, with no
+-- art anywhere. This is that recipe, and there is one of it.
+--
+-- The list runs inside out. Band 1 touches whatever is inside; each one
+-- after it sits outside the last. A skin can say anything here, from
+-- nothing at all - a naked fill with no edge - to as many bands as it
+-- likes:
+--
+--   Theme.SetBorder({
+--       { thickness = 1, color = { 0.03, 0.04, 0.06, 1 } },
+--       { thickness = 1, color = { 0.55, 0.43, 0.25, 1 }, accent = true },
+--       { thickness = 2, color = { 0, 0, 0, 0.75 } },
+--   })
+--
+-- BazUI's own is those three: a dark line, a pixel of gold, and two
+-- pixels of near-black outside it. The gold is one pixel and does all the
+-- work, which it can only do with dark on both sides of it - one holding
+-- it off the fill, the other holding it off whatever the frame is sitting
+-- over. A band marked accent is the one worth lighting up: the micro menu
+-- pulses a button by brightening it.
+--
+-- Everything that draws an edge reads this and nothing else, so how thick
+-- a bar's chrome is, how far a ring reaches and where a fill starts all
+-- follow from it. The three renderers below draw it square inside a
+-- frame, round outside one, and round as an object; the status bar widget
+-- draws the same bands along a bar.
+---------------------------------------------------------------------------
+
+Theme.border = {
+    { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },
+    { thickness = 1, color = { 0.55, 0.43, 0.25, 1 }, accent = true },
+    { thickness = 2, color = { 0, 0, 0, 0.75 } },
+}
+
+-- Read through this rather than copied, so a skin change reaches the next
+-- thing drawn.
+function Theme.GetBorder()
+    return Theme.border
+end
+
+-- How far the border reaches: where a fill starts, and how much room a
+-- ring has to leave around what it surrounds.
+function Theme.BorderThickness(scale, layers)
+    local total = 0
+    for _, band in ipairs(layers or Theme.border) do
+        total = total + (tonumber(band.thickness) or 0)
+    end
+    return total * (scale or 1)
+end
+
+-- The band to brighten when something wants to light its edge up. A skin
+-- can say which; failing that it is the lightest one, which is what
+-- lighting up an edge means in the first place.
+function Theme.AccentBand(layers)
+    layers = layers or Theme.border
+    local best, bestLight
+    for index, band in ipairs(layers) do
+        if band.accent then return index end
+        local c = band.color or {}
+        local light = ((c[1] or 0) + (c[2] or 0) + (c[3] or 0)) * (c[4] or 1)
+        if not bestLight or light > bestLight then best, bestLight = index, light end
+    end
+    return best
+end
+
+---------------------------------------------------------------------------
+-- Keeping what is already drawn in step
+--
+-- A color can be repainted by writing into the table everything is
+-- reading from. A border cannot: it is a row of textures whose sizes and
+-- positions came from the thicknesses, so changing those means drawing it
+-- again. Everything wearing one says so here, and a change to the border
+-- redraws the lot rather than waiting for a reload.
+--
+-- Weak keys: a frame that goes away takes its entry with it.
+---------------------------------------------------------------------------
+
+-- Draw order within a layer runs -8 to 7 and nothing outside that is
+-- legal, so a border of more bands than there are slots would start
+-- drawing them in whatever order they were created. Bands take the low
+-- slots and a fill takes the top one.
+local MIN_SUBLEVEL, MAX_SUBLEVEL = -8, 7
+Theme.MAX_BORDER_BANDS = 12
+
+local function Sublevel(value)
+    return math.max(MIN_SUBLEVEL, math.min(MAX_SUBLEVEL, value))
+end
+
+local bordered = setmetatable({}, { __mode = "k" })
+
+function Theme.TrackBorder(target, redraw)
+    if target and redraw then bordered[target] = redraw end
+end
+
+-- The redraws, made once. Everything they need is on the target, so a
+-- closure per call would only be garbage: these run on every drag step of
+-- a color picker.
+local function RedrawBorder(target) Theme.ApplyBorder(target, target._bazBorderOpts) end
+local function RedrawRing(target) Theme.ApplyRing(target, target._bazRingOpts) end
+local function RedrawRoundRing(ring)
+    if ring._inner then ring:SetInnerSize(ring._inner) end
+end
+
+-- The status bar widget's two, kept here with the rest of them so it can
+-- hand over a function rather than build one per bar.
+function Theme.RedrawBarChrome(bar) bar:RefreshChrome() end
+function Theme.RedrawBarFill(bar) bar:RefreshFill() end
+
+function Theme.RefreshBorders()
+    for target, redraw in pairs(bordered) do
+        -- One that errors is one whose frame has gone strange; drop it
+        -- rather than let it stop the rest being redrawn.
+        if not pcall(redraw, target) then bordered[target] = nil end
+    end
+end
+
+-- The same arrangement for what a bar is filled with, which is a texture
+-- on a frame rather than anything a color table can reach.
+local filled = setmetatable({}, { __mode = "k" })
+
+function Theme.TrackFill(target, redraw)
+    if target and redraw then filled[target] = redraw end
+end
+
+function Theme.RefreshFills()
+    for target, redraw in pairs(filled) do
+        if not pcall(redraw, target) then filled[target] = nil end
+    end
+end
+
+-- A band needs a thickness of at least a pixel and a color to draw; a
+-- skin arriving from a paste box may have neither.
+function Theme.SetBorder(layers)
+    local clean = {}
+    for _, band in ipairs(type(layers) == "table" and layers or {}) do
+        local thickness = math.floor(tonumber(band.thickness) or 0)
+        local color = type(band.color) == "table" and band.color or nil
+        if thickness > 0 and color and #clean < Theme.MAX_BORDER_BANDS then
+            clean[#clean + 1] = {
+                thickness = math.min(thickness, 32),
+                color     = { color[1] or 0, color[2] or 0, color[3] or 0, color[4] or 1 },
+                accent    = band.accent and true or nil,
+            }
+        end
+    end
+    Theme.border = clean
+    Theme.RefreshBorders()
+    return clean
+end
+
+---------------------------------------------------------------------------
 -- The suite's face
 --
 -- DorisPP, shipped in Skin/Assets. Modules ask for Theme.FontFile()
@@ -68,7 +225,12 @@ Theme.BACKDROP_FLAT = {
 -- own. Chat keeps its own switch, since it also has a size of its own.
 ---------------------------------------------------------------------------
 
-Theme.FONT_FILE = "Interface\\AddOns\\BazUI\\Skin\\Assets\\DORISBR.TTF"
+local SHIPPED_FONT = "Interface\\AddOns\\BazUI\\Skin\\Assets\\DORISBR.TTF"
+
+-- The face in use. A skin can point this somewhere else; it is read
+-- rather than copied, so read it through Theme.FontFile() or fresh each
+-- time rather than taking a copy at load.
+Theme.FONT_FILE = SHIPPED_FONT
 
 local fontProbe, fontLoadable
 
@@ -82,6 +244,17 @@ function Theme.IsFontLoadable()
         fontLoadable = (applied and applied:lower() == Theme.FONT_FILE:lower()) or false
     end
     return fontLoadable
+end
+
+-- A skin may bring a face of its own. Whether the client could read the
+-- last one says nothing about this one, so that answer is thrown away
+-- and asked again.
+function Theme.SetFontFile(path)
+    if type(path) ~= "string" or path == "" then path = SHIPPED_FONT end
+    if path == Theme.FONT_FILE then return end
+    Theme.FONT_FILE = path
+    fontLoadable = nil
+    Theme.RefreshFontObjects()
 end
 
 -- The global switch, on unless the user turned it off.
@@ -141,8 +314,66 @@ function Theme.FontString(parent, layer, blizzardName, sublevel)
 end
 
 -- Re-point every mirrored object at the face now in force.
+---------------------------------------------------------------------------
+-- Blizzard's font objects, taken over
+--
+-- Theme.FontObject makes a copy for text we create ourselves. This is the
+-- other case: text the game creates, from a font object we do not own and
+-- cannot hand a different one to. A tooltip line is made by the game, in
+-- GameTooltipText, and the only way to reach it is to change that object -
+-- at which point everything drawn in it follows at once, which is the
+-- point. A tooltip we have skinned should not be the one thing left in
+-- the game's own face.
+--
+-- It reaches further than our own frames, so the original is kept and put
+-- back the moment the switch goes off: taking something over is only
+-- reasonable if you can give it back.
+--
+--   Theme.AdoptFontObject("GameTooltipText")
+--   Theme.ReleaseFontObject("GameTooltipText")
+--
+-- The size and flags are read fresh each time rather than restored from
+-- the original, so a font object something else has resized keeps that
+-- size and only changes face.
+---------------------------------------------------------------------------
+
+local adoptedFonts = {}
+
+local function DrawAdopted(name)
+    local object, original = _G[name], adoptedFonts[name]
+    if not (object and original and object.GetFont) then return end
+
+    local _, size, flags = object:GetFont()
+    local face = original.face
+    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then
+        face = Theme.FONT_FILE
+    end
+    object:SetFont(face, size or original.size or 12, flags or original.flags or "")
+end
+
+function Theme.AdoptFontObject(name)
+    local object = _G[name]
+    if not (object and object.GetFont and object.SetFont) then return false end
+
+    if not adoptedFonts[name] then
+        local face, size, flags = object:GetFont()
+        adoptedFonts[name] = { face = face, size = size, flags = flags }
+    end
+    DrawAdopted(name)
+    return true
+end
+
+function Theme.ReleaseFontObject(name)
+    local object, original = _G[name], adoptedFonts[name]
+    if not (object and original) then return end
+    local _, size, flags = object:GetFont()
+    object:SetFont(original.face, size or original.size or 12, flags or original.flags or "")
+    adoptedFonts[name] = nil
+end
+
 function Theme.RefreshFontObjects()
     for name in pairs(fontObjects) do Theme.FontObject(name) end
+    for name in pairs(adoptedFonts) do DrawAdopted(name) end
 end
 
 local function SetColor(fn, c)
@@ -299,6 +530,10 @@ function Theme.CreateStatBar(parent, opts)
         overlay    = false,
         text       = false,
     })
+
+    -- A stat bar fills a space in a card, so the width it was given is
+    -- the box rather than the fill.
+    bar:SetOuterSize(opts.width or 100, height)
     -- A labelled bar reserves a band above the fill for its two captions.
     -- Twenty rather than sixteen, because sixteen left the text sitting on
     -- the fill with nothing between them.
@@ -485,44 +720,41 @@ end
 -- textures anchor to the frame, so a resize alone needs nothing.
 ---------------------------------------------------------------------------
 
--- Same numbers as Core/StatusBar.lua. If those ever move, these move.
-local RING_LAYERS = {
-    { thickness = 2, color = { 0, 0, 0, 0.75 } },            -- outline
-    { thickness = 1, color = { 0.55, 0.43, 0.25, 1 } },      -- rim
-    { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },    -- the line inside it
-}
-
 function Theme.ApplyRing(frame, opts)
     opts = opts or {}
     local scale  = opts.scale or 1
-    local layers = opts.layers or RING_LAYERS
+    local layers = opts.layers or Theme.GetBorder()
 
     frame._bazRingParts = frame._bazRingParts or {}
+    frame._bazRingOpts  = opts
     local parts = frame._bazRingParts
 
-    -- How far out the outermost ring reaches, so each one can be placed
-    -- by how much is left outside it.
-    local total = 0
-    for _, layer in ipairs(layers) do total = total + layer.thickness * scale end
+    -- The band list runs inside out, and these are filled circles rather
+    -- than rings: each one has to be drawn before the one inside it, or
+    -- it would cover it. So the list is walked backwards, outermost
+    -- first, and `out` - how far this circle reaches past the frame -
+    -- comes down by a band's thickness as each is drawn.
+    local out = Theme.BorderThickness(scale, layers)
 
-    local out = total
-    for index, layer in ipairs(layers) do
-        local part = parts[index]
+    local slot = 0
+    for index = #layers, 1, -1 do
+        local layer = layers[index]
+        slot = slot + 1
+
+        local part = parts[slot]
         if not part then
-            part = frame:CreateTexture(nil, "BACKGROUND", nil, -8 + index)
+            part = frame:CreateTexture(nil, "BACKGROUND", nil, Sublevel(-8 + slot))
             local mask = frame:CreateMaskTexture()
             mask:SetTexture(Skin.ROUND_MASK,
                 "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
             part:AddMaskTexture(mask)
             part._mask = mask
-            parts[index] = part
+            parts[slot] = part
         end
 
         local color = layer.color
         part:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
 
-        -- Each circle reaches `out` beyond the frame on every side, and
-        -- the next one in covers all but its own thickness.
         part:ClearAllPoints()
         part:SetPoint("TOPLEFT", frame, "TOPLEFT", -out, out)
         part:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out, -out)
@@ -532,11 +764,13 @@ function Theme.ApplyRing(frame, opts)
         out = out - layer.thickness * scale
     end
 
-    -- Anything left over from a shorter list of layers.
-    for index = #layers + 1, #parts do
+    -- Anything left over from a longer border than this one.
+    for index = slot + 1, #parts do
         parts[index]:Hide()
     end
-    for index = 1, #layers do parts[index]:Show() end
+    for index = 1, slot do parts[index]:Show() end
+
+    Theme.TrackBorder(frame, RedrawRing)
 
     return frame
 end
@@ -635,60 +869,76 @@ end
 
 -- The same border, square.
 --
--- Four solid textures inset inside each other: two pixels of dark, one
--- of gold, one of dark, then whatever the inside should be. No mask and
--- no art, which is the whole point - this is the status bar's border
--- with the bar taken out, so anything wearing it belongs to the same
--- suite without anybody drawing anything.
+-- One solid texture per band, each inset inside the last, and then
+-- whatever the inside should be. No mask and no art, which is the whole
+-- point - this is the status bar's border with the bar taken out, so
+-- anything wearing it belongs to the same suite without anybody drawing
+-- anything.
 --
 --   Theme.ApplyBorder(frame, { fill = Theme.colors.bg, scale = 1 })
 --
 -- Drawn inside the frame's own bounds, so what the frame measures is
--- what it covers.
-local BORDER_LAYERS = {
-    { inset = 0, color = { 0, 0, 0, 0.75 } },
-    { inset = 2, color = { 0.55, 0.43, 0.25, 1 } },
-    { inset = 3, color = { 0.035, 0.04, 0.055, 1 } },
-}
-
+-- what it covers, and the fill gets whatever the bands leave. A border
+-- of no bands is a naked fill.
 function Theme.ApplyBorder(frame, opts)
     opts = opts or {}
-    local scale = opts.scale or 1
-    local layer = opts.layer or "BACKGROUND"
-    local base  = opts.sublevel or -8
+    local scale  = opts.scale or 1
+    local layer  = opts.layer or "BACKGROUND"
+    local base   = opts.sublevel or -8
+    local layers = opts.layers or Theme.GetBorder()
 
-    frame._bazBorder = frame._bazBorder or {}
+    frame._bazBorder     = frame._bazBorder or {}
+    frame._bazBorderOpts = opts
     local parts = frame._bazBorder
 
-    for index, spec in ipairs(BORDER_LAYERS) do
-        local texture = parts[index]
+    -- Backwards, because band 1 is the innermost and each is drawn over
+    -- the one outside it. The inset grows by a band's thickness once it
+    -- has been drawn, so the next sits just inside it.
+    local slot, inset = 0, 0
+    for index = #layers, 1, -1 do
+        local spec = layers[index]
+        slot = slot + 1
+
+        local texture = parts[slot]
         if not texture then
-            texture = frame:CreateTexture(nil, layer, nil, base + index - 1)
-            parts[index] = texture
+            texture = frame:CreateTexture(nil, layer, nil, Sublevel(base + slot - 1))
+            parts[slot] = texture
         end
         local color = spec.color
         texture:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
-        local inset = spec.inset * scale
         texture:ClearAllPoints()
         texture:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
         texture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
+        texture:Show()
+
+        inset = inset + spec.thickness * scale
+    end
+
+    for index = slot + 1, #parts do
+        parts[index]:Hide()
     end
 
     local fill = opts.fill
     if fill then
-        local texture = parts[4]
+        local texture = frame._bazBorderFill
         if not texture then
-            texture = frame:CreateTexture(nil, layer, nil, base + 3)
-            parts[4] = texture
+            texture = frame:CreateTexture(nil, layer, nil, Sublevel(base + 15))
+            frame._bazBorderFill = texture
         end
-        texture:SetColorTexture(fill[1], fill[2], fill[3], fill[4] or 1)
-        local inset = 4 * scale
+        -- fillAlpha lets a caller pass one of the palette's own tables -
+        -- which follows the skin, being the table everything else reads -
+        -- and still say how see-through this one should be.
+        texture:SetColorTexture(fill[1], fill[2], fill[3],
+            opts.fillAlpha or fill[4] or 1)
         texture:ClearAllPoints()
         texture:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
         texture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)
-    elseif parts[4] then
-        parts[4]:Hide()
+        texture:Show()
+    elseif frame._bazBorderFill then
+        frame._bazBorderFill:Hide()
     end
+
+    Theme.TrackBorder(frame, RedrawBorder)
 
     return frame
 end
@@ -708,66 +958,89 @@ end
 --
 -- The tint goes to the gold because that is the part worth colouring:
 -- the micro menu pulses a button by brightening it.
-local ROUND_RING_LAYERS = {
-    { thickness = 2, color = { 0, 0, 0, 0.75 } },
-    { thickness = 1, color = { 0.55, 0.43, 0.25, 1 } },
-    { thickness = 1, color = { 0.035, 0.04, 0.055, 1 } },
-}
-
 function Theme.CreateRoundRing(parent, opts)
     opts = opts or {}
     local layer = opts.layer or "BACKGROUND"
     local base  = opts.sublevel or -8
 
-    -- A caller can thicken a layer without redesigning the border. The
-    -- round mask blends over roughly a pixel at every edge, so a gold
-    -- layer only one pixel wide is nearly all blend, with dark mixing in
-    -- from both sides: the same colour as the square border, and duller
-    -- to look at. Giving it a second pixel gives it one at full strength.
-    local layers = opts.layers or ROUND_RING_LAYERS
+    -- A caller can hand over a border of its own rather than wear the
+    -- suite's. Worth knowing if one does: the round mask blends over
+    -- roughly a pixel at every edge, so a band only one pixel wide is
+    -- nearly all blend, with its neighbours mixing in from both sides -
+    -- the same color as on a square edge, and duller to look at. A second
+    -- pixel gives it one at full strength.
+    local fixedLayers = opts.layers
+
+    -- A scale multiplies every band: the proportions are what make it
+    -- look like our border, and a ring around something the size of the
+    -- minimap wants them bigger rather than different.
+    local scale = opts.scale or 1
 
     local ring = { parts = {} }
 
-    for index, spec in ipairs(layers) do
-        local texture = parent:CreateTexture(nil, layer, nil, base + index - 1)
-        texture:SetColorTexture(spec.color[1], spec.color[2],
-            spec.color[3], spec.color[4] or 1)
+    local function Layers()
+        return fixedLayers or Theme.GetBorder()
+    end
+
+    -- Made as they are needed rather than up front, because how many
+    -- there are is a question about the skin, and the skin can change
+    -- while this ring is on screen.
+    local function Part(slot)
+        local texture = ring.parts[slot]
+        if texture then return texture end
+        texture = parent:CreateTexture(nil, layer, nil, Sublevel(base + slot - 1))
         local mask = parent:CreateMaskTexture()
         mask:SetTexture(Skin.ROUND_MASK,
             "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         texture:AddMaskTexture(mask)
         texture._mask = mask
-        ring.parts[index] = texture
+        ring.parts[slot] = texture
+        return texture
     end
 
-    ring.gold = ring.parts[2]
-
-    -- Four pixels of border all told, so each circle is the inner size
-    -- plus twice whatever is still outside it. A scale multiplies every
-    -- layer: the proportions are what make it look like our border, and
-    -- a ring around something the size of the minimap wants them bigger
-    -- rather than different.
-    local scale = opts.scale or 1
-
     function ring:Thickness()
-        local total = 0
-        for _, spec in ipairs(layers) do
-            total = total + spec.thickness * scale
-        end
-        return total
+        return Theme.BorderThickness(scale, Layers())
     end
 
     function ring:SetInnerSize(inner)
+        local layers = Layers()
+        self._inner = inner
+
+        -- Outermost first: these are filled circles, so each has to be
+        -- drawn before the one that covers its middle.
         local out = self:Thickness()
-        for index, spec in ipairs(layers) do
-            local texture = self.parts[index]
+        local slot = 0
+        for index = #layers, 1, -1 do
+            local spec = layers[index]
+            slot = slot + 1
+
+            local texture = Part(slot)
+            local color = spec.color
+            texture:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+
             local diameter = inner + out * 2
             texture:ClearAllPoints()
             texture:SetPoint("CENTER", opts.anchor or parent, "CENTER", 0, 0)
             texture:SetSize(diameter, diameter)
             texture._mask:SetAllPoints(texture)
+            texture:Show()
+
             out = out - spec.thickness * scale
         end
+
+        -- Left over from a border with more bands than this one has.
+        for index = slot + 1, #self.parts do self.parts[index]:Hide() end
+        self._bands = slot
+
+        -- Whichever band is the one worth lighting up, counted from the
+        -- outside in, because that is the order they were drawn in.
+        local accent = Theme.AccentBand(layers)
+        self.gold = accent and self.parts[#layers - accent + 1] or nil
+        if self._tint and self.gold then
+            self.gold:SetVertexColor(unpack(self._tint))
+        end
+
+        Theme.TrackBorder(self, RedrawRoundRing)
     end
 
     -- Both kinds of ring answer the same two questions, so whatever holds
@@ -784,11 +1057,16 @@ function Theme.CreateRoundRing(parent, opts)
     end
 
     function ring:SetTint(r, g, b)
-        self.gold:SetVertexColor(r or 1, g or 1, b or 1)
+        self._tint = { r or 1, g or 1, b or 1 }
+        if self.gold then self.gold:SetVertexColor(r or 1, g or 1, b or 1) end
     end
 
     function ring:Show()
-        for _, texture in ipairs(self.parts) do texture:Show() end
+        for index, texture in ipairs(self.parts) do
+            -- Only the ones this border actually uses: the rest are
+            -- leftovers from a longer one.
+            if index <= (self._bands or #self.parts) then texture:Show() end
+        end
     end
 
     function ring:Hide()
@@ -796,6 +1074,88 @@ function Theme.CreateRoundRing(parent, opts)
     end
 
     return ring
+end
+
+---------------------------------------------------------------------------
+-- A floating dialog
+--
+-- Popups, the copy box, the icon picker, the flyout grid. All of them
+-- float over the game rather than sitting inside a panel, so they wear
+-- the suite's full border rather than the one-pixel edge a row inside a
+-- card gets: a dialog over the world needs the weight to read as a thing
+-- in front of it.
+--
+--   Theme.ApplyDialog(frame)
+--   Theme.ApplyDialog(frame, Theme.colors.bgRaised, 0.98)
+---------------------------------------------------------------------------
+
+function Theme.ApplyDialog(frame, bgColor, alpha)
+    if frame.GetBackdrop and frame:GetBackdrop() then frame:SetBackdrop(nil) end
+
+    -- A frame that wore the flat panel before this was called has its
+    -- textures still on it, under ours.
+    local flat = frame._bazFlatPanel
+    if flat then
+        flat.bg:Hide()
+        for _, edge in ipairs(flat.edges) do edge:Hide() end
+    end
+
+    Theme.ApplyBorder(frame, {
+        fill      = bgColor or Theme.colors.bg,
+        fillAlpha = alpha or 0.97,
+    })
+    return frame
+end
+
+---------------------------------------------------------------------------
+-- A dropdown menu
+--
+-- The game's menus come out of a pool the game also uses for its own, so
+-- this is careful in two ways. Blizzard's backgrounds are hidden rather
+-- than taken off, and the compositor shows them again when it hands that
+-- frame to the next menu; and ours go on a child frame we own, hidden
+-- again the moment the menu closes. A menu frame given back to the pool
+-- comes out of it looking like the game's.
+--
+-- Only menus BazUI opened get this. Restyling the game's own dropdowns
+-- is a different and much larger claim than making ours match.
+---------------------------------------------------------------------------
+
+function Theme.ApplyMenuChrome(menu)
+    -- Asked only about GetRegions. A menu frame's metatable raises on so
+    -- much as reading CreateTexture, CreateFontString or CreateMaskTexture
+    -- from it - the compositor blocks them so that callers go through its
+    -- own AttachTexture - and a guard that throws is worse than no guard.
+    if not (menu and menu.GetRegions) then return end
+
+    -- The two the menu style attached: an atlas ring and a dark interior.
+    -- Everything else a menu draws belongs to its buttons, which are
+    -- frames of their own rather than regions of this one.
+    for _, region in ipairs({ menu:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "Texture" then
+            region:Hide()
+        end
+    end
+
+    local chrome = menu._bazMenuChrome
+    if not chrome then
+        chrome = CreateFrame("Frame", nil, menu)
+        -- Out to where the game's own border reached, so the menu's
+        -- contents keep the padding they were laid out with.
+        chrome:SetPoint("TOPLEFT", -3, 3)
+        chrome:SetPoint("BOTTOMRIGHT", 3, -3)
+        chrome:EnableMouse(false)
+        menu._bazMenuChrome = chrome
+
+        menu:HookScript("OnHide", function(self)
+            if self._bazMenuChrome then self._bazMenuChrome:Hide() end
+        end)
+    end
+
+    chrome:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+    chrome:Show()
+    Theme.ApplyDialog(chrome)
+    return menu
 end
 
 ---------------------------------------------------------------------------
@@ -875,7 +1235,7 @@ function Theme.ApplyRoundButton(button, icon, opts)
     local size  = opts.size or button:GetWidth()
     local inner = size * (opts.innerRatio or Skin.BUTTON_RING_INNER_RATIO) + (opts.overlap or 2) * 2
 
-    if not button._bazRing then
+    if not button._bazRingObject then
         local disc = button:CreateTexture(nil, "BACKGROUND", nil, -1)
         SetColor(function(...) disc:SetColorTexture(...) end, Skin.BUTTON_BACKDROP_COLOR)
         local discMask = button:CreateMaskTexture()
@@ -886,15 +1246,9 @@ function Theme.ApplyRoundButton(button, icon, opts)
         iconMask:SetTexture(Skin.ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         icon:AddMaskTexture(iconMask)
 
-        local ringObject = Theme.CreateRoundRing(button, { sublevel = -6 })
-        button._bazRingObject = ringObject
-
-        -- The gold circle answers to the name the old ring texture had,
-        -- since callers tint it and that is the part worth tinting.
-        button._bazRingOuter = ringObject.parts[1]
-        button._bazRingInner = ringObject.parts[3]
-        button._bazDisc, button._bazDiscMask, button._bazIconMask, button._bazRing =
-            disc, discMask, iconMask, ringObject.gold
+        button._bazRingObject = Theme.CreateRoundRing(button, { sublevel = -6 })
+        button._bazDisc, button._bazDiscMask, button._bazIconMask =
+            disc, discMask, iconMask
 
         -- Press feedback: the icon and its disc sink a pixel down-right
         -- and darken while the mouse button is held; the ring stays put
@@ -945,39 +1299,31 @@ Theme.nameplate = {
 
 -- Quiet tooltip chrome: no stretched artwork, bright ornament or glow.
 function Theme.ApplyTooltipFrame(tooltip, opacity)
-    if not tooltip._bazTooltipArt then
-        -- Native GameTooltip content updates/fades manage its own regions.
-        -- Keep our chrome in a child frame, inheriting the tooltip's alpha.
-        local chrome = CreateFrame("Frame", nil, tooltip)
+    local chrome = tooltip._bazTooltipArtFrame
+    if not chrome then
+        -- The game updates and fades a tooltip's own regions as it fills
+        -- it in, so our chrome lives in a child frame of its own. It
+        -- inherits the tooltip's alpha and nothing the game does reaches
+        -- it.
+        chrome = CreateFrame("Frame", nil, tooltip)
         chrome:SetAllPoints(tooltip)
         chrome:EnableMouse(false)
         tooltip._bazTooltipArtFrame = chrome
-        local art = {}
-        local function Texture(color, alpha)
-            local t = chrome:CreateTexture(nil, "BACKGROUND", nil, -7)
-            t:SetColorTexture(color[1], color[2], color[3], alpha or color[4] or 1)
-            art[#art + 1] = t
-            return t
-        end
-        local bg = Texture(Theme.colors.bg)
-        bg:SetAllPoints(tooltip)
-        for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-            local edge = Texture(Theme.colors.goldDim, .8)
-            edge:SetDrawLayer("BORDER", 7)
-            if side == "TOP" or side == "BOTTOM" then
-                edge:SetPoint(side .. "LEFT", tooltip, side .. "LEFT")
-                edge:SetPoint(side .. "RIGHT", tooltip, side .. "RIGHT")
-                edge:SetHeight(1)
-            else
-                edge:SetPoint("TOP" .. side, tooltip, "TOP" .. side, 0, -1)
-                edge:SetPoint("BOTTOM" .. side, tooltip, "BOTTOM" .. side, 0, 1)
-                edge:SetWidth(1)
-            end
-        end
-        tooltip._bazTooltipArt = art
     end
-    tooltip._bazTooltipArtFrame:SetFrameLevel(math.max(0, tooltip:GetFrameLevel() - 1))
-    local bg = Theme.colors.bg
-    tooltip._bazTooltipArt[1]:SetColorTexture(bg[1], bg[2], bg[3], opacity or .96)
-    for _, t in ipairs(tooltip._bazTooltipArt) do t:Show() end
+
+    chrome:SetFrameLevel(math.max(0, tooltip:GetFrameLevel() - 1))
+    chrome:Show()
+
+    -- The suite's border, the same one a bar or a panel wears, rather
+    -- than an edge of its own. A tooltip drawn some other way is the one
+    -- thing on screen that does not follow the skin.
+    --
+    -- The palette's own table goes in rather than a copy of its numbers,
+    -- so a color change reaches it; the opacity is passed beside it,
+    -- since how see-through a tooltip is belongs to the tooltip rather
+    -- than to the palette.
+    Theme.ApplyBorder(chrome, {
+        fill      = Theme.colors.bg,
+        fillAlpha = opacity or 0.96,
+    })
 end

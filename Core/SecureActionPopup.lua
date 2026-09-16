@@ -323,9 +323,13 @@ end
 
 local function ApplyChrome(popup)
     local theme = Theme or (BazUI.Skin and BazUI.Skin.Theme)
-    if not (theme and theme.ApplyFlatPanel) then return end
+    if not (theme and theme.ApplyDialog) then return end
+    -- The grid floats over the bars, so it wears the dialog chrome: the
+    -- suite's border rather than a one-pixel edge. A caller's edgeColor
+    -- has nothing to sit on any more - the border is the border - so only
+    -- the interior is still its to choose.
     local chrome = popup._opts.chrome or {}
-    theme.ApplyFlatPanel(popup, chrome.bgColor, chrome.edgeColor)
+    theme.ApplyDialog(popup, chrome.bgColor)
 end
 
 local function ApplyAnchor(popup)

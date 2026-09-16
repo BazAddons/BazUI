@@ -38,8 +38,59 @@ function addon:Style(tip)
             tip.NineSlice:SetParent(state.nineParent)
             state.nineParent = nil
         end
-        if tip._bazTooltipArt then
-            for _, texture in ipairs(tip._bazTooltipArt) do texture:Hide() end
+        -- The whole chrome frame, rather than the textures inside it:
+        -- how many there are is the border's business now.
+        if tip._bazTooltipArtFrame then tip._bazTooltipArtFrame:Hide() end
+    end
+end
+
+---------------------------------------------------------------------------
+-- The face
+--
+-- A tooltip line is made by the game, out of one of three font objects it
+-- owns, so there is nothing of ours to set a font on. The objects are
+-- taken over instead - see Theme.AdoptFontObject - which reaches every
+-- tooltip drawn from them, including the game's own. That is the right
+-- answer here: these are the tooltips this module has already skinned,
+-- and a skinned tooltip still lettered in the game's face is the one
+-- thing that looks wrong.
+--
+-- Given back whenever the module's skin is off or the suite's font
+-- switch is, so nothing is left changed by an addon that is not doing
+-- anything.
+---------------------------------------------------------------------------
+
+local FONT_OBJECTS = { "GameTooltipHeaderText", "GameTooltipText", "GameTooltipTextSmall" }
+
+BazUI:RegisterDependency({
+    module = "Tooltip",
+    label  = "ContainerFrameItemButton_CalculateItemTooltipAnchors",
+    why    = "Held back while the tooltip anchor is overridden, so the bag does not add a second anchor point the game then refuses.",
+    check  = function()
+        return BazUI.Has.Global("ContainerFrameItemButton_CalculateItemTooltipAnchors")
+    end,
+})
+
+for _, name in ipairs(FONT_OBJECTS) do
+    BazUI:RegisterDependency({
+        module = "Tooltip",
+        label  = name,
+        why    = "The font object the game letters tooltips in.",
+        check  = function() return BazUI.Has.Member(_G[name], "SetFont") end,
+    })
+end
+
+function addon:Font()
+    -- Only this module's own switches are asked. Whether the suite's face
+    -- is wanted at all is the font switch's business, and an adopted
+    -- object already answers it every time it is drawn - so flipping that
+    -- switch reaches these without anything here running again.
+    local wanted = Enabled() and self:GetSetting("skin")
+    for _, name in ipairs(FONT_OBJECTS) do
+        if wanted then
+            Theme.AdoptFontObject(name)
+        else
+            Theme.ReleaseFontObject(name)
         end
     end
 end
@@ -95,6 +146,7 @@ function addon:ApplySettings()
     self:Scan()
     self:UpdateAnchorMarker()
     self:HealthBar()
+    self:Font()
     for tip, state in pairs(tracked) do
         if state.oldScale then tip:SetScale(state.oldScale); state.oldScale = nil end
         self:Style(tip)
@@ -183,6 +235,32 @@ function addon:Initialize()
         settingOwner = false
         self:Anchor(tip)
     end)
+    -- The bag's own idea of where a tooltip goes
+    --
+    -- Hovering a bag slot, the game calls
+    -- ContainerFrameItemButton_CalculateItemTooltipAnchors, which does
+    -- GameTooltip:SetPoint against the slot - without clearing first. If
+    -- this module has already anchored the tooltip somewhere the player
+    -- chose, the tooltip then holds two points, to two frames in two
+    -- different anchor families, and the game refuses the second one
+    -- outright with an error rather than picking a winner.
+    --
+    -- So when we are overriding the anchor, that call is answered with
+    -- "nothing to do". Its return says only whether a comparison tooltip
+    -- needs re-anchoring, and false is the same answer it gives whenever
+    -- there is no comparison showing.
+    --
+    -- Left entirely alone when we are not overriding: the bag then
+    -- positions its tooltips exactly as the game intends.
+    if _G.ContainerFrameItemButton_CalculateItemTooltipAnchors then
+        local stock = _G.ContainerFrameItemButton_CalculateItemTooltipAnchors
+        _G.ContainerFrameItemButton_CalculateItemTooltipAnchors =
+            function(button, mainTooltip, secondaryTooltip)
+                if self:OverridesAnchor() then return false end
+                return stock(button, mainTooltip, secondaryTooltip)
+            end
+    end
+
     if _G.SharedTooltip_OnLoad then
         hooksecurefunc("SharedTooltip_OnLoad", function(tip) self:Style(tip) end)
     end

@@ -27,6 +27,9 @@ addon.Plates = Plates
 local active = {}
 local pool   = {}
 
+-- Room above the bar for the name, which sits outside it.
+local NAME_ROOM = 14
+
 local function Setting(key) return addon:GetSetting(key) end
 
 -- What this module is holding on to. See Core/Compat.lua.
@@ -71,19 +74,29 @@ end
 -- One of ours
 ---------------------------------------------------------------------------
 
+-- A plate's size is worked out from the border, and the bar inside it is
+-- pinned to the plate's own edges - so a change of border has to re-lay
+-- the plate, not just repaint the bar. One function rather than one per
+-- plate: everything it needs is the plate it is handed.
+local function RelayoutPlate(plate) Plates:Apply(plate) end
+
 local function Build()
     local Theme = BazUI.Skin.Theme
 
     local plate = CreateFrame("Frame", nil, UIParent)
     plate:SetFrameStrata("BACKGROUND")
 
-    -- The panel style: one pixel of border. The screen style wears four,
-    -- which is most of a bar this size.
+    -- The suite's border and the suite's fill, the same as every other
+    -- bar. It used to wear the flat one-pixel treatment instead, because
+    -- four pixels of chrome was most of a bar this size - but the border
+    -- is drawn around the fill now rather than out of it, so a plate can
+    -- follow the skin and keep the health bar it was given. No spark:
+    -- twenty of them at once is a lot of sparkle.
     plate.health = BazUI.CreateStatusBar(nil, plate, {
-        style    = "panel",
         height   = 10,
         width    = 110,
         textMode = "never",
+        spark    = false,
     })
     plate.health:SetPoint("BOTTOMLEFT")
     plate.health:SetPoint("BOTTOMRIGHT")
@@ -95,8 +108,10 @@ local function Build()
 
     -- On the bar rather than beside it: a plate is as wide as it is and
     -- the name has already taken the width above.
+    -- Against the fill rather than the frame, so it stays inside the bar
+    -- however thick the border round it is.
     plate.level = Theme.FontString(plate.health, "OVERLAY", "GameFontNormalSmall")
-    plate.level:SetPoint("RIGHT", plate.health, "RIGHT", -3, 0)
+    plate.level:SetPoint("RIGHT", plate.health.fill, "RIGHT", -3, 0)
 
     -- The target's plate gets a border rather than a glow: a glow on
     -- something this size is a smudge, and every other selected thing in
@@ -104,8 +119,9 @@ local function Build()
     plate.mark = plate:CreateTexture(nil, "BACKGROUND")
     plate.mark:SetPoint("TOPLEFT", plate.health, -2, 2)
     plate.mark:SetPoint("BOTTOMRIGHT", plate.health, 2, -2)
-    plate.mark:SetColorTexture(unpack(Theme.colors.gold))
     plate.mark:Hide()
+
+    Theme.TrackBorder(plate, RelayoutPlate)
 
     return plate
 end
@@ -177,8 +193,18 @@ end
 function Plates:Apply(ours)
     local width  = tonumber(Setting("width"))  or 110
     local height = tonumber(Setting("height")) or 10
-    ours:SetSize(width, height + 14)
+
+    -- The width and height are the health bar's, the way every other bar
+    -- in the suite reads them: what is set is the fill, and the border is
+    -- added around it. The plate is sized to hold that, plus room above
+    -- for the name.
+    local chrome = ours.health:GetInset() * 2
+    ours:SetSize(width + chrome, height + chrome + NAME_ROOM)
     ours.health:SetBarSize(width, height)
+
+    -- Painted on every apply rather than once when the plate was built,
+    -- so a change of palette reaches plates already pooled.
+    ours.mark:SetColorTexture(unpack(BazUI.Skin.Theme.colors.gold))
     ours.name:SetFont(BazUI.Skin.Theme.FontFile(),
         tonumber(Setting("nameSize")) or 9, "OUTLINE")
     ours.level:SetFont(BazUI.Skin.Theme.FontFile(),

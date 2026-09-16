@@ -100,7 +100,9 @@ local FALLBACKS = {
 -- unchanged, so a missing font is never a blank chat.
 ---------------------------------------------------------------------------
 
-local CHAT_FONT_FILE = BazUI.Skin.Theme.FONT_FILE
+-- Read fresh each time rather than copied once: a skin can point the
+-- suite's face somewhere else, and that happens after this file loads.
+local function ChatFontFile() return BazUI.Skin.Theme.FONT_FILE end
 local customFont
 local fontProbe
 
@@ -123,14 +125,14 @@ local function ChatFontObject(useCustom, scale)
     if not useCustom and size == blizzSize then return blizzard end
 
     if not customFont then customFont = CreateFont("BazUIChatFont") end
-    customFont:SetFont(useCustom and CHAT_FONT_FILE or blizzFace, size, flags or "")
+    customFont:SetFont(useCustom and ChatFontFile() or blizzFace, size, flags or "")
     -- A Font object's SetFont returns nothing (only the FontString and
     -- EditBox versions report success), so read the face back to find
     -- out whether the client could load the file. It can't when the
     -- file was added while the client was running: fonts are read at
     -- startup, so a new one needs a full restart, not a /reload.
     local applied = customFont:GetFont()
-    if useCustom and (not applied or applied:lower() ~= CHAT_FONT_FILE:lower()) then
+    if useCustom and (not applied or applied:lower() ~= ChatFontFile():lower()) then
         -- The BazUI face is unreadable; keep the chosen size on
         -- Blizzard's face so the size slider still works.
         customFont:SetFont(blizzFace, size, flags or "")
@@ -1409,14 +1411,14 @@ end
 function Window:FontStatus()
     local blizzard = _G.ChatFontNormal
     fontProbe = fontProbe or CreateFont("BazUIChatFontProbe")
-    fontProbe:SetFont(CHAT_FONT_FILE, 14, "")
+    fontProbe:SetFont(ChatFontFile(), 14, "")
     local loaded = fontProbe:GetFont()
     local f = windows[1]
     local inUse, inUseSize
     if f then inUse, inUseSize = f:GetFont() end
     return {
-        file      = CHAT_FONT_FILE,
-        loadable  = loaded and loaded:lower() == CHAT_FONT_FILE:lower() or false,
+        file      = ChatFontFile(),
+        loadable  = loaded and loaded:lower() == ChatFontFile():lower() or false,
         setting   = (WindowDB(1) or {}).customFont ~= false,
         scale     = (WindowDB(1) or {}).fontScale or FALLBACKS.fontScale,
         inUse     = inUse,

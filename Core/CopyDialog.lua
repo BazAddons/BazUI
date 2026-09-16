@@ -78,7 +78,7 @@ local function CreateDialog()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:SetClampedToScreen(true)
-    BazUI.Skin.Theme.ApplyFlatPanel(f)
+    BazUI.Skin.Theme.ApplyDialog(f)
     f:Hide()
 
     local close = HookClose(f)

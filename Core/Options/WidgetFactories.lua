@@ -60,6 +60,12 @@ local function AnchorControl(frame, control, width, height)
     control:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -O.ROW_PAD, -((O.ROW_H - height) / 2))
 end
 
+-- The scaffolding, for a page that needs a control this file does not
+-- have. A widget built with these is the same row as every other one, so
+-- it lines up with them rather than nearly lining up.
+O.BuildRow       = BuildRow
+O.AnchorControl  = AnchorControl
+
 ---------------------------------------------------------------------------
 -- Text blocks
 ---------------------------------------------------------------------------
@@ -464,6 +470,139 @@ local function CreateFlagsWidget(parent, opt, contentWidth)
 end
 
 ---------------------------------------------------------------------------
+-- Color
+--
+-- A swatch with its hex beside it, opening the game's own color picker.
+--
+-- get() answers four numbers and set() is handed four, rather than a
+-- table: every color in this addon is already { r, g, b, a } and a widget
+-- that traded in tables would have to guess whether it had been given one
+-- of those or one of the game's { r = , g = , b = }. Both are accepted
+-- coming back from get(), since a caller handing over one of its own
+-- tables is the obvious thing to do.
+--
+-- The swatch and the picker are separate from the row, because the Skin
+-- tab needs both inside a row of its own making.
+---------------------------------------------------------------------------
+
+local SWATCH_W = 44
+local SWATCH_H = 16
+local HEX_W    = 60
+
+-- A button showing a color, over a light half and a dark half so a low
+-- alpha reads as see-through rather than as a darker color.
+function O.CreateSwatch(parent, width, height)
+    local swatch = CreateFrame("Button", nil, parent)
+    swatch:SetSize(width or SWATCH_W, height or SWATCH_H)
+
+    local border = swatch:CreateTexture(nil, "BACKGROUND")
+    border:SetPoint("TOPLEFT", -1, 1)
+    border:SetPoint("BOTTOMRIGHT", 1, -1)
+    border:SetColorTexture(unpack(O.HEADER_LINE))
+
+    local light = swatch:CreateTexture(nil, "BACKGROUND", nil, 1)
+    light:SetPoint("TOPLEFT")
+    light:SetPoint("BOTTOMRIGHT", swatch, "BOTTOM", 0, 0)
+    light:SetColorTexture(0.65, 0.65, 0.65, 1)
+
+    local dark = swatch:CreateTexture(nil, "BACKGROUND", nil, 1)
+    dark:SetPoint("TOPLEFT", swatch, "TOP", 0, 0)
+    dark:SetPoint("BOTTOMRIGHT")
+    dark:SetColorTexture(0.15, 0.15, 0.15, 1)
+
+    local fill = swatch:CreateTexture(nil, "ARTWORK")
+    fill:SetAllPoints()
+    swatch.fill = fill
+
+    function swatch:SetColor(r, g, b, a)
+        fill:SetColorTexture(r or 1, g or 1, b or 1, a or 1)
+    end
+
+    return swatch
+end
+
+-- One place that knows how to drive the game's color picker: it reports a
+-- new color as it is dragged and the original if it is cancelled, so a
+-- caller only has to say what to do with a color.
+function O.OpenColorPicker(r, g, b, a, hasAlpha, onChange)
+    if not (ColorPickerFrame and ColorPickerFrame.SetupColorPickerAndShow) then return end
+    local wasR, wasG, wasB, wasA = r or 1, g or 1, b or 1, a or 1
+
+    local function Commit()
+        local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+        local na = wasA
+        if hasAlpha then
+            -- The picker calls it opacity and counts the other way.
+            local opacity = ColorPickerFrame.GetColorAlpha
+                and ColorPickerFrame:GetColorAlpha() or 0
+            na = 1 - opacity
+        end
+        onChange(nr, ng, nb, na)
+    end
+
+    ColorPickerFrame:SetupColorPickerAndShow({
+        r = wasR, g = wasG, b = wasB,
+        opacity     = 1 - wasA,
+        hasOpacity  = hasAlpha and true or false,
+        swatchFunc  = Commit,
+        opacityFunc = Commit,
+        cancelFunc  = function() onChange(wasR, wasG, wasB, wasA) end,
+    })
+end
+
+local function CreateColorWidget(parent, opt, contentWidth)
+    local ctrlWidth = HEX_W + 6 + SWATCH_W
+    local frame, h = BuildRow(parent, opt, contentWidth, ctrlWidth)
+
+    local box = CreateFrame("Frame", nil, frame)
+    AnchorControl(frame, box, ctrlWidth, SWATCH_H)
+
+    local hex = box:CreateFontString(nil, "OVERLAY", O.DESC_FONT)
+    hex:SetPoint("LEFT", box, "LEFT", 0, 0)
+    hex:SetWidth(HEX_W)
+    hex:SetJustifyH("RIGHT")
+    Color(hex, O.TEXT_DESC)
+
+    local swatch = O.CreateSwatch(box, SWATCH_W, SWATCH_H)
+    swatch:SetPoint("RIGHT", box, "RIGHT", 0, 0)
+
+    local function Read()
+        if not opt.get then return 1, 1, 1, 1 end
+        local r, g, b, a = opt.get(opt)
+        if type(r) == "table" then
+            local c = r
+            r, g, b, a = c[1] or c.r, c[2] or c.g, c[3] or c.b, c[4] or c.a
+        end
+        return r or 1, g or 1, b or 1, a or 1
+    end
+
+    local function Refresh()
+        local r, g, b, a = Read()
+        swatch:SetColor(r, g, b, a)
+        hex:SetText(("#%02X%02X%02X"):format(r * 255, g * 255, b * 255))
+    end
+
+    swatch:SetScript("OnClick", function()
+        local r, g, b, a = Read()
+        O.OpenColorPicker(r, g, b, a, opt.hasAlpha, function(nr, ng, nb, na)
+            if opt.set then opt.set(opt, nr, ng, nb, na) end
+            Refresh()
+        end)
+    end)
+
+    frame:SetScript("OnShow", function(self)
+        local disabled = O.IsDisabled(opt)
+        swatch:SetEnabled(not disabled)
+        swatch:SetAlpha(disabled and 0.4 or 1)
+        self:SetRowDisabled(disabled)
+        Refresh()
+    end)
+    Refresh()
+
+    return frame, h
+end
+
+---------------------------------------------------------------------------
 
 O.widgetFactories = {
     description = CreateDescriptionWidget,
@@ -475,4 +614,5 @@ O.widgetFactories = {
     execute     = CreateExecuteWidget,
     select      = CreateSelectWidget,
     flags       = CreateFlagsWidget,
+    color       = CreateColorWidget,
 }

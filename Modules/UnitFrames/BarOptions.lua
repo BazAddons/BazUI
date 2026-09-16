@@ -192,8 +192,8 @@ local function BarArgs(def)
             },
             height = {
                 order = 22, type = "range", name = "Height",
-                desc = "Four pixels a side are border, so a bar is about eight taller than the fill you want.",
-                min = 14, max = 48, step = 1,
+                desc = "The height of the fill. The border is added around it, so the bar comes out taller than this by however thick the border is.",
+                min = 1, max = 48, step = 1,
                 get = Field(def, "height", 24), set = SetField(def, "height"),
             },
             fillFrom = {

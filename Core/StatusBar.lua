@@ -29,7 +29,10 @@
 --   bar:SetTextMode("always"|"hover"|"never")
 --   bar:SetTicks(count)               0 for none
 --   bar:SetFillDirection("LEFT"|"RIGHT")  which end it fills from
---   bar:SetBarSize(width, height)     lays the inner parts out again
+--   bar:SetBarSize(width, height)     the size of the FILL; the frame
+--                                     comes out bigger by the border
+--   bar:SetOuterSize(width, height)   the size of the frame instead
+--   bar:GetFillSize() / bar:GetInset()
 --
 -- The frame it returns is a Button, so a caller can give it scripts. It
 -- is never made secure here: a bar that needs to target something is
@@ -38,11 +41,43 @@
 
 local Theme = BazUI.Skin and BazUI.Skin.Theme
 
-local DEFAULT_TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"
+-- What a bar is filled with: a texture, whether to work the color up and
+-- down it, and whether it wears the lit top edge. Asked as a bar draws
+-- rather than copied at load, so a change of fill reaches all of them.
+local function FillDef()
+    local Skin = BazUI.Skin
+    if Skin and Skin.FillDef then return Skin.FillDef() end
+    return { texture = (Skin and Skin.XP_FILL) or "Interface\\TargetingFrame\\UI-StatusBar", sheen = true }
+end
 
-local SHADOW = { 0, 0, 0, 0.75 }
-local RIM    = { 0.55, 0.43, 0.25, 1 }
-local TRACK  = { 0.035, 0.04, 0.055, 1 }
+-- A gradient fill takes one color and makes two of it, lighter at the top
+-- and darker at the bottom, so a flat white texture reads as a lit bar
+-- with no artwork involved at all.
+local LIFT, DROP = 0.30, 0.30
+
+local function Shade(color, amount)
+    local function Channel(value)
+        value = (value or 0) + amount
+        if value < 0 then return 0 elseif value > 1 then return 1 end
+        return value
+    end
+    return Channel(color[1]), Channel(color[2]), Channel(color[3])
+end
+
+-- A bar's edge is the suite's border, drawn along a rectangle: bands of
+-- solid color laid one outside the next.
+--
+-- The size a caller asks for is the size of the fill, and the chrome is
+-- added around it - so the frame comes out as the fill plus twice the
+-- border on each side. That is what makes a thicker border grow the bar
+-- rather than eat it: a border you have just set to seven pixels should
+-- not leave a twenty-pixel bar with six pixels of green in it.
+--
+-- The chrome is still drawn inside the frame, which is the other half of
+-- it. Drawn beyond the frame's edges instead, a bar would be wider than
+-- its own box, and one docked to a host of the same width would overhang
+-- it on both sides. The frame bounds everything it draws; it is just
+-- bigger than the fill by however much border there is.
 
 local function Solid(parent, layer, color, sublevel)
     local texture = parent:CreateTexture(nil, layer, nil, sublevel)
@@ -59,7 +94,42 @@ local BarMixin = {}
 function BarMixin:SetFillColor(color)
     color = color or (Theme and Theme.colors.gold) or { 1, 0.82, 0, 1 }
     self._fillColor = color
-    self.fill:SetStatusBarColor(color[1], color[2], color[3], color[4] or 1)
+
+    local alpha = color[4] or 1
+    local texture = self.fill:GetStatusBarTexture()
+    local def = self._screen and FillDef() or nil
+
+    -- Through the gradient either way, even when both ends are the same
+    -- color. A gradient and a vertex color are the same slot on a texture,
+    -- so setting one of them sometimes and the other the rest of the time
+    -- would leave whichever was set last on a texture that gets reused.
+    if def and texture and texture.SetGradient and CreateColor then
+        local topR, topG, topB, botR, botG, botB
+        if def.gradient then
+            topR, topG, topB = Shade(color, LIFT)
+            botR, botG, botB = Shade(color, -DROP)
+        else
+            topR, topG, topB = color[1], color[2], color[3]
+            botR, botG, botB = color[1], color[2], color[3]
+        end
+        -- VERTICAL runs bottom to top.
+        texture:SetGradient("VERTICAL",
+            CreateColor(botR, botG, botB, alpha),
+            CreateColor(topR, topG, topB, alpha))
+    else
+        self.fill:SetStatusBarColor(color[1], color[2], color[3], alpha)
+    end
+end
+
+-- The fill, and the lit edge that belongs to it. Called again whenever
+-- the choice changes, so a bar answers without a reload.
+function BarMixin:RefreshFill()
+    if not self._screen then return end
+    local def = FillDef()
+    self.fill:SetStatusBarTexture(self._fillTexture or def.texture)
+    if self.sheen then self.sheen:SetShown(def.sheen ~= false) end
+    self:SetFillColor(self._fillColor)
+    Theme.TrackFill(self, Theme.RedrawBarFill)
 end
 
 function BarMixin:SetOverlayColor(color)
@@ -194,15 +264,73 @@ end
 -- measurements, so they are worked out once here.
 ---------------------------------------------------------------------------
 
-function BarMixin:SetBarSize(width, height)
-    width  = math.max(8, tonumber(width) or 8)
-    height = math.max(4, tonumber(height) or 4)
-    self:SetSize(width, height)
+-- The bands, and how far in they push the fill. Called again whenever
+-- the border changes, so a bar answers a new skin without a reload.
+function BarMixin:RefreshChrome()
+    if not self._screen then return end
 
-    local inset = self._inset
-    self._innerWidth  = width - inset * 2
-    self._innerHeight = height - inset * 2
-    self.fill:SetSize(self._innerWidth, self._innerHeight)
+    local layers = Theme.GetBorder()
+    self._bands = self._bands or {}
+    local accent = Theme.AccentBand(layers)
+
+    -- Outermost first, each one inset by everything drawn before it.
+    local slot, inset = 0, 0
+    for index = #layers, 1, -1 do
+        local band = layers[index]
+        slot = slot + 1
+
+        local texture = self._bands[slot]
+        if not texture then
+            texture = Solid(self, "BACKGROUND", band.color, math.max(-8, -8 + slot - 1))
+            self._bands[slot] = texture
+        end
+
+        -- A caller can recolor two of them without knowing what the
+        -- border is: the band against the fill, and the one that reads
+        -- as the edge.
+        local color = band.color
+        if index == 1 and self._trackColor then color = self._trackColor end
+        if index == accent and self._rimColor then color = self._rimColor end
+        texture:SetColorTexture(color[1], color[2], color[3], color[4] or 1)
+
+        texture:ClearAllPoints()
+        texture:SetPoint("TOPLEFT", self, "TOPLEFT", inset, -inset)
+        texture:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -inset, inset)
+        texture:Show()
+
+        inset = inset + band.thickness
+    end
+
+    for index = slot + 1, #self._bands do self._bands[index]:Hide() end
+
+    self._inset = inset
+    self.fill:ClearAllPoints()
+    self.fill:SetPoint("TOPLEFT", inset, -inset)
+    -- Laid out again around the same fill: the frame grows or shrinks by
+    -- the change in the border, and the spark, ticks and text follow.
+    self:SetBarSize(self._fillWidth or self:GetWidth(), self._fillHeight or self:GetHeight())
+
+    Theme.TrackBorder(self, Theme.RedrawBarChrome)
+end
+
+function BarMixin:SetBarSize(width, height)
+    -- A pixel is the floor, and only because nothing can be drawn with
+    -- none. How thin a bar is worth having is the reader's business, not
+    -- this widget's: a two-pixel power bar under a health bar is a
+    -- perfectly good way to run a unit frame.
+    width  = math.max(1, tonumber(width) or 1)
+    height = math.max(1, tonumber(height) or 1)
+
+    -- Remembered, because this is the one size the bar is told and the
+    -- chrome around it can change afterwards. RefreshChrome asks for
+    -- these again rather than reading the frame, which by then is the
+    -- fill plus the old border.
+    self._fillWidth, self._fillHeight = width, height
+
+    local inset = self._inset or 0
+    self._innerWidth, self._innerHeight = width, height
+    self:SetSize(width + inset * 2, height + inset * 2)
+    self.fill:SetSize(width, height)
 
     if self.spark then self.spark:SetSize(2, self._innerHeight) end
     if self.text then
@@ -213,6 +341,28 @@ function BarMixin:SetBarSize(width, height)
 
     self:SetTicks(self._tickCount or 0)
     self:SetValue(self._value or 0)
+end
+
+-- Sized by its box instead, for a caller with a space to fill rather than
+-- a bar to draw: a nameplate as wide as the width somebody set, a bar
+-- stretched to match the frame it is docked to. Either measurement may be
+-- left out, and that one is kept as it is.
+function BarMixin:SetOuterSize(width, height)
+    local inset = self._inset or 0
+    local fillW = width and math.max(1, width - inset * 2) or self._fillWidth or 1
+    local fillH = height and math.max(1, height - inset * 2) or self._fillHeight or 1
+    self:SetBarSize(fillW, fillH)
+end
+
+-- The fill's size, which is not the frame's.
+function BarMixin:GetFillSize()
+    return self._fillWidth or 0, self._fillHeight or 0
+end
+
+-- How much of the frame is border, on each side. For a caller laying a
+-- bar out inside something it has to size itself.
+function BarMixin:GetInset()
+    return self._inset or 0
 end
 
 ---------------------------------------------------------------------------
@@ -230,42 +380,23 @@ function BazUI.CreateStatusBar(name, parent, opts)
     local bar = CreateFrame("Button", name, parent or UIParent, opts.template)
     Mixin(bar, BarMixin)
     bar._ticks = {}
-    bar._inset = screen and 4 or 1
     bar._textMode = opts.textMode or "always"
+    bar._screen = screen
+    bar._rimColor, bar._trackColor = opts.rimColor, opts.trackColor
+    bar._inset = screen and Theme.BorderThickness() or 1
 
-    if screen then
-        -- Four rings, outside in: two pixels of dark outline, one of
-        -- gold rim, one of dark track, then the fill. The gold is a
-        -- single pixel and does all the work, which it can only do with
-        -- dark on both sides of it: the outline holds it off whatever
-        -- the bar is sitting over, and the inner line holds it off the
-        -- fill.
-        --
-        -- All of it inside the frame. It used to be drawn beyond every
-        -- edge, which made a bar wider than its own box, so a docked one
-        -- matched its host's width exactly and still overhung it. The
-        -- chrome therefore costs four pixels a side and the fill gets
-        -- what is left: a bar wants to be about eight pixels taller than
-        -- the fill you want to see.
-        local shadow = Solid(bar, "BACKGROUND", SHADOW, -8)
-        shadow:SetAllPoints(bar)
-
-        local rim = Solid(bar, "BACKGROUND", opts.rimColor or RIM, -7)
-        rim:SetPoint("TOPLEFT", 2, -2)
-        rim:SetPoint("BOTTOMRIGHT", -2, 2)
-
-        local track = Solid(bar, "BACKGROUND", opts.trackColor or TRACK, -6)
-        track:SetPoint("TOPLEFT", 3, -3)
-        track:SetPoint("BOTTOMRIGHT", -3, 3)
-        bar.rim, bar.track = rim, track
-    elseif Theme and Theme.ApplyFlatPanel then
+    if not screen and Theme and Theme.ApplyFlatPanel then
         Theme.ApplyFlatPanel(bar, opts.trackColor or { 0.02, 0.02, 0.02, 0.85 },
             opts.rimColor or Theme.colors.edge)
     end
 
+    -- A caller naming its own texture keeps it whatever the skin says:
+    -- it asked for that one in particular.
+    bar._fillTexture = opts.texture
+
     bar.fill = CreateFrame("StatusBar", nil, bar)
     bar.fill:SetPoint("TOPLEFT", bar._inset, -bar._inset)
-    bar.fill:SetStatusBarTexture(screen and (opts.texture or DEFAULT_TEXTURE)
+    bar.fill:SetStatusBarTexture(screen and (opts.texture or FillDef().texture)
         or "Interface\\Buttons\\WHITE8x8")
     bar.fill:SetMinMaxValues(0, 1)
     bar.fill:SetValue(0)
@@ -281,8 +412,12 @@ function BazUI.CreateStatusBar(name, parent, opts)
     sheen:SetPoint("TOPLEFT", bar.fill, "TOPLEFT")
     sheen:SetPoint("TOPRIGHT", bar.fill, "TOPRIGHT")
     sheen:SetHeight(1)
+    bar.sheen = sheen
 
-    if screen then
+    -- The lit edge that follows the fill. Right on a bar you watch, and
+    -- twenty of them at once - one per nameplate - is a lot of sparkle,
+    -- so a caller can say no.
+    if screen and opts.spark ~= false then
         bar.spark = Solid(bar.fill, "OVERLAY", { 0.8, 0.9, 1, 0.8 })
         bar.spark:Hide()
     end
@@ -306,6 +441,10 @@ function BazUI.CreateStatusBar(name, parent, opts)
     bar:SetFillColor(opts.color)
     bar:SetOverlayColor(opts.overlayColor)
     bar:SetBarSize(opts.width or 200, opts.height or 18)
+    -- The bands last, because drawing them re-lays the fill out and the
+    -- fill has to exist first.
+    bar:RefreshChrome()
+    bar:RefreshFill()
     bar:SetTicks(opts.ticks or 0)
     return bar
 end

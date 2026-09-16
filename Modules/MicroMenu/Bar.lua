@@ -74,9 +74,12 @@ local function RefreshState(entry)
     if not entry.active then return end
     local pushed = entry.button:GetButtonState() == "PUSHED"
     Theme.SetRoundButtonHover(entry.button, pushed or entry.hovered or entry.pulsing)
-    local ring = entry.button._bazRing
+    -- Through the ring rather than at one of its textures: how many
+    -- bands there are and which one is the accent are the skin's to say,
+    -- and a tint set this way is put back whenever it redraws.
+    local ring = entry.button._bazRingObject
     if ring then
-        if entry.pulsing then ring:SetVertexColor(1, 0.92, 0.55) else ring:SetVertexColor(1, 1, 1) end
+        if entry.pulsing then ring:SetTint(1, 0.92, 0.55) else ring:SetTint(1, 1, 1) end
     end
 end
 
@@ -133,16 +136,12 @@ local function SetActive(entry, active, size)
         b:SetSize(size, size)
         Theme.ApplyRoundButton(b, entry.icon, { size = size })
         entry.icon:Show()
-        b._bazRing:Show()
-        if b._bazRingOuter then b._bazRingOuter:Show() end
-        if b._bazRingInner then b._bazRingInner:Show() end
+        if b._bazRingObject then b._bazRingObject:Show() end
         b._bazDisc:Show()
         RefreshState(entry)
     else
         entry.active = false
-        if b._bazRing then b._bazRing:Hide() end
-        if b._bazRingOuter then b._bazRingOuter:Hide() end
-        if b._bazRingInner then b._bazRingInner:Hide() end
+        if b._bazRingObject then b._bazRingObject:Hide() end
         if b._bazDisc then b._bazDisc:Hide() end
         entry.icon:Hide()
         SetChromeHidden(entry, false)

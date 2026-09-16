@@ -33,6 +33,9 @@ Core\Widgets.lua
 # Skin - textures and colors shared by every module.
 Skin\Skin.lua
 Skin\Theme.lua
+Skin\Fills.lua
+Skin\Skins.lua
+Skin\Settings.lua
 Skin\Nameplate.lua
 
 Core\StatusBar.lua
@@ -149,6 +152,7 @@ Modules\UnitFrames\Core.lua
 Modules\UnitFrames\UnitBars.lua
 Modules\UnitFrames\BarOptions.lua
 Modules\UnitFrames\Settings.lua
+Modules\UnitFrames\UserGuide.lua
 Modules\UnitFrames\Nameplate.lua
 
 # Name plates - the bar over a unit's head. Unrelated to

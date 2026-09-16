@@ -506,8 +506,10 @@ local function PlaceOneEdge(host, edge)
             frame:ClearAllPoints()
 
             local function Resize(width)
-                if frame.SetBarSize then
-                    frame:SetBarSize(width, frame:GetHeight())
+                -- By its box: what has to match the host is the bar's
+                -- outside, not the fill inside it.
+                if frame.SetOuterSize then
+                    frame:SetOuterSize(width)
                 else
                     frame:SetWidth(width)
                 end

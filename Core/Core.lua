@@ -303,6 +303,24 @@ end
 
 BazUI._ctxSections = BazUI._ctxSections or {}
 
+-- The menu frame the game hands back is what gets our chrome, and its
+-- own background is hidden to make room. Both are things about the menu
+-- system rather than API, so /bazui check asks after them.
+--
+-- Queued rather than declared here and now: this is the first file the
+-- addon loads, and Core/Compat.lua, which takes the declaration, has not
+-- loaded yet. Calling it at file scope killed the rest of this file.
+BazUI:QueueForLogin(function()
+    BazUI:RegisterDependency({
+        module = "BazUI",
+        label  = "MenuUtil.CreateContextMenu returns its menu",
+        why    = "The frame our context menus are skinned on.",
+        check  = function()
+            return BazUI.Has.Member(_G.MenuUtil, "CreateContextMenu")
+        end,
+    })
+end)
+
 function BazUI:RegisterContextMenuSection(scope, addonName, getItems)
     if type(scope)     ~= "string"   or scope     == "" then return end
     if type(addonName) ~= "string"   or addonName == "" then return end
@@ -373,7 +391,7 @@ function BazUI:OpenContextMenu(scope, anchor, context, options)
         end
     end
 
-    MenuUtil.CreateContextMenu(anchor, function(_, root)
+    local menu = MenuUtil.CreateContextMenu(anchor, function(_, root)
         if options.title then
             root:CreateTitle(options.title)
         end
@@ -385,6 +403,17 @@ function BazUI:OpenContextMenu(scope, anchor, context, options)
             end
         end
     end)
+
+    -- Ours, so it wears our chrome. Done to the frame the game hands
+    -- back rather than to the menu system: that frame comes out of a pool
+    -- the game also uses for its own menus, and restyling every dropdown
+    -- in the game is a much larger claim than making ours match.
+    local theme = BazUI.Skin and BazUI.Skin.Theme
+    if menu and theme and theme.ApplyMenuChrome then
+        theme.ApplyMenuChrome(menu)
+    end
+
+    return menu
 end
 
 ---------------------------------------------------------------------------
