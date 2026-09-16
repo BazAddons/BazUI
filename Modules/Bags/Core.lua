@@ -20,6 +20,33 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         maxRows       = 15,    -- soft cap on the panel's content area in rows of slots; content past
                                 -- this scrolls. Set to ~30 to effectively disable the cap and let
                                 -- the panel grow with content.
+        -- Which qualities get a coloured edge on their slot. Classic
+        -- colours nothing on its own, so this is entirely ours.
+        rarityRims    = "uncommon",
+
+        -- A dark square behind an empty slot. Without it the grid has
+        -- holes in it wherever nothing is stored.
+        emptyBackdrop = true,
+
+        -- Two labels on an icon, both off data the client already has.
+        -- Off by default: a bag with a number in every corner is busier
+        -- than most people want, and both are for a particular habit.
+        -- Free over total, next to the panel's name.
+        titleCount    = true,
+
+        -- The coin button at a merchant.
+        sellJunkButton = true,
+
+        showItemLevel = false,
+        showBindType  = false,
+
+        -- What backs the panel, and how far toward black it is taken.
+        -- Dark stone rather than the game's mid-grey slate: the panel
+        -- should read as part of this addon rather than part of the
+        -- game's UI, and still have some grain in it.
+        bgTexture     = "marble",
+        bgDarken      = 0.35,
+
         bgAlpha       = 1.0,   -- 0..1 opacity of the panel's dark background - drop below 1 to see
                                 -- the world through the bag
         strata        = "DIALOG", -- frame strata; DIALOG keeps the bag above the BazUI Settings
@@ -285,6 +312,37 @@ local function GetSettingsPage()
                 end,
             },
 
+            bgTexture = {
+                order = 15, type = "select", name = "Background",
+                desc = "What the panel is backed with. Flat uses the skin's panel colour and has no grain at all.",
+                values = {
+                    marble = "Marble",
+                    rock   = "Rock",
+                    flat   = "Flat",
+                },
+                sorting = { "marble", "rock", "flat" },
+                get = function()
+                    local key = addon.Bag and addon.Bag.BackgroundChoice
+                        and select(1, addon.Bag.BackgroundChoice())
+                    return key or "marble"
+                end,
+                set = function(_, val) addon:SetSetting("bgTexture", val); Refresh() end,
+            },
+            bgDarken = {
+                order = 16, type = "range", name = "Darkness",
+                desc = "How far the background is taken toward black. All the way leaves no grain, which is the same as picking Flat.",
+                min = 0, max = 1, step = 0.05, format = "percent",
+                hidden = function()
+                    return addon.Bag and addon.Bag.BackgroundChoice
+                        and select(1, addon.Bag.BackgroundChoice()) == "flat"
+                end,
+                get = function()
+                    local v = tonumber(addon:GetSetting("bgDarken"))
+                    return v == nil and 0.35 or v
+                end,
+                set = function(_, val) addon:SetSetting("bgDarken", val); Refresh() end,
+            },
+
             groupingHeader = { order = 20, type = "header", name = "Grouping" },
             bagMode = {
                 order = 21, type = "select", name = "Group items by",
@@ -307,10 +365,57 @@ local function GetSettingsPage()
             },
             hideEmpty = {
                 order = 23, type = "toggle", name = "Hide empty slots",
-                desc = "The panel shrinks to the slots that hold items.",
+                desc = "The panel shrinks to the slots that hold something. Turn it off to see your free space: grouped by bag it fills the gaps back in, grouped by category it appears as an Empty Slots category you can move, rename and collapse like any other.",
                 get = function() return addon:GetSetting("hideEmpty") and true or false end,
                 set = function(_, val) addon:SetSetting("hideEmpty", val and true or false); Refresh() end,
-                hidden = Categories,
+            },
+
+            sellJunkButton = {
+                order = 23.5, type = "toggle", name = "Sell grey items at a vendor",
+                desc = "A coin button on the title bar while a merchant is open, which sells every grey that has a price. It is only there when there is something to sell.",
+                get = function() return addon:GetSetting("sellJunkButton") ~= false end,
+                set = function(_, val) addon:SetSetting("sellJunkButton", val and true or false); Refresh() end,
+            },
+
+            titleCount = {
+                order = 23.55, type = "toggle", name = "Free slots in the title",
+                desc = "How many slots are free, and how many there are, next to the panel's name.",
+                get = function() return addon:GetSetting("titleCount") ~= false end,
+                set = function(_, val) addon:SetSetting("titleCount", val and true or false); Refresh() end,
+            },
+
+            showItemLevel = {
+                order = 23.6, type = "toggle", name = "Item level on gear",
+                desc = "The item's level in the corner of its icon. Only on things you can equip - a stack of cloth has an item level and it means nothing.",
+                get = function() return addon:GetSetting("showItemLevel") and true or false end,
+                set = function(_, val) addon:SetSetting("showItemLevel", val and true or false); Refresh() end,
+            },
+            showBindType = {
+                order = 23.7, type = "toggle", name = "Mark bind on equip",
+                desc = "A small BoE tag on anything that binds when equipped - the difference between vendoring a thing and listing it.",
+                get = function() return addon:GetSetting("showBindType") and true or false end,
+                set = function(_, val) addon:SetSetting("showBindType", val and true or false); Refresh() end,
+            },
+
+            emptyBackdrop = {
+                order = 23.5, type = "toggle", name = "Backdrop on empty slots",
+                desc = "The same slot art the action bars wear, behind every empty slot - so the grid reads as a grid rather than as gaps between the items.",
+                get = function() return addon:GetSetting("emptyBackdrop") ~= false end,
+                set = function(_, val) addon:SetSetting("emptyBackdrop", val and true or false); Refresh() end,
+            },
+
+            raritySlots = {
+                order = 24, type = "select", name = "Rarity borders",
+                desc = "A coloured edge on a slot, by the item's quality. Grey and white on every slot is noise rather than information, which is why the useful setting is uncommon and better.",
+                values = {
+                    none     = "Off",
+                    uncommon = "Uncommon and better",
+                    common   = "White and better",
+                    all      = "Everything, including grey",
+                },
+                sorting = { "none", "uncommon", "common", "all" },
+                get = function() return addon:GetSetting("rarityRims") or "uncommon" end,
+                set = function(_, val) addon:SetSetting("rarityRims", val); Refresh() end,
             },
 
             moneyHeader = { order = 30, type = "header", name = "Money" },

@@ -333,7 +333,10 @@ function Layouts.Render(ctx)
     local Refresh        = ctx.Refresh
 
     local Categories = addon.Categories
-    local byCategory = Categories.GetPairsByCategory()
+    -- Empty slots come back under Categories.EMPTY_KEY and are rendered
+    -- by the same loop as everything else: free space is a category, not
+    -- a special case bolted on the end.
+    local byCategory = Categories.GetPairsByCategory(not ctx.hideEmpty)
     local catList    = Categories.GetOrdered()
 
     -- Categorize mode (toggled via left-click on the bag's portrait)
@@ -374,8 +377,13 @@ function Layouts.Render(ctx)
         --   * Normal mode:   show only categories with items, skip hidden ones
         --   * Categorize:    show every category (incl. empty + hidden) so
         --                    the user can manage pins everywhere
+        -- Free space is only ever worth showing when there is some:
+        -- an "Empty Slots" heading over nothing is the one category
+        -- that should not appear in categorize mode either.
         local visible
-        if categorizeMode then
+        if cat.key == Categories.EMPTY_KEY then
+            visible = hasItems
+        elseif categorizeMode then
             visible = true
         else
             visible = hasItems and not isHidden
@@ -430,7 +438,7 @@ function Layouts.Render(ctx)
                 -- category grows by one cell (and wraps to a new row
                 -- if the previous row was full).
                 local effective = #items
-                if categorizeMode then
+                if categorizeMode and cat.key ~= Categories.EMPTY_KEY then
                     local nextI = #items + 1
                     local col = (nextI - 1) % cols
                     local row = math.floor((nextI - 1) / cols)

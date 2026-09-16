@@ -167,6 +167,195 @@ local function GetOrCreateBagContext(bagID)
     return f
 end
 
+
+---------------------------------------------------------------------------
+-- Rarity rims
+--
+-- Classic does not colour item borders. SetItemButtonQuality is still
+-- there and still takes a quality, but the body that coloured IconBorder
+-- is commented out in the game's own code and the function ends by hiding
+-- it - so calling it, which we do, gets you nothing.
+--
+-- So the rim is ours: four thin textures around the icon, coloured by the
+-- item's quality. Drawn rather than an atlas, in keeping with the rest of
+-- the addon, and on the button itself so it moves and hides with the slot.
+---------------------------------------------------------------------------
+
+-- Which qualities are worth a rim, by setting. Grey and white on every
+-- slot is noise rather than information, so "uncommon and better" is the
+-- useful default.
+-- Thin, because the rim sits on the icon's own edge rather than outside
+-- it: two pixels reads as a coloured edge, four reads as a frame with a
+-- picture in it.
+local RIM_THICKNESS = 2
+
+local RIM_FLOOR = { none = nil, uncommon = 2, common = 1, all = 0 }
+
+local function QualityColor(quality)
+    if not quality then return nil end
+    local color = _G.ITEM_QUALITY_COLORS and _G.ITEM_QUALITY_COLORS[quality]
+    if color then return color.r, color.g, color.b end
+    if C_Item and C_Item.GetItemQualityColor then
+        local ok, r, g, b = pcall(C_Item.GetItemQualityColor, quality)
+        if ok and r then return r, g, b end
+    end
+    return nil
+end
+
+local function EnsureRim(btn)
+    if btn._bazRim then return btn._bazRim end
+    local rim = {}
+    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
+        -- OVERLAY, above the icon and the slot art but under the count
+        -- and the cooldown sweep.
+        local edge = btn:CreateTexture(nil, "OVERLAY", nil, 1)
+        if side == "TOP" or side == "BOTTOM" then
+            edge:SetPoint(side .. "LEFT", btn, side .. "LEFT", 0, 0)
+            edge:SetPoint(side .. "RIGHT", btn, side .. "RIGHT", 0, 0)
+            edge:SetHeight(RIM_THICKNESS)
+        else
+            edge:SetPoint("TOP" .. side, btn, "TOP" .. side, 0, 0)
+            edge:SetPoint("BOTTOM" .. side, btn, "BOTTOM" .. side, 0, 0)
+            edge:SetWidth(RIM_THICKNESS)
+        end
+        rim[#rim + 1] = edge
+    end
+    btn._bazRim = rim
+    return rim
+end
+
+local function ApplyRim(btn, quality)
+    local floor = RIM_FLOOR[addon:GetSetting("rarityRims") or "uncommon"]
+    local r, g, b = nil, nil, nil
+    if floor and quality and quality >= floor then
+        r, g, b = QualityColor(quality)
+    end
+
+    if not r then
+        if btn._bazRim then
+            for _, edge in ipairs(btn._bazRim) do edge:Hide() end
+        end
+        return
+    end
+
+    for _, edge in ipairs(EnsureRim(btn)) do
+        edge:SetColorTexture(r, g, b, 1)
+        edge:Show()
+    end
+end
+
+
+---------------------------------------------------------------------------
+-- What the panel is backed with
+--
+-- The stock choice was the game's spec-background atlas, a mid-grey rock
+-- that reads lighter than any other panel in the addon. These are the
+-- darker ones the client already has, plus a plain fill for anyone who
+-- wants no grain at all.
+--
+-- Darkened by tinting toward black rather than by swapping in a darker
+-- picture: the tint is a multiply, so the grain survives in proportion.
+-- Tinting all the way to the palette's panel colour, which is nearly
+-- black, multiplies the texture out of existence - it goes flat, which
+-- is the one thing the texture was there to avoid.
+---------------------------------------------------------------------------
+
+local BAG_TEXTURES = {
+    marble = { file = "Interface\\FrameGeneral\\UI-Background-Marble", tile = true },
+    rock   = { file = "Interface\\FrameGeneral\\UI-Background-Rock", tile = true },
+    flat   = { flat = true },
+}
+
+local BAG_TEXTURE_DEFAULT = "marble"
+
+-- A saved value from a build that offered more than these three, or from
+-- a profile somebody carried over, resolves to the default rather than to
+-- nothing at all.
+local function BackgroundChoice()
+    local key = addon:GetSetting("bgTexture")
+    if not BAG_TEXTURES[key] then key = BAG_TEXTURE_DEFAULT end
+    return key, BAG_TEXTURES[key]
+end
+
+addon.Bag.BackgroundChoice = BackgroundChoice
+
+local function ApplyBackground(panel)
+    local tex = panel and panel.solidBg
+    if not tex then return end
+
+    local _, choice = BackgroundChoice()
+    local darken = tonumber(addon:GetSetting("bgDarken"))
+    if darken == nil then darken = 0.35 end
+    darken = math.max(0, math.min(1, darken))
+
+    if choice.flat then
+        local bg = BazUI.Skin.Theme.colors.bg
+        tex:SetColorTexture(bg[1], bg[2], bg[3], 1)
+        tex:SetHorizTile(false)
+        tex:SetVertTile(false)
+        tex:SetVertexColor(1, 1, 1)
+        return
+    end
+
+    tex:SetTexture(choice.file, "REPEAT", "REPEAT")
+    tex:SetHorizTile(true)
+    tex:SetVertTile(true)
+
+    -- A multiply: 1 leaves the texture alone, 0 takes it to black.
+    local level = 1 - darken
+    tex:SetVertexColor(level, level, level)
+end
+
+addon.Bag.ApplyBackground = ApplyBackground
+
+
+---------------------------------------------------------------------------
+-- The backdrop on an empty slot
+--
+-- Without one an empty slot is a hole: the grid stops being a grid
+-- wherever nothing is stored, and a row of three items reads as three
+-- floating icons rather than as part of a bag.
+--
+-- The same two the action bars use on an empty slot: the dark fill, and
+-- the eagle over it. An empty bag slot and an empty bar slot are the same
+-- thing - a place something goes - so they should not be two different
+-- pictures of it.
+--
+-- Not the combined-bag slot art the comment above describes: that belongs
+-- to a template Classic does not have.
+---------------------------------------------------------------------------
+
+local SLOT_BACKDROP_ATLAS = "UI-HUD-ActionBar-IconFrame-Background"
+local SLOT_ART_ATLAS      = "ui-hud-actionbar-iconframe-slot"
+
+local function EnsureBackdrop(btn)
+    if btn._bazSlotBg then return btn._bazSlotBg, btn._bazSlotArt end
+
+    local bg = btn:CreateTexture(nil, "BACKGROUND", nil, -2)
+    bg:SetAllPoints(btn)
+    bg:SetAtlas(SLOT_BACKDROP_ATLAS)
+
+    local art = btn:CreateTexture(nil, "BACKGROUND", nil, -1)
+    art:SetAllPoints(btn)
+    art:SetAtlas(SLOT_ART_ATLAS)
+
+    btn._bazSlotBg, btn._bazSlotArt = bg, art
+    return bg, art
+end
+
+local function ApplyBackdrop(btn, occupied)
+    local wanted = not occupied and addon:GetSetting("emptyBackdrop") ~= false
+    if not wanted then
+        if btn._bazSlotBg  then btn._bazSlotBg:Hide()  end
+        if btn._bazSlotArt then btn._bazSlotArt:Hide() end
+        return
+    end
+
+    local bg, art = EnsureBackdrop(btn)
+    bg:Show()
+    art:Show()
+end
+
 local function GetOrCreateSlotButton(bagID, slotID)
     slotButtons[bagID] = slotButtons[bagID] or {}
     if slotButtons[bagID][slotID] then return slotButtons[bagID][slotID] end
@@ -373,7 +562,180 @@ end
 -- template's children (or ships a mixin instead) still renders the rest.
 ---------------------------------------------------------------------------
 
+
+---------------------------------------------------------------------------
+-- What an icon can say about itself
+--
+-- Two small labels in the corners of a slot, each off data the client
+-- already has:
+--
+--   top left      item level, on gear. The number people sort by.
+--   bottom left   the bind, as a tag. BoE is the one worth knowing at a
+--                 glance - it is the difference between vendoring a thing
+--                 and listing it.
+--
+-- Both read from C_Item.GetItemInfo, which answers nothing for an item
+-- the client has not cached yet. The label is simply left off until it
+-- does, and the next bag refresh picks it up - the same way the rest of
+-- this module handles an uncached item.
+---------------------------------------------------------------------------
+
+-- Blizzard numbers these rather than naming them: 1 is bind on pickup,
+-- 2 bind on equip, 3 bind on use. Only the middle one earns a tag.
+local BIND_ON_EQUIP = 2
+
+local function EnsureMark(btn, key, point, x, y, font)
+    if btn[key] then return btn[key] end
+    local fs = btn:CreateFontString(nil, "OVERLAY", font)
+    fs:SetPoint(point, x, y)
+    btn[key] = fs
+    return fs
+end
+
+local function ApplyMarks(btn, link)
+    local wantLevel = addon:GetSetting("showItemLevel")
+    local wantBind  = addon:GetSetting("showBindType")
+
+    local ilvl, equipLoc, bindType
+    if link and (wantLevel or wantBind) then
+        local _, _, _, level, _, _, _, _, loc, _, _, _, _, bind =
+            C_Item.GetItemInfo(link)
+        ilvl, equipLoc, bindType = level, loc, bind
+    end
+
+    -- Only gear carries a meaningful item level; a stack of cloth has one
+    -- and it means nothing.
+    local equippable = equipLoc and equipLoc ~= "" and equipLoc ~= "INVTYPE_BAG"
+    if wantLevel and ilvl and equippable then
+        local fs = EnsureMark(btn, "_bazIlvl", "TOPLEFT", 2, -2, "NumberFontNormalSmall")
+        fs:SetText(tostring(ilvl))
+        fs:SetTextColor(unpack(BazUI.Skin.Theme.colors.textSoft))
+        fs:Show()
+    elseif btn._bazIlvl then
+        btn._bazIlvl:Hide()
+    end
+
+    if wantBind and bindType == BIND_ON_EQUIP then
+        local fs = EnsureMark(btn, "_bazBind", "BOTTOMLEFT", 2, 2, "NumberFontNormalSmall")
+        fs:SetText("BoE")
+        fs:SetTextColor(unpack(BazUI.Skin.Theme.colors.caution))
+        fs:Show()
+    elseif btn._bazBind then
+        btn._bazBind:Hide()
+    end
+end
+
 local NEW_ITEM_FALLBACK_ATLAS = "bags-glow-white"
+
+
+---------------------------------------------------------------------------
+-- The title bar's count
+--
+-- "Bags  22/80" - free over total. The number people open the bag to
+-- find out, in the one place that is always visible whatever is
+-- collapsed or scrolled past.
+---------------------------------------------------------------------------
+
+local function SlotCounts()
+    local free, total = 0, 0
+    for _, bagID in ipairs(addon.GetAllBagIDs()) do
+        local n = C_Container.GetContainerNumSlots(bagID) or 0
+        total = total + n
+        for slotID = 1, n do
+            local info = C_Container.GetContainerItemInfo(bagID, slotID)
+            if not (info and info.iconFileID) then free = free + 1 end
+        end
+    end
+    return free, total
+end
+
+local function UpdateTitle()
+    if not (frame and frame.SetWindowTitle) then return end
+    -- Absent means on, the same way the settings page reads it. Asking
+    -- "is it truthy" here and "is it not false" there is how a ticked box
+    -- ends up doing nothing.
+    if addon:GetSetting("titleCount") == false then
+        frame:SetWindowTitle("Bags")
+        return
+    end
+    local free, total = SlotCounts()
+    frame:SetWindowTitle(("Bags  |cff9a8f7a%d/%d|r"):format(free, total))
+end
+
+
+---------------------------------------------------------------------------
+-- Selling the greys
+--
+-- A button that appears on the title bar only while a merchant is open,
+-- because that is the only moment it can do anything. It sells every poor
+-- quality item that has a price - grey and worthless is a quest leftover
+-- and cannot be sold anyway - and says what it got.
+--
+-- Quality alone decides it. Nothing here reads the category a thing is
+-- filed under: somebody who renamed Junk, or pinned a grey elsewhere,
+-- still gets the same items sold, and somebody who pinned a blue into
+-- Junk does not lose it.
+---------------------------------------------------------------------------
+
+local function JunkValue()
+    local count, value = 0, 0
+    for _, bagID in ipairs(addon.GetAllBagIDs()) do
+        for slotID = 1, (C_Container.GetContainerNumSlots(bagID) or 0) do
+            local info = C_Container.GetContainerItemInfo(bagID, slotID)
+            if info and info.quality == 0 and not info.hasNoValue then
+                count = count + 1
+                local price = select(11, C_Item.GetItemInfo(info.hyperlink or 0))
+                value = value + (price or 0) * (info.stackCount or 1)
+            end
+        end
+    end
+    return count, value
+end
+
+local function SellJunk()
+    if not (MerchantFrame and MerchantFrame:IsShown()) then return end
+
+    local sold, value = 0, 0
+    for _, bagID in ipairs(addon.GetAllBagIDs()) do
+        for slotID = 1, (C_Container.GetContainerNumSlots(bagID) or 0) do
+            local info = C_Container.GetContainerItemInfo(bagID, slotID)
+            if info and info.quality == 0 and not info.hasNoValue then
+                local price = select(11, C_Item.GetItemInfo(info.hyperlink or 0))
+                value = value + (price or 0) * (info.stackCount or 1)
+                C_Container.UseContainerItem(bagID, slotID)
+                sold = sold + 1
+            end
+        end
+    end
+
+    if sold > 0 then
+        addon:Print(("Sold %d grey item%s for %s."):format(
+            sold, sold == 1 and "" or "s", BazUI:FormatMoney(value)))
+    else
+        addon:Print("Nothing grey to sell.")
+    end
+end
+
+-- Shown only at a merchant, and only when there is something to sell.
+local function UpdateSellButton()
+    local button = frame and frame.sellJunk
+    if not button then return end
+
+    local atVendor = MerchantFrame and MerchantFrame:IsShown()
+    if not (atVendor and addon:GetSetting("sellJunkButton") ~= false) then
+        button:Hide()
+        return
+    end
+
+    local count, value = JunkValue()
+    if count == 0 then
+        button:Hide()
+        return
+    end
+
+    button.count, button.value = count, value
+    button:Show()
+end
 
 local function UpdateSlot(btn, bagID, slotID)
     local info = C_Container.GetContainerItemInfo(bagID, slotID)
@@ -432,6 +794,10 @@ local function UpdateSlot(btn, bagID, slotID)
     end
     if btn.BattlepayItemTexture then btn.BattlepayItemTexture:Hide() end
     if btn.UpgradeIcon then btn.UpgradeIcon:Hide() end
+
+    ApplyRim(btn, texture and quality or nil)
+    ApplyBackdrop(btn, texture and true or false)
+    ApplyMarks(btn, texture and link or nil)
 
     -- Junk coin only while a merchant is open, like the stock bags.
     if btn.JunkIcon then
@@ -624,7 +990,24 @@ local function BuildFrame()
     frame.money = CreateFrame("Frame", "BazUIBagsMoneyFrame", frame, "SmallMoneyFrameTemplate")
     frame.money:ClearAllPoints()
     frame.money:SetPoint("RIGHT", frame, "TOPRIGHT", -12, -47)
-    frame.search:SetPoint("RIGHT", frame.money, "LEFT", -8, 0)
+    -- Only ever visible at a merchant; see UpdateSellButton.
+    frame.sellJunk = BazUI.Skin.Theme.CreateIconButton(frame, {
+        size    = 20,
+        texture = "Interface\\Icons\\INV_Misc_Coin_01",
+        tooltip = "Sell grey items",
+        onClick = SellJunk,
+    })
+    frame.sellJunk:SetPoint("RIGHT", frame.money, "LEFT", -10, 0)
+    frame.sellJunk:Hide()
+    frame.sellJunk:HookScript("OnEnter", function(self)
+        if not self.count then return end
+        GameTooltip:AddLine(("%d item%s, %s"):format(
+            self.count, self.count == 1 and "" or "s",
+            BazUI:FormatMoney(self.value or 0)), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+
+    frame.search:SetPoint("RIGHT", frame.sellJunk, "LEFT", -8, 0)
 
     -- Scroll container for the bag content (sections, dividers, slots).
     -- All content anchors to scrollChild so when the player has more
@@ -987,6 +1370,10 @@ function Bag:RefreshContents()
             if btn:IsShown() then UpdateSlot(btn, bagID, slotID) end
         end
     end
+    -- This is the whole of a refresh during combat, and looting is when
+    -- the free count changes fastest - so the title is updated here as
+    -- well as in the full pass.
+    UpdateTitle()
 end
 
 function Bag:Refresh()
@@ -1033,9 +1420,12 @@ function Bag:Refresh()
     -- that 100% actually reads as opaque rather than the stock's
     -- ~70%. Scaling both together gives a clean fade from solid
     -- (100%) to fully see-through (0%).
+    UpdateSellButton()
+
     local bgAlpha = addon:GetSetting("bgAlpha") or 1.0
     if frame.Bg      then frame.Bg:SetAlpha(bgAlpha)      end
     if frame.solidBg then frame.solidBg:SetAlpha(bgAlpha) end
+    ApplyBackground(frame)
 
     -- Hide every existing slot button up front. Anything we still want
     -- visible gets re-shown + repositioned in the layout loop. This is
@@ -1239,7 +1629,10 @@ function Bag:Refresh()
     -- Frame height = top chrome (search + money) + scroll area + padding.
     frame:SetHeight(TOP_PAD + scrollH + bottomPad)
 
-    if frame.SetTitle then frame:SetTitle("Bags") end
+    -- The title, last: by here the layout is done, so the free count is
+    -- the one the player is looking at. This is the only place the title
+    -- is set - a second setter further up is how it came to be blank.
+    UpdateTitle()
 
     -- Money frame lives in the top-right chrome (anchored once in
     -- BuildFrame). Per refresh we just update its values and the

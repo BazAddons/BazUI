@@ -104,7 +104,30 @@ Categories.FACTORY_DEFAULTS = {
         tags = {},
         isProtected = true,
     },
+    {
+        -- Free space, as a category rather than as a special case.
+        --
+        -- An empty slot has no item, so nothing classifies into this -
+        -- Classify skips tagless categories, so it can never claim one -
+        -- and GetPairsByCategory fills it directly instead. Everything
+        -- else about it is ordinary: a divider, a collapse arrow, a
+        -- position in the order you can move.
+        --
+        -- Protected, because there is nothing here to edit. Its
+        -- membership is computed rather than matched, so tags would do
+        -- nothing, and whether it appears at all is the Hide empty slots
+        -- setting's business - two switches for one outcome is one too
+        -- many.
+        key = "empty", name = "Empty Slots", order = 70, matchPriority = 1000,
+        matchMode = "all",
+        tags = {},
+        isProtected = true,
+    },
 }
+
+-- The key free space lives under, for the few places that have to know
+-- this category is not like the others.
+Categories.EMPTY_KEY = "empty"
 
 -- Bags scanned in categories mode come from addon.GetAllBagIDs(), so the
 -- keyring and any reagent bag are included exactly when the client has them.
@@ -944,9 +967,12 @@ end
 local function FallbackKey(preferred)
     local cats = addon:GetSetting("categories") or {}
     if cats[preferred] then return preferred end
-    -- Pick the lowest-ordered surviving category as a final fallback.
-    local list = Categories.GetAll()
-    return list[1] and list[1].key or preferred
+    -- The lowest-ordered surviving category as a final fallback - but
+    -- never the empty-slots one, which holds no items by definition.
+    for _, entry in ipairs(Categories.GetAll()) do
+        if entry.key ~= Categories.EMPTY_KEY then return entry.key end
+    end
+    return preferred
 end
 
 function Categories.Classify(itemID, quality, classID)
@@ -1002,17 +1028,35 @@ end
 -- GetPairsByCategory
 --
 -- Walks every bag, classifies each occupied slot, returns a
--- { [categoryKey] = { {bagID, slotID}, ... } } table. Empty slots are
--- always skipped - they have no category to live in.
+-- { [categoryKey] = { {bagID, slotID}, ... } } table. Empty slots go
+-- under Categories.EMPTY_KEY, when they are asked for.
 ---------------------------------------------------------------------------
 
-function Categories.GetPairsByCategory()
+-- includeEmpty puts every empty slot under Categories.EMPTY_KEY. Left
+-- out, and empties are skipped entirely, which is what Hide empty slots
+-- means in this mode.
+function Categories.GetPairsByCategory(includeEmpty)
     local byCategory = {}
+
+    local function Bucket(key)
+        local bucket = byCategory[key]
+        if not bucket then
+            bucket = {}
+            byCategory[key] = bucket
+        end
+        return bucket
+    end
+
     for _, bagID in ipairs(addon.GetAllBagIDs()) do
         local n = C_Container.GetContainerNumSlots(bagID) or 0
         for slotID = 1, n do
             local info = C_Container.GetContainerItemInfo(bagID, slotID)
-            if info and info.iconFileID then
+            if not (info and info.iconFileID) then
+                if includeEmpty then
+                    local bucket = Bucket(Categories.EMPTY_KEY)
+                    bucket[#bucket + 1] = { bagID = bagID, slotID = slotID }
+                end
+            else
                 local link    = info.hyperlink
                 local quality = info.quality
                 local classID = info.classID

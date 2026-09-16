@@ -228,10 +228,35 @@ function BazUI:CreatePortraitWindow(globalName, opts)
     f:RegisterForDrag("LeftButton")
     f:Hide()
 
-    -- Title + portrait. PortraitFrameMixin adds these as methods on
-    -- frames that inherit from PortraitFrameBaseTemplate.
-    if opts.title and f.SetTitle then
-        f:SetTitle(opts.title)
+    -- Title + portrait.
+    --
+    -- SetTitle is not trusted here, and this is why: the font string
+    -- lives at TitleContainer.TitleText on one of these templates and at
+    -- TitleText on another, and the mixin that provides SetTitle reads
+    -- whichever one its own flavour expects. Where those disagree the
+    -- call quietly writes to a font string nobody can see - no error, no
+    -- change on screen, nothing to chase.
+    --
+    -- So the font string is found once, by looking in all the places it
+    -- is known to live, and SetWindowTitle writes to it directly. Every
+    -- window gets a title it can change afterwards rather than only at
+    -- birth.
+    f.bazTitleText = (f.TitleContainer and f.TitleContainer.TitleText)
+        or f.TitleText
+        or (globalName and _G[globalName .. "TitleText"])
+        or (f.GetTitleText and f:GetTitleText())
+        or nil
+
+    function f:SetWindowTitle(text)
+        if self.bazTitleText then
+            self.bazTitleText:SetText(text or "")
+        elseif self.SetTitle then
+            self:SetTitle(text or "")
+        end
+    end
+
+    if opts.title then
+        f:SetWindowTitle(opts.title)
     end
     if opts.portrait and f.SetPortraitToAsset then
         f:SetPortraitToAsset(opts.portrait)
