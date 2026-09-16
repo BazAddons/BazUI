@@ -73,6 +73,7 @@ local QUEUE_EYE_EVENTS = {
 -- Non-LibDBIcon minimap buttons from known addons that we always adopt.
 local KNOWN_MINIMAP_BUTTONS = {
     ["LFGMinimapFrame"]            = true,
+    ["MiniMapMailFrame"]           = true,
     ["BazUIMinimapButton"]       = true,
     ["ZygorGuidesViewerMapIcon"]   = true,
     ["VaultloomMinimapButton"]     = true,
@@ -85,7 +86,6 @@ local EXCLUDED_MINIMAP_BUTTONS = {
     ["QueueStatusButton"]  = true,  -- adopted via its own special path
     ["GameTimeFrame"]      = true,
     ["MiniMapTracking"]    = true,
-    ["MiniMapMailFrame"]   = true,
 }
 
 -- Name fragments that mark Blizzard chrome or per-location pins rather
@@ -108,7 +108,15 @@ local function LooksLikeLauncherName(name)
 end
 
 local function IsAdoptable(frame)
-    if not frame or not frame.IsObjectType or not frame:IsObjectType("Button") then
+    if not (frame and frame.IsObjectType and frame.GetName) then return false end
+
+    -- A Button, or something we have named ourselves. The mail notice is
+    -- a Frame rather than a Button - it is told to you, not clicked - and
+    -- it is still a thing sitting loose on the map that belongs in the
+    -- row with the rest. Anything unnamed stays out either way: the name
+    -- is how the ordering setting refers to a button.
+    if not frame:IsObjectType("Button")
+        and not KNOWN_MINIMAP_BUTTONS[frame:GetName() or ""] then
         return false
     end
     -- Either of the minimap's two homes for a button. Blizzard hangs
@@ -615,10 +623,16 @@ function MinimapButtonsWidget:AdoptButton(btn, opts)
     -- SetPoint / SetParent here - that path interacts badly with
     -- LibDBIcon's startup churn and crashed the client when we tried
     -- it previously.
-    btn:HookScript("OnClick", function()
-        C_Timer.After(0.05, function() MinimapButtonsWidget:LayoutButtons() end)
-        C_Timer.After(0.30, function() MinimapButtonsWidget:LayoutButtons() end)
-    end)
+    -- Not everything adopted is a Button. The mail notice is a Frame,
+    -- which has no OnClick to hook and nothing to re-lay on either, so
+    -- ask rather than assume: hooking a script a frame does not have is
+    -- an error, not a no-op.
+    if btn:HasScript("OnClick") then
+        btn:HookScript("OnClick", function()
+            C_Timer.After(0.05, function() MinimapButtonsWidget:LayoutButtons() end)
+            C_Timer.After(0.30, function() MinimapButtonsWidget:LayoutButtons() end)
+        end)
+    end
 
     -- Actual slot assignment + anchor happens in LayoutButtons
 end

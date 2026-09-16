@@ -153,9 +153,33 @@ local function GetOrCreateSlotButton(bagID, slotID)
     slotButtons[bagID] = slotButtons[bagID] or {}
     if slotButtons[bagID][slotID] then return slotButtons[bagID][slotID] end
 
+    -- A protected frame cannot be created, moved or shown in combat, so
+    -- there is nothing to do here until the fight ends. Refresh knows to
+    -- come back.
+    if InCombatLockdown() then return nil end
+
     local parent = GetOrCreateBagContext(bagID)
     local name = "BazUIBagSlot_" .. bagID .. "_" .. slotID
-    local btn = CreateFrame(SlotFrameType(), name, parent, SLOT_TEMPLATE)
+    local btn = CreateFrame(SlotFrameType(), name,
+        parent, SLOT_TEMPLATE .. ",SecureActionButtonTemplate")
+
+    -- Using an item has to be the game's doing rather than ours.
+    --
+    -- The slot template's own click handler calls UseContainerItem, and
+    -- that call is refused for anything an addon made: the button is
+    -- ours, so the code path is ours, so the game will not run a
+    -- protected function down it. No amount of care on this side changes
+    -- that, and reusing Blizzard's own buttons does not either - the
+    -- taint follows the moment they are reparented.
+    --
+    -- So the right button is handed to the secure environment, which
+    -- takes a bag and a slot and uses what is in it. Everything else a
+    -- slot does - picking up, dropping, linking, splitting - is
+    -- unprotected and stays with Blizzard's handler, called from PreClick
+    -- below because inheriting the secure template replaced it.
+    btn:SetAttribute("type2", "item")
+    btn:SetAttribute("item", bagID .. " " .. slotID)
+    btn:RegisterForClicks("AnyUp")
 
     -- Initialize handles SetID, SetBagID attribute, ItemSlotBackground
     -- (the combined-bag leather background), and Show. Without this we
@@ -175,6 +199,21 @@ local function GetOrCreateSlotButton(bagID, slotID)
     btn:HookScript("PreClick", function(self, mouseBtn)
         if mouseBtn == "RightButton" and IsShiftKeyDown() then
             Bag:ShowCategoryMenuForSlot(self, bagID, slotID)
+            return
+        end
+
+        -- What the slot template's own OnClick used to do, for the
+        -- clicks the secure handler is not answering. A plain right
+        -- click is the one it does answer, and doing it here as well
+        -- would be asking twice for the same thing - once refused.
+        if mouseBtn == "RightButton" and not IsModifiedClick() then return end
+
+        if IsModifiedClick() then
+            if _G.ContainerFrameItemButton_OnModifiedClick then
+                _G.ContainerFrameItemButton_OnModifiedClick(self, mouseBtn)
+            end
+        elseif _G.ContainerFrameItemButton_OnClick then
+            _G.ContainerFrameItemButton_OnClick(self, mouseBtn)
         end
     end)
 
@@ -917,8 +956,32 @@ end)
 -- Refresh
 ---------------------------------------------------------------------------
 
+-- Everything a slot says, without moving anything.
+--
+-- The slot buttons are protected now, so showing, hiding or placing one
+-- during a fight is refused. What is not refused is changing what it
+-- shows - the icon, the count, the border - which is all that a stack
+-- growing or a potion being drunk actually needs. The real layout waits
+-- for the fight to end.
+function Bag:RefreshContents()
+    for bagID, slots in pairs(slotButtons) do
+        for slotID, btn in pairs(slots) do
+            if btn:IsShown() then UpdateSlot(btn, bagID, slotID) end
+        end
+    end
+end
+
 function Bag:Refresh()
     if not frame then return end
+
+    -- Slot buttons are protected, so a fight is no time to be moving
+    -- them. Leaving combat is one of the events that asks for a refresh,
+    -- so the layout happens then; until it does, what a slot shows is
+    -- still kept current.
+    if InCombatLockdown() then
+        self:RefreshContents()
+        return
+    end
 
     -- Pin the frame to its current top-left corner before any resize
     -- so width/height changes grow toward bottom-right rather than
@@ -1110,12 +1173,14 @@ function Bag:Refresh()
                     local col = (i - 1) % cols
                     local row = math.floor((i - 1) / cols)
 
+                    if btn then
                     btn:ClearAllPoints()
                     btn:SetPoint("TOPLEFT", section.body, "TOPLEFT",
                         col * (SLOT_SIZE + SLOT_SPACING_X),
                         -row * (SLOT_SIZE + SLOT_SPACING_Y))
                     btn:Show()
                     UpdateSlot(btn, p.bagID, p.slotID)
+                    end
                 end
             end
 
@@ -1261,6 +1326,8 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("INVENTORY_SEARCH_UPDATE")    -- search box text > re-evaluate isFiltered
 events:RegisterEvent("MERCHANT_SHOW")              -- junk coins only show at a vendor
 events:RegisterEvent("MERCHANT_CLOSED")
+-- A layout the fight would not let us do.
+events:RegisterEvent("PLAYER_REGEN_ENABLED")
 pcall(events.RegisterEvent, events, "BAG_NEW_ITEMS_UPDATED")
 events:SetScript("OnEvent", ScheduleRefresh)
 

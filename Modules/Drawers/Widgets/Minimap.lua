@@ -168,6 +168,12 @@ local FRAME_STYLE_KEY = "frameStyle"
 local FRAME_STYLES = {
     default = "Blizzard Default",
     bazui   = "BazUI",
+    -- No frame at all: the game's ring faded out and ours never drawn,
+    -- leaving the bare map. A third answer to the question this dropdown
+    -- already asks, rather than a switch beside it - a switch could say
+    -- "hidden" while this said "BazUI", and then neither of them is the
+    -- answer.
+    none    = "None",
 }
 
 local function GetFrameStyle()
@@ -256,13 +262,24 @@ local function EnsureRing()
     return ring
 end
 
--- The map's diameter under the BazUI frame.
+-- The map is never resized. The frame is sized around it.
 --
--- Measured from the widget's declared width, never from the map as it
--- stands: the map is shrunk to make room for the frame, and measuring the
--- shrunken map would shrink it again on every apply.
-local function MapSizeFor(frame)
-    return math.max(16, frame:InnerFor(nativeMapWidth or DEFAULT_SIZE))
+-- The game draws the terrain at whatever size the Minimap frame is, but
+-- it does not lay the blips out from that size - a quest marker, a
+-- tracking dot, a party member all sit at radii worked out from the size
+-- the minimap was born at. Shrink the frame and the terrain follows while
+-- the blips do not, so the ones near the rim end up outside the smaller
+-- circle and the terrain's own round edge cuts them in half.
+--
+-- Scaling is not the same thing and is not affected: the drawer has
+-- always scaled this whole widget, blips and all.
+--
+-- So the map keeps its native size and the frame is drawn around it,
+-- which makes the widget wider than the map rather than the other way
+-- about. The drawer then fits the pair of them to its width as it fits
+-- everything else.
+local function MapDiameter()
+    return nativeMapWidth or DEFAULT_SIZE
 end
 
 -- What the widget asks the drawer for.
@@ -277,7 +294,7 @@ local function Footprint()
     local width, height
     if GetFrameStyle() == "bazui" then
         local frame = EnsureRing()
-        if frame then width, height = frame:Extent(MapSizeFor(frame)) end
+        if frame then width, height = frame:Extent(MapDiameter()) end
     end
     if not width then
         local pad = VISUAL_PAD * 2
@@ -315,23 +332,28 @@ function MinimapWidget:ApplyFootprint()
 end
 
 function MinimapWidget:ApplyFrameStyle()
-    local bazui = (GetFrameStyle() == "bazui")
+    local style = GetFrameStyle()
+    local bazui = (style == "bazui")
+
+    -- The game's own ring belongs to the game's own style, and nothing
+    -- else: ours covers it, and None means none.
     for _, tex in ipairs(BlizzardRingTextures()) do
         if tex and tex.SetAlpha then
-            tex:SetAlpha(bazui and 0 or 1)
+            tex:SetAlpha(style == "default" and 1 or 0)
         end
     end
+
+    -- Native, always. See MapDiameter.
+    if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
+
     if bazui then
         local frame = EnsureRing()
         if frame then
-            local map = MapSizeFor(frame)
-            raw.SetSize(Minimap, map, map)
-            frame:SetInnerSize(map)
+            frame:SetInnerSize(MapDiameter())
             frame:Show()
         end
-    else
-        if ring then ring:Hide() end
-        if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
+    elseif ring then
+        ring:Hide()
     end
     self:ApplyScale()
     self:ApplyFootprint()
@@ -414,7 +436,7 @@ function MinimapWidget:GetOptionsArgs()
             order  = 11,
             type   = "select",
             name   = "Frame Style",
-            desc   = "The frame around the minimap. BazUI is the brass ring from the WoW Forever logo; Blizzard Default keeps the game's own.",
+            desc   = "The frame around the minimap. BazUI is the brass ring from the WoW Forever logo, Blizzard Default keeps the game's own, and None leaves the map bare.",
             values = FRAME_STYLES,
             get    = function() return GetFrameStyle() end,
             set    = function(_, val)

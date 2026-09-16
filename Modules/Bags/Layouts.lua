@@ -278,12 +278,14 @@ function Layouts.RenderPerBag(ctx)
                     local btn = GetOrCreateSlotButton(p.bagID, p.slotID)
                     local col = (i - 1) % cols
                     local row = math.floor((i - 1) / cols)
+                    if btn then
                     btn:ClearAllPoints()
                     btn:SetPoint("TOPLEFT", frame, "TOPLEFT",
                         SIDE_PAD + col * (SLOT_SIZE + SLOT_SPACING_X),
                         y - row * (SLOT_SIZE + SLOT_SPACING_Y))
                     btn:Show()
                     UpdateSlot(btn, p.bagID, p.slotID)
+                    end
                 end
 
                 if #items > 0 then
@@ -413,12 +415,14 @@ function Layouts.Render(ctx)
                     local btn = GetOrCreateSlotButton(p.bagID, p.slotID)
                     local col = (i - 1) % cols
                     local row = math.floor((i - 1) / cols)
+                    if btn then
                     btn:ClearAllPoints()
                     btn:SetPoint("TOPLEFT", frame, "TOPLEFT",
                         SIDE_PAD + col * (SLOT_SIZE + SLOT_SPACING_X),
                         y - row * (SLOT_SIZE + SLOT_SPACING_Y))
                     btn:Show()
                     UpdateSlot(btn, p.bagID, p.slotID)
+                    end
                 end
 
                 -- One extra "drop slot" at the end during categorize
