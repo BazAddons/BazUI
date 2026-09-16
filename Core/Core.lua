@@ -643,6 +643,10 @@ BazUI:QueueForLogin(function()
             end
         end,
         commands = {
+            check = {
+                desc = "Check everything the addon takes hold of in the game's own UI - frames, templates, console settings - and say what is missing. Worth running first on a new client build.",
+                handler = function() BazUI:PrintDependencyReport() end,
+            },
             profile = {
                 desc = "Show or switch the active profile",
                 handler = function(args)

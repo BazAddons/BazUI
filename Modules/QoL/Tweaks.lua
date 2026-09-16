@@ -122,6 +122,17 @@ addon:RegisterTweak({
 -- Listening
 ---------------------------------------------------------------------------
 
+addon:RegisterDependencies()
+
+for _, name in ipairs({ "RepairAllItems", "CanMerchantRepair", "CancelDuel", "Screenshot" }) do
+    BazUI:RegisterDependency({
+        module = "Quality of Life",
+        label  = name .. "()",
+        why    = "A tweak calls it.",
+        check  = function() return BazUI.Has.Global(name) end,
+    })
+end
+
 BazUI:QueueForModule("QoL", function()
     addon:On("MERCHANT_SHOW", function()
         if On("autoRepair") then Repair() end

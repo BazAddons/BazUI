@@ -1,23 +1,28 @@
 ## 001
 
-First development build of BazUI. Nothing is released yet.
+The first release of BazUI: the Baz Suite rebuilt as a single addon, with one options window, one profile system and one look across every part of it.
 
-- Drawers: slide-out drawer with the Minimap, Minimap Buttons, Info Bar, Zone Text and Quest Tracker widgets, plus twenty more: Dungeon Finder, Pull Timer, Hearthstone Cooldown, Reset Timers, Repair, Stats, Item Level, Trinket Tracker, Free Bag Slots, Tooltip, Gold Tracker, Tracked Reputation, Coordinates, Speed Monitor, Note Pad, Stopwatch, To-Do List, Calculator, Performance and FPS. Any addon that publishes a LibDataBroker feed becomes a widget too.
-- Bars: custom action bars with spells, items, macros, mounts and equipment sets, quick keybinds, Edit Mode integration and import/export. A new character's abilities are placed on its bars on first login, stances and forms on the first side bar, newly learned spells take the first empty slot, Blizzard's stance bar is hidden, the active stance or form lights up, and buttons can be set to drag only while Shift is held.
-- Bars: flyouts. One slot holding several actions, left-click to cast and right-click to open the rest. Shift+right-click an empty slot to make one, then drop spells, items or macros into its squares. Right-click a square to pin it as the button's action, drag one out to remove it, and set which way the grid opens and how big it is from the slot's own menu.
-- Unit Frames: player and target frames in the BazUI style with 3D or flat portraits.
-- Auras: your buffs above the player frame's health bar and debuffs above its power bar, and the target's below the target frame's bars, eight per row, with timers, stack counts, right-click to cancel and a preview mode for judging the layout.
-- Notifications: toasts and a browsable history for loot, quests, reputation, mail, XP, zones, instances, groups, professions, the auction house, calendar, friends and guild, and system messages, with a movable bell and Do Not Disturb, styled to match the rest of BazUI.
-- Micro Menu: the Character, Spellbook, Talents, Quest Log, Social, Guild, World Map, Game Menu and Help buttons on a movable bar as round ring-framed icons, with your portrait on the Character button.
-- Codex: one window answering two questions. Today shows the quests worth finishing, the instances open to you, what you are saved to, the attunements you have started, and how much of the day and week are left. Achieved shows titles, mounts, pets and reputations. Items looks up anything by link or number and filters everything this character has met by your own bag categories; Wishlist keeps what you are playing towards and notices when one turns up in your bags. Open it with the minimap button or |cffffd700/codex|r.
-- Fresh installs start with the BazUI layout laid out for you: frames, bars, bags, chat, micro menu and drawer all placed and styled, at any resolution.
-- Chat: tabbed chat replacement with per-tab channels, timestamps, persistent history, copy chat and the combat log on its own tab, in BazUI's own chat face.
-- Bags: one panel for every bag and the keyring, with per-bag or category grouping, pinning, search and gold display, plus an option to hide Blizzard's bag bar.
-- BazUI minimap ring and unified minimap button frames.
-- One face across the suite: unit frames, auras, the XP bar, the drawer's widgets and chat all draw in the BazUI font, with a switch to go back to the game's.
-- Profiles, Edit Mode and the options window shared by every module.
-- Options window written for its real size: one column of settings with the control on the right, sections under gold headers, and lists as a picker at the top of the page.
-- Notifications settings reorganized into General and Sources: one Off / History only / Toast choice per event, a duration and a named sound per source, and named sounds by priority instead of sound IDs.
-- Bars settings reorganized into General and Bar Options: Blizzard's bar, button text and tooltips, and "same on every bar" values under General; a bar picker with New, Duplicate and Delete above each bar's own form, now including endcaps and right-click self-cast.
-- Drawers settings reorganized: General (drawer, fading, and the same fade on every widget), a drawer picker with New and Delete, a widget picker with an Enabled switch on the row, and Broker Feeds. The unused auto-switch settings are gone.
-- Bags, Auras, Micro Menu and Chat settings tidied to match: shorter labels, a General tab, no landing pages.
+**Your interface**
+
+- **Action bars** you create, holding spells, items, macros, mounts, equipment sets and flyouts, with quick keybinds and import/export. A new character's abilities are placed for you on first login, newly learned spells take the first empty slot, and the active stance or form lights up.
+- **Unit frames** as bars you make yourself: health, power and casting, floating or docked to an action bar or to each other. There are no portraits, which is what lets any bar dock to anything else. Party bars, party pets and range fading included.
+- **Nameplates** over each unit's head in the same look, coloured by whether it will attack you, with the one you have targeted picked out.
+- **Auras** in rows that dock to any bar, each with its own icon size, spacing, growth direction, sorting and limits. Right-click still cancels a buff.
+- **Bags**: one panel for every bag and the keyring, grouped by bag or by category, with pinning, search and gold.
+- **Chat**: a tabbed replacement with per-tab channels, timestamps, persistent history, copy, and the combat log on its own tab.
+- **Minimap and drawers**: the minimap in its own frame, every addon's minimap button collected into one row, and a slide-out drawer of widgets - clock, coordinates, gold, durability, free slots, quest tracker, notepad, calculator, performance and twenty more. Anything publishing a LibDataBroker feed becomes a widget too.
+- **Notifications**: toasts and a browsable history for loot, quests, reputation, mail, experience, zones, instances, groups, professions, the auction house, friends and guild, with a movable bell and Do Not Disturb.
+- **Codex**: one window for what you have done and what is left - today's quests and lockouts, reputations, goals, items and a wishlist.
+- **Micro menu** on a movable bar as round icons, with your portrait on the character button.
+- **Tooltip** in the same skin, anchored where you want it.
+- **Quality of life**: instant quest text, repairing and selling greys at a vendor, a screenshot when you level, declining duels. All off until you turn them on.
+
+**How it behaves**
+
+- A fresh install lays itself out at any resolution: frames, bars, bags, chat, micro menu and drawer all placed.
+- Every module has an off switch, per profile. Turn one off and the game's own version comes back.
+- Blizzard's own frames are only hidden where you ask, on a switch per frame.
+- Everything can be moved in BazUI's Edit Mode, docked to anything else, and nudged a pixel at a time.
+- `/bazui` opens the options.
+
+Built for World of Warcraft: Forever, and still in development - bug reports and suggestions are welcome.

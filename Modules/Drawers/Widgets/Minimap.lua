@@ -256,6 +256,14 @@ end
 -- cannot come out above the buttons, and a child frame's level would be
 -- ours to get wrong. Being inside the Minimap, it also takes the map's
 -- own scale without being told.
+-- See Core/Compat.lua.
+BazUI:RegisterDependency({
+    module = "Minimap",
+    label  = "MinimapBackdrop",
+    why    = "Where the frame is drawn, over the map and under the ring buttons. Without it the frame falls back onto the Minimap itself and covers them.",
+    check  = function() return BazUI.Has.Frame("MinimapBackdrop") end,
+})
+
 local function RingParent()
     return MinimapBackdrop or Minimap
 end

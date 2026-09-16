@@ -1,6 +1,6 @@
 ## Interface: 11509
 ## Title: BazUI
-## Notes: The Baz Suite as one addon for World of Warcraft: Forever - drawers, minimap, quest tracker, chat and bags
+## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification centre, sharing one look and one settings panel.
 ## Author: Baz4k
 ## Version: 001
 ## X-License: GPL v2
@@ -24,6 +24,7 @@ Core\Timers.lua
 Core\ObjectPool.lua
 Core\Format.lua
 Core\Units.lua
+Core\Compat.lua
 Core\MinimapButton.lua
 Core\ButtonGlow.lua
 Core\EditMode.lua

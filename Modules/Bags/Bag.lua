@@ -123,6 +123,24 @@ end
 local SLOT_TEMPLATE = "ContainerFrameItemButtonTemplate"
 local slotFrameType
 
+-- See Core/Compat.lua. The secure item action is the one that makes using
+-- an item from our bags legal at all.
+BazUI:RegisterDependency({
+    module = "Bags",
+    label  = SLOT_TEMPLATE,
+    why    = "Every bag slot is one of these.",
+    check  = function() return BazUI.Has.Template(SLOT_TEMPLATE) end,
+})
+BazUI:RegisterDependency({
+    module = "Bags",
+    label  = "SecureActionButtonTemplate + SECURE_ACTIONS.item",
+    why    = "Using an item from a bag. Without it every use is refused as a protected call.",
+    check  = function()
+        return BazUI.Has.Template("SecureActionButtonTemplate")
+            and BazUI.Has.Member(_G.SECURE_ACTIONS, "item")
+    end,
+})
+
 -- The slot template is a Button on Classic clients and an ItemButton on
 -- newer ones; ask the client rather than guess.
 local function SlotFrameType()

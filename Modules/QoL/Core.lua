@@ -123,6 +123,21 @@ function addon:ApplyTweak(def)
     if def.OnApply then def.OnApply(enabled) end
 end
 
+-- Every console setting a tweak changes, and every call one makes. See
+-- Core/Compat.lua: a renamed CVar is a switch that does nothing.
+function addon:RegisterDependencies()
+    for _, def in ipairs(self.tweaks) do
+        if def.cvar then
+            BazUI:RegisterDependency({
+                module = "Quality of Life",
+                label  = "CVar " .. def.cvar,
+                why    = def.label .. " sets it.",
+                check  = function() return BazUI.Has.CVar(def.cvar) end,
+            })
+        end
+    end
+end
+
 function addon:ApplySettings()
     for _, def in ipairs(self.tweaks) do
         self:ApplyTweak(def)

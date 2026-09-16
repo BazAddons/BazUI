@@ -339,6 +339,26 @@ function UnitBars:StockHidden(entry)
     return saved and true or false
 end
 
+-- The game's own frames, by name. See Core/Compat.lua: a renamed frame
+-- here means a switch that quietly stops working.
+for _, entry in ipairs(UnitBars.STOCK) do
+    for _, frameName in ipairs(entry.frames) do
+        BazUI:RegisterDependency({
+            module = "Unit Frames",
+            label  = frameName,
+            why    = "Hidden by the " .. entry.label .. " switch.",
+            check  = function() return BazUI.Has.Frame(frameName) end,
+        })
+    end
+end
+
+BazUI:RegisterDependency({
+    module = "Unit Frames",
+    label  = "SECURE_ACTIONS.togglemenu",
+    why    = "The right-click menu on a bar picks itself; without it we fall back to our own guess.",
+    check  = function() return BazUI.Has.Member(_G.SECURE_ACTIONS, "togglemenu") end,
+})
+
 local hiddenStock
 local stockParents = {}
 local suppressKey

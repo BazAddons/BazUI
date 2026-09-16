@@ -29,6 +29,14 @@ local pool   = {}
 
 local function Setting(key) return addon:GetSetting(key) end
 
+-- What this module is holding on to. See Core/Compat.lua.
+BazUI:RegisterDependency({
+    module = "Nameplates",
+    label  = "C_NamePlate.GetNamePlateForUnit",
+    why    = "Finding the frame the game handed a unit. Without it no plate is ever ours.",
+    check  = function() return BazUI.Has.Member(C_NamePlate, "GetNamePlateForUnit") end,
+})
+
 ---------------------------------------------------------------------------
 -- Blizzard's plate
 --
