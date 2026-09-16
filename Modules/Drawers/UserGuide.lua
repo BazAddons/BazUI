@@ -53,7 +53,7 @@ BazUI:RegisterUserGuide("Drawers", {
                     "|cffffd700Width|r — 120–400 px; every docked widget rescales uniformly when you change this",
                     "|cffffd700Edge hot zone|r — invisible strip along the screen edge that re-reveals the tab when collapsed",
                 }},
-                { type = "note", style = "tip", text = "If the tab feels hard to find, raise |cffffd700Reveal the tab within|r under Drawers → General." },
+                { type = "note", style = "tip", text = "If the tab feels hard to find, raise |cffffd700Reveal the tab within|r under Drawers > General." },
             },
         },
 
@@ -78,7 +78,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 },
                 { type = "h2", text = "Creating + managing drawers" },
                 { type = "list", items = {
-                    "|cffffd700Settings → BazUI Drawers → Drawers|r → Create New Drawer",
+                    "|cffffd700Settings > BazUI Drawers > Drawers|r > Create New Drawer",
                     "Each drawer has its own Name, Icon, Auto-switch trigger, and widget list",
                     "Delete any drawer except the last one (you always have at least one)",
                 }},
@@ -109,7 +109,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "note", style = "info", text = "Two drawers can claim the same trigger — the first one wins. Tabs at the top still let you flip between them by hand." },
                 { type = "h2", text = "Setting it up" },
                 { type = "list", ordered = true, items = {
-                    "Open |cffffd700Settings → BazUI Drawers → Drawers|r and select the drawer you want to auto-switch to",
+                    "Open |cffffd700Settings > BazUI Drawers > Drawers|r and select the drawer you want to auto-switch to",
                     "Toggle |cffffd700Auto-Switch|r on",
                     "Pick the |cffffd700Trigger|r from the dropdown",
                 }},
@@ -132,7 +132,7 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "h2", text = "Drag-to-reorder" },
                 { type = "paragraph", text = "Inside a drawer, hold any widget's title bar for ~half a second (it turns green) then drag up or down to reorder. The order is saved per drawer, so the same widget can sit at the top of one drawer and the bottom of another." },
                 { type = "h2", text = "Floating widgets" },
-                { type = "paragraph", text = "Toggle |cffffd700Floating|r on a widget's settings page (or right-click its title bar → Float) to detach it from the drawer. Floating widgets get their own Edit Mode frame you can drag anywhere on screen." },
+                { type = "paragraph", text = "Toggle |cffffd700Floating|r on a widget's settings page (or right-click its title bar > Float) to detach it from the drawer. Floating widgets get their own Edit Mode frame you can drag anywhere on screen." },
                 { type = "h2", text = "Collapsing widgets" },
                 { type = "paragraph", text = "Click the chevron on a widget's title bar to collapse it down to just the title row. Click again to expand. Collapse state is saved per widget per drawer." },
             },
@@ -344,7 +344,7 @@ BazUI:RegisterUserGuide("Drawers", {
             title = "Profiles",
             blocks = {
                 { type = "paragraph", text = "Drawers uses BazUI's profile system. Each character can have its own profile — different drawers, different widget loadouts, different fade behaviors." },
-                { type = "paragraph", text = "Open |cffffd700Settings → BazUI → Profiles|r to create, switch, copy from, reset, or delete profiles." },
+                { type = "paragraph", text = "Open |cffffd700Settings > BazUI > Profiles|r to create, switch, copy from, reset, or delete profiles." },
                 { type = "note", style = "tip", text = "One profile covers every BazUI module, so switching profiles changes Drawers, Chat and Bags together." },
             },
         },

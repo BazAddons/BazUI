@@ -178,7 +178,7 @@ BazUI:RegisterUserGuide("Bags", {
                               { "|cffffd700Other|r",       "Catch-all — anything no other default category claimed" },
                           }},
                         { type = "h2", text = "Custom rule types" },
-                        { type = "paragraph", text = "Custom categories support several rule types so you can build sub-buckets that the defaults don't cover. Edit a custom category from the Categories settings page → Rules:" },
+                        { type = "paragraph", text = "Custom categories support several rule types so you can build sub-buckets that the defaults don't cover. Edit a custom category from the Categories settings page > Rules:" },
                         { type = "list", items = {
                             "|cffffd700Item Class|r — match the same Blizzard item-class buckets the defaults use",
                             "|cffffd700Quality|r — match by item quality (Poor, Common, Uncommon, Rare, Epic, Legendary, Artifact)",

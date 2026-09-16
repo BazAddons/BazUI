@@ -72,14 +72,14 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Deleting + reordering" },
                 { type = "list", items = {
-                    "Right-click a tab → |cffffd700Delete tab|r removes it. No /reload needed.",
+                    "Right-click a tab > |cffffd700Delete tab|r removes it. No /reload needed.",
                     "The |cffffd700General|r tab can't be deleted — it owns the default chat target that drives Enter-to-chat and addon /print messages.",
                     "Click and HOLD a tab for ~2 seconds to start dragging. Drop it left or right of another tab to reorder.",
                 }},
 
                 { type = "h2", text = "Auto-show" },
                 { type = "paragraph",
-                  text = "Each tab has an Auto-show setting (BazUI Chat → Tabs page). The default is |cffffd700Always|r. The other modes hide the tab unless a condition holds:" },
+                  text = "Each tab has an Auto-show setting (BazUI Chat > Tabs page). The default is |cffffd700Always|r. The other modes hide the tab unless a condition holds:" },
                 { type = "table",
                   columns = { "Mode", "Tab visible when..." },
                   rows = {
@@ -97,7 +97,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Reset" },
                 { type = "paragraph",
-                  text = "BazUIChat → Tabs has a |cffffd700Reset Tabs to Defaults|r button that wipes user-created tabs and restores the canonical four (General/Guild/Trade/Log) with their preset channels. Your chrome settings (alpha, scale, fade modes) are preserved — only tab structure resets." },
+                  text = "BazUIChat > Tabs has a |cffffd700Reset Tabs to Defaults|r button that wipes user-created tabs and restores the canonical four (General/Guild/Trade/Log) with their preset channels. Your chrome settings (alpha, scale, fade modes) are preserved — only tab structure resets." },
             },
         },
 
@@ -147,7 +147,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Removing the Log tab" },
                 { type = "paragraph",
-                  text = "Right-click → Delete tab works on the Log tab too. Deleted canonical tabs stay deleted across /reload. Add a new tab and it'll show up as a blank tab; you can re-create the Log tab via |cffffd700BazUI Chat → Tabs → Reset Tabs to Defaults|r." },
+                  text = "Right-click > Delete tab works on the Log tab too. Deleted canonical tabs stay deleted across /reload. Add a new tab and it'll show up as a blank tab; you can re-create the Log tab via |cffffd700BazUI Chat > Tabs > Reset Tabs to Defaults|r." },
             },
         },
 
@@ -162,7 +162,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Format" },
                 { type = "paragraph",
-                  text = "The Format dropdown in BazUI Chat → Settings → Timestamps offers four presets:" },
+                  text = "The Format dropdown in BazUI Chat > Settings > Timestamps offers four presets:" },
                 { type = "table",
                   columns = { "Preset", "Example" },
                   rows = {
@@ -190,7 +190,7 @@ BazUI:RegisterUserGuide("Chat", {
 
                 { type = "h2", text = "Capacity" },
                 { type = "paragraph",
-                  text = "Persistence is capped by the |cffffd700History buffer|r slider in BazUI Chat → Settings → Behavior. Default is 500 lines per tab; the slider goes 100–2000. Higher numbers use more memory and slow /reload slightly while history replays." },
+                  text = "Persistence is capped by the |cffffd700History buffer|r slider in BazUI Chat > Settings > Behavior. Default is 500 lines per tab; the slider goes 100–2000. Higher numbers use more memory and slow /reload slightly while history replays." },
 
                 { type = "h2", text = "What's saved" },
                 { type = "list", items = {
@@ -285,7 +285,7 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "paragraph",
                   text = "BazUIChat uses BazUI's profile system. Create per-character or per-spec profiles to keep different tab setups, color schemes, fade behaviors, and more." },
                 { type = "paragraph",
-                  text = "Open |cffffd700Settings → BazUI Chat → Profiles|r to create, switch, copy, reset, or delete profiles. Profiles are per-addon — switching your BazUI Chat profile doesn't affect any other Baz addon." },
+                  text = "Open |cffffd700Settings > BazUI Chat > Profiles|r to create, switch, copy, reset, or delete profiles. Profiles are per-addon — switching your BazUI Chat profile doesn't affect any other Baz addon." },
             },
         },
     },

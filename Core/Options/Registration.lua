@@ -4,10 +4,11 @@
 --
 -- Options live in the standard Options > AddOns panel:
 --   * "BazUI" is the addon's category. Its canvas shows BazUI's own pages
---     (General Settings, Profiles, User Manual) as tabs across the top.
---   * Every module is a subcategory under BazUI. Its canvas shows the
---     module's pages the same way. Blizzard's panel nests two levels
---     deep, so module pages become tabs rather than a third level.
+--     (General, Skin, Profiles) as tabs across the top.
+--   * Every module is a subcategory under BazUI, and so is the User
+--     Manual, which is a module's worth of pages without a module. Each
+--     canvas shows its pages the same way: Blizzard's panel nests two
+--     levels deep, so pages become tabs rather than a third level.
 --
 -- Modules register exactly as before:
 --   BazUI:RegisterOptionsTable(key, tableOrFunc)
@@ -157,6 +158,13 @@ local function RenderPageContent(content, optionsTable, width, stateHost)
 end
 
 local function RenderIntoCanvas(container, optionsTable)
+    -- Where the reader had got to. A render builds a new scroll frame, so
+    -- without this, changing one setting three quarters of the way down a
+    -- page throws you back to the top of it - and the setting you just
+    -- changed is the one thing you wanted to still be looking at.
+    local keepOffset = container._scrollFrame
+        and container._scrollFrame:GetVerticalScroll() or 0
+
     -- Fresh scroll frame and content every render: reusing a frame whose
     -- parent was cleared is the blank-page bug of old.
     if container._scrollFrame then
@@ -190,12 +198,36 @@ local function RenderIntoCanvas(container, optionsTable)
     scroll:SetScrollChild(content)
     container._renderTarget = content
 
+    -- Put the reader back where they were, once the content is tall
+    -- enough for the offset to mean anything. Through the scroll bar as
+    -- well as the frame, so the thumb agrees with what is on screen.
+    local function RestoreScroll(offset)
+        if not offset or offset <= 0 then return end
+        local range = (content:GetHeight() or 0) - (scroll:GetHeight() or 0)
+        if range <= 0 then return end
+        local clamped = math.min(offset, range)
+        scroll:SetVerticalScroll(clamped)
+        if scrollBar.SetScrollPercentage then
+            scrollBar:SetScrollPercentage(clamped / range)
+        end
+    end
+
     local function Layout(width)
         if not width or width <= 0 then return end
         content:SetWidth(width)
         O.ClearChildren(content)
         RenderPageContent(content, optionsTable, width, container)
         scroll._lastRenderedWidth = width
+
+        -- Only the first layout after a rebuild, and a frame later: the
+        -- scroll frame has not worked out its range until then.
+        if keepOffset and keepOffset > 0 then
+            local offset = keepOffset
+            keepOffset = nil
+            C_Timer.After(0, function()
+                if content:GetParent() then RestoreScroll(offset) end
+            end)
+        end
     end
 
     local function ResolveWidth()
@@ -277,13 +309,22 @@ local function RebuildTabs(canvas)
         canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, 0)
     else
         strip:Show()
-        canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0, -(TAB_HEIGHT + 10))
         for _, page in ipairs(pages) do
             local tabID = strip:AddTab(page.label)
             canvas.tabIDs[page.key] = tabID
             canvas.tabKeys[tabID]   = page.key
         end
+
+        -- Wrap rather than run off the right edge. The User Manual has a
+        -- tab per module, which is more than fits on one row, and a tab
+        -- you cannot see is a page you cannot reach.
+        local width = (canvas:GetWidth() or 0) - TAB_INSET * 2
+        strip:SetWrapWidth(width > 0 and width or nil)
         strip:Layout()
+
+        -- Below however many rows that came to, rather than below one.
+        canvas.content:SetPoint("TOPLEFT", canvas, "TOPLEFT", 0,
+            -((strip:GetHeight() or TAB_HEIGHT) + 12))
     end
 
     -- Keep a valid active page; default to the first.
