@@ -31,6 +31,14 @@ addon.moduleOptionDefs = {}
 
 --- Create a GetSetting closure for a module. Eliminates per-module boilerplate.
 --- Usage: local GetSetting = BNC:CreateGetSetting("mymodule")
+-- The colour of a source's band. Always answers something drawable.
+function BNC:GetModuleColor(moduleId)
+    local module = addon.modules[moduleId]
+    return (module and module.color)
+        or addon.ModuleColorDefault
+        or { 0.62, 0.48, 0.20, 1 }
+end
+
 function BNC:CreateGetSetting(moduleId)
     return function(key)
         return BNC:GetModuleSetting(moduleId, key)
@@ -52,6 +60,12 @@ function BNC:RegisterModule(moduleInfo)
         id = id,
         name = moduleInfo.name or id,
         icon = moduleInfo.icon or "Interface\\Icons\\INV_Misc_QuestionMark",
+        -- The band down the left of this source's cards. One it brought
+        -- itself, else the one this addon keeps for it, else a default -
+        -- so a source somebody else writes still gets a band.
+        color = moduleInfo.color
+            or (addon.ModuleColors and addon.ModuleColors[id])
+            or addon.ModuleColorDefault,
     }
 
     addon.modules[id] = module

@@ -743,13 +743,13 @@ local function PopulateHistory()
         card.message:SetText(entry.message or "")
         card.timestamp:SetText(FormatHistoryTimestamp(entry.realTime))
 
-        if entry.priority == "high" then
-            card.priorityBar:SetColorTexture(unpack(Colors.priorityHigh)); card.priorityBar:Show()
-        elseif entry.priority == "low" then
-            card.priorityBar:SetColorTexture(unpack(Colors.priorityLow)); card.priorityBar:Show()
-        else
-            card.priorityBar:Hide()
-        end
+        -- Same band as a live card: the source's colour, solid in
+        -- proportion to how much it wanted looking at.
+        local band = BNC:GetModuleColor(entry.module)
+        local alphas = Colors.priorityAlpha or {}
+        local alpha = alphas[entry.priority or "normal"] or alphas.normal or 1
+        card.priorityBar:SetColorTexture(band[1], band[2], band[3], alpha)
+        card.priorityBar:Show()
 
         card.message:SetWidth(CONTENT_WIDTH - 16)
         local msgH = card.message:GetStringHeight() or 0

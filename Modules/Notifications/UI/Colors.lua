@@ -27,9 +27,10 @@ addon.Colors = {
     badge           = { 0.85, 0.65, 0.13, 1.0 },
     badgeText       = { 0.12, 0.08, 0.02, 1.0 },
 
-    -- Priority accents
-    priorityHigh    = T.warn,
-    priorityLow     = { 0.50, 0.45, 0.35, 1.0 },
+    -- Priority, as how solid the band is rather than what colour it is.
+    -- The colour says which module a card came from; this says how much
+    -- it wants looking at, without spending a second colour on it.
+    priorityAlpha   = { high = 1.0, normal = 0.8, low = 0.45 },
 
     -- Dismiss button
     dismissNormal   = T.textMuted,
@@ -45,3 +46,38 @@ addon.Colors = {
     toastBg         = T.bg,
     toastBorder     = T.goldDim,
 }
+
+---------------------------------------------------------------------------
+-- One colour per source
+--
+-- The band down the left of a card says where the notification came from,
+-- so a panel with loot, quests and whispers in it groups by eye before it
+-- is read. It pairs with the group header above, which names the same
+-- module.
+--
+-- These are identity colours rather than skin colours, in the way class
+-- colours are: a skin that repainted them would make quests and loot
+-- indistinguishable, which is the one thing they exist to avoid. A source
+-- can still bring its own by passing `color` to BNC:RegisterModule -
+-- Zygor's is its own orange, off its icon.
+---------------------------------------------------------------------------
+
+addon.ModuleColors = {
+    quests      = { 0.95, 0.78, 0.20, 1.0 },  -- the quest yellow
+    loot        = { 0.45, 0.72, 0.95, 1.0 },  -- item blue
+    xp          = { 0.64, 0.38, 0.86, 1.0 },  -- the experience bar's purple
+    reputation  = { 0.40, 0.78, 0.45, 1.0 },  -- standing green
+    mail        = { 0.85, 0.80, 0.62, 1.0 },  -- parchment
+    social      = { 0.36, 0.84, 0.78, 1.0 },  -- whisper teal
+    group       = { 0.95, 0.55, 0.25, 1.0 },  -- party orange
+    instance    = { 0.82, 0.32, 0.32, 1.0 },  -- lockout red
+    professions = { 0.76, 0.56, 0.34, 1.0 },  -- workbench tan
+    auction     = { 0.78, 0.72, 0.30, 1.0 },  -- coin
+    inventory   = { 0.58, 0.62, 0.72, 1.0 },  -- steel
+    zones       = { 0.42, 0.68, 0.62, 1.0 },  -- map green
+    system      = { 0.62, 0.60, 0.56, 1.0 },  -- the game talking
+}
+
+-- Anything that registered without one, and anything registered later by
+-- somebody else.
+addon.ModuleColorDefault = T.goldDim

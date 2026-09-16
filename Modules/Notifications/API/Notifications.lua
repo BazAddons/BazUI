@@ -90,6 +90,11 @@ function BNC:Push(data)
         existing.realTime = realTime
         existing.dupeCount = (existing.dupeCount or 1) + 1
         existing.priority = data.priority or existing.priority
+        -- Taken straight from the newer push rather than kept where the
+        -- newer one has none: an action belongs to the thing that just
+        -- happened, and a held-over one points at something already dealt
+        -- with.
+        existing.onClick = data.onClick
         dedupeCache[key].timestamp = now  -- refresh window
 
         -- Save to persistent history even for deduped entries

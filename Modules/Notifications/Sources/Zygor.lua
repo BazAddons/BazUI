@@ -9,11 +9,11 @@ local BNC = BazUI.Notifications.API
 --
 -- This is an integration, not a port: nothing of Zygor's is copied or
 -- reimplemented. We listen to the one call it makes when it raises a
--- notification, repeat the title and text through our own centre, and stop
--- its toast from being shown. Its own list is left intact and its own
--- settings still decide whether a notification happens at all - if Zygor
--- is switched off, or has notifications switched off, there is nothing
--- here to forward.
+-- notification, repeat the title and text through our own centre, hand on
+-- whatever clicking it was going to do, and stop its toast from being
+-- shown. Its own list is left intact and its own settings still decide
+-- whether a notification happens at all - if Zygor is switched off, or has
+-- notifications switched off, there is nothing here to forward.
 --
 -- Nothing happens at all unless Zygor is installed and running.
 -- ==========================================================================
@@ -72,7 +72,65 @@ local function ZygorWantsNotifications()
     return profile.nc_enable ~= false
 end
 
-local function Forward(notiftype, title, text)
+---------------------------------------------------------------------------
+-- The entry behind the words
+--
+-- A Zygor notification is usually also a button: "Click to see skills",
+-- "Click to open in new tab". The action lives on the entry AddEntry has
+-- just built, and a hook is handed the arguments rather than the entry -
+-- so the entry is found where AddEntry has just put it: at the front of
+-- its list, or on the separate frame used for the ones shown outside the
+-- queue.
+--
+-- What we keep is its ident, not its function. Between a toast arriving
+-- and somebody clicking it Zygor may have taken that entry back - several
+-- kinds clear their own type when the next one arrives - and running a
+-- function belonging to an entry it has dropped would be doing something
+-- it decided not to do. Looking the ident up at click time asks afresh:
+-- still there, run it; gone, nothing happens.
+---------------------------------------------------------------------------
+
+local function SpecialEntry(NC)
+    return NC and NC.SpecialNotif and NC.SpecialNotif.entry or nil
+end
+
+local function NewestEntry(NC, notiftype, title)
+    local newest = NC and NC.Entries and NC.Entries[1]
+    if newest and newest.notiftype == notiftype and newest.title == title then
+        return newest
+    end
+    local special = SpecialEntry(NC)
+    if special and special.notiftype == notiftype and special.title == title then
+        return special
+    end
+    return nil
+end
+
+local function EntryByIdent(ident)
+    local NC = Center()
+    if not NC then return nil end
+    local entry = NC.GetEntry and NC:GetEntry(ident)
+    if entry then return entry end
+    local special = SpecialEntry(NC)
+    if special and special.ident == ident then return special end
+    return nil
+end
+
+-- Clicking our card does what clicking Zygor's own notification would
+-- have done, including taking the entry out of its list: one notification
+-- showing in two places should not have to be answered twice.
+local function ClickAction(entry)
+    local ident = entry and entry.ident
+    if ident == nil then return nil end
+    return function()
+        local live = EntryByIdent(ident)
+        if live and type(live.func) == "function" then
+            pcall(live.func)
+        end
+    end
+end
+
+local function Forward(notiftype, title, text, onClick)
     if GetSetting("showZygor") == false then return end
     if not ZygorWantsNotifications() then return end
     if type(title) ~= "string" or title == "" then return end
@@ -86,6 +144,7 @@ local function Forward(notiftype, title, text)
         priority = "normal",
         duration = GetSetting("toastDuration") or 5,
         silent   = GetSetting("zygorToasts") == false,
+        onClick  = onClick,
         -- Which kind of notification Zygor called it, kept for the history
         -- even though nothing reads it yet.
         tag      = notiftype,
@@ -108,7 +167,8 @@ local function Install()
     if not NC or stockShowOne then return true end
 
     hooksecurefunc(NC, "AddEntry", function(_, notiftype, title, text)
-        Forward(notiftype, title, text)
+        Forward(notiftype, title, text,
+            ClickAction(NewestEntry(NC, notiftype, title)))
     end)
 
     stockShowOne = NC.ShowOne
@@ -137,10 +197,49 @@ eventFrame:SetScript("OnEvent", function()
     InstallWhenReady()
 end)
 
+---------------------------------------------------------------------------
+-- What we are leaning on
+--
+-- Another addon's furniture rather than the game's, which makes it more
+-- likely to move, not less. Declared so /bazui check says so plainly
+-- instead of leaving a notification that quietly never arrives or a card
+-- that quietly does nothing.
+---------------------------------------------------------------------------
+
+local ZYGOR_HOLDS = {
+    { label = "ZGV.NotificationCenter",
+      why   = "Everything else here hangs off it.",
+      check = function() return Center() ~= nil end },
+    { label = "NotificationCenter:AddEntry",
+      why   = "Hooked to hear a notification being raised.",
+      check = function() return BazUI.Has.Member(Center(), "AddEntry") end },
+    { label = "NotificationCenter:ShowOne",
+      why   = "Replaced to hold Zygor's own popup back.",
+      check = function() return BazUI.Has.Member(Center(), "ShowOne") end },
+    { label = "NotificationCenter:GetEntry and .Entries",
+      why   = "Finding the entry again, so clicking ours does what clicking theirs did.",
+      check = function()
+          local NC = Center()
+          return BazUI.Has.Member(NC, "GetEntry") and BazUI.Has.Member(NC, "Entries")
+      end },
+}
+
+for _, hold in ipairs(ZYGOR_HOLDS) do
+    BazUI:RegisterDependency({
+        module = "Notifications (Zygor)",
+        label  = hold.label,
+        why    = hold.why,
+        check  = hold.check,
+    })
+end
+
 BNC:RegisterModule({
-    id   = MODULE_ID,
-    name = MODULE_NAME,
-    icon = MODULE_ICON,
+    id    = MODULE_ID,
+    name  = MODULE_NAME,
+    icon  = MODULE_ICON,
+    -- The orange off their own mark, so a forwarded notification is
+    -- recognisably theirs in a panel full of ours.
+    color = { 0.95, 0.45, 0.15, 1.0 },
 })
 
 BNC:RegisterModuleOptions(MODULE_ID, {

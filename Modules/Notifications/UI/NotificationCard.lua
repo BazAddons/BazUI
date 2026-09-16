@@ -72,7 +72,9 @@ function addon.CreateNotificationBody(frame)
 
     -- Priority accent bar (left edge)
     frame.priorityBar = frame:CreateTexture(nil, "OVERLAY")
-    frame.priorityBar:SetSize(2, 1)
+    -- Three pixels rather than two: it is a colour to be read now, not
+    -- just a mark that something is there.
+    frame.priorityBar:SetSize(3, 1)
     frame.priorityBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -1)
     frame.priorityBar:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 0, 1)
     frame.priorityBar:Hide()
@@ -124,16 +126,16 @@ function addon.PopulateNotification(frame, notifData, width, opts)
     frame.title:SetText(notifData.title or "")
     frame.message:SetText(notifData.message or "")
 
-    -- Priority accent
-    if notifData.priority == "high" then
-        frame.priorityBar:SetColorTexture(unpack(Colors.priorityHigh))
-        frame.priorityBar:Show()
-    elseif notifData.priority == "low" then
-        frame.priorityBar:SetColorTexture(unpack(Colors.priorityLow))
-        frame.priorityBar:Show()
-    else
-        frame.priorityBar:Hide()
-    end
+    -- The band down the left. Its colour says which source the card came
+    -- from, so a mixed panel groups by eye; how solid it is says how much
+    -- the card wants looking at. Every card has one - a card without a
+    -- band used to mean "normal", which read as less important than the
+    -- chatter that had one.
+    local band = BNC:GetModuleColor(notifData.module)
+    local alphas = Colors.priorityAlpha or {}
+    local alpha = alphas[notifData.priority or "normal"] or alphas.normal or 1
+    frame.priorityBar:SetColorTexture(band[1], band[2], band[3], alpha)
+    frame.priorityBar:Show()
 
     -- Top row width (title): reserve whatever sits in the top right, which
     -- on a card is the dismiss button and nothing else.
