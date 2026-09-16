@@ -15,7 +15,8 @@ local TITLE_MESSAGE_GAP = 4
 -- Card-specific metrics
 local CARD_WIDTH = 290
 local CARD_MIN_HEIGHT = 48
-local TIMESTAMP_RESERVED_WIDTH = 90  -- right-side space reserved for timestamp column
+local TIMESTAMP_RESERVED_WIDTH = 90  -- bottom-right space reserved for the timestamp
+local DISMISS_RESERVED_WIDTH  = 24  -- top-right space reserved for the dismiss button
 
 local BACKDROP_CARD = BazUI.Skin.Theme.BACKDROP_FLAT
 
@@ -83,6 +84,9 @@ end
 -- Fills a card/toast body with data from a notification and returns the
 -- calculated total height. Options:
 --   opts.showModuleLabel      - show addon-name row above title (toasts)
+--   opts.bottomRightReserved  - pixels to reserve on the right of the
+--                               message row, for anything sitting in that
+--                               corner
 --   opts.rightReservedWidth   - pixels to reserve on the right of the top
 --                               row (e.g. for a card's timestamp column)
 ---------------------------------------------------------------------------
@@ -131,14 +135,16 @@ function addon.PopulateNotification(frame, notifData, width, opts)
         frame.priorityBar:Hide()
     end
 
-    -- Top row width (title): reserve for right-side timestamp column on cards
+    -- Top row width (title): reserve whatever sits in the top right, which
+    -- on a card is the dismiss button and nothing else.
     local topRowRightReserve = opts.rightReservedWidth or BODY_PADDING
     local topRowWidth = width - BODY_PADDING - BODY_ICON_SIZE - 6 - topRowRightReserve
     frame.title:SetWidth(topRowWidth)
 
-    -- Message row width: reserve space on the right if the module label is
-    -- visible in that corner, so they don't overlap.
-    local messageRightReserve = BODY_PADDING
+    -- Message row width: reserve space on the right for whatever shares
+    -- that corner - the module label where it is shown, the timestamp on a
+    -- card - so they cannot overlap the text.
+    local messageRightReserve = BODY_PADDING + (opts.bottomRightReserved or 0)
     if labelWidth > 0 then
         messageRightReserve = BODY_PADDING + labelWidth + 8
     end
@@ -187,12 +193,17 @@ local function CreateCard(index)
     -- Shared body: icon, moduleLabel, title, message, priorityBar
     addon.CreateNotificationBody(card)
 
-    -- Timestamp (card-only, top-right)
+    -- Timestamp (card-only, bottom-right)
+    --
+    -- Bottom rather than top, because the dismiss button lives in the top
+    -- right corner and the two were sitting on top of one another. Nothing
+    -- else is down there: a card never shows the module label, which is
+    -- what that corner is for on a toast.
     card.timestamp = card:CreateFontString(nil, "OVERLAY")
     card.timestamp:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormalSmall"))
     card.timestamp:SetTextColor(unpack(Colors.textMuted))
     card.timestamp:SetJustifyH("RIGHT")
-    card.timestamp:SetPoint("TOPRIGHT", card, "TOPRIGHT", -BODY_PADDING, -BODY_PADDING)
+    card.timestamp:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT", -BODY_PADDING, BODY_PADDING)
 
     -- Dismiss button (card-only)
     card.dismissBtn = CreateFrame("Button", nil, card)
@@ -289,7 +300,8 @@ function addon.SetupCard(card, notifData)
 
     local totalHeight = addon.PopulateNotification(card, notifData, CARD_WIDTH, {
         showModuleLabel = false,
-        rightReservedWidth = TIMESTAMP_RESERVED_WIDTH,
+        rightReservedWidth = DISMISS_RESERVED_WIDTH,
+        bottomRightReserved = TIMESTAMP_RESERVED_WIDTH,
     })
     card:SetHeight(math.max(CARD_MIN_HEIGHT, totalHeight))
 

@@ -35,6 +35,12 @@ BazUI.Skin = {
     -- Nothing reads these off the file at run time, so a new picture
     -- needs them measured with it.
     MINIMAP_FRAME            = ASSETS .. "mapFrame.png",
+
+    -- Zygor's mark, for the notifications forwarded from it. Shipped
+    -- rather than borrowed from their addon at run time: a texture
+    -- path into somebody else's folder breaks the day they rename a
+    -- file, and it would be missing entirely for anyone without them.
+    ZYGOR_ICON               = ASSETS .. "zygorIcon.png",
     MINIMAP_FRAME_WIDTH      = 929 / 756,
     MINIMAP_FRAME_HEIGHT     = 1088 / 756,
 

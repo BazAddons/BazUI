@@ -176,8 +176,11 @@ local FRAME_STYLES = {
     none    = "None",
 }
 
+-- The suite's own frame is what this module is for, so it is what a new
+-- profile gets. Blizzard Default and None are there for anyone who wants
+-- them back.
 local function GetFrameStyle()
-    local style = addon:GetWidgetSetting(WIDGET_ID, FRAME_STYLE_KEY, "default")
+    local style = addon:GetWidgetSetting(WIDGET_ID, FRAME_STYLE_KEY, "bazui")
     if not FRAME_STYLES[style] then style = "default" end
     return style
 end
@@ -207,16 +210,29 @@ end
 local MAP_SCALE_KEY = "mapScale"
 local MAP_SCALE_MIN, MAP_SCALE_MAX = 0.5, 1
 
+-- Nine tenths rather than all of it: the frame's points run past the
+-- circle, and a little room around the widget keeps them off whatever is
+-- docked above and below.
+local MAP_SCALE_DEFAULT = 0.9
+
 function MapScale()
-    local scale = tonumber(addon:GetWidgetSetting(WIDGET_ID, MAP_SCALE_KEY, 1)) or 1
+    local scale = tonumber(addon:GetWidgetSetting(WIDGET_ID, MAP_SCALE_KEY,
+        MAP_SCALE_DEFAULT)) or MAP_SCALE_DEFAULT
     return math.max(MAP_SCALE_MIN, math.min(MAP_SCALE_MAX, scale))
 end
 
--- How far the map runs past the frame's solid edge, so the two do not
--- merely meet: the last few steps of the artwork's alpha would otherwise
--- show as a hairline. Small, because the frame is drawn over the map now
--- and anything past this is hidden under the brass anyway.
-local FRAME_OVERLAP = 2
+-- How far the brass sits over the edge of the map.
+--
+-- Now that the map is never resized, this is the only number deciding
+-- where the frame's opening falls: the art is sized so its opening is
+-- this much smaller than the map, all the way round.
+--
+-- It has to cover more than nothing, because the map's round edge does
+-- not quite reach the edge of the square it is drawn in, and the last
+-- steps of the artwork's own alpha are not solid either. Between the two
+-- there was a ring of sky showing through. In design pixels, which the
+-- drawer multiplies, so this is a few more than it says on screen.
+local FRAME_OVERLAP = 5
 
 local ring
 
@@ -370,14 +386,20 @@ end
 -- undo the setting; turning the option off shows the frame again.
 ---------------------------------------------------------------------------
 
+-- Both start hidden. The wheel zooms, which is what the buttons were for,
+-- and the day/night dial is an ornament on a ring we are not drawing any
+-- more - left on, they sit on the brass looking like something that came
+-- loose.
 local HIDE_TARGETS = {
     hideDayNight = {
+        default = true,
         order  = 21,
         name   = "Hide Day/Night Indicator",
         desc   = "Hides the sun/moon button on the minimap ring (the calendar button on Retail).",
         frames = function() return { GameTimeFrame } end,
     },
     hideZoomButtons = {
+        default = true,
         order  = 22,
         name   = "Hide Zoom Buttons",
         desc   = "Hides the + and - zoom buttons. The mouse wheel still zooms the minimap.",
@@ -399,7 +421,8 @@ local hideHooked = {}
 local function ApplyHideSetting(key, userToggled)
     local def = HIDE_TARGETS[key]
     if not def then return end
-    local hide = addon:GetWidgetSetting(WIDGET_ID, key, false) and true or false
+    local hide = addon:GetWidgetSetting(WIDGET_ID, key, def.default or false)
+        and true or false
     for _, f in ipairs(def.frames()) do
         if f and f.Hide then
             if hide then
@@ -407,7 +430,7 @@ local function ApplyHideSetting(key, userToggled)
                 if not hideHooked[f] then
                     hideHooked[f] = true
                     hooksecurefunc(f, "Show", function(self)
-                        if addon:GetWidgetSetting(WIDGET_ID, key, false) then
+                        if addon:GetWidgetSetting(WIDGET_ID, key, def.default or false) then
                             self:Hide()
                         end
                     end)
@@ -476,7 +499,10 @@ function MinimapWidget:GetOptionsArgs()
             type  = "toggle",
             name  = def.name,
             desc  = def.desc,
-            get   = function() return addon:GetWidgetSetting(WIDGET_ID, key, false) and true or false end,
+            get   = function()
+                return addon:GetWidgetSetting(WIDGET_ID, key, def.default or false)
+                    and true or false
+            end,
             set   = function(_, val)
                 addon:SetWidgetSetting(WIDGET_ID, key, val and true or false)
                 ApplyHideSetting(key, true)

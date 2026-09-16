@@ -205,6 +205,7 @@ Modules\Notifications\Sources\Social.lua
 Modules\Notifications\Sources\System.lua
 Modules\Notifications\Sources\XP.lua
 Modules\Notifications\Sources\Zones.lua
+Modules\Notifications\Sources\Zygor.lua
 Modules\Notifications\UserGuide.lua
 
 Modules\MicroMenu\Core.lua

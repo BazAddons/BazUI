@@ -10,7 +10,10 @@ local MODULE_NAME = "Experience"
 local MODULE_ICON = "Interface\\Icons\\XP_Icon"
 
 local ICON_XP = "Interface\\Icons\\XP_Icon"
-local ICON_LEVEL = "Interface\\Icons\\Achievement_Level_80"
+-- Sixty, because sixty is where this game ends. The eighty on the old
+-- icon is from a later expansion and reads as a mistake to anyone who
+-- has just earned a level here.
+local ICON_LEVEL = "Interface\\Icons\\Achievement_Level_60"
 local ICON_RESTED = "Interface\\Icons\\Spell_Nature_Sleep"
 
 local lastXP = 0
