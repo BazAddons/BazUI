@@ -984,6 +984,18 @@ function MinimapButtonsWidget:Build()
     local f = CreateFrame("Frame", "BazUIDrawerMinimapButtonsWidget", UIParent)
     f:SetSize(DESIGN_WIDTH, MIN_HEIGHT)
 
+    -- Anchored from the moment it exists, even though the dock will place
+    -- it properly later and clears these points when it does.
+    --
+    -- A frame with a size but no anchor has no resolved position, and
+    -- GetLeft() on it - or on anything parented to it - answers nil. The
+    -- buttons in here belong to other addons, and one of them asked where
+    -- its icon was during its own startup, before the dock had placed
+    -- this: Zygor positions its notification popup by reading
+    -- ZygorGuidesViewerMapIcon:GetLeft(), got nil, and threw. Somewhere
+    -- is better than nowhere for a frame holding other people's things.
+    f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+
     self.frame = f
     self._desiredHeight = MIN_HEIGHT
     self._count = 0

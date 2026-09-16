@@ -545,6 +545,14 @@ function MinimapWidget:Init()
     wrapper = CreateFrame("Frame", "BazUIDrawerMinimapWrapper", UIParent)
     wrapper:SetSize(wrapperW, wrapperH)
 
+    -- Anchored straight away, though the dock will place it properly and
+    -- clear this when it does. The Minimap ends up parented to this, and
+    -- a frame with no anchor has no resolved position - so GetLeft() on
+    -- the Minimap would answer nil, and there are a great many addons
+    -- that work out where to put their minimap button by reading exactly
+    -- that. Somewhere is better than nowhere.
+    wrapper:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+
     widgetInfo = {
         id           = WIDGET_ID,
         label        = "Minimap",
