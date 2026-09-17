@@ -402,7 +402,23 @@ function addon:Initialize()
         onExit      = function() addon:SetEditing(false) end,
     })
 
-    hooksecurefunc("UpdateMicroButtons", function() addon:OnBlizzardUpdate() end)
+    -- Blizzard's own state, mirrored on a ticker rather than by hooking
+    -- UpdateMicroButtons.
+    --
+    -- Even the string form of hooksecurefunc leaves the global counting
+    -- as tainted on Forever, and EnterEditMode calls UpdateMicroButtons:
+    -- the taint log showed that call, then ClearTarget blocked, then
+    -- their compact party frames erroring on a secret colour, all in the
+    -- one press. Watching instead of hooking costs a little latency on a
+    -- button lighting up and taints nothing.
+    local watcher, since = CreateFrame("Frame"), 0
+    watcher:SetScript("OnUpdate", function(_, elapsed)
+        since = since + elapsed
+        if since < 0.2 then return end
+        since = 0
+        addon:OnBlizzardUpdate()
+    end)
+
     hooksecurefunc("MicroButtonPulse",     function(button) SetPulsing(button, true) end)
     hooksecurefunc("MicroButtonPulseStop", function(button) SetPulsing(button, false) end)
     self:On("UNIT_PORTRAIT_UPDATE", function(_, unit)
