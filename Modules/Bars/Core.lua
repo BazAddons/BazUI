@@ -497,7 +497,6 @@ local STATUS_FRAMES = {
     rep = { "ReputationWatchBar" },
 }
 
-local hookedManager
 local statusHidden = {}
 
 function addon:ApplyStatusBarVisibility()
@@ -515,16 +514,28 @@ function addon:ApplyStatusBarVisibility()
     -- Era draws both inside one shared container whose manager decides
     -- what it will show, so it is asked about only the ones we are
     -- hiding and lays the rest out itself.
+    -- The individual bars are hidden; their manager is left alone.
+    --
+    -- This used to replace StatusTrackingBarManager.CanShowBar to veto
+    -- the two we hide. That is a write to the method table of a frame we
+    -- do not own, and it taints the manager: their UpdateShownState calls
+    -- CanShowBar, EnterEditMode calls UpdateShownState, and from there
+    -- every action in the press was refused - ClearTarget, then their
+    -- compact party frames comparing a secret colour. Found by bisecting
+    -- modules, after the taint log named the call but not the module.
+    --
+    -- Suppressing the bar frames themselves gets the same picture: the
+    -- manager still lays out whatever it likes, and the ones we hide stay
+    -- hidden because their OnShow puts them back down.
     local manager, info = _G.StatusTrackingBarManager, _G.StatusTrackingBarInfo
-    if manager and manager.CanShowBar and info and info.BarsEnum then
-        if hookedManager ~= manager then
-            hookedManager = manager
-            local original = manager.CanShowBar
-            manager.CanShowBar = function(frame, index, ...)
-                if statusHidden.xp and index == info.BarsEnum.Experience then return false end
-                if statusHidden.rep and index == info.BarsEnum.Reputation then return false end
-                return original(frame, index, ...)
-            end
+    if manager and manager.bars and info and info.BarsEnum then
+        local xpBar  = manager.bars[info.BarsEnum.Experience]
+        local repBar = manager.bars[info.BarsEnum.Reputation]
+        if xpBar then
+            BazUI.SuppressFrame(xpBar, function() return statusHidden.xp and true or false end)
+        end
+        if repBar then
+            BazUI.SuppressFrame(repBar, function() return statusHidden.rep and true or false end)
         end
     end
 
