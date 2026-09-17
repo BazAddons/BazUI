@@ -171,7 +171,7 @@ addon = BazUI:RegisterModule("Bars", {
                 addon:Print("Resetting all bars. Reload UI to apply.")
                 local p = addon.db and addon.db.profile
                 if p then p.bars = {} end
-                ReloadUI()
+                BazUI:RequestReload()
             end,
         },
     },

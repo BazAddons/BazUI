@@ -553,7 +553,7 @@ BazUI:QueueForLogin(function()
                                 body        = "Text already on screen keeps the old face until the interface reloads.",
                                 acceptLabel = "Reload",
                                 cancelLabel = "Later",
-                                onAccept    = function() ReloadUI() end,
+                                onAccept    = function() BazUI:RequestReload() end,
                             })
                         end
                     end,

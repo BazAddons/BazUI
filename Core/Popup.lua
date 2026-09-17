@@ -424,6 +424,23 @@ end
 local reloadReasons = {}
 local reloadPending = false
 
+-- Ask for a reload, and say so if the game will not have it.
+--
+-- ReloadUI is a protected call. On clients that enforce that - Forever
+-- does - an addon asking for it is refused, the screen prints "Interface
+-- action failed because of an AddOn", and our button appears to do
+-- nothing. There is no unprotected way to reload from an addon, so the
+-- honest thing is to ask and then own up.
+--
+-- If the reload happens we are gone long before the timer; if we are
+-- still here half a second later, it was refused.
+function BazUI:RequestReload()
+    ReloadUI()
+    C_Timer.After(0.5, function()
+        BazUI:Print("The game would not let an addon reload for you. Type |cff00ff00/reload|r.")
+    end)
+end
+
 function BazUI:PromptReload(reason)
     if reason and reason ~= "" then
         for _, existing in ipairs(reloadReasons) do
@@ -445,11 +462,6 @@ function BazUI:PromptReload(reason)
         if #reloadReasons == 0 then
             body = "This needs the interface reloaded before it takes effect."
         end
-        -- Always say what to type. ReloadUI is protected on some clients
-        -- and refuses a tainted caller - Forever blocks it outright - so
-        -- the button below can do nothing at all and say nothing about
-        -- why. The instruction always works.
-        body = body .. "|n|n|cffffd700If the button does nothing, type|r /reload"
         wipe(reloadReasons)
 
         BazUI:OpenPopup({
@@ -458,7 +470,7 @@ function BazUI:PromptReload(reason)
             buttons = {
                 { label = "Later", style = "default" },
                 { label = "Reload now", style = "primary",
-                  onClick = function() ReloadUI() end },
+                  onClick = function() BazUI:RequestReload() end },
             },
         })
     end)
