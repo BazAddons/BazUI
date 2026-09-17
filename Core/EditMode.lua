@@ -225,6 +225,7 @@ local function CreateEditOverlay(frame, config)
 
         SnapToGrid(parent)
         SavePosition(parent, config)
+        BazUI:RefreshInspectorSide()
     end)
 
     overlay:SetScript("OnEnter", function(self)
@@ -267,6 +268,20 @@ local settingsPopup = nil
 local popupSavedState = nil
 
 local POPUP_WIDTH = 340
+
+-- The inspector is a column docked to a screen edge, the way an editor
+-- docks its properties panel. POPUP_WIDTH stays the width of the content
+-- column every widget above is built for; the panel is that plus the
+-- gutter its scroll bar lives in.
+local INSPECTOR_WIDTH  = POPUP_WIDTH + 24
+local INSPECTOR_MARGIN = 16
+local INSPECTOR_TOP    = 44
+local INSPECTOR_BOTTOM = 42
+
+-- Which edge it sits on. Right by default; it moves to the left only to
+-- get out of the way of whatever is selected, and a pin overrides both.
+local inspectorSide   = "RIGHT"
+local inspectorPinned = nil
 local LABEL_WIDTH = 100
 local SLIDER_WIDTH = 140
 local ROW_HEIGHT = 32
@@ -792,44 +807,115 @@ local function CreateSection(parent, label, startExpanded)
     return section
 end
 
--- Popup Frame
+---------------------------------------------------------------------------
+-- The inspector
+--
+-- One panel, docked to a screen edge for the length of an edit session,
+-- holding everything: what is selected and its settings, the list of
+-- everything else when nothing is, and Create and Done along the bottom.
+--
+-- It used to be a floating popup anchored beside whatever you had picked,
+-- which meant it appeared and vanished with the selection and could land
+-- anywhere. Docked, it is always in the same place, and the settings for a
+-- frame arrive in a panel the eye is already on.
+---------------------------------------------------------------------------
 
 local function BuildPopup()
-    local f = CreateFrame("Frame", "BazUIEditModePopup", UIParent)
-    f:SetSize(POPUP_WIDTH, 600)
+    local Theme = BazUI.Skin.Theme
+
+    local f = CreateFrame("Frame", "BazUIEditInspector", UIParent)
+    f:SetWidth(INSPECTOR_WIDTH)
     f:SetFrameStrata("DIALOG")
     f:SetFrameLevel(200)
-    f:SetClampedToScreen(true)
-    f:SetMovable(true)
     f:EnableMouse(true)
-    f:RegisterForDrag("LeftButton")
 
     local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
     border:SetAllPoints()
 
-    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-
     local title = f:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
-    title:SetPoint("TOP", 0, -15)
+    title:SetPoint("TOP", 0, -14)
+    title:SetWidth(INSPECTOR_WIDTH - 80)
+    title:SetJustifyH("CENTER")
     f.title = title
 
-    local close = BazUI.Skin.Theme.CreateCloseButton(f)
+    -- Pins the panel to the side it is on, so it stops moving out of the
+    -- way. Pressing it again hands the decision back.
+    local pin = Theme.CreateButton(f, {
+        width = 24, height = 18, text = "|cffffd700-|r",
+        onClick = function(self)
+            inspectorPinned = inspectorPinned and nil or inspectorSide
+            BazUI:RefreshInspectorSide()
+            self:SetText(inspectorPinned and "|cffffd700=|r" or "|cffffd700-|r")
+        end,
+    })
+    pin:SetPoint("TOPLEFT", 10, -10)
+    f.pin = pin
+
+    local close = Theme.CreateCloseButton(f)
     close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function()
         if selectedFrame then
             BazUI:DeselectEditFrame(selectedFrame)
+        else
+            BazUI:ExitEditMode()
         end
     end)
 
-    f:SetScript("OnKeyDown", function(self, key)
-        if key == "ESCAPE" then
-            self:SetPropagateKeyboardInput(false)
-            if selectedFrame then
-                BazUI:DeselectEditFrame(selectedFrame)
-            end
+    local create = Theme.CreateButton(f, {
+        text = "Create", width = 150, height = 22, style = "primary",
+        onClick = function(self) BazUI:OpenEditModeCreateMenu(self) end,
+    })
+    create:SetPoint("BOTTOMLEFT", 14, 12)
+
+    local done = Theme.CreateButton(f, {
+        text = "Done", width = 150, height = 22,
+        onClick = function() BazUI:ExitEditMode() end,
+    })
+    done:SetPoint("BOTTOMRIGHT", -14, 12)
+
+    -- A full-height panel will not always hold what goes in it, so the
+    -- body scrolls. Same MinimalScrollBar pattern as the Options window.
+    local scroll = CreateFrame("ScrollFrame", nil, f)
+    scroll:SetPoint("TOPLEFT", 8, -INSPECTOR_TOP)
+    scroll:SetPoint("BOTTOMRIGHT", -30, INSPECTOR_BOTTOM)
+    scroll:EnableMouseWheel(true)
+    f.scroll = scroll
+
+    local scrollBar = CreateFrame("EventFrame", nil, f, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+    if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
+        ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+        if Theme.AutoFadeScrollBar then Theme.AutoFadeScrollBar(scrollBar, scroll) end
+    end
+    f.scrollBar = scrollBar
+
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetWidth(POPUP_WIDTH - 20)
+    content:SetHeight(1)
+    scroll:SetScrollChild(content)
+    f.content = content
+
+    -- Sections are built with the content frame as their parent and ask
+    -- it to lay out again when one is collapsed, so it answers for the
+    -- panel.
+    content.LayoutSections = function() f:LayoutSections() end
+
+    local hint = Theme.FontString(content, "ARTWORK", "GameFontDisableSmall")
+    hint:SetPoint("TOPLEFT", 12, -10)
+    hint:SetWidth(POPUP_WIDTH - 44)
+    hint:SetJustifyH("LEFT")
+    hint:SetText("Click anything highlighted, or pick it from the list.")
+    hint:Hide()
+    f.hint = hint
+
+    f.listButtons = {}
+
+    BazUI.CloseOnEscape(f, function()
+        if selectedFrame then
+            BazUI:DeselectEditFrame(selectedFrame)
         else
-            self:SetPropagateKeyboardInput(true)
+            BazUI:ExitEditMode()
         end
     end)
 
@@ -842,6 +928,42 @@ local function GetOrCreatePopup()
         settingsPopup = BuildPopup()
     end
     return settingsPopup
+end
+
+---------------------------------------------------------------------------
+-- Which edge it sits on
+--
+-- Right unless what you are editing is itself mostly on the right, in
+-- which case the panel goes left rather than sit on top of it. Decided on
+-- selection and again when a drag ends - never while one is in progress,
+-- which would have it jumping sides as you cross the middle of the screen.
+---------------------------------------------------------------------------
+
+local function SideForFrame(frame)
+    if inspectorPinned then return inspectorPinned end
+    if not frame then return "RIGHT" end
+    local cx = frame:GetCenter()
+    if not cx then return "RIGHT" end
+    cx = cx * (frame:GetEffectiveScale() / UIParent:GetEffectiveScale())
+    return cx > (UIParent:GetWidth() / 2) and "LEFT" or "RIGHT"
+end
+
+local function DockInspector(side)
+    local f = GetOrCreatePopup()
+    inspectorSide = side or inspectorSide
+
+    f:SetHeight(math.max(320, UIParent:GetHeight() - INSPECTOR_MARGIN * 2))
+    f:ClearAllPoints()
+    if inspectorSide == "LEFT" then
+        f:SetPoint("LEFT", UIParent, "LEFT", INSPECTOR_MARGIN, 0)
+    else
+        f:SetPoint("RIGHT", UIParent, "RIGHT", -INSPECTOR_MARGIN, 0)
+    end
+end
+
+function BazUI:RefreshInspectorSide()
+    if not isEditMode then return end
+    DockInspector(SideForFrame(selectedFrame))
 end
 
 -- Widget Value Helpers
@@ -869,9 +991,10 @@ local function SetWidgetValue(widgetDef, config, value)
     end
 end
 
-local function PopulatePopup(frame, config)
-    local popup = GetOrCreatePopup()
-
+-- Everything the body can hold, taken back out. One place for it, because
+-- the body is filled two ways now: a frame's settings, or the list of
+-- frames when nothing is selected.
+local function ClearInspectorBody(popup)
     if popup.sections then
         for _, sec in ipairs(popup.sections) do
             sec:Hide()
@@ -887,9 +1010,56 @@ local function PopulatePopup(frame, config)
             w:SetParent(nil)
         end
     end
+    for _, btn in ipairs(popup.listButtons or {}) do
+        btn:Hide()
+        btn:SetParent(nil)
+    end
     popup.sections = {}
     popup.topWidgets = {}
     popup.widgetMap = {}
+    popup.listButtons = {}
+    popup.hint:Hide()
+end
+
+-- Nothing selected: the panel stays up and says what there is to edit.
+-- A frame tucked behind something else is reachable from here, which it
+-- never was when the only way in was clicking its overlay.
+local function ShowInspectorList()
+    local popup = GetOrCreatePopup()
+    ClearInspectorBody(popup)
+    popup.title:SetText("BazUI Edit")
+
+    local entries = {}
+    for frame, config in pairs(registeredFrames) do
+        entries[#entries + 1] = { frame = frame, label = config.label or "Frame" }
+    end
+    table.sort(entries, function(a, b) return a.label < b.label end)
+
+    popup.hint:SetText(#entries > 0
+        and "Click anything highlighted, or pick it from the list."
+        or  "Nothing to arrange yet. Create something to get started.")
+    popup.hint:Show()
+
+    local y = -40
+    for _, entry in ipairs(entries) do
+        local btn = BazUI.Skin.Theme.CreateButton(popup.content, {
+            text = entry.label, width = POPUP_WIDTH - 44, height = 22,
+            onClick = function() BazUI:SelectEditFrame(entry.frame) end,
+        })
+        btn:SetPoint("TOPLEFT", popup.content, "TOPLEFT", 12, y)
+        popup.listButtons[#popup.listButtons + 1] = btn
+        y = y - 26
+    end
+
+    popup.content:SetHeight(math.max(1, math.abs(y) + 12))
+    popup.scroll:SetVerticalScroll(0)
+    DockInspector(SideForFrame(nil))
+    popup:Show()
+end
+
+local function PopulatePopup(frame, config)
+    local popup = GetOrCreatePopup()
+    ClearInspectorBody(popup)
 
     popup.title:SetText(config.label or "Settings")
 
@@ -901,7 +1071,7 @@ local function PopulatePopup(frame, config)
     for _, widgetDef in ipairs(settings) do
         local sectionName = widgetDef.section or "General"
         if not sectionMap[sectionName] then
-            local sec = CreateSection(popup, sectionName, firstSection)
+            local sec = CreateSection(popup.content, sectionName, firstSection)
             sectionMap[sectionName] = sec
             sectionOrder[#sectionOrder + 1] = sectionName
             firstSection = false
@@ -909,17 +1079,17 @@ local function PopulatePopup(frame, config)
 
         local widget
         if widgetDef.type == "slider" then
-            widget = CreateSettingSlider(popup, widgetDef)
+            widget = CreateSettingSlider(popup.content, widgetDef)
         elseif widgetDef.type == "checkbox" then
-            widget = CreateSettingCheckbox(popup, widgetDef)
+            widget = CreateSettingCheckbox(popup.content, widgetDef)
         elseif widgetDef.type == "dropdown" then
-            widget = CreateSettingDropdown(popup, widgetDef)
+            widget = CreateSettingDropdown(popup.content, widgetDef)
         elseif widgetDef.type == "input" then
-            widget = CreateSettingInput(popup, widgetDef)
+            widget = CreateSettingInput(popup.content, widgetDef)
         elseif widgetDef.type == "color" then
-            widget = CreateSettingColorPicker(popup, widgetDef)
+            widget = CreateSettingColorPicker(popup.content, widgetDef)
         elseif widgetDef.type == "nudge" then
-            widget = CreateNudgeWidget(popup, config)
+            widget = CreateNudgeWidget(popup.content, config)
         end
 
         if widget then
@@ -957,10 +1127,10 @@ local function PopulatePopup(frame, config)
 
     local actions = config.actions
     if actions and #actions > 0 then
-        local secActions = CreateSection(popup, "Actions", false)
+        local secActions = CreateSection(popup.content, "Actions", false)
 
         for _, actionDef in ipairs(actions) do
-            local btn = CreateActionButton(popup, actionDef)
+            local btn = CreateActionButton(popup.content, actionDef)
 
             if actionDef.builtin == "revert" then
                 btn:SetScript("OnClick", function()
@@ -1003,12 +1173,12 @@ local function PopulatePopup(frame, config)
     end
 
     function popup:LayoutSections()
-        local y = -40 -- below title
+        local y = -8
         for _, sec in ipairs(self.sections) do
             local h = sec:Layout(y)
             y = y - h - 4
         end
-        self:SetHeight(math.abs(y) + 20)
+        self.content:SetHeight(math.max(1, math.abs(y) + 12))
     end
 
     popup:LayoutSections()
@@ -1020,34 +1190,20 @@ local function PopulatePopup(frame, config)
         end
     end
 
-    local fes = frame:GetEffectiveScale()
-    local uiScale = UIParent:GetEffectiveScale()
-    local screenW = UIParent:GetWidth()
-    local screenH = UIParent:GetHeight()
-
-    local frameRight = frame:GetRight() * fes / uiScale
-    local frameLeft = frame:GetLeft() * fes / uiScale
-    local frameTop = frame:GetTop() * fes / uiScale
-    local popupW = popup:GetWidth()
-
-    local x, y
-    if frameRight + popupW + 10 > screenW then
-        x = frameLeft - popupW - 10
-    else
-        x = frameRight + 10
-    end
-    y = math.min(frameTop + 10, screenH - 10)
-
-    popup:ClearAllPoints()
-    popup:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
+    popup.scroll:SetVerticalScroll(0)
+    DockInspector(SideForFrame(frame))
     popup:Show()
 end
 
+-- Deselecting does not close the inspector any more - it goes back to the
+-- list. Closing it is leaving the session.
 local function HidePopup()
-    if settingsPopup then
+    popupSavedState = nil
+    if isEditMode then
+        ShowInspectorList()
+    elseif settingsPopup then
         settingsPopup:Hide()
     end
-    popupSavedState = nil
 end
 
 ---------------------------------------------------------------------------
@@ -1129,7 +1285,7 @@ local function EnterEditMode()
             config.onEnter(frame)
         end
     end
-    BazUI:ShowEditModeBar(true)
+    ShowInspectorList()
     BazUI:Fire("BAZ_EDITMODE_ENTER")
 end
 
@@ -1149,7 +1305,7 @@ local function ExitEditMode()
             config.onExit(frame)
         end
     end
-    BazUI:ShowEditModeBar(false)
+    if settingsPopup then settingsPopup:Hide() end
     BazUI:Fire("BAZ_EDITMODE_EXIT")
 end
 
@@ -1287,70 +1443,6 @@ function BazUI:OpenEditModeCreateMenu(anchor)
         return
     end
     BazUI:OpenContextMenu("editmode-create", anchor, {}, { title = "Create" })
-end
-
----------------------------------------------------------------------------
--- The BazUI Edit bar
---
--- The Create button used to be parented to EditModeManagerFrame, which put
--- one of our frames inside one of theirs and meant it only existed while
--- their Edit Mode was open. It lives here instead, on a bar of our own that
--- appears for the length of a BazUI edit session - including a session
--- started from inside Blizzard's, so nothing is lost by the move.
----------------------------------------------------------------------------
-
-local editBar
-
-local function BuildEditBar()
-    local Theme = BazUI.Skin.Theme
-
-    local f = CreateFrame("Frame", "BazUIEditBar", UIParent)
-    f:SetFrameStrata("DIALOG")
-    f:SetFrameLevel(300)
-    f:SetSize(260, 56)
-    f:SetPoint("TOP", UIParent, "TOP", 0, -120)
-    f:SetClampedToScreen(true)
-    f:SetMovable(true)
-    f:EnableMouse(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    f:Hide()
-
-    local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
-    border:SetAllPoints()
-
-    local title = Theme.FontString(f, "ARTWORK", "GameFontNormal")
-    title:SetPoint("TOP", 0, -10)
-    title:SetText("BazUI Edit")
-
-    local create = Theme.CreateButton(f, {
-        text = "Create", width = 110, height = 22, style = "primary",
-        onClick = function(self) BazUI:OpenEditModeCreateMenu(self) end,
-    })
-    create:SetPoint("BOTTOMLEFT", 14, 10)
-
-    local done = Theme.CreateButton(f, {
-        text = "Done", width = 110, height = 22,
-        onClick = function() BazUI:ExitEditMode() end,
-    })
-    done:SetPoint("BOTTOMRIGHT", -14, 10)
-
-    -- Escape leaves the session, the way it leaves Blizzard's. Taken on
-    -- the bar itself rather than through UISpecialFrames, which is a taint
-    -- source on Forever - see Core/Compat.lua.
-    BazUI.CloseOnEscape(f, function() BazUI:ExitEditMode() end)
-
-    return f
-end
-
-function BazUI:ShowEditModeBar(show)
-    if not show then
-        if editBar then editBar:Hide() end
-        return
-    end
-    editBar = editBar or BuildEditBar()
-    editBar:Show()
 end
 
 ---------------------------------------------------------------------------
