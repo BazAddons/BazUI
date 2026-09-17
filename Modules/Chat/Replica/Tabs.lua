@@ -23,8 +23,95 @@
 
 local addon   = BazUI.Chat            -- Chat's private namespace
 
+-- How far the first tab sits in from the chat window's left edge.
+local TAB_STRIP_INDENT = 4
+
+
 local Tabs = {}
 addon.Tabs = Tabs
+
+---------------------------------------------------------------------------
+-- Which way a tab group runs
+--
+-- A dock instance - the main one, or any window a tab was popped out
+-- into - is a tab group, and each has its own strip. Left to right by
+-- default, against the window's left edge, with the add button after the
+-- last tab.
+--
+-- Reversed, the whole group mirrors: the strip hangs off the right edge,
+-- the tabs run leftward from it, and the add button moves to the far end
+-- so it stays where the next tab would appear. Per group, because the
+-- point of it is a window docked on the right-hand side of a screen.
+---------------------------------------------------------------------------
+
+-- Which group a tab belongs to. A method rather than one of the file's
+-- local helpers, so the menu above can reach it without caring which of
+-- them was declared first.
+function Tabs:GroupIDFor(idx)
+    local p = (addon.db and addon.db.profile)
+        or (addon.core and addon.core.db and addon.core.db.profile)
+    local ws = p and p.windows and p.windows[idx]
+    return (ws and ws.dockID) or "dock"
+end
+
+function Tabs:IsGroupReversed(dockID)
+    local p = (addon.db and addon.db.profile)
+        or (addon.core and addon.core.db and addon.core.db.profile)
+    local d = p and p.docks and p.docks[dockID or "dock"]
+    return (d and d.reverseTabs) and true or false
+end
+
+function Tabs:SetGroupReversed(dockID, on)
+    dockID = dockID or "dock"
+    local p = (addon.db and addon.db.profile)
+        or (addon.core and addon.core.db and addon.core.db.profile)
+    if not p then return end
+    p.docks = p.docks or {}
+    p.docks[dockID] = p.docks[dockID] or {}
+    p.docks[dockID].reverseTabs = on and true or nil
+    self:ApplyGroupFlow(dockID)
+end
+
+-- Put a group the way round it is meant to be: the strip's own edge, the
+-- direction its tabs run, and which side the add button sits on.
+function Tabs:ApplyGroupFlow(dockID)
+    dockID = dockID or "dock"
+    local inst = addon.Window and addon.Window.docks
+        and addon.Window.docks[dockID]
+    local ts = inst and inst.tabSystem
+    if not ts then return end
+
+    local reverse = self:IsGroupReversed(dockID)
+    local frame = inst.frame
+    local Chrome = addon.Chrome
+
+    if ts.SetReverseFlow then ts:SetReverseFlow(reverse) end
+
+    if frame then
+        ts:ClearAllPoints()
+        if reverse then
+            local right = (Chrome and Chrome.INSET_RIGHT) or 26
+            ts:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT",
+                right - TAB_STRIP_INDENT, 9)
+        else
+            local left = (Chrome and Chrome.INSET_LEFT) or 10
+            ts:SetPoint("BOTTOMLEFT", frame, "TOPLEFT",
+                -left + TAB_STRIP_INDENT, 9)
+        end
+    end
+
+    local addBtn = inst.addBtn or ts.addBtn
+    if addBtn then
+        addBtn:ClearAllPoints()
+        if reverse then
+            addBtn:SetPoint("BOTTOMRIGHT", ts, "BOTTOMLEFT", -4, 0)
+        else
+            addBtn:SetPoint("BOTTOMLEFT", ts, "BOTTOMRIGHT", 4, 0)
+        end
+    end
+
+    if ts.MarkDirty then ts:MarkDirty() end
+end
 
 ---------------------------------------------------------------------------
 -- chat-tab context menu section
@@ -171,6 +258,19 @@ local function GetBazChatSection(ctx)
         end
     end
 
+    -- The group's own setting, offered on every tab in it rather than
+    -- just the first: whichever one you happened to right-click is the
+    -- one you were looking at.
+    do
+        local groupID = Tabs:GroupIDFor(idx)
+        local reversed = Tabs:IsGroupReversed(groupID)
+        items[#items + 1] = { divider = true }
+        items[#items + 1] = {
+            label   = reversed and "Run tabs left to right" or "Run tabs right to left",
+            onClick = function() Tabs:SetGroupReversed(groupID, not reversed) end,
+        }
+    end
+
     -- Tab 1 is the protected default; deletion would orphan the dock
     -- chrome. DeleteTab itself guards this but skipping the entry on
     -- the first tab keeps the menu tidy.
@@ -215,29 +315,45 @@ end
 -- Channel detection (Trade tab visibility + chat-type routing)
 ---------------------------------------------------------------------------
 
--- Find the Trade channel's runtime ID. Realms can name the trade
--- channel "Trade", "Trade - City", "Trade - <ZoneName>", etc., so an
--- exact GetChannelName("Trade") miss falls through to scanning
--- GetChannelList for any name containing "trade" (case-insensitive).
-local function FindTradeChannelID()
-    if GetChannelName then
-        local id = GetChannelName("Trade")
-        if id and id ~= 0 then return id end
-    end
-    if GetChannelList then
-        local channels = { GetChannelList() }
-        for i = 1, #channels, 3 do
-            local id, name = channels[i], channels[i + 1]
-            if name and name:lower():find("trade") then return id end
+-- The runtime ID of a zone channel, or nothing.
+--
+-- Realms decorate these names: "General", "General - Elwynn Forest",
+-- "Trade", "Trade - City", "Trade (Services)". So the word has to start
+-- the name and be followed by a separator rather than by more word -
+-- searching for "trade" anywhere in the name also finds
+-- TradeSkillMaster and every custom channel anybody has called tradehub,
+-- which is how a Trade tab came to be sitting there in the middle of the
+-- Wetlands.
+--
+-- Read only from the channel list, which is what you are actually in,
+-- and only counting channels that are live. Leaving a capital does not
+-- always take the channel out of the list - it can be left there marked
+-- disabled, which is a channel you cannot say anything in.
+local function FindZoneChannelID(word)
+    if not (GetChannelList and word) then return nil end
+    local want = word:lower()
+
+    local channels = { GetChannelList() }
+    for i = 1, #channels, 3 do
+        local id, name, disabled = channels[i], channels[i + 1], channels[i + 2]
+        if id and not disabled and type(name) == "string" then
+            local lower = name:lower()
+            if lower == want or lower:match("^" .. want .. "[%s%-%(]") then
+                return id
+            end
         end
     end
     return nil
 end
 
--- Blizzard joins you to the Trade channel when you enter a capital and
--- drops you when you leave, so "is Trade usable" is simply "is a Trade
--- channel in my channel list". Works on every client flavour; the zone
--- PvP type does not (Classic capitals are not sanctuaries).
+local function FindTradeChannelID()
+    return FindZoneChannelID("trade")
+end
+
+-- Blizzard joins you to the Trade channel when you enter a capital, so
+-- "is Trade usable" is "am I in a live Trade channel". Works on every
+-- client flavour; the zone PvP type does not (Classic capitals are not
+-- sanctuaries).
 function Tabs:IsTradeUsable()
     return FindTradeChannelID() ~= nil
 end
@@ -245,19 +361,34 @@ end
 -- Native chatType per event group. LOOT (Trade tab) is special-cased
 -- in ResolveChatType because it depends on the player's current zone.
 local CHAT_TYPE_BY_GROUP = {
-    GENERAL = "SAY",
+    GENERAL = "SAY",   -- only when there is no General channel to join
     GUILD   = "GUILD",
     LOOT    = "SAY",   -- only used outside cities; cities use CHANNEL
     LOG     = "SAY",   -- LOG tab is read-only, but we still set
                        -- something defensive in case the editbox shows
 }
 
+-- Tabs named after a channel send to that channel.
+--
+-- Guild goes to /g and Trade to the Trade channel, so General going to
+-- /say made it the odd one out - a tab named after a channel that typed
+-- somewhere else. Both are resolved at the moment you press Enter rather
+-- than remembered, because a zone channel's ID changes as you travel.
+--
+-- Falling back to /say when the channel is not there is the important
+-- half: outside a city there is no Trade channel, and there are places
+-- with no General either. Better to say it out loud than to send it
+-- nowhere.
+local CHANNEL_BY_GROUP = {
+    GENERAL = "general",
+    LOOT    = "trade",
+}
+
 local function ResolveChatType(group)
-    if group == "LOOT" then
-        if Tabs:IsTradeUsable() then
-            local tradeID = FindTradeChannelID()
-            if tradeID then return "CHANNEL", tradeID end
-        end
+    local channelWord = CHANNEL_BY_GROUP[group]
+    if channelWord then
+        local id = FindZoneChannelID(channelWord)
+        if id then return "CHANNEL", id end
         return "SAY", nil
     end
     return CHAT_TYPE_BY_GROUP[group] or "SAY", nil
@@ -286,8 +417,9 @@ end
 -- Dynamic tab visibility (autoShow)
 --
 -- Each tab's `autoShow` field declares when the tab should be visible:
---   "always"   - always shown (default for General / Guild / Log)
+--   "always"   - always shown (default for General / Log)
 --   "city"     - only while a Trade channel is joined (capitals) - default for Trade
+--   "guild"    - only while in a guild - default for Guild
 --   "party"    - only when in a party
 --   "raid"     - only when in a raid
 --   "combat"   - only during combat
@@ -298,7 +430,8 @@ end
 -- shows/hides the tab to match. If the currently-active tab gets
 -- hidden, we fall back to General (idx 1).
 --
--- Re-fired on zone change, combat start/end, party/raid roster update.
+-- Re-fired on zone change, combat start/end, party/raid roster update,
+-- and joining or leaving a guild.
 -- Wiring lives in Window:CreateDock's watcher frame.
 ---------------------------------------------------------------------------
 
@@ -306,6 +439,9 @@ local function ShouldShowTab(autoShow)
     if not autoShow or autoShow == "always" then return true end
     if autoShow == "city" then
         return Tabs:IsTradeUsable()
+    end
+    if autoShow == "guild" then
+        return IsInGuild and IsInGuild() or false
     end
     if autoShow == "raid" then
         return IsInRaid and IsInRaid() or false
@@ -433,16 +569,22 @@ local function BuildAddButton(ts, dockID)
     local safeID = (dockID or "dock"):gsub("[^%w_]", "_")
     local btnName = (dockID == "dock") and "BazUIChatAddTabButton"
                                        or  ("BazUIChatAddTabButton_" .. safeID)
+    -- Sized off the tabs it sits beside rather than a number of its own,
+    -- which is how it came to be a 32-pixel glyph next to 19-pixel tabs.
+    local size = ts.tabHeight or 26
+
     local addBtn = CreateFrame("Button", btnName, ts)
-    addBtn:SetSize(32, 32)
-    addBtn:SetPoint("LEFT", ts, "RIGHT", 8, 0)
+    addBtn:SetSize(size, size)
+    -- Bottom to bottom, so it stands on the same line as the tab plates
+    -- whatever height the strip itself reports.
+    addBtn:SetPoint("BOTTOMLEFT", ts, "BOTTOMRIGHT", 4, 0)
 
     local plus = BazUI.Skin.Theme.FontString(addBtn, "OVERLAY", "GameFontNormalHuge")
     local fontFile, _, fontFlags = plus:GetFont()
-    plus:SetFont(fontFile, 32, fontFlags or "")
-    plus:SetShadowOffset(2, -2)
+    plus:SetFont(fontFile, math.max(10, size), fontFlags or "")
+    plus:SetShadowOffset(1, -1)
     plus:SetShadowColor(0, 0, 0, 1)
-    plus:SetPoint("CENTER", addBtn, "CENTER", 0, -1)
+    plus:SetPoint("CENTER", addBtn, "CENTER", 0, 1)
     plus:SetText("+")
     plus:SetTextColor(1, 0.82, 0)   -- WoW gold
     addBtn.Text = plus
@@ -451,12 +593,12 @@ local function BuildAddButton(ts, dockID)
     addBtn:SetScript("OnLeave", function(self) self.Text:SetTextColor(1, 0.82, 0) end)
     addBtn:SetScript("OnMouseDown", function(self)
         self.Text:ClearAllPoints()
-        self.Text:SetPoint("CENTER", self, "CENTER", 1, -3)
+        self.Text:SetPoint("CENTER", self, "CENTER", 1, 0)
         self.Text:SetTextColor(0.75, 0.62, 0.18)
     end)
     addBtn:SetScript("OnMouseUp", function(self)
         self.Text:ClearAllPoints()
-        self.Text:SetPoint("CENTER", self, "CENTER", 0, -1)
+        self.Text:SetPoint("CENTER", self, "CENTER", 0, 1)
         if self:IsMouseOver() then
             self.Text:SetTextColor(1, 1, 0.6)
         else
@@ -584,23 +726,25 @@ function Tabs:EnsureFor(dockInstance)
     -- Blizzard's TabSystem exists in every client's source tree but
     -- Classic-family clients don't load it. BazUI.CreateTabStrip speaks
     -- the same API, so everything below works against either.
-    local ts
-    if BazUI.HasBlizzardTabSystem and BazUI.HasBlizzardTabSystem() then
-        ts = CreateFrame("Frame", stripName, UIParent, "TabSystemTemplate")
-        ts.tabTemplate = "TabSystemTopButtonTemplate"
-        -- Tighter clamp than the housing dashboard's defaults; chat tab
-        -- labels are short and we want a compact look against ~440px chats.
-        ts.minTabWidth = 60
-        ts.maxTabWidth = 120
-        if TabSystemMixin and TabSystemMixin.OnLoad then
-            TabSystemMixin.OnLoad(ts)
-        end
-    else
-        ts = BazUI.CreateTabStrip(stripName, UIParent, {
-            minTabWidth = 60, maxTabWidth = 120,
-            tabSelectSound = SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB,
-        })
-    end
+    -- Ours, always, rather than Blizzard's TabSystemTemplate where the
+    -- client has one.
+    --
+    -- The two speak the same API, so this used to take theirs when it was
+    -- there and fall back to ours when it was not. That left the tabs
+    -- wearing Blizzard's grey plates above a window drawn in the suite's
+    -- own border and colours - the same mismatch the chrome itself had.
+    -- Ours takes its plates and its accent straight from the palette, so
+    -- the strip follows a skin change with the window under it.
+    local ts = BazUI.CreateTabStrip(stripName, UIParent, {
+        -- Chat tab labels are short, and these sit above a chat box
+        -- around 440 wide. The floor is low enough that "Log" is allowed
+        -- to be a small tab rather than padded out to match "General".
+        minTabWidth = 40, maxTabWidth = 120,
+        tabHeight   = 19,
+        tabFont     = "GameFontNormalSmall",
+        textPad     = 16,
+        tabSelectSound = SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB,
+    })
     if not ts then
         if addon.core then
             addon.core:Print("|cffff4444Could not build the chat tab strip|r")
@@ -613,11 +757,20 @@ function Tabs:EnsureFor(dockInstance)
     -- (which AddTab calls). Anchor to the dock instance's frame so the
     -- strip tracks the container's position; parent stays UIParent so
     -- visibility is independent.
-    ts:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", 6, 9)
+    -- Measured from the window's left edge rather than the chat text's:
+    -- the chrome reaches further left than the frame it wraps, so lining
+    -- up with the frame left the tabs sitting inside the panel's corner.
+    -- A few pixels in from there, so the first tab clears the corner
+    -- instead of growing out of it.
+    local chromeLeft = (addon.Chrome and addon.Chrome.INSET_LEFT) or 10
+    ts:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -chromeLeft + TAB_STRIP_INDENT, 9)
     ts:SetFrameLevel((frame:GetFrameLevel() or 5) + 20)
-    -- Native template is sized for full chrome frames; 0.8 reads as
-    -- "chat-tab sized" against our smaller chat box.
-    ts:SetScale(0.8)
+    -- Re-points the strip and the add button if this group runs the
+    -- other way. Done after the default anchor above rather than instead
+    -- of it, so the ordinary case needs no special path, and a tick
+    -- later because the instance does not hold this strip yet.
+    C_Timer.After(0, function() Tabs:ApplyGroupFlow(id) end)
+    -- Ours is drawn at the size it means, so no scaling down.
     ts:Show()
 
     ts._dockID = id
@@ -976,6 +1129,9 @@ function Tabs:DeleteTab(idx)
         end
     end
 
+    -- Which container it was living in, read before the entry goes.
+    local dockID = p.windows[idx].dockID or "dock"
+
     -- Wipe the DB entry. From this point any code reading
     -- windows[idx] from the profile sees nil, so right-click /
     -- channel-popup / options-page entries all become inert for it.
@@ -1001,6 +1157,28 @@ function Tabs:DeleteTab(idx)
             if id ~= idx then cleaned[#cleaned + 1] = id end
         end
         p.tabOrder = cleaned
+    end
+
+    -- A popped-out window that has just lost its last tab.
+    --
+    -- The container, its strip and its add button are not the tab, so
+    -- none of them went away with it: what was left was an empty window
+    -- with a lone "+" in it. And the container's saved geometry outlived
+    -- the tab too, so the next reload built that empty window again.
+    --
+    -- Only when nothing else is living there. A popped window can hold
+    -- several tabs, and deleting one of them should leave the rest where
+    -- they are.
+    if dockID ~= "dock" and addon.Window and addon.Window.DestroyDockInstance then
+        local stillUsed = false
+        for _, win in pairs(p.windows) do
+            if (win.dockID or "dock") == dockID then stillUsed = true break end
+        end
+        if not stillUsed then
+            -- With the geometry, since there is no longer anything that
+            -- would be restored into it.
+            addon.Window:DestroyDockInstance(dockID, true)
+        end
     end
 
     -- Close the channel popup if it was for this tab; refresh the

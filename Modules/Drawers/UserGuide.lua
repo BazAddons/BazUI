@@ -1,351 +1,231 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BazUI Drawers User Guide
+-- BazUI Drawers User Manual
 ---------------------------------------------------------------------------
 
 if not BazUI or not BazUI.RegisterUserGuide then return end
 
 BazUI:RegisterUserGuide("Drawers", {
     title = "Drawers",
-    intro = "A full-height slide-out drawer that hosts a vertical stack of dockable widgets and fades out of the way when you're not using it. Run multiple drawer presets and switch between them by hand or automatically based on game context.",
+    intro = "A panel down the side of the screen holding a stack of small "
+        .. "readouts, instead of a dozen little frames scattered everywhere.",
+
     pages = {
-        ---------------------------------------------------------------
-        -- Welcome
-        ---------------------------------------------------------------
         {
-            title = "Welcome",
+            title = "What it does",
             blocks = {
-                { type = "lead", text = "The Drawers module docks to either edge of your screen and holds a stack of widgets. Instead of scattering a dozen small frames around your UI, it gathers everything into one tidy column flush against the edge." },
-                { type = "h2", text = "What can dock here?" },
-                { type = "list", items = {
-                    "Quest Tracker",
-                    "Minimap",
-                    "Minimap Buttons",
-                    "Zone Text",
-                    "Info Bar (clock, calendar, tracking)",
-                }},
-                { type = "note", style = "tip", text = "Widget content stays at full opacity even when the drawer chrome is faded — quest text and minimap remain readable at all times." },
-                { type = "h2", text = "Slash commands" },
-                { type = "table",
-                  columns = { "Command", "Effect" },
-                  rows = {
-                      { "/bwd",           "Open the BazUI Drawers settings page" },
-                      { "/bwd toggle",    "Open or close the drawer" },
-                      { "/bwd show",      "Open the drawer" },
-                      { "/bwd hide",      "Close the drawer" },
-                  },
-                },
+                { type = "paragraph", text = "The drawer sits against the left or right edge of your screen and holds a column of widgets. It slides away when you are not using it and the chrome around it fades, leaving what is in it readable." },
+                { type = "paragraph", text = "The minimap lives here, along with the minimap buttons every addon adds, the quest tracker, and about twenty small readouts - a clock, coordinates, your gold, durability, free bag slots, a notepad, a calculator. Anything publishing a LibDataBroker feed turns up as a widget too." },
+                { type = "note", text = "|cffffd700Open it with|r /bwd, or Options > AddOns > BazUI > Drawers." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- The Drawer
-        ---------------------------------------------------------------
         {
-            title = "The Drawer",
+            title = "The drawer itself",
             blocks = {
-                { type = "paragraph", text = "The drawer is a slide-out side panel with chrome that fades when you're not interacting with it." },
-                { type = "h3", text = "Pull tab" },
-                { type = "paragraph", text = "A metal pull-tab handle sits on the screen edge. Click to slide the drawer on or off screen." },
-                { type = "h3", text = "Side & width" },
-                { type = "list", items = {
-                    "|cffffd700Side|r — Left or Right; tab, slide direction, and edge hot zone all flip automatically",
-                    "|cffffd700Width|r — 120–400 px; every docked widget rescales uniformly when you change this",
-                    "|cffffd700Edge hot zone|r — invisible strip along the screen edge that re-reveals the tab when collapsed",
-                }},
-                { type = "note", style = "tip", text = "If the tab feels hard to find, raise |cffffd700Reveal the tab within|r under Drawers > General." },
+                { type = "h3", text = "Opening and closing it" },
+                { type = "paragraph", text = "A pull tab sits on the screen edge. Click it and the drawer slides on or off. When it is closed, an invisible strip along the edge brings the tab back when your cursor gets near - |cffffd700Reveal the tab within|r sets how near." },
+                { type = "h3", text = "Layout" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Screen side", "Left or right. The tab, the direction it slides and the edge strip all follow." },
+                    { "Width", "How wide the column is. Every widget in it resizes to match." },
+                    { "Space between widgets", "The gap between one widget and the next." },
+                } },
+                { type = "h3", text = "Appearance" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Background opacity", "How solid the panel behind the widgets is." },
+                    { "Frame opacity", "The chrome - the border, the tab, the bottom bar." },
+                } },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Multiple Drawers
-        ---------------------------------------------------------------
         {
-            title = "Multiple Drawers",
+            title = "Fading",
             blocks = {
-                { type = "lead", text = "You can run more than one drawer at a time, each with its own preset of widgets, side, width, fade, and lock state." },
-                { type = "h2", text = "Tabs at the top" },
-                { type = "paragraph", text = "Each drawer appears as a tab along the top of the drawer area. Click a tab to switch which drawer is currently visible. Each tab has its own icon (configurable per drawer)." },
-                { type = "h2", text = "Common patterns" },
-                { type = "table",
-                  columns = { "Use case", "Suggested widgets" },
-                  rows = {
-                      { "Questing",  "Quest Tracker, Minimap, Coordinates, Zone Text" },
-                      { "M+",        "Quest Tracker (Challenge Mode block), Pull Timer, Cooldowns, Trinket Tracker" },
-                      { "PvP",       "Speed Monitor, Trinket Tracker, Performance" },
-                      { "Crafting",  "Currency Bar, Note Pad, Calculator, Free Bag Slots" },
-                  },
-                },
-                { type = "h2", text = "Creating + managing drawers" },
-                { type = "list", items = {
-                    "|cffffd700Settings > BazUI Drawers > Drawers|r > Create New Drawer",
-                    "Each drawer has its own Name, Icon, Auto-switch trigger, and widget list",
-                    "Delete any drawer except the last one (you always have at least one)",
-                }},
+                { type = "paragraph", text = "The chrome fades as one thing - backdrop, border, pull tab, bottom bar - and |cffffd700what is inside stays fully visible|r. Quest text and the minimap are readable whether or not you have the cursor anywhere near them." },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Fade when the cursor leaves", "The whole behavior, on one switch." },
+                    { "Faded opacity", "How much is left when it has faded. 0 is genuinely invisible; around 30% leaves a hint of where the drawer is." },
+                    { "Fade after", "How long it waits once your cursor has left." },
+                    { "Fade takes", "How long the fade itself runs." },
+                    { "Stay fully visible in combat", "No fading while you are fighting." },
+                    { "Fade the tab while the drawer is closed", "Whether the tab itself fades away too, or stays put as something to aim at." },
+                    { "Reveal the tab within", "How close the cursor has to get to the edge to bring a faded tab back. Raise it if the tab is hard to find." },
+                } },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Auto-Switch
-        ---------------------------------------------------------------
         {
-            title = "Auto-Switch",
+            title = "Locking it",
             blocks = {
-                { type = "lead", text = "Each drawer can be set to activate automatically when you enter a specific game context. Useful for swapping your widget loadout the moment you queue up or take a portal." },
-                { type = "h2", text = "Available triggers" },
-                { type = "table",
-                  columns = { "Trigger", "Activates when..." },
-                  rows = {
-                      { "None (manual only)",     "(default) — only when you click the tab" },
-                      { "Open World / Questing",  "you're not in any instance" },
-                      { "Dungeon (5-man)",        "you enter a 5-man dungeon" },
-                      { "Raid",                   "you enter a raid instance" },
-                      { "Mythic+ (Challenge Mode)", "a Mythic+ key is active" },
-                      { "Delve",                  "you enter a Delve" },
-                      { "Battleground",           "you enter a battleground" },
-                      { "Arena",                  "you enter an arena match" },
-                  },
-                },
-                { type = "note", style = "info", text = "Two drawers can claim the same trigger — the first one wins. Tabs at the top still let you flip between them by hand." },
-                { type = "h2", text = "Setting it up" },
-                { type = "list", ordered = true, items = {
-                    "Open |cffffd700Settings > BazUI Drawers > Drawers|r and select the drawer you want to auto-switch to",
-                    "Toggle |cffffd700Auto-Switch|r on",
-                    "Pick the |cffffd700Trigger|r from the dropdown",
-                }},
+                { type = "paragraph", text = "The padlock on the bottom bar locks the drawer for a clean column with no chrome around it." },
+                { type = "list", items = {
+                    "It cannot be closed or slid away.",
+                    "The chrome is hidden - the label, the widget count, the info button.",
+                    "Widget title bars collapse out of the way so the widgets pack flush against each other.",
+                    "The fade settings gray out, since there is nothing left to fade.",
+                } },
+                { type = "paragraph", text = "Hover anywhere on the drawer and the padlock comes back. Click it to unlock." },
+                { type = "note", text = "Worth it for screenshots, and for anyone who wants the readouts without the furniture." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Per-drawer widget assignment
-        ---------------------------------------------------------------
         {
-            title = "Choosing Widgets per Drawer",
+            title = "More than one drawer",
             blocks = {
-                { type = "lead", text = "Each drawer has its own widget list. Use the Widgets page to enable widgets globally, then use the Drawers page to pick which widgets show up in which drawer." },
-                { type = "h2", text = "Two-step workflow" },
-                { type = "list", ordered = true, items = {
-                    "|cffffd700Widgets page|r — toggle the Enabled switch on each widget you ever want to use. Disabled widgets are hidden everywhere — no drawer slot, no floating frame.",
-                    "|cffffd700Drawers page|r — for each drawer, tick the box next to widgets you want to appear in that drawer. The same widget can live in multiple drawers.",
-                }},
-                { type = "note", style = "info", text = "Newly enabled widgets default to OFF in every drawer's checklist. Head to the Drawers page and tick them on for whichever drawers you want them in — they don't auto-add everywhere." },
-                { type = "h2", text = "Drag-to-reorder" },
-                { type = "paragraph", text = "Inside a drawer, hold any widget's title bar for ~half a second (it turns green) then drag up or down to reorder. The order is saved per drawer, so the same widget can sit at the top of one drawer and the bottom of another." },
-                { type = "h2", text = "Floating widgets" },
-                { type = "paragraph", text = "Toggle |cffffd700Floating|r on a widget's settings page (or right-click its title bar > Float) to detach it from the drawer. Floating widgets get their own Edit Mode frame you can drag anywhere on screen." },
-                { type = "h2", text = "Collapsing widgets" },
-                { type = "paragraph", text = "Click the chevron on a widget's title bar to collapse it down to just the title row. Click again to expand. Collapse state is saved per widget per drawer." },
+                { type = "paragraph", text = "You can have several drawers, each with its own name, icon and set of widgets. They appear as tabs along the top of the drawer; click one to switch." },
+                { type = "h3", text = "Making and managing them" },
+                { type = "list", items = {
+                    "|cffffd700Drawers|r page > |cffffd700New drawer|r.",
+                    "Each has a |cffffd700Name|r and a |cffffd700Choose icon|r for its tab.",
+                    "|cffffd700Widgets in this drawer|r is the list of what it holds.",
+                    "Delete any of them except the last - there is always at least one.",
+                } },
+                { type = "note", text = "Switching drawers is something you do, not something that happens to you. There is no automatic switching by zone or content, and a drawer never changes under you mid-fight." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Smart Fade
-        ---------------------------------------------------------------
         {
-            title = "Smart Fade",
+            title = "Choosing widgets",
             blocks = {
-                { type = "paragraph", text = "Drawer chrome (backdrop, border, pull-tab, bottom bar) fades together as a unit. Widget content stays fully visible, so quest text and the minimap are always readable." },
-                { type = "table",
-                  columns = { "Setting", "Range", "Default" },
-                  rows = {
-                      { "Fade Delay",     "0–5 s",       "1 s" },
-                      { "Fade Duration",  "0.05–2 s",    "0.4 s" },
-                      { "Faded Opacity",  "0–1",         "0 (invisible)" },
-                      { "Combat Lock",    "on / off",    "off" },
-                  },
-                },
-                { type = "note", style = "tip", text = "Set Faded Opacity to 0 for a truly invisible drawer. Set it to 0.3 if you'd rather have a hint of where the drawer lives." },
+                { type = "paragraph", text = "It is two steps, and they do different jobs." },
+                { type = "list", items = {
+                    "|cffffd700The Widgets page|r switches a widget on at all. One that is off is gone everywhere - no drawer slot, no floating frame, and nothing running behind the scenes.",
+                    "|cffffd700The Drawers page|r decides which drawers each one appears in. The same widget can be in more than one.",
+                } },
+                { type = "note", text = "A widget you have just switched on starts off in every drawer's list. It does not add itself everywhere and leave you finding it later - go and tick it where you want it." },
+                { type = "h3", text = "Reordering" },
+                { type = "paragraph", text = "Hold a widget's title bar for about half a second - it turns green - then drag it up or down. The order is per drawer, so the same widget can sit at the top of one and the bottom of another." },
+                { type = "h3", text = "Each widget's own settings" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Floating", "Takes it out of the drawer and gives it a frame of its own you can drag anywhere. Right-click the title bar does the same." },
+                    { "Collapsed", "Folded down to its title row. The chevron on the title bar toggles it, and it is remembered per drawer." },
+                    { "Pin to the bottom of the drawer", "It stays at the bottom whatever else is added above it." },
+                    { "Fade the title bar with the drawer", "Whether its title bar counts as chrome." },
+                    { "Fade the background with the drawer", "The same for its background." },
+                } },
+                { type = "h3", text = "One setting for all of them" },
+                { type = "paragraph", text = "|cffffd700All widgets|r on the General page forces a value on every widget at once, for the fade settings above. While an override is on, that setting is grayed out on each widget's own page - so it is always clear which one is deciding. Turn it off and every widget goes back to its own answer." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Lock Mode
-        ---------------------------------------------------------------
         {
-            title = "Lock Mode",
+            title = "Widgets that come and go",
             blocks = {
-                { type = "lead", text = "Click the padlock icon on the bottom bar to lock the drawer for a perfectly clean column with no chrome." },
-                { type = "h2", text = "What locking does" },
-                { type = "list", items = {
-                    "Drawer cannot collapse",
-                    "All chrome is hidden (label, widget count, info button)",
-                    "Widget title-bar space collapses so widgets pack flush",
-                    "Fade settings are grayed out in the options panel",
-                }},
-                { type = "h2", text = "Unlocking" },
-                { type = "paragraph", text = "Hover anywhere on the drawer — the lock icon reappears. Click it to unlock and restore chrome." },
-                { type = "note", style = "tip", text = "Lock mode is ideal for screenshots or minimalist UIs." },
+                { type = "paragraph", text = "Some widgets only exist while there is something to say. One of these registers itself when its condition starts - you queued, you entered combat, your hearthstone is on cooldown - and disappears entirely when it stops. No slot, no title bar, no space held open for something that is not there." },
+                { type = "paragraph", text = "They still appear in the Widgets list marked |cffffd700[D]|r so you can set them up while they are not showing, and they obey their per-drawer switches like anything else." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Dormant Widgets
-        ---------------------------------------------------------------
         {
-            title = "Dormant Widgets",
+            title = "Widgets: the interface",
             blocks = {
-                { type = "lead", text = "Some widgets only show up when something interesting is happening." },
-                { type = "paragraph", text = "A dormant widget registers itself only while its condition holds - queued for a dungeon, in combat - and disappears entirely otherwise: no slot, no title bar, no wasted space." },
-                { type = "note", style = "info", text = "Dormant widgets still appear in the Widgets settings list marked with |cffffd700[D]|r so you can configure them while they're not visible. They obey their per-drawer toggles too — pick which drawer they show up in when their condition triggers." },
+                { type = "table", columns = { "Widget", "What it shows" }, rows = {
+                    { "Minimap", "The minimap in a frame of its own, sized to the drawer." },
+                    { "Minimap Buttons", "Every addon's minimap button collected into one row instead of orbiting the map." },
+                    { "Quest Tracker", "Your tracked quests, in the drawer instead of floating over the world." },
+                    { "Zone Text", "Where you are." },
+                    { "Info Bar", "The clock, the calendar and tracking, in one row." },
+                    { "Tooltip", "A slot that anchors the game's tooltip, so hovering an item or a unit shows it inside the drawer. It sits at the bottom and grows upward." },
+                } },
+                { type = "note", text = "The Tooltip widget only catches tooltips that were going to appear at the default place. An addon that insists on its own anchor keeps it." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Global Options
-        ---------------------------------------------------------------
         {
-            title = "The Same Fade on Every Widget",
+            title = "Widgets: what is happening",
             blocks = {
-                { type = "paragraph", text = "The |cffffd700All widgets|r section under General sets a value once for every widget at the same time." },
-                { type = "list", items = {
-                    "|cffffd700Same title bar fade on every widget|r — one switch for every widget's title bar",
-                    "|cffffd700Same background fade on every widget|r — one switch for every widget's background",
-                }},
-                { type = "note", style = "tip", text = "While a shared switch is on, that setting is grayed out on each widget's own page. Turn it off to return every widget to its own setting." },
+                { type = "h3", text = "Dungeon Finder" },
+                { type = "paragraph", text = "Appears when you queue. Shows which roles are filled, an estimated wait, a live timer in the title bar, what you queued for, and a button to leave. The title turns green when the group is found." },
+                { type = "h3", text = "Pull Timer" },
+                { type = "paragraph", text = "Appears when you enter combat and goes when it ends, counting how long the fight has run. The title bar carries the same number, so it still reads with the body collapsed." },
+                { type = "h3", text = "Hearthstone Cooldown" },
+                { type = "paragraph", text = "Appears while your hearthstone is on cooldown, counting down, and goes the moment it is ready." },
+                { type = "h3", text = "Reset Timers" },
+                { type = "paragraph", text = "How long until the next daily and weekly reset, shifting from green through yellow to red as the deadline comes up." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Widget pack (from BazWidgets)
-        ---------------------------------------------------------------
         {
-            title = "Widgets: Activity",
+            title = "Widgets: your character",
             blocks = {
-                { type = "lead", text = "Twenty more widgets ship with Drawers. Turn any of them on under Drawers > Widgets; dormant ones only take a slot while they have something to show." },
-                { type = "h2", text = "Dungeon Finder" },
-                { type = "lead", text = "Dormant queue status panel - appears when you queue through the group finder." },
-                { type = "list", items = {
-                    "Role fill indicators (tank / healer / DPS) with color-coded counts",
-                    "Average wait time estimate and a live queue timer in the title bar",
-                    "Dungeon name subtitle and a Leave Queue button",
-                    "Title turns green on Group Found",
-                }},
-                { type = "h2", text = "Pull Timer" },
-                { type = "lead", text = "Dormant combat-duration tracker - shows when you enter combat, disappears when it ends." },
-                { type = "list", items = {
-                    "Live elapsed time in a large gold display",
-                    "Title-bar status mirrors the time so it reads even with the body collapsed",
-                }},
-                { type = "h2", text = "Hearthstone Cooldown" },
-                { type = "list", items = {
-                    "Dormant - appears while your Hearthstone is on cooldown",
-                    "Live countdown to ready; hides the moment it clears",
-                }},
-                { type = "h2", text = "Reset Timers" },
-                { type = "list", items = {
-                    "Countdown to the next daily and weekly reset",
-                    "Color shifts from green to yellow to red as the deadline approaches",
-                }},
-            },
-        },
-        {
-            title = "Widgets: Character & Gear",
-            blocks = {
-                { type = "h2", text = "Repair" },
-                { type = "list", items = {
-                    "Durability display: paper doll, damaged-slot list and durability percent",
-                    "Worst-damaged slots first, color-graded green to red; average durability in the title bar",
-                    "Three paper-doll modes: icon grid, Blizzard's DurabilityFrame, or none",
-                    "Optional suppression of Blizzard's default durability figure",
-                }},
-                { type = "h2", text = "Stats" },
-                { type = "list", items = {
-                    "Item level header with statue icon",
-                    "Melee crit, spell crit (lowest school, as the character pane shows it), dodge and parry",
-                    "Live updates on equipment and rating changes",
-                }},
-                { type = "h2", text = "Item Level" },
-                { type = "list", items = {
-                    "Headline equipped item level with your overall average as a sub-label",
-                    "Headline tints yellow when better gear is sitting in your bags",
-                }},
-                { type = "h2", text = "Trinket Tracker" },
-                { type = "list", items = {
-                    "Both equipped trinkets side by side with live cooldown sweeps",
-                    "Click a trinket to use it out of combat",
-                }},
-                { type = "h2", text = "Free Bag Slots" },
-                { type = "list", items = {
-                    "Empty inventory slots remaining, green when comfortable and red when nearly full",
-                }},
-                { type = "h2", text = "Tooltip" },
-                { type = "list", items = {
-                    "A docked slot that anchors the game tooltip, so item, unit and spell hovers appear inside the drawer",
-                    "Sits at the drawer's bottom edge and grows upward with the tooltip",
-                }},
-                { type = "note", style = "info", text = "The Tooltip widget only redirects |cffffd700default-anchored|r tooltips. Addons that hardcode their own anchor keep it." },
-            },
-        },
-        {
-            title = "Widgets: Economy & Navigation",
-            blocks = {
-                { type = "h2", text = "Gold Tracker" },
-                { type = "list", items = {
-                    "Coin icon with formatted gold, silver and copper",
-                    "Session change in green for gains and red for losses; compact value in the title bar",
-                }},
-                { type = "h2", text = "Tracked Reputation" },
-                { type = "list", items = {
-                    "One faction of your choice: name, standing and progress to the next level",
-                    "Pick the faction in the widget's settings; the list shows every faction visible in your reputation pane",
-                }},
-                { type = "h2", text = "Coordinates" },
-                { type = "list", items = {
-                    "Live X/Y coordinates with the zone name below; compact coordinates in the title bar",
-                }},
-                { type = "h2", text = "Speed Monitor" },
-                { type = "list", items = {
-                    "Movement speed as a percentage with a progress bar",
-                    "Green above 100%, white at 100%, red when slowed",
-                }},
-            },
-        },
-        {
-            title = "Widgets: Utilities",
-            blocks = {
-                { type = "h2", text = "Note Pad" },
-                { type = "list", items = { "Text area saved per character, up to 2000 characters" } },
-                { type = "h2", text = "Stopwatch" },
-                { type = "list", items = { "Large gold time display with Start/Pause, Reset and -1m buttons; live time in the title bar" } },
-                { type = "h2", text = "To-Do List" },
-                { type = "list", items = { "Type and Enter to add a task, tick to complete, X to delete; saved per character" } },
-                { type = "h2", text = "Calculator" },
-                { type = "list", items = { "A 5x4 calculator with color-coded operators, equals and function keys" } },
-                { type = "h2", text = "Performance and FPS" },
-                { type = "list", items = {
-                    "Performance: frame rate plus home and world latency, color-coded",
-                    "FPS: frame rate only, with a rolling one-minute low and high",
-                }},
-            },
-        },
-        {
-            title = "Widgets: Broker Feeds",
-            blocks = {
-                { type = "lead", text = "Any addon that publishes a LibDataBroker feed shows up as its own drawer widget: a small icon, label and value. Bagnon, Recount, Skada, BugSack and most addons with a minimap data button qualify." },
-                { type = "h2", text = "What is LibDataBroker?" },
-                { type = "paragraph", text = "A shared library addons use to publish a value, a status string or an icon without deciding how it is displayed. Display addons such as Bazooka, ChocolateBar or Titan Panel arrange those feeds in bars; Drawers does the same inside the drawer." },
-                { type = "h2", text = "Using feeds" },
-                { type = "list", items = {
-                    "Feeds appear on the Widgets page in the LibDataBroker group, named after the addon that publishes them",
-                    "Enable, reorder or float them like any other widget",
-                    "Click a feed widget to run the feed's own action, such as opening that addon; hover for its tooltip",
-                    "Feeds that register after login are added as they appear, no reload needed",
-                }},
-                { type = "h2", text = "Settings" },
-                { type = "paragraph", text = "|cffffd700Drawers > Broker Feeds|r has the icon and label toggles, the placeholder shown before a feed has a value, and whether newly seen feeds start enabled. |cffffd700/bwd feeds|r lists every registered feed; |cffffd700/bwd feeds rescan|r rebuilds any that were missed." },
-                { type = "note", style = "info", text = "BazUI does not include LibDataBroker itself. Feeds exist only when another addon publishes them, and that addon brings the library along." },
+                { type = "h3", text = "Repair" },
+                { type = "paragraph", text = "Your durability: a paper doll, the damaged slots worst-first and graded green to red, and the average in the title bar. Three ways to draw the doll - an icon grid, the game's own durability figure, or none - and a switch to hide the game's version if you would rather only see this one." },
+                { type = "h3", text = "Stats" },
+                { type = "paragraph", text = "Item level, melee crit, spell crit taken from your lowest school the way the character pane does it, dodge and parry. Updates as you change gear." },
+                { type = "h3", text = "Item Level" },
+                { type = "paragraph", text = "What you are wearing, with your overall average underneath. The headline turns yellow when there is something better sitting in your bags." },
+                { type = "h3", text = "Trinket Tracker" },
+                { type = "paragraph", text = "Both equipped trinkets side by side with their cooldowns running. Click one to use it, out of combat." },
+                { type = "h3", text = "Free Bag Slots" },
+                { type = "paragraph", text = "How much room you have left, green while that is comfortable and red when it is not." },
             },
         },
 
-        ---------------------------------------------------------------
-        -- Profiles
-        ---------------------------------------------------------------
+        {
+            title = "Widgets: money and place",
+            blocks = {
+                { type = "h3", text = "Gold Tracker" },
+                { type = "paragraph", text = "What you are carrying, and what this session has cost or made you - green up, red down - with a compact figure in the title bar." },
+                { type = "h3", text = "Tracked Reputation" },
+                { type = "paragraph", text = "One faction of your choosing: its name, your standing, and how far through it you are. Pick it in the widget's settings, from everything your reputation pane knows about." },
+                { type = "h3", text = "Coordinates" },
+                { type = "paragraph", text = "Where you are standing, with the zone underneath and the numbers repeated in the title bar." },
+                { type = "h3", text = "Speed Monitor" },
+                { type = "paragraph", text = "How fast you are moving as a percentage, with a bar. Green above normal, white at it, red when something has slowed you." },
+            },
+        },
+
+        {
+            title = "Widgets: odds and ends",
+            blocks = {
+                { type = "table", columns = { "Widget", "What it does" }, rows = {
+                    { "Note Pad", "Somewhere to write things down, saved per character." },
+                    { "To-Do List", "Type and press Enter to add, tick to complete, X to remove. Per character." },
+                    { "Stopwatch", "Start, pause, reset, and a minute off. The time reads in the title bar too." },
+                    { "Calculator", "A calculator." },
+                    { "Performance", "Frame rate with your home and world latency, color-coded." },
+                    { "FPS", "Frame rate on its own, with a rolling low and high over the last minute." },
+                } },
+            },
+        },
+
+        {
+            title = "Widgets from other addons",
+            blocks = {
+                { type = "paragraph", text = "Any addon publishing a |cffffd700LibDataBroker|r feed becomes a widget here: an icon, a label and a value. Most addons with a minimap data button qualify." },
+                { type = "paragraph", text = "LibDataBroker is a shared library an addon uses to publish a number or a status without deciding how it should be shown. Display addons arrange those feeds in bars; this arranges them in the drawer." },
+                { type = "list", items = {
+                    "They appear on the Widgets page grouped together, named after the addon that publishes them.",
+                    "Switch them on, reorder them or float them like anything else here.",
+                    "Click one to do whatever the feed does - usually open its addon. Hover it for its tooltip.",
+                    "A feed that registers after you have logged in is picked up as it appears, with no reload.",
+                } },
+                { type = "paragraph", text = "|cffffd700Drawers > Broker Feeds|r has the icon and label switches, what to show before a feed has a value, and whether a newly seen feed starts on. |cffffd700/bwd feeds|r lists them in chat and |cffffd700/bwd feeds rescan|r rebuilds any that were missed." },
+                { type = "note", text = "BazUI does not ship LibDataBroker. Feeds exist only when some other addon publishes them, and that addon brings the library with it." },
+            },
+        },
+
         {
             title = "Profiles",
             blocks = {
-                { type = "paragraph", text = "Drawers uses BazUI's profile system. Each character can have its own profile — different drawers, different widget loadouts, different fade behaviors." },
-                { type = "paragraph", text = "Open |cffffd700Settings > BazUI > Profiles|r to create, switch, copy from, reset, or delete profiles." },
-                { type = "note", style = "tip", text = "One profile covers every BazUI module, so switching profiles changes Drawers, Chat and Bags together." },
+                { type = "paragraph", text = "Your drawers, what is in them, and how they behave all live in your BazUI profile. |cffffd700One profile covers every module|r, so switching it changes Drawers along with Bars, Chat, Bags and the rest together." },
+                { type = "paragraph", text = "Profiles are created, switched, copied and deleted on |cffffd700BazUI > Profiles|r." },
+            },
+        },
+
+        {
+            title = "Slash commands",
+            blocks = {
+                { type = "table", columns = { "Command", "What it does" }, rows = {
+                    { "/bwd", "Opens the Drawers settings." },
+                    { "/bwd toggle", "Opens or closes the drawer." },
+                    { "/bwd show", "Opens it." },
+                    { "/bwd hide", "Closes it." },
+                    { "/bwd open <name>", "Switches to a particular drawer by name." },
+                    { "/bwd feeds", "Lists every LibDataBroker feed in chat." },
+                    { "/bwd feeds rescan", "Looks again for feeds that were missed." },
+                } },
             },
         },
     },

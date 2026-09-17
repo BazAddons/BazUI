@@ -56,6 +56,36 @@ local function ScreenEdges(frame)
     return left * scale, right * scale, top * scale, bottom * scale
 end
 
+---------------------------------------------------------------------------
+-- Not snapping
+--
+-- Snapping is right nearly all of the time, which is the problem with it:
+-- the one time you want two things a few pixels apart and not joined,
+-- there is no way to say so. Two ways to say so, then.
+--
+-- A held key is the momentary one, and the one worth reaching for: you
+-- want snapping back the moment you let go. Asked at the instant it
+-- matters rather than remembered from when the drag started, so you can
+-- decide part way through a drag and see the landing line go out.
+--
+-- The switch is the other one, for somebody who would rather place
+-- everything by hand and never be grabbed at.
+---------------------------------------------------------------------------
+
+local FREE_MODIFIERS = {
+    ALT   = function() return IsAltKeyDown and IsAltKeyDown() end,
+    SHIFT = function() return IsShiftKeyDown and IsShiftKeyDown() end,
+    CTRL  = function() return IsControlKeyDown and IsControlKeyDown() end,
+}
+
+function Dock:SnappingSuppressed()
+    if BazUIDB and BazUIDB.snapping == false then return true end
+
+    local key = (BazUIDB and BazUIDB.snapFreeModifier) or "ALT"
+    local held = FREE_MODIFIERS[key]
+    return held and held() or false
+end
+
 -- The closest edge worth snapping to, or nothing.
 --
 -- Docking below a host means this frame's top meeting the host's bottom,
@@ -63,6 +93,12 @@ end
 -- dragged thing, as this first did, is half its height out before
 -- anything else goes wrong.
 function Dock:NearestSnap(frame, ignore)
+    -- One gate, because everything that snaps asks this: the landing line
+    -- drawn while you drag and the drop that acts on it are the same
+    -- question asked twice, and answering nil here is already what "there
+    -- is nothing to dock to" looks like.
+    if self:SnappingSuppressed() then return nil end
+
     local left, right, top, bottom = ScreenEdges(frame)
     if not left then return nil end
 

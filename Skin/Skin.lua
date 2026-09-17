@@ -41,6 +41,25 @@ BazUI.Skin = {
     -- path into somebody else's folder breaks the day they rename a
     -- file, and it would be missing entirely for anyone without them.
     ZYGOR_ICON               = ASSETS .. "zygorIcon.png",
+
+    -- What rank a unit is, as a glyph to sit in front of its name. Drawn
+    -- inline in the bar's own text, which means the client scales them to
+    -- the line height and nothing can tint them: whatever colour they
+    -- carry is the colour they are. 51x51 as shipped.
+    --
+    -- Anything missing falls back to what the rank is made of, so the set
+    -- still works with a file absent.
+    -- How much of a bar's fill height a rank glyph takes. Measured
+    -- against the bar rather than against the text in it, because the
+    -- text stops growing at twelve pixels and a tall bar would otherwise
+    -- carry a speck in a lot of empty height. A little under full, so it
+    -- sits inside the bar instead of touching both edges of it.
+    RANK_ICON_SCALE          = 0.85,
+
+    RANK_ICON_RARE           = ASSETS .. "rareIcon.png",
+    RANK_ICON_ELITE          = ASSETS .. "eliteIcon.png",
+    RANK_ICON_RARE_ELITE     = ASSETS .. "eliteRareIcon.png",
+    RANK_ICON_BOSS           = ASSETS .. "bossIcon.png",
     MINIMAP_FRAME_WIDTH      = 929 / 756,
     MINIMAP_FRAME_HEIGHT     = 1088 / 756,
 

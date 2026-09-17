@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
 -- BazChat Replica: Channels (per-tab routing + right-click popup)
 --
@@ -720,7 +721,7 @@ local function EnsurePopup()
     -- Delete button (anchored to the bottom of the popup at show-time
     -- since the popup height varies with the channel count). Disabled
     -- for General (idx 1) which owns the DEFAULT_CHAT_FRAME claim.
-    local del = CreateFrame("Button", nil, popup, "UIPanelButtonTemplate")
+    local del = BazUI.Skin.Theme.CreateButton(popup)
     del:SetSize(POPUP_WIDTH - LEFT_PAD * 2, 24)
     del:SetText("Delete Tab")
     del:SetScript("OnClick", function()

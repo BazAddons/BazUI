@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
 -- BazChat Replica: AutoHide (scrollbar + tab-strip fade)
 --
@@ -385,7 +386,7 @@ function AutoHide:Apply(f, inEditMode)
         end
     end
 
-    -- Per-window: background chrome (NineSlice panel). bgAlpha is the
+    -- Per-window: the background chrome panel. bgAlpha is the
     -- visible-state opacity; onhover fades 0 -> bgAlpha; "never" pins
     -- to 0 so the chat text floats with no panel behind it. We use
     -- alpha (not Hide()) for "never" because Chrome.lua's OnShow hook

@@ -106,8 +106,10 @@ local function EnsureAutoCompletePopup()
     popup.topText:SetPoint("RIGHT", popup, "RIGHT", -12, 0)
     popup.topText:SetText(_G.QUEST_WATCH_POPUP_CLICK_TO_COMPLETE or "Click to complete quest")
 
-    -- Quest name in large serif font
-    popup.questName = popup:CreateFontString(nil, "OVERLAY", "QuestFont_Large")
+    -- The quest's name, large. Through the theme like the line above it:
+    -- the two sit one under the other, and a popup that is half the
+    -- addon's face and half the game's reads as a mistake.
+    popup.questName = BazUI.Skin.Theme.FontString(popup, "OVERLAY", "QuestFont_Large")
     popup.questName:SetPoint("TOPLEFT", popup.topText, "BOTTOMLEFT", 0, -2)
     popup.questName:SetPoint("RIGHT", popup, "RIGHT", -12, 0)
     popup.questName:SetTextColor(1, 1, 1)
@@ -336,22 +338,44 @@ function QT.Refresh()
 
     table.sort(groupOrder)
 
+    -- A heading over the only group on show says nothing: the widget is
+    -- already called Quest Tracker, so "Quests" underneath it is the same
+    -- word twice and a line of height spent on it. Headings earn their
+    -- place the moment there is a second group to tell apart - a dungeon
+    -- section, achievements, recipes - so they are counted rather than
+    -- switched off.
+    local sectionCount = 0
+    for _, item in ipairs(QT.items) do
+        if item.kind == "header" then sectionCount = sectionCount + 1 end
+    end
+    for _, groupIdx in ipairs(groupOrder) do
+        local group = groups[groupIdx]
+        if group and #group.quests > 0 then sectionCount = sectionCount + 1 end
+    end
+    local showHeaders = sectionCount > 1
+
     -- Build flat items list
     local blockCount = 0
     for groupPosition, groupIdx in ipairs(groupOrder) do
         local group = groups[groupIdx]
         if group and #group.quests > 0 then
-            local collapsed = QT.IsGroupCollapsed(group.label)
+            -- The heading is the thing you click to collapse a group, so
+            -- a group with no heading cannot be collapsed - and must not
+            -- stay collapsed from when it had one, or its quests would be
+            -- hidden with nothing on screen to bring them back.
+            local collapsed = showHeaders and QT.IsGroupCollapsed(group.label)
 
-            local header = QT.AcquireHeader(group.label)
-            table.insert(QT.activeHeaders, header)
-            table.insert(QT.items, {
-                frame  = header,
-                height = C.HEADER_HEIGHT,
-                gap    = collapsed and 0 or C.HEADER_AFTER_GAP,
-                kind   = "header",
-                topPad = (groupPosition > 1 or #QT.items > 0) and C.GROUP_GAP or 0,
-            })
+            if showHeaders then
+                local header = QT.AcquireHeader(group.label)
+                table.insert(QT.activeHeaders, header)
+                table.insert(QT.items, {
+                    frame  = header,
+                    height = C.HEADER_HEIGHT,
+                    gap    = collapsed and 0 or C.HEADER_AFTER_GAP,
+                    kind   = "header",
+                    topPad = (groupPosition > 1 or #QT.items > 0) and C.GROUP_GAP or 0,
+                })
+            end
 
             if not collapsed then
                 -- Check for auto-complete quests - show the popup

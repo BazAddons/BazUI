@@ -187,7 +187,37 @@ end
 -- Thin, because the rim sits on the icon's own edge rather than outside
 -- it: two pixels reads as a coloured edge, four reads as a frame with a
 -- picture in it.
-local RIM_THICKNESS = 2
+-- The art an empty slot is drawn with: a dark fill and a bevelled frame
+-- around it.
+local SLOT_BACKDROP_ATLAS = "UI-HUD-ActionBar-IconFrame-Background"
+local SLOT_ART_ATLAS      = "ui-hud-actionbar-iconframe-slot"
+
+-- The rarity mark: a soft glow around the slot rather than a line drawn
+-- on it.
+--
+-- This is the texture the game lights an equipped item up with, and it
+-- is built to be added rather than drawn over: every pixel is opaque,
+-- the middle is black, and the glow is white. Added, black contributes
+-- nothing and so disappears, while the white takes whatever colour it is
+-- tinted - which makes it the one piece of art in the client that gives
+-- a true quality colour instead of a muddied one.
+--
+-- It suits a bag better than a border did. A border has to be drawn
+-- somewhere exact and fights the frame already round the slot; a glow
+-- sits behind and outside the icon and says the same thing without
+-- drawing another edge next to the edges already there.
+local RIM_TEXTURE         = "Interface\\Buttons\\UI-ActionButton-Border"
+addon.RIM_TEXTURE = RIM_TEXTURE
+
+-- How far the glow reaches, as a multiple of the slot it surrounds.
+--
+-- Blizzard hangs this texture at 62 on a 45-pixel button, which is 1.38.
+-- A bag slot is smaller than an action button and they are packed close
+-- together, so at that proportion the glow sits tight against the icon
+-- and reads as an outline rather than a glow. A little more room lets it
+-- breathe.
+local RIM_SCALE           = 1.6
+local RIM_OVERHANG        = math.floor(SLOT_SIZE * (RIM_SCALE - 1) / 2 + 0.5)
 
 local RIM_FLOOR = { none = nil, uncommon = 2, common = 1, all = 0 }
 
@@ -204,24 +234,43 @@ end
 
 local function EnsureRim(btn)
     if btn._bazRim then return btn._bazRim end
-    local rim = {}
-    for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do
-        -- OVERLAY, above the icon and the slot art but under the count
-        -- and the cooldown sweep.
-        local edge = btn:CreateTexture(nil, "OVERLAY", nil, 1)
-        if side == "TOP" or side == "BOTTOM" then
-            edge:SetPoint(side .. "LEFT", btn, side .. "LEFT", 0, 0)
-            edge:SetPoint(side .. "RIGHT", btn, side .. "RIGHT", 0, 0)
-            edge:SetHeight(RIM_THICKNESS)
-        else
-            edge:SetPoint("TOP" .. side, btn, "TOP" .. side, 0, 0)
-            edge:SetPoint("BOTTOM" .. side, btn, "BOTTOM" .. side, 0, 0)
-            edge:SetWidth(RIM_THICKNESS)
-        end
-        rim[#rim + 1] = edge
-    end
+
+    -- OVERLAY, which is where the game puts this same texture on an
+    -- action button. Behind the icon was the obvious guess and is wrong:
+    -- the bright part of this glow sits right on the icon's edge, so an
+    -- icon drawn over the top hides the only part of it that lights up,
+    -- and all that is left outside is falloff too faint to see. Added
+    -- light does not wash the icon out the way a solid overlay would -
+    -- the middle of the texture is black, and black adds nothing.
+    local rim = btn:CreateTexture(nil, "OVERLAY", nil, 0)
+    rim:SetPoint("TOPLEFT", btn, "TOPLEFT", -RIM_OVERHANG, RIM_OVERHANG)
+    rim:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", RIM_OVERHANG, -RIM_OVERHANG)
+    rim:SetTexture(RIM_TEXTURE)
+    rim:SetBlendMode("ADD")
+
     btn._bazRim = rim
     return rim
+end
+
+-- What the rarity glow is actually doing, for when it is doing nothing.
+function Bag:DumpRims()
+    local shown = 0
+    for bagID, slots in pairs(slotButtons) do
+        for slotID, btn in pairs(slots) do
+            local rim = btn._bazRim
+            if rim and shown < 6 then
+                shown = shown + 1
+                print(("  %d:%d file=%s shown=%s alpha=%.2f blend=%s pts=%d"):format(
+                    bagID, slotID,
+                    tostring(rim:GetTexture()),
+                    tostring(rim:IsShown()),
+                    rim:GetAlpha() or -1,
+                    tostring(rim.GetBlendMode and rim:GetBlendMode() or "?"),
+                    rim:GetNumPoints() or 0))
+            end
+        end
+    end
+    if shown == 0 then print("  no slot has a rim texture at all") end
 end
 
 local function ApplyRim(btn, quality)
@@ -232,17 +281,15 @@ local function ApplyRim(btn, quality)
     end
 
     if not r then
-        if btn._bazRim then
-            for _, edge in ipairs(btn._bazRim) do edge:Hide() end
-        end
+        if btn._bazRim then btn._bazRim:Hide() end
         return
     end
 
-    for _, edge in ipairs(EnsureRim(btn)) do
-        edge:SetColorTexture(r, g, b, 1)
-        edge:Show()
-    end
+    local rim = EnsureRim(btn)
+    rim:SetVertexColor(r, g, b)
+    rim:Show()
 end
+
 
 
 ---------------------------------------------------------------------------
@@ -325,8 +372,6 @@ addon.Bag.ApplyBackground = ApplyBackground
 -- to a template Classic does not have.
 ---------------------------------------------------------------------------
 
-local SLOT_BACKDROP_ATLAS = "UI-HUD-ActionBar-IconFrame-Background"
-local SLOT_ART_ATLAS      = "ui-hud-actionbar-iconframe-slot"
 
 local function EnsureBackdrop(btn)
     if btn._bazSlotBg then return btn._bazSlotBg, btn._bazSlotArt end

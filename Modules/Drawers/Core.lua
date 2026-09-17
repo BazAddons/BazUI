@@ -64,6 +64,28 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
     slash = { "/bwd" },
     commands = {
+        fade = {
+            desc = "Print what each widget's title bar is doing about fading",
+            handler = function()
+                local host = addon.WidgetHost
+                if not (host and host.slots) then
+                    addon:Print("The widget host is not up yet.")
+                    return
+                end
+                addon:Print(("Chrome alpha the drawer last asked for: %s")
+                    :format(tostring(host._chromeAlpha)))
+                for id, slot in pairs(host.slots) do
+                    local wants = addon:GetWidgetEffectiveSetting(id, "fadeTitleBar", true)
+                    local bar = slot.titleBar
+                    print(("  %s | fade=%s | alpha=%s | effective=%s | shown=%s"):format(
+                        id,
+                        tostring(wants),
+                        bar and string.format("%.2f", bar:GetAlpha() or -1) or "no bar",
+                        bar and string.format("%.2f", bar:GetEffectiveAlpha() or -1) or "-",
+                        bar and tostring(bar:IsShown()) or "-"))
+                end
+            end,
+        },
         feeds = {
             desc = "LibDataBroker feeds: /bwd feeds (list) or /bwd feeds rescan",
             handler = function(args)

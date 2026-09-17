@@ -117,15 +117,24 @@ local function CreateDialog()
     BazUI.Skin.Theme.ApplyFlatPanel(editBg, { 0.03, 0.03, 0.05, 0.6 }, BazUI.Skin.Theme.colors.edge)
     f.editBg = editBg
 
+    -- Said out loud rather than left to creation order. These two are
+    -- siblings, and which one covers the other decided whether the text
+    -- was visible at all - a dark panel drawn over the viewport looks
+    -- exactly like an empty box.
+    local base = f:GetFrameLevel() or 1
+    editBg:SetFrameLevel(base)
+
     local scroll = CreateFrame("ScrollFrame", nil, f)
     scroll:SetPoint("TOPLEFT",     editBg, "TOPLEFT",      6, -6)
     scroll:SetPoint("BOTTOMRIGHT", editBg, "BOTTOMRIGHT", -6,  6)
+    scroll:SetFrameLevel(base + 2)
     scroll:EnableMouseWheel(true)
     f.scroll = scroll
 
     local scrollBar = CreateFrame("EventFrame", nil, f, "MinimalScrollBar")
     scrollBar:SetPoint("TOPLEFT",     scroll, "TOPRIGHT",    4, 0)
     scrollBar:SetPoint("BOTTOMLEFT",  scroll, "BOTTOMRIGHT", 4, 0)
+    scrollBar:SetFrameLevel(base + 3)
     if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
         ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
         BazUI.Skin.Theme.AutoFadeScrollBar(scrollBar, scroll)
@@ -137,8 +146,16 @@ local function CreateDialog()
     -- scroll range matches the actual text extent.
     local editBox = CreateFrame("EditBox", nil, scroll)
     editBox:SetMultiLine(true)
-    editBox:SetMaxLetters(0)              -- 0 = unlimited
+    -- A real ceiling rather than 0. Zero is supposed to mean "no limit",
+    -- and Blizzard's own code never passes it - every call site in the
+    -- client names a number. A chat export runs to a few tens of
+    -- thousands of characters, so this is a ceiling nothing will reach.
+    editBox:SetMaxLetters(1000000)
     editBox:SetFontObject("ChatFontNormal")
+    -- The font object belongs to the chat, whose colour is whatever the
+    -- last thing to draw with it left behind. This box is for reading
+    -- back what you are about to copy, so it says white itself.
+    editBox:SetTextColor(1, 1, 1)
     editBox:SetAutoFocus(false)
     editBox:SetScript("OnEscapePressed", close)
     scroll:SetScrollChild(editBox)
@@ -151,7 +168,7 @@ local function CreateDialog()
     f.editBox = editBox
 
     -- Bottom buttons + status row
-    f.selectAllBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.selectAllBtn = BazUI.Skin.Theme.CreateButton(f)
     f.selectAllBtn:SetSize(110, 24)
     f.selectAllBtn:SetPoint("BOTTOMLEFT", 16, 14)
     f.selectAllBtn:SetText("Select All")
@@ -164,7 +181,7 @@ local function CreateDialog()
     f.hint:SetPoint("LEFT", f.selectAllBtn, "RIGHT", 12, 0)
     f.hint:SetTextColor(0.7, 0.7, 0.7)
 
-    f.acceptBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.acceptBtn = BazUI.Skin.Theme.CreateButton(f)
     f.acceptBtn:SetSize(100, 24)
     f.acceptBtn:Hide()
     f.acceptBtn:SetScript("OnClick", function()
@@ -177,7 +194,7 @@ local function CreateDialog()
         end
     end)
 
-    f.closeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.closeBtn = BazUI.Skin.Theme.CreateButton(f)
     f.closeBtn:SetSize(100, 24)
     f.closeBtn:SetPoint("BOTTOMRIGHT", -16, 14)
     f.closeBtn:SetText("Close")
@@ -204,6 +221,30 @@ local function ApplySize(f, w, h)
     f.editBox:SetWidth(w - 50)
 end
 
+-- Give the EditBox a height.
+--
+-- A ScrollFrame's child has to have a size, and this one only ever had a
+-- width: nothing set its height, so it was nothing tall. That draws
+-- exactly what we were looking at - the cursor sits at the insertion
+-- point and every line of text has no room to be in.
+--
+-- Measured from the content, generously. A wrapped line takes more room
+-- than the newline count knows about, and spare height costs only a
+-- little empty scroll range while too little costs the text.
+local function SizeEditBoxToContent(f, content)
+    local _, fontH = f.editBox:GetFont()
+    fontH = (tonumber(fontH) or 12) + 2
+
+    -- string.char(10) rather than an escape, so the newline being counted
+    -- cannot be eaten by whatever edits this file next.
+    local newline = string.char(10)
+    local _, lines = (content or ""):gsub(newline, newline)
+    lines = (lines or 0) + 1
+
+    local viewport = f.scroll:GetHeight() or 0
+    f.editBox:SetHeight(math.max(viewport, (lines * 2 + 4) * fontH))
+end
+
 function BazUI:OpenCopyDialog(opts)
     opts = opts or {}
     if not dialog then dialog = CreateDialog() end
@@ -216,16 +257,39 @@ function BazUI:OpenCopyDialog(opts)
     dialog.title:SetText(opts.title or "Copy / Paste")
     dialog.subtitle:SetText(opts.subtitle or "")
 
+    -- Editability BEFORE the content, not after. A disabled EditBox
+    -- refuses SetText and says nothing about it, so setting the text
+    -- first and the state second meant the text could be thrown away by
+    -- a line that ran after it.
+    dialog.editBox:SetEnabled(opts.editable ~= false)
+
+    -- A font of our own rather than the chat's ChatFontNormal. A core
+    -- dialog should not depend on a font object another module owns and
+    -- repoints, and an EditBox with no usable font cannot hold text at
+    -- all. Theme.FontFile falls back to the client's own face when ours
+    -- is not loadable, so this is always something real.
+    local fontFile = BazUI.Skin.Theme.FontFile()
+    if fontFile then
+        dialog.editBox:SetFont(fontFile, 13, "")
+    end
+
     -- Content (multi-line)
     dialog.editBox:SetText(opts.content or "")
 
-    -- Editability: default true so the EditBox accepts focus + selection;
-    -- callers wanting a read-only feel can pass false.
-    if opts.editable == false then
-        dialog.editBox:SetEnabled(false)
-    else
-        dialog.editBox:SetEnabled(true)
+    -- Read it back. An EditBox can refuse text without saying so, and it
+    -- refuses the whole string rather than trimming it: one stray escape
+    -- sequence anywhere in a chat export and the box stays empty with a
+    -- character count underneath it promising thousands. Better it says
+    -- so than leaves somebody staring at a blank panel.
+    local wanted = #(opts.content or "")
+    local kept   = #(dialog.editBox:GetText() or "")
+    if kept ~= wanted then
+        BazUI:Print(("|cffff8800Copy dialog kept %d of %d characters.|r")
+            :format(kept, wanted))
     end
+
+    -- After the text, since the height comes from it.
+    SizeEditBoxToContent(dialog, opts.content)
 
     -- Accept button (only shown when caller wires onAccept)
     if opts.onAccept then

@@ -1,18 +1,93 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Tooltip User Manual
+---------------------------------------------------------------------------
+
+if not BazUI or not BazUI.RegisterUserGuide then return end
+
 BazUI:RegisterUserGuide("Tooltip", {
     title = "Tooltip",
-    intro = "A subtle charcoal and muted-gold frame, with simple positioning and visibility controls.",
-    pages = { { title = "Overview", blocks = {
-        { type = "paragraph", text = "Open Options > AddOns > BazUI > Tooltip, or type /baztooltip. Settings apply to the main hover tooltip, linked-item tooltips and equipment comparisons. Text and item information stay unchanged." },
-        { type = "list", items = {
-            "Use the BazUI frame, adjust background opacity, or change the overall scale.",
-            "Default anchoring respects Blizzard, other UI frames and the Drawers tooltip dock.",
-            "Tooltip origin selects which matching corner, edge or center of the tooltip and anchor box meet. For example, Bottom makes the tooltip grow upward, centered on the marker. This also works with cursor anchoring.",
-            "Turn on Unlock anchor (or use /baztooltip unlock) to drag the marker, then turn it off or right-click the marker to lock it. Bottom right aligns the tooltip bottom-right corner with the marker bottom-right corner.",
-            "Follow cursor and fixed screen position move the main hover tooltip. Comparisons stay attached to their item.",
-            "Hide the unit health bar or hide tooltips during combat. Both are optional.",
-            "A tooltip in the drawer dock uses the drawer's fit scale. Choosing another anchor pauses docking.",
-            "Turn off the module to restore the original frame, health bar and scale. Hover again after changing settings.",
-        } },
-    } } },
+    intro = "The game's tooltip, wearing the same skin and the same face as "
+        .. "everything else, and appearing where you tell it to.",
+
+    pages = {
+        {
+            title = "What it does",
+            blocks = {
+                { type = "paragraph", text = "This module changes how the tooltip looks and where it appears. |cffffd700What it says is left alone|r - the item's stats, a unit's level and faction, a spell's description are the game's to write, and anything that adds lines to a tooltip keeps adding them." },
+                { type = "paragraph", text = "It covers the tooltip that follows your mouse, the ones that open from a link in chat, and the comparison tooltips that appear beside an item you are looking at." },
+                { type = "note", text = "|cffffd700Open it with|r /baztooltip, or Options > AddOns > BazUI > Tooltip." },
+            },
+        },
+
+        {
+            title = "Appearance",
+            blocks = {
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Enable Tooltip module", "Off gives you the game's tooltip back, frame, health bar, scale and all." },
+                    { "Use BazUI tooltip frame", "The border and background from your skin. Off keeps the game's art but leaves the positioning settings working." },
+                    { "Tooltip scale", "75% to 150%." },
+                    { "Background opacity", "50% to fully solid." },
+                } },
+                { type = "paragraph", text = "The border and the background come from the Skin tab, not from here - change a border band there and the tooltip changes with every other edge in the addon. The text takes the addon font, so a tooltip reads the same as your bars and your bags." },
+            },
+        },
+
+        {
+            title = "Where it appears",
+            blocks = {
+                { type = "paragraph", text = "|cffffd700Tooltip anchor|r is the first choice, and the other position settings follow from it." },
+                { type = "table", columns = { "Anchor", "What happens" }, rows = {
+                    { "Default / Drawer dock", "Wherever the game and other addons were going to put it. If you have a tooltip dock in a drawer, this is what lets it dock." },
+                    { "Follow cursor", "Attached to your mouse, with a horizontal and vertical offset of your own." },
+                    { "Fixed screen position", "Always in one place. Drag the marker, or set the offsets by hand." },
+                } },
+                { type = "h3", text = "Tooltip origin" },
+                { type = "paragraph", text = "Which corner or edge of the tooltip meets the anchor - which is really a choice about |cffffd700which way it grows|r, because a tooltip's height depends on what is in it. Pick Bottom and it grows upward from the marker; pick Top left and it grows down and to the right. |cffffd700Original direction|r leaves that to whatever was going to decide it." },
+                { type = "paragraph", text = "This matters most at the edges of the screen: a tooltip anchored near the bottom wants to grow up, and a long one anchored near the top wants to grow down. It applies to cursor anchoring too." },
+                { type = "h3", text = "Moving the marker" },
+                { type = "list", items = {
+                    "Turn on |cffffd700Unlock anchor|r, or type /baztooltip unlock, and a marker appears.",
+                    "Drag it where you want the tooltip.",
+                    "Turn the setting off, right-click the marker, or type /baztooltip lock to put it away.",
+                } },
+                { type = "note", text = "Changing the origin leaves the marker where it is - the tooltip moves around the marker rather than the marker moving." },
+            },
+        },
+
+        {
+            title = "Visibility",
+            blocks = {
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Hide unit tooltip health bar", "Drops the green bar under a unit's name." },
+                    { "Hide tooltips during combat", "Nothing appears while you are fighting." },
+                    { "Preview tooltip for 5 seconds", "Raises a sample so you can see a size, an opacity or a position without hunting for something to hover. Unavailable in combat." },
+                } },
+                { type = "note", text = "Nothing here is hidden unless you ask for it. If you want the health bar, keep the health bar." },
+            },
+        },
+
+        {
+            title = "Things worth knowing",
+            blocks = {
+                { type = "list", items = {
+                    "|cffffd700Comparison tooltips stay beside their item.|r Sending them to your cursor or to a fixed corner would separate the comparison from the thing being compared, which is the whole point of it.",
+                    "|cffffd700A docked tooltip uses the drawer's scale|r rather than the one set here, so it fits its dock. Choosing Follow cursor or Fixed screen position pauses docking.",
+                    "|cffffd700Changes apply on the next hover.|r A tooltip already on screen when you changed a setting keeps what it had until it goes away and comes back.",
+                    "|cffffd700Bag tooltips|r are anchored by the game in a way that argues with ours; the module settles that so a bag tooltip lands where you asked rather than throwing an anchoring error.",
+                } },
+            },
+        },
+
+        {
+            title = "Slash commands",
+            blocks = {
+                { type = "table", columns = { "Command", "What it does" }, rows = {
+                    { "/baztooltip", "Opens the settings." },
+                    { "/baztooltip unlock", "Shows the draggable marker." },
+                    { "/baztooltip lock", "Puts it away." },
+                } },
+            },
+        },
+    },
 })

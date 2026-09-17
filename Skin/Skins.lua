@@ -66,6 +66,7 @@ Skin.COLOR_GROUPS = {
     { key = "surface",  label = "Surfaces", desc = "What panels, cards and rows are filled with." },
     { key = "text",     label = "Text" },
     { key = "reading",  label = "Readings", desc = "Colors that mean something. Green is finished, amber is running out - everywhere in the addon, so they are worth keeping apart." },
+    { key = "rank",     label = "Unit ranks", desc = "The glow around a unit bar saying what rank the unit is. Off item quality, so blue reads rare and red reads boss without anyone having to learn it." },
     { key = "other",    label = "Other" },
 }
 
@@ -88,6 +89,11 @@ Skin.COLOR_ROLES = {
     { key = "caution",   group = "reading", label = "Closing",        desc = "A window running out." },
     { key = "warn",      group = "reading", label = "Warning" },
     { key = "danger",    group = "reading", label = "Danger" },
+
+    { key = "rankRare",      group = "rank", label = "Rare",       hasAlpha = true },
+    { key = "rankElite",     group = "rank", label = "Elite",      hasAlpha = true },
+    { key = "rankRareElite", group = "rank", label = "Rare elite", hasAlpha = true },
+    { key = "rankBoss",      group = "rank", label = "Boss",       hasAlpha = true },
 }
 
 ---------------------------------------------------------------------------
@@ -393,6 +399,7 @@ function Skin.SetColor(role, r, g, b, a)
     -- them again: a tooltip's interior and a panel's fill follow at once
     -- instead of waiting for a reload.
     Theme.RefreshBorders()
+    if Theme.RefreshGlows then Theme.RefreshGlows() end
     return forked
 end
 

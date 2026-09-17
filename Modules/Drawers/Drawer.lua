@@ -39,10 +39,13 @@ Drawer.MIN_WIDTH = MIN_WIDTH
 Drawer.MAX_WIDTH = MAX_WIDTH
 Drawer.DEFAULT_WIDTH = DEFAULT_WIDTH
 
--- Pixels the visible edge sits inside the frame's logical edge. The tab
--- is pushed inward by this much so it butts against the edge instead of
--- hanging in a small gap.
-local TAB_BORDER_INSET = 2
+-- How far the tabs sit outside the drawer's edge.
+--
+-- They used to be pushed the other way, two pixels into the frame, to
+-- butt against a border that was drawn further in than it is now. The
+-- drawer wears a one-pixel edge these days, so pushing inward puts the
+-- tab underneath it and the drawer's edge cuts across the tab's own.
+local TAB_EDGE_GAP = 3
 
 ---------------------------------------------------------------------------
 -- Atlas helpers (hoisted so the toggle button's OnEnter/OnLeave closures
@@ -167,7 +170,7 @@ function Drawer:Build()
     })
     display.infoButton:SetPoint("RIGHT", display.lockButton, "LEFT", -4, 0)
 
-    display.countLabel = chrome:CreateFontString(nil, "ARTWORK", "GameFontNormalMed3")
+    display.countLabel = BazUI.Skin.Theme.FontString(chrome, "ARTWORK", "GameFontNormalMed3")
     display.countLabel:SetPoint("RIGHT", display.infoButton, "LEFT", -6, 0)
     display.countLabel:SetJustifyH("RIGHT")
     display.countLabel:SetText("0")
@@ -243,14 +246,14 @@ function Drawer:ApplySide()
         collapsedX = -width
         tabSelf = "LEFT"                    -- tab's left anchors to drawer's right edge
         tabRelative = "RIGHT"
-        tabXOffset = -TAB_BORDER_INSET      -- push tab left into the border
+        tabXOffset = TAB_EDGE_GAP           -- clear of the drawer, to its right
     else -- right
         topPoint, bottomPoint = "TOPRIGHT", "BOTTOMRIGHT"
         expandedX = EDGE_HIDE
         collapsedX = width
         tabSelf = "RIGHT"                   -- tab's right anchors to drawer's left edge
         tabRelative = "LEFT"
-        tabXOffset = TAB_BORDER_INSET       -- push tab right into the border
+        tabXOffset = -TAB_EDGE_GAP          -- clear of the drawer, to its left
     end
 
     -- Arrow direction (after any flip):
@@ -442,11 +445,11 @@ function Drawer:RefreshTabs()
     if side == "left" then
         tabSelf = "TOPLEFT"
         tabRelative = "TOPRIGHT"
-        tabXOffset = -2
+        tabXOffset = TAB_EDGE_GAP
     else
         tabSelf = "TOPRIGHT"
         tabRelative = "TOPLEFT"
-        tabXOffset = 2
+        tabXOffset = -TAB_EDGE_GAP
     end
 
     local TAB_SIZE = 32

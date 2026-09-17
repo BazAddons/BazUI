@@ -233,7 +233,7 @@ local PREVIEW_SAMPLES = {
         icon = "Interface\\Icons\\INV_Misc_Note_01", priority = "normal",
     },
     {
-        title = "Gold Received", message = "1g 24s 8c",
+        title = "Coin Received", message = "1g 24s 8c", emphasis = true,
         icon = "Interface\\Icons\\INV_Misc_Coin_02", priority = "low",
     },
 }
@@ -251,6 +251,7 @@ function addon.ShowToastPreview()
                 module   = "preview",
                 title    = sample.title,
                 message  = sample.message,
+                emphasis = sample.emphasis,
                 icon     = sample.icon,
                 priority = sample.priority,
                 duration = PREVIEW_DURATION,

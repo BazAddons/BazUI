@@ -55,6 +55,7 @@ end
 local AUTO_SHOW_VALUES = {
     always   = "Always",
     city     = "In a city",
+    guild    = "In a guild",
     party    = "In a party",
     raid     = "In a raid",
     combat   = "In combat",

@@ -52,8 +52,9 @@ function addon.SendTestBurst()
         C_Timer.After(delay, function()
             BNC:Push({
                 module = "loot",
-                title = "Gold Received",
+                title = "Coin Received",
                 message = "|cffffd7002|rg |cffc7c7cf34|rs |cffeda55f15|rc",
+                emphasis = true,
                 icon = "Interface\\Icons\\INV_Misc_Coin_01",
                 priority = "low",
                 duration = 3,

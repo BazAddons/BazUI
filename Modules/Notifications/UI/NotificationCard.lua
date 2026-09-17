@@ -8,6 +8,29 @@ local Colors = addon.Colors
 -- Shared body metrics (used by both NotificationCard and Toast)
 ---------------------------------------------------------------------------
 
+-- How a card's message is drawn.
+--
+-- Most cards say what happened in the title and put the detail
+-- underneath, where it belongs: read the title, read the rest if you
+-- care. A few are the other way round - the title is the category and the
+-- message is the whole point of it, a coin amount or an experience gain -
+-- and those can ask to be read first instead of last.
+--
+-- One function rather than the choice made in each renderer, because the
+-- toast and the panel draw the same card and a card that changed size
+-- between them would be a card that jumps when you open the panel.
+function addon.ApplyMessageStyle(fontString, emphasis)
+    if not fontString then return end
+    local Theme = BazUI.Skin.Theme
+    if emphasis then
+        fontString:SetFontObject(Theme.FontObject("GameFontNormalLarge"))
+        fontString:SetTextColor(unpack(Colors.textPrimary))
+    else
+        fontString:SetFontObject(Theme.FontObject("GameFontHighlightSmall"))
+        fontString:SetTextColor(unpack(Colors.textSecondary))
+    end
+end
+
 local BODY_PADDING = 8
 local BODY_ICON_SIZE = 28
 local TITLE_MESSAGE_GAP = 4
@@ -125,6 +148,7 @@ function addon.PopulateNotification(frame, notifData, width, opts)
     -- Text
     frame.title:SetText(notifData.title or "")
     frame.message:SetText(notifData.message or "")
+    addon.ApplyMessageStyle(frame.message, notifData.emphasis)
 
     -- The band down the left. Its colour says which source the card came
     -- from, so a mixed panel groups by eye; how solid it is says how much
@@ -143,14 +167,23 @@ function addon.PopulateNotification(frame, notifData, width, opts)
     local topRowWidth = width - BODY_PADDING - BODY_ICON_SIZE - 6 - topRowRightReserve
     frame.title:SetWidth(topRowWidth)
 
-    -- Message row width: reserve space on the right for whatever shares
-    -- that corner - the module label where it is shown, the timestamp on a
-    -- card - so they cannot overlap the text.
-    local messageRightReserve = BODY_PADDING + (opts.bottomRightReserved or 0)
-    if labelWidth > 0 then
-        messageRightReserve = BODY_PADDING + labelWidth + 8
-    end
-    frame.message:SetWidth(width - BODY_PADDING - messageRightReserve)
+    -- The bottom row is shared: the message on one side, and on the other
+    -- whatever small print that card carries - the module label on a
+    -- toast, the timestamp on a card. How much room that takes is the
+    -- same question either way.
+    local metaWidth = (labelWidth > 0) and (labelWidth + 8)
+        or (opts.bottomRightReserved or 0)
+
+    -- Which of them gets which side. A card whose message is the point of
+    -- it puts the figure on the right and the small print on the left -
+    -- the shape a line in a ledger takes, and the only way a two-character
+    -- amount does not sit in a corner with the rest of the row empty.
+    -- Everything else keeps the message left, where a block of text
+    -- belongs and where it has the room to wrap.
+    local emphasis = notifData.emphasis and true or false
+    frame.message:SetJustifyH(emphasis and "RIGHT" or "LEFT")
+    frame.message:SetWidth(math.max(10,
+        width - BODY_PADDING - BODY_PADDING - metaWidth))
 
     -- Height calculation
     local titleHeight = frame.title:GetStringHeight() or 14
@@ -159,11 +192,29 @@ function addon.PopulateNotification(frame, notifData, width, opts)
 
     local iconRegionHeight = math.max(BODY_ICON_SIZE, titleHeight)
 
-    -- Reposition message below the icon/title block
+    -- Reposition message below the icon/title block, on whichever side of
+    -- that row it has been given.
+    local messageTop = -(BODY_PADDING + iconRegionHeight + TITLE_MESSAGE_GAP)
     frame.message:ClearAllPoints()
-    frame.message:SetPoint("TOPLEFT", frame, "TOPLEFT",
-        BODY_PADDING, -(BODY_PADDING + iconRegionHeight + TITLE_MESSAGE_GAP))
-    frame.message:SetPoint("RIGHT", frame, "RIGHT", -messageRightReserve, 0)
+    if emphasis then
+        frame.message:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -BODY_PADDING, messageTop)
+    else
+        frame.message:SetPoint("TOPLEFT", frame, "TOPLEFT", BODY_PADDING, messageTop)
+    end
+
+    -- The small print takes the other corner, so the two can never meet
+    -- in the middle.
+    if frame.moduleLabel and labelWidth > 0 then
+        frame.moduleLabel:ClearAllPoints()
+        frame.moduleLabel:SetJustifyH(emphasis and "LEFT" or "RIGHT")
+        if emphasis then
+            frame.moduleLabel:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT",
+                BODY_PADDING, BODY_PADDING)
+        else
+            frame.moduleLabel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",
+                -BODY_PADDING, BODY_PADDING)
+        end
+    end
 
     local totalHeight = BODY_PADDING + iconRegionHeight
         + (hasMessage and (TITLE_MESSAGE_GAP + msgHeight) or 0)
@@ -313,6 +364,17 @@ function addon.SetupCard(card, notifData)
         timeStr = addon.FormatCardTimestamp(notifData.realTime) .. " - " .. timeStr
     end
     card.timestamp:SetText(timeStr)
+    -- The far side from the message, for the same reason.
+    card.timestamp:ClearAllPoints()
+    if notifData.emphasis then
+        card.timestamp:SetJustifyH("LEFT")
+        card.timestamp:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT",
+            BODY_PADDING, BODY_PADDING)
+    else
+        card.timestamp:SetJustifyH("RIGHT")
+        card.timestamp:SetPoint("BOTTOMRIGHT", card, "BOTTOMRIGHT",
+            -BODY_PADDING, BODY_PADDING)
+    end
     card.notifTimestamp = notifData.timestamp
     card.notifRealTime = notifData.realTime
 

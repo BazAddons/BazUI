@@ -11,9 +11,61 @@ local floor = math.floor
 -- Converts copper amount to colored gold/silver/copper string
 ---------------------------------------------------------------------------
 
-function BazUI:FormatMoney(copper)
+-- The game's own coin art, which is what a money amount looks like
+-- everywhere else in the interface. A letter after the number is the
+-- compact way to say it and reads fine in a line of chat; a coin is the
+-- better way to say it anywhere there is room, which is why this is a
+-- choice rather than a replacement.
+--
+-- Drawn at 0, meaning the height of whatever text it lands in, so it
+-- follows a font size without being told about one.
+BazUI.COIN_ICONS = {
+    gold   = "Interface\\MoneyFrame\\UI-GoldIcon",
+    silver = "Interface\\MoneyFrame\\UI-SilverIcon",
+    copper = "Interface\\MoneyFrame\\UI-CopperIcon",
+}
+
+-- How far to lift a coin off the baseline.
+--
+-- An inline texture is placed against the line box, and a line box
+-- reaches lower than the digits beside it do - it has to leave room for
+-- the descenders that a row of numbers does not have. Left alone the
+-- coin sits low against its own amount.
+--
+-- Blizzard's own currency markup carries an offset for the same reason.
+-- Positive is up.
+BazUI.COIN_ICON_LIFT = 2
+
+-- The coin on its own, lifted. One place, because the money formatter
+-- and the gold widget both draw these and a pair of them that disagreed
+-- about the offset would be worse than either.
+function BazUI.CoinMarkup(kind)
+    local path = BazUI.COIN_ICONS[kind]
+    if not path then return "" end
+    -- |T file : height : width : xOffset : yOffset |t
+    -- Height and width of zero mean "the size of the text this lands in".
+    return ("|T%s:0:0:0:%d|t"):format(path, BazUI.COIN_ICON_LIFT)
+end
+
+local COIN_LETTERS = { gold = "g", silver = "s", copper = "c" }
+local COIN_COLORS  = { gold = "ffffd700", silver = "ffc7c7cf", copper = "ffeda55f" }
+
+-- The number and whatever marks what it is worth. Amount first either
+-- way: that is the order the game writes money in, and the order anyone
+-- reading it is expecting.
+local function CoinPart(kind, amount, icons)
+    local text = string.format("|c%s%s|r", COIN_COLORS[kind], amount)
+    if icons then
+        return text .. BazUI.CoinMarkup(kind)
+    end
+    return text .. COIN_LETTERS[kind]
+end
+
+-- opts.icons draws the coins instead of the letters g, s and c.
+function BazUI:FormatMoney(copper, opts)
+    local icons = opts and opts.icons
     if not copper or copper == 0 then
-        return "|cffeda55f0|rc"
+        return CoinPart("copper", 0, icons)
     end
 
     local negative = copper < 0
@@ -25,13 +77,13 @@ function BazUI:FormatMoney(copper)
 
     local parts = {}
     if gold > 0 then
-        table.insert(parts, string.format("|cffffd700%s|rg", self:FormatNumber(gold)))
+        table.insert(parts, CoinPart("gold", self:FormatNumber(gold), icons))
     end
     if silver > 0 then
-        table.insert(parts, string.format("|cffc7c7cf%d|rs", silver))
+        table.insert(parts, CoinPart("silver", silver, icons))
     end
     if cop > 0 or #parts == 0 then
-        table.insert(parts, string.format("|cffeda55f%d|rc", cop))
+        table.insert(parts, CoinPart("copper", cop, icons))
     end
 
     local result = table.concat(parts, " ")

@@ -289,35 +289,112 @@ local function CreateSettingSlider(parent, widgetDef)
     slider:SetPoint("LEFT", text, "RIGHT", 5, 0)
     slider:SetSize(SLIDER_WIDTH, ROW_HEIGHT)
 
-    local valText = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
-    valText:SetPoint("LEFT", slider, "RIGHT", 8, 0)
-    valText:SetWidth(50)
-    valText:SetJustifyH("RIGHT")
-    valText:SetTextColor(1, 0.82, 0)
-
     local formatFunc = widgetDef.format or function(v) return tostring(math.floor(v + 0.5)) end
     row.formatFunc = formatFunc
 
-    slider.Slider:SetMinMaxValues(widgetDef.min or 0, widgetDef.max or 100)
-    slider.Slider:SetValueStep(widgetDef.step or 1)
+    local minVal = widgetDef.min or 0
+    local maxVal = widgetDef.max or 100
+    local step   = widgetDef.step or 1
+
+    -- The number, which is also where you type one.
+    --
+    -- A slider can only land on multiples of its step, and a step exists
+    -- so that dragging feels like something rather than nothing. Typing
+    -- is the way to say a number the drag cannot reach, so what is typed
+    -- is taken as it is - clamped to the ends, but not rounded to the
+    -- step it was never using.
+    local valBox = CreateFrame("EditBox", nil, row)
+    valBox:SetPoint("LEFT", slider, "RIGHT", 8, 0)
+    valBox:SetSize(52, ROW_HEIGHT)
+    valBox:SetAutoFocus(false)
+    valBox:SetFontObject("GameFontHighlightMedium")
+    valBox:SetJustifyH("RIGHT")
+    valBox:SetTextColor(1, 0.82, 0)
+    valBox:SetTextInsets(2, 2, 0, 0)
+
+    -- Nothing says a plain number can be typed in, so the box says so
+    -- when the mouse is on it and stays lit while it has the keyboard.
+    local hint = valBox:CreateTexture(nil, "BACKGROUND")
+    hint:SetAllPoints()
+    hint:SetColorTexture(1, 1, 1, 0.07)
+    hint:Hide()
+
+    slider.Slider:SetMinMaxValues(minVal, maxVal)
+    slider.Slider:SetValueStep(step)
     slider.Slider:SetObeyStepOnDrag(true)
 
-    local step = widgetDef.step or 1
-    slider.Slider:SetScript("OnValueChanged", function(self, value)
-        value = math.floor(value / step + 0.5) * step
-        valText:SetText(formatFunc(value))
-        if row.onChange then
-            row.onChange(value)
-        end
-    end)
+    -- What the row is worth, which is not always what the slider is on:
+    -- a typed number sits between two of its steps.
+    row._value = minVal
 
-    row.SetValue = function(self, val)
-        slider.Slider:SetValue(val)
-        valText:SetText(formatFunc(val))
+    local function Show(value)
+        row._value = value
+        valBox:SetText(formatFunc(value))
+        valBox:SetCursorPosition(0)
     end
 
-    row.GetValue = function(self)
-        return slider.Slider:GetValue()
+    -- Set from the keyboard, so the slider's own rounding has to be told
+    -- to keep its hands off on the way past.
+    local typing = false
+
+    slider.Slider:SetScript("OnValueChanged", function(_, value)
+        if typing then return end
+        value = math.floor(value / step + 0.5) * step
+        Show(value)
+        if row.onChange then row.onChange(value) end
+    end)
+
+    -- A formatted value can carry its units with it - "50%", "12 px" -
+    -- so the number is picked back out of whatever was typed over it.
+    -- Percent is the one that is not what it says: the setting behind it
+    -- runs nought to one.
+    local isPercent = tostring(formatFunc(minVal)):find("%%") ~= nil
+
+    local function Commit()
+        local entered = valBox:GetText() or ""
+        local typed = tonumber((entered:gsub("[^%-%d%.]", "")))
+        if not typed then
+            Show(row._value)
+            return
+        end
+        if isPercent then typed = typed / 100 end
+        typed = math.max(minVal, math.min(maxVal, typed))
+
+        typing = true
+        slider.Slider:SetValue(typed)
+        typing = false
+
+        Show(typed)
+        if row.onChange then row.onChange(typed) end
+    end
+
+    valBox:SetScript("OnEnterPressed", function(self) Commit() self:ClearFocus() end)
+    valBox:SetScript("OnEscapePressed", function(self)
+        Show(row._value)
+        self:ClearFocus()
+    end)
+    valBox:SetScript("OnEnter", function() hint:Show() end)
+    valBox:SetScript("OnLeave", function(self)
+        if not self:HasFocus() then hint:Hide() end
+    end)
+    valBox:SetScript("OnEditFocusGained", function(self)
+        hint:Show()
+        self:HighlightText()
+    end)
+    valBox:SetScript("OnEditFocusLost", function(self)
+        self:HighlightText(0, 0)
+        if not self:IsMouseOver() then hint:Hide() end
+    end)
+
+    row.SetValue = function(_, val)
+        typing = true
+        slider.Slider:SetValue(val)
+        typing = false
+        Show(val)
+    end
+
+    row.GetValue = function()
+        return row._value
     end
 
     return row
@@ -493,7 +570,7 @@ local function CreateNudgeWidget(parent, config)
 
     local NUDGE_SIZE = 26
     local function MakeNudgeBtn(anchorTo, rotation, dx, dy)
-        local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        local btn = BazUI.Skin.Theme.CreateButton(row)
         btn:SetSize(NUDGE_SIZE, NUDGE_SIZE)
         btn:SetPoint("LEFT", anchorTo, "RIGHT", 4, 0)
         btn:SetText("")
@@ -527,7 +604,7 @@ local function CreateNudgeWidget(parent, config)
     local canReset = config and config.onNudgeReset
         and (not config.canNudgeReset or config.canNudgeReset())
     if canReset then
-        local reset = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        local reset = BazUI.Skin.Theme.CreateButton(row)
         reset:SetSize(NUDGE_SIZE + 12, NUDGE_SIZE)
         reset:SetPoint("LEFT", b4, "RIGHT", 6, 0)
         reset:SetText("Reset")
@@ -629,7 +706,7 @@ local function CreateSettingColorPicker(parent, widgetDef)
 end
 
 local function CreateActionButton(parent, actionDef)
-    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    local btn = BazUI.Skin.Theme.CreateButton(parent)
     btn:SetSize(BTN_WIDTH, 28)
     btn:SetText(actionDef.label)
     btn.SetValue = function() end
@@ -1173,7 +1250,7 @@ end
 function BazUI:SetupEditModeCreateButton()
     if not EditModeManagerFrame or self._editCreateButton then return end
 
-    local button = CreateFrame("Button", nil, EditModeManagerFrame, "UIPanelButtonTemplate")
+    local button = BazUI.Skin.Theme.CreateButton(EditModeManagerFrame)
     button:SetText("Create")
     button:SetSize((button.Text:GetStringWidth() or 120) + 28, 22)
     button:SetScale(1.2)

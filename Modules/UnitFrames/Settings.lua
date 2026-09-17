@@ -74,6 +74,53 @@ local SPEC = {
           section = "general", order = 3,
           desc = "Health bars for players take the class color instead of green.",
           get = Get("classColor"), set = Set("classColor") },
+        { key = "rankNote", type = "note", section = "general", order = 3.05,
+          style = "info",
+          text = "The game ranks its NPCs and puts a dragon around the "
+              .. "portrait to say which is which. These bars have no "
+              .. "portrait, so the rank is marked on the bar itself - three "
+              .. "ways, any or all of them. Ordinary mobs are never marked, "
+              .. "which is what makes a marked one worth a second look." },
+        { key = "rankGlow", label = "Glow around rares and elites", type = "toggle",
+          section = "general", order = 3.1,
+          desc = "A halo around the health bar colored by rank: blue for rare, gold for elite, purple for rare elite, red for a world boss. The colors are yours to change on the Skin page, under Unit ranks.",
+          get = function() return addon:GetSetting("rankGlow") ~= false end,
+          set = function(_, value)
+              addon:SetSetting("rankGlow", value and true or false)
+              addon.UnitBars:UpdateAll()
+          end },
+        { key = "rankIcon", label = "Icon in front of the name", type = "toggle",
+          section = "general", order = 3.2,
+          desc = "A small mark before the unit's name. Drawn in the bar's own text, so it grows and shrinks with the text rather than needing a size of its own.",
+          get = function() return addon:GetSetting("rankIcon") ~= false end,
+          set = function(_, value)
+              addon:SetSetting("rankIcon", value and true or false)
+              addon.UnitBars:UpdateAll()
+          end },
+        { key = "rankWord", label = "Rank written beside the name", type = "toggle",
+          section = "general", order = 3.3,
+          desc = "Rare, Elite, Rare Elite or Boss, spelled out after the name. The plainest of the three, and the one that costs the name the most room.",
+          get = function() return addon:GetSetting("rankWord") == true end,
+          set = function(_, value)
+              addon:SetSetting("rankWord", value and true or false)
+              addon.UnitBars:UpdateAll()
+          end },
+        { key = "showLevel", label = "Show the unit's level", type = "toggle",
+          section = "general", order = 3.4,
+          desc = "The level beside the name. With the rank written out too it joins on: a rare elite reads 62 Rare+ rather than Rare Elite. Two question marks mean the game will not put a number on it, which is its way of saying it is far enough above you that the number stopped being the point.",
+          get = function() return addon:GetSetting("showLevel") == true end,
+          set = function(_, value)
+              addon:SetSetting("showLevel", value and true or false)
+              addon.UnitBars:UpdateAll()
+          end },
+        { key = "barClicks", label = "Clicking a bar opens what it shows", type = "toggle",
+          section = "general", order = 3.5,
+          desc = "The reputation bar opens the reputation panel, and the experience bar opens the character panel. Bars with nothing to open ignore the mouse entirely, so they stay click-through - turn this off and these two do as well.",
+          get = function() return addon:GetSetting("barClicks") ~= false end,
+          set = function(_, value)
+              addon:SetSetting("barClicks", value and true or false)
+              addon.UnitBars:ApplyAll()
+          end },
         { key = "rangeFade", label = "Fade units out of range", type = "toggle",
           section = "general", order = 4,
           desc = "A party member you cannot reach fades, so you know before you start casting. The game only answers this for people in your group, so nothing else is affected.",

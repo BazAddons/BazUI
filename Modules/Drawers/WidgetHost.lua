@@ -42,6 +42,14 @@ local DEFAULT_DESIGN_WIDTH = 200
 local DEFAULT_DESIGN_HEIGHT = 60
 local DRAG_HOLD_TIME = 0.5              -- seconds to hold before drag activates
 
+-- What a title bar looks like: sitting there, under the mouse, and armed
+-- for a drag. Written out at each of the places that set one, which is
+-- how the drag colour and the hover colour came to disagree about which
+-- grey they were.
+local TITLE_BG_IDLE  = { 0.08, 0.08, 0.12, 0.7 }
+local TITLE_BG_HOVER = { 0.15, 0.15, 0.22, 0.9 }
+local TITLE_BG_DRAG  = { 0.10, 0.40, 0.10, 0.9 }
+
 ---------------------------------------------------------------------------
 -- Compute the usable interior width of the host. GetWidth() can return 0
 -- on the first reflow before anchors have settled, so fall back to the
@@ -126,7 +134,7 @@ function WidgetHost:CreateSlot(widget)
 
     title.bg = title:CreateTexture(nil, "BACKGROUND")
     title.bg:SetAllPoints()
-    title.bg:SetColorTexture(0.08, 0.08, 0.12, 0.7)
+    title.bg:SetColorTexture(unpack(TITLE_BG_IDLE))
 
     -- Slot content background - owned by the slot, drawn beneath the
     -- widget's content area. Widgets no longer draw their own background.
@@ -166,7 +174,7 @@ function WidgetHost:CreateSlot(widget)
             self._holdPending = nil
             self._dragReady = true
             -- Visual: turn green to indicate drag is active
-            self.bg:SetColorTexture(0.1, 0.4, 0.1, 0.9)
+            self.bg:SetColorTexture(unpack(TITLE_BG_DRAG))
             WidgetHost:StartDrag(self._widgetId)
         end)
     end)
@@ -182,7 +190,7 @@ function WidgetHost:CreateSlot(widget)
         if self._dragReady then
             -- Was dragging - stop and restore color
             self._dragReady = nil
-            self.bg:SetColorTexture(0.15, 0.15, 0.22, 0.9)  -- hovered color (mouse is still over)
+            self.bg:SetColorTexture(unpack(TITLE_BG_HOVER))
             WidgetHost:StopDrag()
         elseif self._holdPending then
             -- Short click - toggle collapse
@@ -198,7 +206,7 @@ function WidgetHost:CreateSlot(widget)
 
     title:SetScript("OnEnter", function(self)
         if not self._dragReady then
-            self.bg:SetColorTexture(0.15, 0.15, 0.22, 0.9)
+            self.bg:SetColorTexture(unpack(TITLE_BG_HOVER))
         end
     end)
     title:SetScript("OnLeave", function(self)
@@ -208,7 +216,7 @@ function WidgetHost:CreateSlot(widget)
             self._holdPending = nil
         end
         if not self._dragReady then
-            self.bg:SetColorTexture(0.08, 0.08, 0.12, 0.7)
+            self.bg:SetColorTexture(unpack(TITLE_BG_IDLE))
         end
     end)
 
@@ -533,6 +541,11 @@ end
 ---------------------------------------------------------------------------
 
 function WidgetHost:ApplyFadeTargets(chromeAlpha, fullAlpha)
+    -- Kept so a slot built later can be brought to the same state. The
+    -- drawer only calls this when its fade changes, and a slot that did
+    -- not exist at the time would otherwise never hear about it.
+    self._chromeAlpha, self._fullAlpha = chromeAlpha, fullAlpha
+
     if not self.slots then return end
     for id, slot in pairs(self.slots) do
         local fadeTitle = addon:GetWidgetEffectiveSetting(id, "fadeTitleBar", true) ~= false
@@ -570,6 +583,140 @@ function WidgetHost:UpdateWidgetStatus(widgetId)
     end
 end
 
+
+---------------------------------------------------------------------------
+-- Dragging a widget to reorder it
+--
+-- Holding a title bar arms the drag - the bar turns green to say so - and
+-- from then until the mouse comes up the widget changes places whenever
+-- the cursor passes the middle of a neighbour.
+--
+-- The middle, rather than the edge, is what stops it flickering: swapping
+-- the moment the cursor touched a neighbour would put the widget where
+-- the cursor already is, which is immediately a reason to swap back. Past
+-- the halfway point, the swap leaves the cursor inside the widget's own
+-- new place and nothing more happens until it moves further.
+--
+-- One step at a time, too. Only the neighbour above and the neighbour
+-- below are considered, so a long drag walks the widget through the
+-- stack rather than teleporting it and leaving the rest to work out where
+-- they went.
+---------------------------------------------------------------------------
+
+local function SlotMidY(slot)
+    local top, bottom = slot:GetTop(), slot:GetBottom()
+    if not (top and bottom) then return nil end
+    return (top + bottom) / 2
+end
+
+-- The docked widgets sharing a stack with this one, in drawn order. The
+-- drawer has two - the ordinary one and whatever is pinned to the bottom
+-- - and a widget can only be reordered within its own.
+function WidgetHost:StackOrder(widgetId)
+    local wantBottom = addon:IsWidgetDockedToBottom(widgetId) and true or false
+    local out = {}
+    for _, w in ipairs(addon:GetSortedWidgets() or {}) do
+        local bottom = addon:IsWidgetDockedToBottom(w.id) and true or false
+        if bottom == wantBottom
+            and addon:IsWidgetEnabled(w.id)
+            and not addon:IsWidgetFloating(w.id) then
+            out[#out + 1] = w.id
+        end
+    end
+    return out
+end
+
+function WidgetHost:StartDrag(widgetId)
+    if not widgetId then return end
+    -- Reordering reflows, and reflowing is not something that can happen
+    -- mid-fight: it reparents frames the taint system will not let us
+    -- touch. Better to not start than to arm a drag that does nothing.
+    if InCombatLockdown() then return end
+
+    self._dragId = widgetId
+
+    local watcher = self._dragWatcher
+    if not watcher then
+        watcher = CreateFrame("Frame")
+        self._dragWatcher = watcher
+    end
+    watcher:SetScript("OnUpdate", function() WidgetHost:DragStep() end)
+    watcher:Show()
+end
+
+function WidgetHost:DragStep()
+    local id = self._dragId
+    if not id then return end
+
+    -- The title bar only hears the mouse come up while the cursor is
+    -- still on it, and a drag that ends anywhere else would otherwise
+    -- run forever. Whether the button is down is the honest question.
+    if not IsMouseButtonDown("LeftButton") then
+        self:StopDrag()
+        return
+    end
+    if InCombatLockdown() then
+        self:StopDrag()
+        return
+    end
+
+    local slot = self.slots[id]
+    if not (slot and slot:IsShown()) then return end
+
+    local _, cursorY = GetCursorPosition()
+    cursorY = cursorY / (UIParent:GetEffectiveScale() or 1)
+
+    local order = self:StackOrder(id)
+    local index
+    for i, other in ipairs(order) do
+        if other == id then index = i break end
+    end
+    if not index then return end
+
+    -- Screen coordinates count upward, so the neighbour drawn above is
+    -- the one earlier in the order and the one with the larger Y.
+    local above, below = order[index - 1], order[index + 1]
+
+    if above and self.slots[above] then
+        local mid = SlotMidY(self.slots[above])
+        if mid and cursorY > mid then
+            self:SwapWidgetOrder(id, above)
+            return
+        end
+    end
+
+    if below and self.slots[below] then
+        local mid = SlotMidY(self.slots[below])
+        if mid and cursorY < mid then
+            self:SwapWidgetOrder(id, below)
+            return
+        end
+    end
+end
+
+function WidgetHost:StopDrag()
+    local id = self._dragId
+    self._dragId = nil
+
+    if self._dragWatcher then
+        self._dragWatcher:SetScript("OnUpdate", nil)
+        self._dragWatcher:Hide()
+    end
+
+    -- Put the bar back to how it looks when it is not being dragged. The
+    -- title bar does this itself when the mouse comes up on it; this is
+    -- for every other way a drag can end.
+    local slot = id and self.slots[id]
+    local title = slot and slot.titleBar
+    if title and title._dragReady then
+        title._dragReady = nil
+        if title:IsMouseOver() then
+            title.bg:SetColorTexture(unpack(TITLE_BG_HOVER))
+        else
+            title.bg:SetColorTexture(unpack(TITLE_BG_IDLE))
+        end
+    end
+end
 
 function WidgetHost:SwapWidgetOrder(idA, idB)
     local orderA = addon:GetWidgetOrder(idA) or 10000
@@ -745,5 +892,14 @@ function WidgetHost:Reflow()
 
     if addon.Drawer and addon.Drawer.SetWidgetCount then
         addon.Drawer:SetWidgetCount(#widgets)
+    end
+
+    -- A title bar is created at full alpha, and the drawer only fades the
+    -- ones it can see at the moment its fade changes. A slot built or
+    -- rebuilt after that - a widget switched on, or one that reflows on
+    -- its own, which the minimap does whenever its style changes - was
+    -- left sitting there opaque over a drawer that had faded away.
+    if self._chromeAlpha then
+        self:ApplyFadeTargets(self._chromeAlpha, self._fullAlpha)
     end
 end

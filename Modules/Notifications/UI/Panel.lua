@@ -741,6 +741,7 @@ local function PopulateHistory()
         card.title:SetPoint("TOPLEFT", card.icon, "TOPRIGHT", 6, 0)
         card.title:SetPoint("RIGHT", card, "RIGHT", -90, 0)
         card.message:SetText(entry.message or "")
+        addon.ApplyMessageStyle(card.message, entry.emphasis)
         card.timestamp:SetText(FormatHistoryTimestamp(entry.realTime))
 
         -- Same band as a live card: the source's colour, solid in

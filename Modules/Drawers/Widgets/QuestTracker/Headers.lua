@@ -29,7 +29,11 @@ function QT.CreateSectionHeader()
     f.text = f:CreateFontString(nil, "OVERLAY")
     f.text:SetFontObject(BazUI.Skin.Theme.FontObject(C.TITLE_FONT)
         or BazUI.Skin.Theme.FontObject("GameFontNormal"))
-    f.text:SetPoint("LEFT", f, "LEFT", 10, 0)
+    -- Hard against the row's own left edge, which is already inset from
+    -- the widget by PAD. Ten pixels of its own put the heading to the
+    -- right of the quests underneath it, and to the right of every other
+    -- widget in the drawer.
+    f.text:SetPoint("LEFT", f, "LEFT", 0, 0)
     f.text:SetPoint("RIGHT", f.chevron, "LEFT", -6, 0)
     f.text:SetJustifyH("LEFT")
     f.text:SetTextColor(QT.GetTitleColor())

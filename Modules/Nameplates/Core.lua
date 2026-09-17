@@ -29,6 +29,9 @@ addon = BazUI:RegisterModule("Nameplates", {
         height       = 10,
         nameSize     = 9,
         showLevel    = true,
+        -- Rare and elite said in words beside the level, the same way
+        -- the unit bars say it.
+        showRank     = true,
         classColor   = true,
         -- Every unit that gets a plate from the game gets one of ours.
         -- Which units those are is the game's own setting, not ours:

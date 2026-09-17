@@ -546,17 +546,26 @@ function QT.PopulateBlock(block, quest)
         block.title:SetPoint("TOPLEFT",  block.stageBg, "TOPLEFT",  16, -8)
         block.title:SetPoint("BOTTOMRIGHT", block.stageBg, "BOTTOMRIGHT", -16, 8)
         block.title:Show()
-    elseif hideIcon then
-        block.title:SetPoint("TOPLEFT", block, "TOPLEFT", 0, 0)
-        block.title:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
-        block.title:Show()
     else
-        block.title:SetPoint("TOPLEFT", block, "TOPLEFT", C.POI_SIZE + C.POI_GAP, 0)
+        -- Room for the super-track button, but only where there is one to
+        -- make room for.
+        --
+        -- It is built from a template the client may not have - Classic
+        -- has no POIButtonTemplate at all - and the build is wrapped in a
+        -- pcall, so on those clients there is simply no button. Reserving
+        -- its width regardless pushed every quest title a quarter of the
+        -- widget to the right, past an icon that was never going to be
+        -- drawn, and left the tracker indented from every other widget in
+        -- the drawer.
+        local indent = (block.poi and not hideIcon)
+            and (C.POI_SIZE + C.POI_GAP) or 0
+        block.title:SetPoint("TOPLEFT", block, "TOPLEFT", indent, 0)
         block.title:SetPoint("TOPRIGHT", block, "TOPRIGHT", 0, 0)
         block.title:Show()
     end
 
-    local titleIndent = (not hideIcon) and (C.POI_SIZE + C.POI_GAP) or 0
+    local titleIndent = (block.poi and not hideIcon)
+        and (C.POI_SIZE + C.POI_GAP) or 0
 
     -- Title text
     if not useWidgetSet then
@@ -585,7 +594,8 @@ function QT.PopulateBlock(block, quest)
             -- title font (ObjectiveTrackerHeaderFont) was too big and
             -- colored wrong (we previously inherited the gold of
             -- regular quest titles).
-            block.title.text:SetFontObject(_G.GameFontNormal)
+            block.title.text:SetFontObject(
+                BazUI.Skin.Theme.FontObject("GameFontNormal") or _G.GameFontNormal)
             block.title.text:SetTextColor(1.0, 0.831, 0.380)
 
             if stageLbl and stageLbl ~= "" then

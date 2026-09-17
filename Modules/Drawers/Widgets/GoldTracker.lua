@@ -9,7 +9,7 @@ if not addon then return end
 
 local WIDGET_ID    = "bazdrawer_goldtracker"
 local DESIGN_WIDTH = 220
-local DESIGN_HEIGHT = 64
+local DESIGN_HEIGHT = 46
 local PAD          = 8
 
 local GoldWidget = {}
@@ -26,6 +26,15 @@ local function GetShowCopper()
     return addon:GetWidgetSetting(WIDGET_ID, "showCopper", true) ~= false
 end
 
+-- The coin art the rest of the game uses, rather than a letter after the
+-- number. There is room for it here - this is a panel, not a line of
+-- chat - and a coin is read without being read.
+local function Coin(kind, amount)
+    return string.format("|cff%s%s|r%s",
+        kind == "gold" and "ffd700" or kind == "silver" and "c7c7cf" or "eda55f",
+        amount, BazUI.CoinMarkup(kind))
+end
+
 local function FormatGold(copper)
     local g = math.floor(copper / 10000)
     local s = math.floor((copper % 10000) / 100)
@@ -33,21 +42,23 @@ local function FormatGold(copper)
     local showSilver = GetShowSilver()
     local showCopper = GetShowCopper()
 
+    -- Leading denominations you do not have are left out: nobody wants
+    -- to read 0g before the part of the number that means something.
     if g > 0 then
-        local out = string.format("%s|cffffd700g|r", BazUI:FormatNumber(g))
-        if showSilver then out = out .. string.format(" %d|cffc7c7cfs|r", s) end
-        if showCopper then out = out .. string.format(" %d|cffeda55fc|r", c) end
+        local out = Coin("gold", BazUI:FormatNumber(g))
+        if showSilver then out = out .. "  " .. Coin("silver", s) end
+        if showCopper then out = out .. "  " .. Coin("copper", c) end
         return out
     elseif s > 0 and showSilver then
-        local out = string.format("%d|cffc7c7cfs|r", s)
-        if showCopper then out = out .. string.format(" %d|cffeda55fc|r", c) end
+        local out = Coin("silver", s)
+        if showCopper then out = out .. "  " .. Coin("copper", c) end
         return out
     end
-    return string.format("%d|cffeda55fc|r", c)
+    return Coin("copper", c)
 end
 
 local function FormatGoldShort(copper)
-    return BazUI:FormatShortNumber(math.floor(copper / 10000)) .. "|cffffd700g|r"
+    return Coin("gold", BazUI:FormatShortNumber(math.floor(copper / 10000)))
 end
 
 function GoldWidget:Build()
@@ -55,33 +66,19 @@ function GoldWidget:Build()
     local f = CreateFrame("Frame", "BazUIDrawerGoldTracker", UIParent)
     f:SetSize(DESIGN_WIDTH, DESIGN_HEIGHT)
 
-    -- Coin icon (left) - use the high-res inv_misc_coin_01 icon texture.
-    -- The bag UI's atlas (`coin-gold`) is designed for a tiny inline
-    -- display and looks pixelated when scaled up to widget size; the
-    -- Blizzard icon texture is 64x64 native and stays crisp.
-    f.icon = f:CreateTexture(nil, "ARTWORK")
-    f.icon:SetSize(28, 28)
-    f.icon:SetPoint("LEFT", PAD, 4)
-    f.icon:SetTexture("Interface\\Icons\\inv_misc_coin_17")
-    -- Trim the icon's default border (Blizzard icons have a ~6% padded edge)
-    f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-
-    -- Current gold (large, top right of icon)
+    -- No coin icon and no rule underneath. The amount now carries the
+    -- game's own coins on the end of it, so a second and larger coin
+    -- beside them was saying the same thing twice and taking a third of
+    -- the widget to do it. The rule was drawing a line between this
+    -- widget and the next, which is the drawer's business rather than
+    -- any one widget's.
     f.current = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontNormalLarge")
-    f.current:SetPoint("LEFT", f.icon, "RIGHT", 6, 6)
+    f.current:SetPoint("TOPLEFT", PAD, -PAD)
     f.current:SetJustifyH("LEFT")
 
-    -- Session change (smaller, below current)
     f.change = BazUI.Skin.Theme.FontString(f, "OVERLAY", "GameFontHighlightSmall")
-    f.change:SetPoint("LEFT", f.icon, "RIGHT", 6, -8)
+    f.change:SetPoint("TOPLEFT", f.current, "BOTTOMLEFT", 0, -2)
     f.change:SetJustifyH("LEFT")
-
-    -- Subtle separator at the bottom
-    local sep = f:CreateTexture(nil, "ARTWORK")
-    sep:SetHeight(1)
-    sep:SetPoint("BOTTOMLEFT", PAD, 4)
-    sep:SetPoint("BOTTOMRIGHT", -PAD, 4)
-    sep:SetColorTexture(0.3, 0.25, 0.15, 0.4)
 
     frame = f
     return f
@@ -91,7 +88,11 @@ end
 -- font size proportionally. Resets to the base font object first so
 -- the next call starts from full size.
 local function FitFontToWidth(fs, baseObject, maxWidth, minSize)
-    fs:SetFontObject(baseObject)
+    -- Through the theme, or this hands the string back to Blizzard's own
+    -- font object every time it runs - which is every update, so the
+    -- widget was built in the addon's face and then quietly repainted in
+    -- the game's a moment later.
+    fs:SetFontObject(BazUI.Skin.Theme.FontObject(baseObject) or baseObject)
     if not maxWidth or maxWidth <= 0 then return end
     local font, size, flags = fs:GetFont()
     if not font or not size then return end
@@ -115,10 +116,9 @@ function GoldWidget:Update()
         frame.change:SetText("|cff666666Session no change|r")
     end
 
-    -- Dynamically shrink fonts so big numbers (like 244,340g) always fit.
-    -- Available text width = frame width - left padding - icon width
-    --                        - icon-to-text gap - right padding.
-    local maxW = (frame:GetWidth() or DESIGN_WIDTH) - PAD - 28 - 6 - PAD
+    -- Shrink the text if a big number would not fit. The whole width is
+    -- the text's now that nothing sits beside it.
+    local maxW = (frame:GetWidth() or DESIGN_WIDTH) - PAD * 2
     FitFontToWidth(frame.current, "GameFontNormalLarge",  maxW, 10)
     FitFontToWidth(frame.change,  "GameFontHighlightSmall", maxW, 8)
 

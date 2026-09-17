@@ -311,6 +311,16 @@ BazUI._ctxSections = BazUI._ctxSections or {}
 -- addon loads, and Core/Compat.lua, which takes the declaration, has not
 -- loaded yet. Calling it at file scope killed the rest of this file.
 BazUI:QueueForLogin(function()
+    -- The coin art beside a money amount, for the same reason.
+    for _, kind in ipairs({ "gold", "silver", "copper" }) do
+        BazUI:RegisterDependency({
+            module = "BazUI",
+            label  = BazUI.COIN_ICONS[kind],
+            why    = "The coin drawn beside a money amount.",
+            check  = function() return BazUI.Has.Texture(BazUI.COIN_ICONS[kind]) end,
+        })
+    end
+
     BazUI:RegisterDependency({
         module = "BazUI",
         label  = "MenuUtil.CreateContextMenu returns its menu",
@@ -477,6 +487,35 @@ BazUI:QueueForLogin(function()
                     desc = "The line in chat at login saying BazUI loaded.",
                     get = function() return BazUIDB.welcomeMessage end,
                     set = function(_, val) BazUIDB.welcomeMessage = val end,
+                },
+                movingHeader = {
+                    order = 5,
+                    type = "header",
+                    name = "Moving things",
+                },
+                snapping = {
+                    order = 6,
+                    type = "toggle",
+                    name = "Snap frames together when dragging",
+                    desc = "Dragging one frame near another joins them, so they move as a stack. Off places everything by hand and nothing is ever grabbed at.",
+                    get = function() return BazUIDB.snapping ~= false end,
+                    set = function(_, val) BazUIDB.snapping = val and true or false end,
+                },
+                snapFreeModifier = {
+                    order = 7,
+                    type = "select",
+                    name = "Hold to move freely",
+                    desc = "Hold this while dragging and that one drag will not snap to anything, however close it gets. Let go and snapping is back. The landing line goes out while it is held, so you can see which you are getting.",
+                    values = {
+                        ALT   = "Alt",
+                        SHIFT = "Shift",
+                        CTRL  = "Ctrl",
+                        NONE  = "Nothing",
+                    },
+                    sorting = { "ALT", "SHIFT", "CTRL", "NONE" },
+                    hidden = function() return BazUIDB.snapping == false end,
+                    get = function() return BazUIDB.snapFreeModifier or "ALT" end,
+                    set = function(_, val) BazUIDB.snapFreeModifier = val end,
                 },
                 modulesHeader = {
                     order = 10,

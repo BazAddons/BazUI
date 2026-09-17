@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
 -- BazChat Replica: Window
 --
@@ -21,6 +22,15 @@
 -- BazChat replaces the default chat window, so it owns this Blizzard global.
 -- luacheck: globals DEFAULT_CHAT_FRAME
 local addon   = BazUI.Chat            -- Chat's private namespace
+
+-- Where the scrollbar stops, measured up from the chat window's
+-- bottom edge. It has to clear the resize grip in the corner, and the
+-- grip is not there at all when the window is locked. Both used to be
+-- much larger, sized for the thick decorated edge the old nine-slice
+-- art drew along the bottom.
+local RESIZE_GRIP_SIZE        = 22
+local SCROLLBAR_BOTTOM_GAP    = 24
+local SCROLLBAR_BOTTOM_LOCKED = 8
 local BazChat = addon.API             -- module API (the old BazChat global)
 
 local Window = {}
@@ -262,6 +272,7 @@ local function InstallZoneWatcherOnce()
     f:RegisterEvent("PLAYER_REGEN_ENABLED")    -- combat ends
     f:RegisterEvent("PLAYER_REGEN_DISABLED")   -- combat starts
     f:RegisterEvent("GROUP_ROSTER_UPDATE")     -- party/raid change
+    f:RegisterEvent("PLAYER_GUILD_UPDATE")     -- joined or left a guild
     -- Watcher body wrapped in securecallfunction so any string ops
     -- it does on potentially-secret chat data (channel names from
     -- cross-realm contexts, etc.) don't taint the dispatch context
@@ -270,17 +281,38 @@ local function InstallZoneWatcherOnce()
     -- Handler runs for the SAME event in the same dispatch, and
     -- without isolation our taint contaminates its later secure
     -- calls (RemoveExtraSpaces, ReplaceIconAndGroupExpressions).
+    -- Re-assert each tab's channel filter, a tick after the event.
+    --
+    -- The list of channels a chat frame will show is Blizzard's field,
+    -- and Blizzard's own handler for these events APPENDS to it: joining
+    -- a channel adds it to every frame listening, whether that tab asked
+    -- for the channel or not. Which is how Trade chat turned up in a
+    -- General tab with Trade unticked - we wiped the list and set it from
+    -- the user's choices, then their handler ran in the same dispatch and
+    -- put Trade back.
+    --
+    -- So this waits for the dispatch to finish and has the last word. One
+    -- pass however many events arrive together, since joining a channel
+    -- raises several.
+    local refreshPending = false
+    local function ReassertChannelFilters()
+        refreshPending = false
+        if not (addon.Channels and addon.Channels.RefreshChannelList) then return end
+        local p = GetProfile()
+        local list = (addon.Window and addon.Window.list) or {}
+        for idx, win in pairs(list) do
+            local ws = p and p.windows and p.windows[idx]
+            if ws then
+                addon.Channels:RefreshChannelList(win, ws)
+            end
+        end
+    end
+
     local function ZoneWatcherBody()
         if addon.Tabs then addon.Tabs:UpdateVisibility() end
-        if addon.Channels and addon.Channels.RefreshChannelList then
-            local p = GetProfile()
-            local list = (addon.Window and addon.Window.list) or {}
-            for idx, win in pairs(list) do
-                local ws = p and p.windows and p.windows[idx]
-                if ws then
-                    addon.Channels:RefreshChannelList(win, ws)
-                end
-            end
+        if not refreshPending then
+            refreshPending = true
+            C_Timer.After(0, ReassertChannelFilters)
         end
     end
     local secureCall = securecallfunction
@@ -1126,17 +1158,17 @@ function Window:Create(index, opts)
     -- BOTTOMRIGHT, which collided with ScrollToBottomButton.)
     if f.ScrollBar then
         f.ScrollBar:ClearAllPoints()
-        -- Anchor to the CHROME wrapper (sibling frame outset 10/11/29
-        -- pixels from the chat) instead of the chat itself, so the
-        -- scrollbar sits flush against the visible gold border on the
+        -- Anchor to the CHROME wrapper rather than the chat itself, so
+        -- the scrollbar sits flush against the visible border on the
         -- right edge rather than being inset by the chrome's padding.
         -- Falls back to the chat frame if chrome hasn't been built.
         local anchor = f._bcChromeFrame or f
-        -- TOPRIGHT y = -28 leaves room above the scrollbar for the
-        -- copy-chat icon (anchored at TOPRIGHT -8,-8 with 14px size,
-        -- so bottom edge sits at y=-22; the extra 6px is the gap).
+        -- Top clears the copy-chat icon (TOPRIGHT -8,-8 at 14px, so its
+        -- bottom edge is at -22, and the rest is the gap). Bottom clears
+        -- the resize grip in the corner.
         f.ScrollBar:SetPoint("TOPRIGHT",    anchor, "TOPRIGHT",    -10, -28)
-        f.ScrollBar:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -10,  55)
+        f.ScrollBar:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -10,
+            SCROLLBAR_BOTTOM_GAP)
     end
 
     -- Bind the MinimalScrollBar to the ScrollingMessageFrame using
@@ -1180,10 +1212,24 @@ function Window:Create(index, opts)
     -- container is resolved per-event so PopOut/PopIn re-routing
     -- "just works" without rebinding the button on every migration.
     if f.ResizeButton and f._bcChromeFrame then
+        -- Parented to the chrome, not just anchored to it. The chat's
+        -- fade works by fading the chrome frame, and a grip hanging off
+        -- the chat itself does not inherit that - so it sat there at full
+        -- strength in the corner of a window that had faded away.
+        f.ResizeButton:SetParent(f._bcChromeFrame)
+
+        -- Into the corner, just clear of the border. It used to be lifted
+        -- 22 pixels to sit above the thick decorated edge the old
+        -- nine-slice art drew along the bottom; against a four-pixel band
+        -- that left it floating in the middle of nothing.
         f.ResizeButton:ClearAllPoints()
         f.ResizeButton:SetPoint("BOTTOMRIGHT", f._bcChromeFrame,
-            "BOTTOMRIGHT", -2, 22)
-        f.ResizeButton:SetFrameLevel((f:GetFrameLevel() or 5) + 10)
+            "BOTTOMRIGHT", -4, 4)
+        -- A bigger grip than the stock 16: the hit area, the diagonal
+        -- lines and the hover highlight are all this one size, so a
+        -- corner worth aiming at has to be the button itself.
+        f.ResizeButton:SetSize(RESIZE_GRIP_SIZE, RESIZE_GRIP_SIZE)
+        f.ResizeButton:SetFrameLevel((f._bcChromeFrame:GetFrameLevel() or 4) + 10)
         local function ContainerOf()
             local inst = Window.docks[f._dockID or "dock"]
             return inst and inst.frame or Window.dock
@@ -1367,13 +1413,14 @@ function Window:ApplySettings(idx)
     -- Scrollbar height tracks lock state: leave room for the resize
     -- grabber when unlocked (55 inset), extend further down when locked
     -- (45 inset). Top inset = 28 keeps the scrollbar below the
-    -- copy-chat icon (icon at -8,-8 size 14 -> bottom at y=-22, +6 gap).
+    -- copy-chat icon (icon at -8,-8 size 14 -> bottom at y=-22, +6 gap),
+    -- and stops above the resize grip.
     if f.ScrollBar then
         local anchor = f._bcChromeFrame or f
         f.ScrollBar:ClearAllPoints()
         f.ScrollBar:SetPoint("TOPRIGHT",    anchor, "TOPRIGHT",    -10, -28)
         f.ScrollBar:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -10,
-            locked and 45 or 55)
+            locked and SCROLLBAR_BOTTOM_LOCKED or SCROLLBAR_BOTTOM_GAP)
     end
 
     -- Behavior (canonical)
@@ -1446,7 +1493,9 @@ end
 -- deep-merged in - this guarantees all canonical tabs always show up.
 local CANONICAL_WINDOWS = {
     [1] = { label = "General", eventGroup = "GENERAL", autoShow = "always" },
-    [2] = { label = "Guild",   eventGroup = "GUILD",   autoShow = "always" },
+    -- A guild tab with no guild behind it is a tab that can never say
+    -- anything, so it waits until there is one.
+    [2] = { label = "Guild",   eventGroup = "GUILD",   autoShow = "guild"  },
     [3] = { label = "Trade",   eventGroup = "LOOT",    autoShow = "city"   },
     [4] = { label = "Log",     eventGroup = "LOG",     autoShow = "always" },
 }
@@ -1506,6 +1555,15 @@ function Window:CreateAll()
                 end
                 if p.windows[idx].autoShow == nil then
                     p.windows[idx].autoShow = canon.autoShow or "always"
+                elseif canon.autoShow == "guild" and not p.guildTabRuleApplied
+                    and p.windows[idx].autoShow == "always" then
+                    -- The Guild tab was seeded always-on before there was
+                    -- a rule for "only when you have a guild". A profile
+                    -- still carrying that value never chose it, so it is
+                    -- moved across once and the move remembered - which
+                    -- leaves a later, deliberate "always" alone.
+                    p.windows[idx].autoShow = "guild"
+                    p.guildTabRuleApplied = true
                 end
             end
 

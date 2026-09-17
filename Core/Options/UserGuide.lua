@@ -238,35 +238,79 @@ BazUI._userGuides = guides
 
 BazUI:RegisterUserGuide("BazUI", {
     title = "BazUI",
-    intro = "BazUI is one addon that replaces a stack of separate UI addons. Pick a topic on the left.",
+    intro = "One addon in place of a shelf of them, built for World of "
+        .. "Warcraft: Forever. Pick a module from the tabs above.",
     pages = {
         {
-            title = "Welcome",
+            title = "How it is put together",
             blocks = {
-                { type = "lead", text = "BazUI gathers the Baz Suite into a single addon built for World of Warcraft: Forever. Drawers hold the minimap, minimap buttons, quest tracker and info bar; chat and bags follow as modules." },
-                { type = "h2", text = "Slash commands" },
-                { type = "table",
-                  columns = { "Command", "Effect" },
-                  rows = {
-                      { "/bazui",                 "Open BazUI in Options > AddOns" },
-                      { "/bazui profile <name>",  "Switch to a profile" },
-                      { "/bazui profiles",        "List profiles" },
-                      { "/bazui default <name>",  "Set the profile new characters start on" },
-                      { "/bui",                   "Short alias for /bazui" },
-                  },
-                },
-                { type = "note", style = "tip", text = "BazUI lives in the standard Options > AddOns list. Each module is an entry under BazUI, and a module's pages are tabs across the top of its panel." },
+                { type = "paragraph", text = "BazUI is one addon made of modules, each replacing something you would otherwise have installed separately: action bars, unit frames, nameplates, auras, bags, chat, the minimap and its drawers, notifications, a micro menu, the tooltip, the codex, and a handful of quality of life tweaks." },
+                { type = "paragraph", text = "They share one options window, one profile system and one look. That is the point of it being one addon rather than twelve: a color you change is changed everywhere, a profile you switch switches all of it, and nothing has to be kept in step by hand." },
+                { type = "note", style = "tip", text = "BazUI sits in the standard |cffffd700Options > AddOns|r list. Each module is an entry under BazUI, and that module's pages are tabs across the top of its panel - including this manual, which has a tab per module." },
             },
         },
         {
             title = "Profiles",
             blocks = {
-                { type = "lead", text = "One profile covers every module. Switch profiles from the Profiles page or with /bazui profile, and assign profiles per character, class or specialisation." },
+                { type = "paragraph", text = "|cffffd700One profile covers every module.|r Switch it and your bars, frames, bags, chat and drawers all move to what that profile says." },
                 { type = "list", items = {
-                    "Create, copy, rename and delete profiles from the Profiles page.",
-                    "A profile can be set as the default for new characters.",
-                    "Modules react to profile changes immediately; no reload needed.",
-                }},
+                    "Create, copy, reset and delete profiles on the |cffffd700Profiles|r page.",
+                    "|cffffd700Copy Settings From|r takes another profile as a starting point.",
+                    "|cffffd700Auto-assignment|r attaches a profile to this character, this class, or this spec, so logging in picks the right one.",
+                    "One profile can be set as the default for new characters.",
+                    "Modules react to a profile change straight away - no reload.",
+                } },
+            },
+        },
+        {
+            title = "The look",
+            blocks = {
+                { type = "paragraph", text = "Almost everything BazUI draws is a plain texture tinted by a handful of colors, which means the whole look is a list of numbers rather than a folder of art. The |cffffd700Skin|r page is where you change it." },
+                { type = "list", items = {
+                    "|cffffd700Colors|r, grouped by what they are for, each with a picker.",
+                    "|cffffd700Borders|r as a list of bands running outward from the fill. Change a color or a thickness, add as many bands as you like, or take them all off for a bare edge. Every edge follows: bars, panels, nameplates, round buttons, tooltips, popups and menus.",
+                    "|cffffd700Bar fill|r - gloss, marble, flat, or a gradient worked out from each bar's own color. With LibSharedMedia installed, everything it knows about is in the list too.",
+                } },
+                { type = "paragraph", text = "Changes apply as you make them. A skin can be exported and imported as a string, and another addon can ship one." },
+            },
+        },
+        {
+            title = "Moving things around",
+            blocks = {
+                { type = "paragraph", text = "Drag one frame near another in Edit Mode and they join, so from then on they move as a stack and anything you do to the one above moves the one below with it. A green line shows where it is about to land before you let go." },
+                { type = "h3", text = "When you do not want that" },
+                { type = "paragraph", text = "Snapping is right nearly all of the time, which is exactly the problem with it: the one occasion you want two things a few pixels apart and |cffffd700not|r joined, there is no way to say so. There are two." },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Hold to move freely", "Hold this key while dragging and that one drag ignores everything it passes, however close. Let go and snapping is back. Alt by default." },
+                    { "Snap frames together when dragging", "Off means nothing ever snaps, for placing everything by hand." },
+                } },
+                { type = "note", text = "The key is read while you drag, not when you started, so you can change your mind half way - the landing line goes out the moment you hold it and comes back when you let go. That is the quickest way to see which of the two you are getting." },
+                { type = "paragraph", text = "Both are on |cffffd700BazUI > General|r, under Moving things, and they apply everywhere that docks: bars, unit frames, auras, drawers and the rest." },
+            },
+        },
+
+        {
+            title = "Turning modules off",
+            blocks = {
+                { type = "paragraph", text = "|cffffd700BazUI > General|r has a switch per module. Turn one off and the game's own version comes back - the stock bags, the stock chat, the stock nameplates. Turning a module on or off takes a reload, and you are asked for one when you do it." },
+                { type = "paragraph", text = "The same page decides whether the login line is printed." },
+                { type = "note", text = "Blizzard's own frames are only hidden where you ask, on a switch per frame. Nothing is suppressed on your behalf." },
+            },
+        },
+        {
+            title = "Slash commands",
+            blocks = {
+                { type = "table",
+                  columns = { "Command", "What it does" },
+                  rows = {
+                      { "/bazui",                 "Opens BazUI in Options > AddOns. /bui is shorter." },
+                      { "/bazui check",           "Reports anything the addon expects from the game's own interface and cannot find. Worth running first on a new client build - it tells a real bug from a client that has moved something." },
+                      { "/bazui profile <name>",  "Switches profile. Bare, it says which one you are on." },
+                      { "/bazui profiles",        "Lists them." },
+                      { "/bazui default <name>",  "Sets the profile new characters start on." },
+                  },
+                },
+                { type = "paragraph", text = "Each module has its own command too - |cffffd700/bb|r for bars, |cffffd700/bbg|r for bags, |cffffd700/bc|r for chat, |cffffd700/bwd|r for drawers, and so on. They are listed on each module's page of this manual." },
             },
         },
     },

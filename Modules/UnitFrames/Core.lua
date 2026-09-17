@@ -24,6 +24,19 @@ addon = BazUI:RegisterModule("UnitFrames", {
     defaults = {
         classColor   = false,
         unitTooltips = true,
+        -- Which rank a unit is. We have no portrait to hang the game's
+        -- dragon on, so it is marked on the bar instead, three ways that
+        -- do not argue with each other: a glow around it, a glyph in
+        -- front of the name, or the rank written out. The first two are
+        -- on because neither costs the name any room; the word does, so
+        -- it waits to be asked for.
+        rankGlow     = true,
+        rankIcon     = true,
+        rankWord     = false,
+        showLevel    = false,
+        -- A bar showing something the game has a window for is a way into
+        -- that window: reputation and experience each have one.
+        barClicks    = true,
         -- Fading someone you cannot reach, and how far to fade them.
         rangeFade    = true,
         rangeAlpha   = 0.45,
@@ -55,9 +68,66 @@ addon = BazUI:RegisterModule("UnitFrames", {
         },
     },
     onReady = function(self)
+        self:MigrateRankStyle()
         self:InitializeBars()
-        self:OnProfileChanged(function() self:ApplySettings() end)
+        self:OnProfileChanged(function()
+            self:MigrateRankStyle()
+            self:ApplySettings()
+        end)
     end,
+})
+
+-- The three rank switches were one dropdown to begin with, before there
+-- was an icon to be a third thing it could have been set to. Read the old
+-- answer once and throw it away.
+--
+-- Off stays off: somebody who turned the marking off did not ask for a
+-- new kind of it. Everything else keeps what it had and takes the icon,
+-- which is what a profile made today would have started with.
+local RANK_STYLE_WAS = {
+    off  = { glow = false, icon = false, word = false },
+    word = { glow = false, icon = true,  word = true  },
+    glow = { glow = true,  icon = true,  word = false },
+    both = { glow = true,  icon = true,  word = true  },
+}
+
+function addon:MigrateRankStyle()
+    local old = self:GetSetting("rankStyle")
+    local mapped = type(old) == "string" and RANK_STYLE_WAS[old]
+    if not mapped then return end
+
+    self:SetSetting("rankGlow", mapped.glow)
+    self:SetSetting("rankIcon", mapped.icon)
+    self:SetSetting("rankWord", mapped.word)
+    self:SetSetting("rankStyle", nil)
+end
+
+-- The rank glyphs, declared so /bazui check says whether they are on
+-- disk. A missing one is not fatal - the rank falls back to the marks
+-- it is made of - but it is still worth being told about, because the
+-- fallback is quieter than the thing it stands in for.
+BazUI:QueueForLogin(function()
+    local Skin = BazUI.Skin
+    for _, icon in ipairs({
+        { key = "RANK_ICON_RARE",       label = "rareIcon.png"      },
+        { key = "RANK_ICON_ELITE",      label = "eliteIcon.png"     },
+        { key = "RANK_ICON_RARE_ELITE", label = "eliteRareIcon.png" },
+        { key = "RANK_ICON_BOSS",       label = "bossIcon.png"      },
+    }) do
+        BazUI:RegisterDependency({
+            module = "Unit Frames",
+            label  = "Skin\\Assets\\" .. icon.label,
+            why    = "The mark in front of a ranked unit's name.",
+            check  = function() return BazUI.Has.Texture(Skin[icon.key]) end,
+        })
+    end
+end)
+
+BazUI:RegisterDependency({
+    module = "Unit Frames",
+    label  = "ToggleCharacter()",
+    why    = "Clicking the reputation or experience bar opens its panel.",
+    check  = function() return BazUI.Has.Global("ToggleCharacter") end,
 })
 
 -- Back to the five a new profile starts with. Testing an arrangement

@@ -68,14 +68,41 @@ end
 
 ---------------------------------------------------------------------------
 -- StripColorCodes(s)
---   Removes Blizzard's |cAARRGGBB ... |r color sequences from a
---   string. Useful when copying chat to plain text and you want a
---   cleaner result without the embedded escape codes.
+--   Turns a chat line into plain text: every escape sequence the client
+--   can put in one, gone, with the words it was wrapping kept.
+--
+--   Colors were all this removed to begin with, which left the links and
+--   textures behind - and an EditBox will not take a string with those
+--   in it at all. Not truncate: refuse, silently, keeping nothing. That
+--   is what an empty copy dialog with a character count under it was.
+--
+--   A link keeps its bracketed name, which is the readable half and the
+--   only part worth pasting into a bug report. An inline texture has no
+--   words in it, so it goes entirely. Anything left holding a bare pipe
+--   is swept up at the end, because one stray escape loses the whole
+--   line.
 ---------------------------------------------------------------------------
 
 function addon:StripColorCodes(s)
     if type(s) ~= "string" then return "" end
+
+    -- Colors: |cAARRGGBB ... |r
     s = s:gsub("|c%x%x%x%x%x%x%x%x", "")
     s = s:gsub("|r", "")
+
+    -- Hyperlinks: |Hitem:...|h[Iron Bar]|h -> [Iron Bar]
+    s = s:gsub("|H.-|h(.-)|h", "%1")
+
+    -- Inline art: textures |T...|t and atlases |A...|a
+    s = s:gsub("|T.-|t", "")
+    s = s:gsub("|A.-|a", "")
+
+    -- An escaped pipe means a literal one.
+    s = s:gsub("||", "|")
+
+    -- Whatever is left is a fragment of something malformed. Dropping it
+    -- costs a character; keeping it costs the entire line.
+    s = s:gsub("|", "")
+
     return s
 end

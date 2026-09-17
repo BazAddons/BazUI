@@ -115,6 +115,17 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
             desc = "Sort bag contents (Blizzard's Clean Up Bags)",
             handler = function() addon.SortBags() end,
         },
+        rim = {
+            desc = "Print what the rarity glow is doing on the first few slots",
+            handler = function()
+                if addon.Bag and addon.Bag.DumpRims then
+                    addon:Print("Rarity glow:")
+                    addon.Bag:DumpRims()
+                else
+                    addon:Print("The bag is not built yet.")
+                end
+            end,
+        },
         categorize = {
             desc = "Toggle Categorize mode (drop slots + every category visible)",
             handler = function()
@@ -314,7 +325,7 @@ local function GetSettingsPage()
 
             bgTexture = {
                 order = 15, type = "select", name = "Background",
-                desc = "What the panel is backed with. Flat uses the skin's panel colour and has no grain at all.",
+                desc = "What the panel is backed with. Flat uses the skin's panel color and has no grain at all.",
                 values = {
                     marble = "Marble",
                     rock   = "Rock",
@@ -405,8 +416,8 @@ local function GetSettingsPage()
             },
 
             raritySlots = {
-                order = 24, type = "select", name = "Rarity borders",
-                desc = "A coloured edge on a slot, by the item's quality. Grey and white on every slot is noise rather than information, which is why the useful setting is uncommon and better.",
+                order = 24, type = "select", name = "Rarity glow",
+                desc = "A colored glow around a slot, by the item's quality. Grey and white on every slot is noise rather than information, which is why the useful setting is uncommon and better.",
                 values = {
                     none     = "Off",
                     uncommon = "Uncommon and better",
@@ -457,4 +468,15 @@ end
 
 addon:OnProfileChanged(function()
     addon:ApplyBagBarVisibility()
+end)
+
+BazUI:QueueForLogin(function()
+    BazUI:RegisterDependency({
+        module = "Bags",
+        label  = "UI-ActionButton-Border",
+        why    = "The glow that marks a slot with the quality of what is in it.",
+        -- Named where it is used rather than written out twice, so the
+        -- check and the thing it checks cannot drift apart.
+        check  = function() return BazUI.Has.Texture(addon.RIM_TEXTURE) end,
+    })
 end)

@@ -44,8 +44,14 @@ local function OnPlayerMoney()
         BNC:Push({
             event = "gold",
             module = MODULE_ID,
-            title = "Gold Received",
+            -- "Coin" rather than "Gold": most of these are silver and
+            -- copper, and a card headed Gold that says 2c reads as a
+            -- mistake.
+            title = "Coin Received",
             message = BazUI:FormatMoney(diff),
+            -- The amount is the whole point of this one, so it is drawn
+            -- to be read first rather than last.
+            emphasis = true,
             icon = "Interface\\Icons\\INV_Misc_Coin_01",
             priority = "low",
             duration = GetSetting("toastDuration") or 3,
@@ -218,7 +224,7 @@ BNC:RegisterModule({
 
 BNC:RegisterModuleOptions(MODULE_ID, {
     { type = "event", key = "items", label = "Item loot",  show = "showItems", toast = "itemToasts", blizzard = "hideLootAlerts" },
-    { type = "event", key = "gold",  label = "Gold gains", show = "showGold",  toast = "goldToasts" },
+    { type = "event", key = "gold",  label = "Coin gains", show = "showGold",  toast = "goldToasts" },
     { key = "minQuality",     label = "Minimum item quality", desc = "Items below this quality are skipped.", type = "select", default = 0,
       values = { [0] = "Poor", [1] = "Common", [2] = "Uncommon", [3] = "Rare", [4] = "Epic" }, sorting = { 0, 1, 2, 3, 4 } },
     { key = "hideQuestItems", label = "Skip quest items", desc = "Quests already reports these.", type = "toggle", default = true },

@@ -74,7 +74,7 @@ function Panel.Create(strip)
     tab.accent:SetPoint("TOPLEFT")
     tab.accent:SetPoint("TOPRIGHT")
 
-    tab.Text = Theme.FontString(tab, "OVERLAY", "GameFontNormal")
+    tab.Text = Theme.FontString(tab, "OVERLAY", strip.tabFont or "GameFontNormal")
     tab.Text:SetPoint("CENTER", 0, -1)
 
     tab:HookScript("OnEnter", function(self)
@@ -88,7 +88,7 @@ end
 
 function Panel.Init(tab, text, strip)
     tab.Text:SetText(text or "")
-    local w = (tab.Text:GetStringWidth() or 0) + PANEL_TEXT_PAD
+    local w = (tab.Text:GetStringWidth() or 0) + (strip.textPad or PANEL_TEXT_PAD)
     tab:SetWidth(math.max(strip.minTabWidth or 60, math.min(strip.maxTabWidth or 120, w)))
     tab:SetHeight(strip.tabHeight or 26)
 end
@@ -109,7 +109,7 @@ function Underline.Create(strip)
     local tab = CreateFrame("Button", nil, strip)
     tab:SetHeight(strip.tabHeight or 24)
 
-    tab.Text = Theme.FontString(tab, "OVERLAY", "GameFontNormal")
+    tab.Text = Theme.FontString(tab, "OVERLAY", strip.tabFont or "GameFontNormal")
     tab.Text:SetAllPoints()
 
     tab.underline = tab:CreateTexture(nil, "ARTWORK")
@@ -131,7 +131,7 @@ end
 
 function Underline.Init(tab, text, strip)
     tab.Text:SetText(text or "")
-    local w = (tab.Text:GetStringWidth() or 0) + UNDERLINE_PAD
+    local w = (tab.Text:GetStringWidth() or 0) + (strip.textPad or UNDERLINE_PAD)
     tab:SetWidth(math.max(strip.minTabWidth or 1, math.min(strip.maxTabWidth or 400, w)))
     tab:SetHeight(strip.tabHeight or 24)
 end
@@ -288,14 +288,38 @@ function StripMixin:Layout()
         return
     end
 
+    -- One row. Reversed, it fills from the other end: the first tab sits
+    -- against the right edge and the rest run leftward from it, which is
+    -- what a strip hung off the right-hand side of a window wants. The
+    -- strip's own size is the same either way - only which end the tabs
+    -- are measured from changes.
+    local reverse = self.reverseFlow
     local x, maxH = inset, 0
     for i, child in ipairs(items) do
         child:ClearAllPoints()
-        child:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", x, 0)
+        if reverse then
+            child:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -x, 0)
+        else
+            child:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", x, 0)
+        end
         x = x + (child:GetWidth() or 0) + (i < #items and self.tabSpacing or 0)
         maxH = math.max(maxH, child:GetHeight() or 0)
     end
     self:SetSize(math.max(x, 1), math.max(maxH, 1))
+end
+
+-- Which way the tabs run. Nothing else about the strip changes: whoever
+-- owns it decides which edge it hangs from and where the add button
+-- goes, because only they know what it is sitting next to.
+function StripMixin:SetReverseFlow(on)
+    on = on and true or false
+    if self.reverseFlow == on then return end
+    self.reverseFlow = on
+    self:MarkDirty()
+end
+
+function StripMixin:IsReverseFlow()
+    return self.reverseFlow and true or false
 end
 
 -- Give a strip a width to wrap inside. Pass nothing to go back to one
@@ -313,7 +337,10 @@ end
 --   opts.style           "panel" (default) or "underline"
 --   opts.minTabWidth     clamp tab widths (default 60 / 120)
 --   opts.maxTabWidth
---   opts.tabHeight       underline tabs only (default 24)
+--   opts.tabHeight       height of each tab (default 26 panel / 24 underline)
+--   opts.tabFont         font object name for the label (default GameFontNormal)
+--   opts.textPad         padding either side of the label
+--   opts.reverseFlow     lay the tabs out from the right instead
 --   opts.spacing         gap between tabs (default 2)
 --   opts.inset           gap before the first tab (default 0)
 --   opts.wrapWidth       wrap onto more rows inside this width; also
@@ -333,6 +360,13 @@ function BazUI.CreateTabStrip(name, parent, opts)
     strip.minTabWidth    = opts.minTabWidth or 60
     strip.maxTabWidth    = opts.maxTabWidth or 120
     strip.tabHeight      = opts.tabHeight
+    -- A tab shrinks in three ways and all three have to move together:
+    -- the plate's height, the face it is lettered in, and the padding
+    -- either side of the word. Setting only the height leaves the text
+    -- the size it was, filling the smaller plate.
+    strip.tabFont        = opts.tabFont
+    strip.textPad        = opts.textPad
+    strip.reverseFlow    = opts.reverseFlow and true or false
     strip.tabSpacing     = opts.spacing or DEFAULT_SPACING
     strip.tabInset       = opts.inset or 0
     strip.wrapWidth      = opts.wrapWidth

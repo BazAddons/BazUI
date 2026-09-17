@@ -61,7 +61,7 @@ local DEFAULTS = {
     --   eventGroup   default channel preset for the tab
     --                ("GENERAL" / "GUILD" / "LOOT" / "LOG")
     --   alpha        chat text + scrollbar opacity (foreground)
-    --   bgAlpha      NineSlice chrome panel opacity (background)
+    --   bgAlpha      chrome panel opacity (background)
     --   scale        whole-frame UI scale multiplier
     --   scrollbarMode    "always" / "onscroll" / "never"
     --   bgMode           "always" / "onhover" / "never"
@@ -242,6 +242,26 @@ local core = BazUI:RegisterModule(addonName, {
                 end
             end,
         },
+        channels = {
+            desc    = "List the channels you are in, and which one counts as Trade",
+            handler = function()
+                if not GetChannelList then
+                    addon.core:Print("This client has no GetChannelList.")
+                    return
+                end
+                local list = { GetChannelList() }
+                addon.core:Print(("In %d channel(s):"):format(#list / 3))
+                for i = 1, #list, 3 do
+                    print(("  [%s] %s%s"):format(
+                        tostring(list[i]), tostring(list[i + 1]),
+                        list[i + 2] and "  |cffff8800(disabled)|r" or ""))
+                end
+                local id = addon.Tabs and addon.Tabs.IsTradeUsable
+                    and addon.Tabs:IsTradeUsable()
+                addon.core:Print("Trade tab should be shown: " .. tostring(id and true or false))
+            end,
+        },
+
         font = {
             desc    = "Report whether the BazUI chat font is loaded and in use",
             handler = function()

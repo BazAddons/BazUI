@@ -25,6 +25,7 @@
 ---------------------------------------------------------------------------
 
 local addon = BazUI:GetModule("UnitFrames")
+local Theme = BazUI.Skin.Theme
 
 local UnitBars = {}
 addon.UnitBars = UnitBars
@@ -37,7 +38,6 @@ local previewing = false
 
 -- Offline is here because a placeholder bar wears it before there is a
 -- unit to ask about. The rest of the unit colours live in Core/Units.lua.
-local OFFLINE_COLOR = BazUI.UNIT_COLORS.offline
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
 local CHANNEL_COLOR = { 0.45, 0.68, 0.85, 1 }
 local FAILED_COLOR  = { 0.85, 0.30, 0.30, 1 }
@@ -439,8 +439,47 @@ end
 -- experience bar has always used.
 local SEP = "   •   "
 
-local function Format(mode, current, maximum, name)
+-- What a bar says right now. A bar can carry two wordings - one for while
+-- you are looking at it and one for the rest of the time - so which
+-- applies is a question about the mouse rather than about the bar. No
+-- second wording set, and there is nothing to choose between.
+local function TextFormat(bar)
+    local def = bar.def
+    if bar.frame._hovered then
+        local hovered = def.hoverFormat
+        if hovered and hovered ~= "same" then return hovered end
+    end
+    return def.textFormat
+end
+
+-- Whether this bar says something different under the mouse, which is
+-- what decides whether hovering it is worth a redraw - and, on a bar that
+-- is not already a button, whether it is worth taking the mouse for at
+-- all. A bar told never to show text has nothing to change into.
+local function HasHoverFormat(def)
+    if (def.textMode or "always") == "never" then return false end
+    return def.hoverFormat ~= nil and def.hoverFormat ~= "same"
+        and def.hoverFormat ~= def.textFormat
+end
+
+-- The wordings that carry the unit's level themselves. A name handed to
+-- one of these stays a name: the level arrives separately rather than
+-- being folded into it.
+local LEVEL_WORDINGS = { level = true, nameLevel = true }
+
+local function Format(mode, current, maximum, name, level)
     if mode == "name" then return name or "" end
+
+    -- Before the health check, because a level is a fact about the unit
+    -- rather than about its health, and is worth saying on a bar whose
+    -- numbers have not arrived yet.
+    if mode == "level" then return level or "" end
+    if mode == "nameLevel" then
+        if not (level and level ~= "") then return name or "" end
+        if not (name and name ~= "") then return level end
+        return name .. "  " .. level
+    end
+
     if maximum <= 0 then return "" end
     local percent = math.floor(current / maximum * 100 + 0.5)
     if mode == "percent" then return percent .. "%" end
@@ -466,31 +505,202 @@ end
 -- Filling a bar in
 ---------------------------------------------------------------------------
 
--- A bar for a unit that is not there, while the layout is being
--- arranged: full, gray, and named after the slot it stands for.
-local function DrawPlaceholder(bar, fraction)
+---------------------------------------------------------------------------
+-- A bar for a unit that is not there
+--
+-- Shown while a layout is being arranged, so a party can be laid out
+-- without a party. It used to be a grey bar at full, which answered none
+-- of the questions you have while arranging: whether a name of real
+-- length fits, what four class colours look like stacked, whether a
+-- half-empty bar still reads at the height you chose.
+--
+-- So it stands in for a plausible group instead. Each slot keeps the same
+-- made-up member every time, because a preview that reshuffles while you
+-- drag is a preview you cannot compare against itself.
+--
+-- The name stays the slot's own - "Party 1" rather than an invented
+-- person - so you can always tell which bar you have hold of.
+---------------------------------------------------------------------------
+
+local PREVIEW_MEMBERS = {
+    party1    = { health = 0.86, power = 0.62, class = "WARRIOR", level = 60 },
+    party2    = { health = 0.41, power = 0.88, class = "PRIEST",  level = 59 },
+    party3    = { health = 1.00, power = 0.35, class = "MAGE",    level = 60 },
+    party4    = { health = 0.68, power = 0.50, class = "ROGUE",   level = 58 },
+    partypet1 = { health = 0.93, power = 0.70, class = "HUNTER",  level = 60 },
+    partypet2 = { health = 0.55, power = 0.45, class = "WARLOCK", level = 59 },
+    partypet3 = { health = 0.77, power = 0.80, class = "HUNTER",  level = 60 },
+    partypet4 = { health = 0.34, power = 0.25, class = "WARLOCK", level = 58 },
+    target    = { health = 0.62, power = 0.40, class = "DRUID",   level = 61 },
+    pet       = { health = 0.90, power = 0.75, class = "HUNTER",  level = 60 },
+    player    = { health = 0.74, power = 0.55, class = "PALADIN", level = 60 },
+}
+
+local PREVIEW_FALLBACK = { health = 0.72, power = 0.55, class = "WARRIOR", level = 60 }
+
+-- Mana, as the one every class has some of.
+local PREVIEW_POWER_COLOR = { 0.10, 0.30, 1.00, 1 }
+
+local function DrawPlaceholder(bar, kind)
+    local def = bar.def
+    local member = PREVIEW_MEMBERS[def.unit] or PREVIEW_FALLBACK
+    local label = UnitBars.UNITS[def.unit] or def.unit
+
     -- Nothing that made it fade still applies: there is no unit to be
     -- out of range of, and no resource to be missing.
     bar._noPower, bar._outOfRange = false, false
     bar.frame:SetAlpha(1)
-    bar.frame:SetValue(fraction)
     bar.frame:SetOverlay(0)
-    bar.frame:SetFillColor(OFFLINE_COLOR)
-    bar.frame:SetText(UnitBars.UNITS[bar.def.unit] or bar.def.unit)
+
+    local isPower = (kind == "power")
+    local fraction = isPower and member.power or member.health
+
+    local color
+    if isPower then
+        color = PREVIEW_POWER_COLOR
+    elseif addon:GetSetting("classColor") then
+        local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[member.class]
+        color = c and { c.r, c.g, c.b, 1 } or BazUI.UNIT_COLORS.alive
+    else
+        color = BazUI.UNIT_COLORS.alive
+    end
+
+    bar.frame:SetValue(fraction)
+    bar.frame:SetFillColor(color)
+
+    -- Through the same wording the bar will really use, so the line you
+    -- are judging is the line you are going to get. A round thousand of
+    -- whatever it is, so the numbers read like numbers.
+    local maximum = isPower and 2000 or 4000
+    local current = math.floor(maximum * fraction + 0.5)
+    bar.frame:SetText(Format(TextFormat(bar), current, maximum, label,
+        tostring(member.level)))
+end
+
+-- Who the bar is looking at, and what rank it is. The level rides in
+-- the name rather than in Format, so every wording that shows a name
+-- gets it and the ones that are deliberately just a number stay just a
+-- number.
+-- The name, with whatever the settings ask to be said about the unit's
+-- rank in front of and behind it. The icon leads because it is a mark
+-- rather than a word - you look past it to read the name, the way you
+-- look past a quest icon.
+-- The unit's level, written the way the rest of the addon writes it: with
+-- the rank on the end of it when that is switched on.
+local function LevelText(unit)
+    return BazUI.UnitLevelText(unit, {
+        level = true,
+        rank  = addon:GetSetting("rankWord") == true,
+    })
+end
+
+-- The unit's name, plus whatever the level and rank settings want added
+-- to it.
+--
+-- A wording that asks for the level itself gets a bare name, and the
+-- level handed over separately - otherwise "Name and level" with the
+-- level setting on would say it twice.
+local function LabelFor(unit, wording)
+    local name = UnitName(unit) or ""
+    if LEVEL_WORDINGS[wording] then return name end
+
+    local rank = addon:GetSetting("rankWord") == true
+    local level = addon:GetSetting("showLevel") == true
+    if not (rank or level) then return name end
+
+    local extra = BazUI.UnitLevelText(unit, { level = level, rank = rank })
+    if not extra then return name end
+    return name ~= "" and (name .. "  " .. extra) or extra
+end
+
+-- The mark in front of the name, sized to the bar rather than to the
+-- writing on it - the text stops growing at twelve pixels and a tall bar
+-- has room for more than that. Never taller than the fill, and never
+-- smaller than the text, which is as small as it is worth drawing.
+local function ApplyRankIcon(bar, unit)
+    if bar.def.kind ~= "health" then return end
+
+    local path = (addon:GetSetting("rankIcon") ~= false)
+        and unit and UnitExists(unit)
+        and BazUI.UnitRankIcon(unit) or nil
+    if not path then
+        bar.frame:SetLeadIcon(nil)
+        return
+    end
+
+    local _, fill = bar.frame:GetFillSize()
+    local scale = tonumber(BazUI.Skin.RANK_ICON_SCALE) or 0.85
+    local size = math.floor(math.max(bar.frame:TextSize(), fill * scale) + 0.5)
+    bar.frame:SetLeadIcon(path, math.min(size, math.max(1, fill)))
+end
+
+-- The glow is the same fact as the word, drawn instead of written. Only
+-- health bars wear it: a unit's rank on both its bars is the same thing
+-- said twice, and twice as bright.
+local function ApplyRankGlow(bar, unit)
+    if bar.def.kind ~= "health" then return end
+    local wanted = (addon:GetSetting("rankGlow") ~= false)
+        and unit and UnitExists(unit)
+        and BazUI.UnitRankColor(unit) or nil
+    Theme.SetGlow(bar.frame, wanted)
+end
+
+---------------------------------------------------------------------------
+-- Numbers we may not be allowed to read
+--
+-- Forever made unit health and power *secret*: an addon may hold one and
+-- hand it to a widget, but may not compare it, divide it, or build a
+-- string from it. Doing any of those raises rather than returning a
+-- wrong answer, so the two helpers below ask by trying.
+--
+-- Trying, rather than testing what the client is: which values are
+-- secret is the client's decision and can differ per power type and per
+-- unit, so a rule written here would be a guess that goes stale. A pcall
+-- is the honest question.
+---------------------------------------------------------------------------
+
+-- Greater than nought, as far as we can tell. A bar whose maximum we
+-- cannot measure is better assumed to have some than faded away.
+local function PositiveOrUnknown(value)
+    local ok, positive = pcall(function() return (value or 0) > 0 end)
+    if not ok then return true end
+    return positive
+end
+
+-- The wording the user picked, or the plain pair if building it needs
+-- arithmetic we are not allowed to do. The font string may format a
+-- secret even though we may not.
+local function SetBarText(bar, wording, current, maximum, name, level)
+    local ok, text = pcall(Format, wording, current, maximum, name, level)
+    if ok then
+        bar.frame:SetText(text)
+        return
+    end
+    if name and name ~= "" then
+        bar.frame:SetFormattedText(name:gsub("%%", "%%%%") .. "  %d / %d",
+            current, maximum)
+    else
+        bar.frame:SetFormattedText("%d / %d", current, maximum)
+    end
 end
 
 local function UpdateHealth(bar)
     local unit = bar.def.unit
+    ApplyRankGlow(bar, unit)
+    ApplyRankIcon(bar, unit)
     if not UnitExists(unit) then
-        if previewing then DrawPlaceholder(bar, 1) end
+        if previewing then DrawPlaceholder(bar, "health") end
         return
     end
-    local maximum = math.max(1, UnitHealthMax(unit) or 1)
-    local current = math.max(0, math.min(maximum, UnitHealth(unit) or 0))
-    bar.frame:SetValue(current / maximum)
+    -- Straight through, unclamped and undivided. The bar hands both to
+    -- the widget, which is allowed to see what this code is not.
+    local maximum = UnitHealthMax(unit)
+    local current = UnitHealth(unit)
+    bar.frame:SetValue(current, maximum)
     bar.frame:SetFillColor(HealthColor(unit))
 
-    local name = UnitName(unit) or ""
+    local wording = TextFormat(bar)
+    local name = LabelFor(unit, wording)
     if UnitIsConnected and not UnitIsConnected(unit) then
         bar.frame:SetText(name ~= "" and (name .. "  Offline") or "Offline")
     elseif UnitIsGhost(unit) then
@@ -498,7 +708,7 @@ local function UpdateHealth(bar)
     elseif UnitIsDead(unit) then
         bar.frame:SetText(name ~= "" and (name .. "  Dead") or "Dead")
     else
-        bar.frame:SetText(Format(bar.def.textFormat, current, maximum, name))
+        SetBarText(bar, wording, current, maximum, name, LevelText(unit))
     end
 end
 
@@ -524,25 +734,31 @@ local function UpdatePower(bar)
         -- and the bar sits invisible until something happens to update
         -- it again: health appears at once, power turns up late.
         bar._noPower = false
-        if previewing then DrawPlaceholder(bar, 0.6) end
+        if previewing then DrawPlaceholder(bar, "power") end
         return
     end
     local powerType = UnitPowerType(unit)
-    local maximum = math.max(0, UnitPowerMax(unit, powerType) or 0)
+    local maximum = UnitPowerMax(unit, powerType)
 
     -- A unit with no power keeps its slot and fades. Hiding would be a
     -- protected call; alpha is not, so this still works mid-fight.
-    bar._noPower = (maximum <= 0)
+    local hasPower = PositiveOrUnknown(maximum)
+    bar._noPower = not hasPower
     RefreshAlpha(bar)
-    if maximum <= 0 then
+    if not hasPower then
         bar.frame:SetText("")
         return
     end
 
-    local current = math.max(0, math.min(maximum, UnitPower(unit, powerType) or 0))
-    bar.frame:SetValue(current / maximum)
+    local current = UnitPower(unit, powerType)
+    bar.frame:SetValue(current, maximum)
     bar.frame:SetFillColor(PowerColor(unit))
-    bar.frame:SetText(Format(bar.def.textFormat, current, maximum, UnitName(unit)))
+    -- A bare name, not the health bar's label: the level and rank
+    -- settings put their answer on the health bar, and the same unit
+    -- saying it again underneath would only be saying it twice. A power
+    -- bar asked outright for the level still gets it.
+    local wording = TextFormat(bar)
+    SetBarText(bar, wording, current, maximum, UnitName(unit), LevelText(unit))
 end
 
 local function UpdateXP(bar)
@@ -570,11 +786,12 @@ local function UpdateXP(bar)
     -- The full line the old XP bar wore, which said everything at once:
     -- where you are, how far through, and the exact fraction. A tenth of
     -- a percent is worth having here because a level is long.
-    if (bar.def.textFormat or "detailed") == "detailed" then
+    local wording = TextFormat(bar)
+    if (wording or "detailed") == "detailed" then
         bar.frame:SetText(string.format("Level %d   •   %s / %s XP   •   %.1f%%",
             level, Number(current), Number(maximum), current / maximum * 100))
     else
-        bar.frame:SetText(Format(bar.def.textFormat, current, maximum, "Level " .. level))
+        bar.frame:SetText(Format(wording, current, maximum, "Level " .. level))
     end
 end
 
@@ -601,11 +818,12 @@ local function UpdateRep(bar)
     bar.frame:SetValue(math.min(1, ((value or 0) - (min or 0)) / span))
     bar.frame:SetFillColor({ 0.35, 0.65, 0.35, 1 })
     local into = (value or 0) - (min or 0)
-    if (bar.def.textFormat or "detailed") == "detailed" then
+    local wording = TextFormat(bar)
+    if (wording or "detailed") == "detailed" then
         bar.frame:SetText(string.format("%s   •   %s / %s   •   %.1f%%",
             name, Number(into), Number(span), into / span * 100))
     else
-        bar.frame:SetText(Format(bar.def.textFormat, into, span, name))
+        bar.frame:SetText(Format(wording, into, span, name))
     end
 end
 
@@ -766,6 +984,63 @@ local function MenuFor(unit)
     return "TARGET"
 end
 
+---------------------------------------------------------------------------
+-- What a bar opens when you click it
+--
+-- A bar that shows a thing the game already has a window for should be a
+-- way into that window: reputation opens the reputation panel, experience
+-- opens the character panel it is a summary of.
+--
+-- Health and power bars are left out of this on purpose: they are secure
+-- buttons whose clicks target the unit and open its menu, and a third
+-- meaning for a click there would be taking one away.
+---------------------------------------------------------------------------
+
+local function OpenCharacterTab(tab)
+    return function()
+        if _G.ToggleCharacter then _G.ToggleCharacter(tab) end
+    end
+end
+
+local KIND_OPENS = {
+    rep = { open = OpenCharacterTab("ReputationFrame") },
+    xp  = { open = OpenCharacterTab("PaperDollFrame")  },
+}
+
+-- Whether a bar needs the mouse at all, and what it does with it.
+--
+-- Asked again whenever something that could change the answer changes,
+-- because a bar that takes the mouse is a bar the world cannot be clicked
+-- through: it should only do that while it has a reason to.
+local function ApplyBarMouse(bar)
+    local frame, def = bar.frame, bar.def
+    if def.kind == "health" or def.kind == "power" then return end
+
+    local opens = KIND_OPENS[def.kind]
+    local clickable = opens and addon:GetSetting("barClicks") ~= false
+    -- "On Hover" is offered for every bar, and a bar that never hears the
+    -- mouse can never honour it. Nor can it change what it says under the
+    -- mouse if it never knows the mouse is there.
+    local hovers = (def.textMode or "always") == "hover" or HasHoverFormat(def)
+
+    frame:EnableMouse((clickable or hovers) and true or false)
+
+    frame:SetScript("OnEnter", function(self)
+        self._hovered = true
+        self:_RefreshText()
+        if HasHoverFormat(def) then UnitBars:Update(bar) end
+    end)
+    frame:SetScript("OnLeave", function(self)
+        self._hovered = false
+        self:_RefreshText()
+        if HasHoverFormat(def) then UnitBars:Update(bar) end
+    end)
+
+    frame:SetScript("OnMouseUp", clickable and function(_, button)
+        if button == "LeftButton" then opens.open() end
+    end or nil)
+end
+
 local function UnitMenu(frame)
     local unit = frame:GetAttribute("unit") or "player"
     if _G.UnitPopup_OpenMenu then
@@ -815,6 +1090,7 @@ function UnitBars:Build(def)
         frame:SetScript("OnEnter", function(self)
             self._hovered = true
             self:_RefreshText()
+            if HasHoverFormat(def) then UnitBars:Update(bar) end
             if addon:GetSetting("unitTooltips") == false then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetUnit(def.unit)
@@ -823,9 +1099,12 @@ function UnitBars:Build(def)
         frame:SetScript("OnLeave", function(self)
             self._hovered = false
             self:_RefreshText()
+            if HasHoverFormat(def) then UnitBars:Update(bar) end
             GameTooltip:Hide()
         end)
     end
+
+    ApplyBarMouse(bar)
 
     if def.kind == "cast" then
         frame:SetScript("OnUpdate", function(self) CastTick(self) end)
@@ -892,6 +1171,7 @@ function UnitBars:Apply(bar)
     frame:SetBarSize(math.max(1, math.min(1200, def.width or 240)),
         math.max(1, math.min(48, def.height or 24)))
     frame:SetTextMode(def.textMode or "always")
+    ApplyBarMouse(bar)
     frame:SetTicks(def.ticks or 0)
     frame:SetFillDirection(def.fillFrom or "LEFT")
 
@@ -991,7 +1271,24 @@ local TEXT_FORMATS = {
     percent         = "Percent",
     name            = "Name",
     namePercent     = "Name and percent",
+    level           = "Level",
+    nameLevel       = "Name and level",
 }
+
+-- Only a unit has a level worth naming. A reputation bar has none at all,
+-- and an experience bar already writes the player's level into its name,
+-- so offering these there would be offering the same thing twice.
+local LEVEL_KINDS = { health = true, power = true }
+
+local function FormatOptions(kind)
+    if LEVEL_KINDS[kind] then return ValuesArray(TEXT_FORMATS) end
+
+    local without = {}
+    for key, label in pairs(TEXT_FORMATS) do
+        if not LEVEL_WORDINGS[key] then without[key] = label end
+    end
+    return ValuesArray(without)
+end
 local EDGES = { BOTTOM = "Below", TOP = "Above" }
 
 -- How much of its host a docked bar takes, and where it sits across it.
@@ -1113,9 +1410,23 @@ function UnitBars:EditSettings(bar)
         end
         table.insert(widgets, at, {
             type = "dropdown", section = "Text", label = "Text says",
-            options = ValuesArray(TEXT_FORMATS),
+            options = FormatOptions(def.kind),
             get = function() return def.textFormat or "namePercent" end,
             set = function(value) def.textFormat = value Refresh() end,
+        })
+
+        -- A second wording for while the mouse is on it. Below the first,
+        -- because it only makes sense once you have read that one.
+        local hoverOptions = FormatOptions(def.kind)
+        table.insert(hoverOptions, 1, { label = "Same as usual", value = "same" })
+        table.insert(widgets, at + 1, {
+            type = "dropdown", section = "Text", label = "When hovered",
+            options = hoverOptions,
+            get = function() return def.hoverFormat or "same" end,
+            set = function(value)
+                def.hoverFormat = (value ~= "same") and value or nil
+                Refresh()
+            end,
         })
     end
 
@@ -1329,6 +1640,7 @@ function UnitBars:Watch(unit)
     for _, event in ipairs({
         "UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_POWER_UPDATE", "UNIT_MAXPOWER",
         "UNIT_DISPLAYPOWER", "UNIT_CONNECTION", "UNIT_NAME_UPDATE",
+        "UNIT_LEVEL", "UNIT_CLASSIFICATION_CHANGED",
         "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED",
         "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_DELAYED",
         "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",

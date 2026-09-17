@@ -55,3 +55,125 @@ function BazUI.UnitColor(unit, opts)
 
     return C.alive
 end
+
+---------------------------------------------------------------------------
+-- What rank a unit is
+--
+-- The game sorts NPCs into ranks and puts a dragon around the portrait
+-- to say so. We have no portraits - that is what lets any bar dock to
+-- any other - so the rank has to be said in words instead.
+--
+-- Two forms of the same fact, because it is read in two places. `suffix`
+-- rides along behind a level, the way vanilla has always written elite:
+-- "62+", "62 Rare+". `label` stands on its own where there is no level
+-- to attach to.
+--
+-- Normal, trivial and minus come back nil on purpose. They are the
+-- ordinary case, and naming them would put a word beside almost every
+-- unit you look at, which is the opposite of what this is for.
+---------------------------------------------------------------------------
+
+-- `color` names a skin colour rather than holding one, because the skin
+-- writes new numbers into its own tables and anything holding a copy
+-- would keep painting the old ones.
+BazUI.UNIT_RANKS = {
+    worldboss = { key = "worldboss", label = "Boss",       suffix = " Boss",  color = "rankBoss"      },
+    rareelite = { key = "rareelite", label = "Rare Elite", suffix = " Rare+", color = "rankRareElite" },
+    elite     = { key = "elite",     label = "Elite",      suffix = "+",      color = "rankElite"     },
+    rare      = { key = "rare",      label = "Rare",       suffix = " Rare",  color = "rankRare"      },
+}
+
+-- The live table for a rank, or nil for a unit with no rank worth
+-- saying. Looked up fresh so a recoloured skin reaches it.
+function BazUI.UnitRankColor(unit)
+    local rank = BazUI.UnitRank(unit)
+    local colors = BazUI.Skin and BazUI.Skin.Theme and BazUI.Skin.Theme.colors
+    return rank and colors and colors[rank.color] or nil
+end
+
+---------------------------------------------------------------------------
+-- The rank as a glyph
+--
+-- Drawn inline in whatever is writing the unit's name, using the client's
+-- own texture escape. That is what makes it sit on the text's baseline at
+-- the text's height without anything here having to measure a font.
+--
+-- Each rank names the icons it is made of rather than one file. Rare
+-- elite is a rare and an elite, so if there is no icon of its own it is
+-- shown as both; a world boss is an elite of the worst kind, so it falls
+-- back to the elite mark. The set works half-finished, and a file dropped
+-- in later is picked up with no code change.
+---------------------------------------------------------------------------
+
+local RANK_ICONS = {
+    rare      = { "RANK_ICON_RARE" },
+    elite     = { "RANK_ICON_ELITE" },
+    -- A rank whose own mark is missing borrows the nearest thing it is
+    -- made of, so a skin that ships three of the four still works.
+    rareelite = { "RANK_ICON_RARE_ELITE", "RANK_ICON_RARE", "RANK_ICON_ELITE" },
+    worldboss = { "RANK_ICON_BOSS", "RANK_ICON_ELITE" },
+}
+
+-- Worked out once. Which files are on disk cannot change while the game
+-- is running, and this is read on every health update.
+local resolved = {}
+
+local function IconFor(key)
+    local cached = resolved[key]
+    if cached ~= nil then return cached or nil end
+
+    local Skin = BazUI.Skin
+    local wanted = RANK_ICONS[key]
+    if not (Skin and wanted) then return nil end
+
+    for _, name in ipairs(wanted) do
+        local path = Skin[name]
+        if path and BazUI.Has.Texture(path) then
+            resolved[key] = path
+            return path
+        end
+    end
+
+    resolved[key] = false
+    return nil
+end
+
+-- The texture for a unit's rank, or nil. A path rather than anything
+-- drawn: how big it is and where it sits belong to whoever is drawing the
+-- unit, who is the only one who knows how much room there is.
+function BazUI.UnitRankIcon(unit)
+    local rank = BazUI.UnitRank(unit)
+    return rank and IconFor(rank.key) or nil
+end
+
+function BazUI.UnitRank(unit)
+    if not (unit and UnitClassification and UnitExists(unit)) then return nil end
+    -- A player is always "normal", so this is only ever a wasted string
+    -- compare on the bars that update most often.
+    if UnitIsPlayer and UnitIsPlayer(unit) then return nil end
+    return BazUI.UNIT_RANKS[UnitClassification(unit)]
+end
+
+-- The level and the rank as one piece of text, for whoever is drawing a
+-- unit. Nil when there is nothing worth saying, so a caller can leave
+-- the field out rather than print an empty one.
+--
+--   opts.level = false   the rank on its own
+--   opts.rank  = false   the level on its own
+function BazUI.UnitLevelText(unit, opts)
+    opts = opts or {}
+    local rank = (opts.rank ~= false) and BazUI.UnitRank(unit) or nil
+
+    if opts.level == false then
+        return rank and rank.label or nil
+    end
+
+    local level = UnitLevel and UnitLevel(unit)
+    if not level or level == 0 then return rank and rank.label or nil end
+
+    -- A level the game will not put a number on is one far enough above
+    -- you that the number stopped being the point. Its own UI says ??,
+    -- so ours does.
+    local text = (level < 0) and "??" or tostring(level)
+    return rank and (text .. rank.suffix) or text
+end

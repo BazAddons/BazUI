@@ -1,20 +1,15 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BazBars User Guide
--- Registered so it appears as the module's User Manual tab.
+-- BazUI Bars User Manual
 ---------------------------------------------------------------------------
 
 if not BazUI or not BazUI.RegisterUserGuide then return end
 
--- Screenshot helper. All Bars User Manual images live in Media/
--- as 800x450 PNGs (16:9). The image content block defaults to 2:1
--- when you don't pass a height for a texture path - we always pass
--- both so they render at the correct aspect.
---
--- Note: PNG textures in WoW addons load via SetTexture with a full
--- path INCLUDING the .png extension. Without the extension the engine
--- only finds BLP/TGA - a silent miss for our screenshots.
+-- Screenshots live in Media/ as 16:9 PNGs. The client only finds a PNG
+-- when the path carries the extension - without it SetTexture looks for
+-- BLP and TGA and misses in silence.
 local IMG_W, IMG_H = 640, 360
+
 local function Image(file, caption)
     return {
         type = "image",
@@ -25,10 +20,8 @@ local function Image(file, caption)
     }
 end
 
--- Side-by-side image + text. Image takes half of the content width
--- (BazUI resolves values between 0 and 1 as a fraction of the page),
--- height auto-derives 16:9. blocks is any array of standard content
--- blocks (paragraph, list, note, etc.).
+-- Image beside text. A width between 0 and 1 is read as a fraction of
+-- the page; the height follows from 16:9.
 local function ImageRow(file, caption, blocks, side)
     return {
         type = "imageRow",
@@ -42,281 +35,271 @@ end
 
 BazUI:RegisterUserGuide("Bars", {
     title = "Bars",
-    intro = "Custom action bars that don't consume Blizzard's 1–120 action slot IDs. Create as many bars as you want, place them anywhere, and configure them through Blizzard's native Edit Mode.",
+    intro = "Action bars you build yourself, holding anything you can pick "
+        .. "up, and not spending a single one of the game's own action slots.",
+
     pages = {
-        ----------------------------------------------------------------
-        -- Welcome
-        ----------------------------------------------------------------
         {
-            title = "Welcome",
+            title = "What it does",
             blocks = {
-                { type = "lead", text = "BazUIBars lets you build action bars that live alongside Blizzard's defaults without conflicting. The same spell can sit on both your default bar and a BazBar simultaneously — buttons are independent of WoW's 1–120 action slot system, so you never have to swap things around to make room." },
-                Image("one-bar", "One BazBar at full size — 24×24 = 576 buttons. And nothing stops you from having more bars."),
-                { type = "h2", text = "What you get" },
+                { type = "paragraph", text = "These bars sit alongside the game's own rather than replacing them, and they do not use the 120 action slots the game gives you. The same spell can be on a default bar and on one of these at the same time; you never have to move something to make room." },
+                Image("one-bar", "One bar at its largest - 24 by 24 is 576 buttons. Nothing stops you having more than one."),
                 { type = "list", items = {
-                    "Up to 24×24 button grids per bar (576 buttons each)",
-                    "Unlimited number of bars",
-                    "Native Blizzard look — same atlases, cooldown sweeps, proc glow, range tinting",
-                    "Full Edit Mode integration with grid snap and pixel-precise nudge",
-                    "Quick Keybind mode — hover a button and press a key (or any mouse button) to bind",
-                    "Per-button macrotext editor with /cast conditionals + #showtooltip",
-                    "Import / Export bar configs as shareable strings",
-                    "Optional Masque skinning per bar",
-                }},
-                { type = "note", style = "tip", text = "Drag-and-drop accepts spells, items, macros, mounts and equipment sets. Items show live bag counts." },
+                    "|cffffd700As many bars as you want|r, each up to 24 by 24.",
+                    "|cffffd700The game's own look|r - the same art, cooldown sweeps, proc glows and range tinting.",
+                    "|cffffd700Quick Keybind|r: hover a button, press a key, done.",
+                    "|cffffd700Macro text per button|r, with #showtooltip.",
+                    "|cffffd700Flyouts|r - one slot holding a group of actions.",
+                    "|cffffd700Import and export|r a bar as a string you can share.",
+                    "|cffffd700Masque|r skinning per bar, if you have Masque.",
+                } },
+                { type = "note", text = "|cffffd700Open it with|r /bb or /bazbars, or Options > AddOns > BazUI > Bars." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Creating a Bar
-        ----------------------------------------------------------------
         {
-            title = "Creating a Bar",
+            title = "Making a bar",
             blocks = {
-                { type = "paragraph", text = "Open Blizzard's |cffffd700Edit Mode|r (default key Shift+F11)." },
-                ImageRow("bar-create-button", "The Create New BazBar button sits at the bottom of the Edit Mode panel.", {
-                    { type = "list", ordered = true, items = {
-                        "Scroll to the bottom of the Edit Mode panel",
-                        "Click the |cffffd700Create New BazBar|r button",
-                        "A new bar spawns at the center of your screen",
-                        "Drag it where you want, then click it again to open settings",
-                    }},
-                }),
-                { type = "note", style = "info", text = "Repeat as many times as you want. Each bar is independent — its own size, position, layout, and contents." },
-                { type = "note", style = "tip", text = "Slash alternative: |cff00ff00/bb create|r spawns a fresh bar from chat, with optional col/row arguments (e.g. |cff00ff00/bb create 6 2|r for a 6×2 bar)." },
-            },
-        },
-
-        ----------------------------------------------------------------
-        -- Placing Buttons
-        ----------------------------------------------------------------
-        {
-            title = "Placing Buttons",
-            blocks = {
-                { type = "lead", text = "Drag almost anything onto a button slot." },
-                { type = "h2", text = "Drag sources" },
-                { type = "table",
-                  columns = { "Source", "Behavior" },
-                  rows = {
-                      { "Spells",          "From your spellbook" },
-                      { "Items",           "From your bags — shows live stack counts" },
-                      { "Macros",          "From the macro window — name displays under icon" },
-                      { "Mounts",          "From the mount journal, including Random Favorite" },
-                      { "Equipment Sets",  "From the character pane" },
-                  },
-                },
-                { type = "h2", text = "Live item tracking" },
-                ImageRow("item-tracking", "Items show live stack counts as your bag changes — useful for tracking herbs, ore, raw fish while farming.", {
-                    { type = "paragraph", text = "Item buttons display their bag count live. The number updates instantly as you loot, craft, or use the item." },
+                ImageRow("bar-create-button", "The Create button sits at the bottom of the Edit Mode panel.", {
                     { type = "list", items = {
-                        "Track herb / ore stacks while farming",
-                        "Watch consumable counts during a raid pull",
-                        "See repair-vendor reagents at a glance",
-                    }},
-                }, "right"),
-                { type = "h2", text = "Removing buttons" },
-                { type = "list", items = {
-                    "|cffffd700Shift+Drag|r off the button to remove it",
-                    "|cffffd700Shift+Right-Click|r to clear it in place",
-                }},
-                { type = "note", style = "warning", text = "If you have Blizzard's |cffffd700Cast on Key Down|r option enabled, plain click-drag will fire the ability before the drag starts. Use |cffffd700Shift+drag|r to rearrange buttons in that mode." },
-                { type = "note", style = "tip", text = "To stop slips from pulling abilities off your bars, turn on |cffffd700Drag buttons only while Shift is held|r under Bars > General. Plain drags then do nothing; Shift+drag moves a button, and dropping something onto a bar still works. Each bar's own |cffffd700Lock buttons|r switch blocks dragging entirely." },
-                { type = "h2", text = "Filled for you" },
-                { type = "paragraph", text = "A new character logs in with its abilities already on the bars: forms, stances, auras and stealth on the first side bar, everything else on the main bar. Each spell you learn afterwards takes the first empty slot, a new rank of a spell you already have just starts casting from the same button, and anything you no longer know is cleared at login and after a respec. Blizzard's stance bar is hidden, since your stances are here; both behaviors and the stance bar have switches under |cffffd700Bars > General|r, and |cffffd700Fill empty slots|r there does the same pass for an existing character." },
+                        "Open Edit Mode.",
+                        "Click |cffffd700Create|r at the bottom of the panel and pick an action bar. Every kind of thing BazUI can make is on that one menu.",
+                        "The new bar appears in the middle of the screen.",
+                        "Drag it where you want it, then click it to open its settings.",
+                    } },
+                }),
+                { type = "note", text = "|cffffd700/bb create|r does the same from chat, and takes a size: |cffffd700/bb create 6 2|r for six across and two down." },
+                { type = "paragraph", text = "Each bar is its own thing - its own size, position, arrangement and contents. Make as many as the screen will hold." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Flyouts
-        ----------------------------------------------------------------
+        {
+            title = "Putting things on it",
+            blocks = {
+                { type = "paragraph", text = "Drag almost anything onto a slot." },
+                { type = "table", columns = { "What", "Notes" }, rows = {
+                    { "Spells", "From your spellbook." },
+                    { "Items", "From your bags. The button shows how many you have, and the number changes as you loot and use them." },
+                    { "Macros", "From the macro window. The name shows under the icon." },
+                    { "Equipment sets", "From the character pane." },
+                    { "Mounts", "On clients with a mount journal, including Random Favorite Mount." },
+                } },
+                ImageRow("item-tracking", "Item buttons count what is in your bags, live.", {
+                    { type = "paragraph", text = "An item button's count updates the moment your bags change - herbs and ore while you are farming, potions through a fight, reagents before you set out." },
+                }, "right"),
+                { type = "h3", text = "Taking things off" },
+                { type = "list", items = {
+                    "|cffffd700Shift and drag|r a button off the bar.",
+                    "|cffffd700Shift and right-click|r clears it where it sits.",
+                } },
+                { type = "note", text = "With the game's |cffffd700cast on key down|r switched on, a plain click-drag fires the ability before the drag has started. Shift and drag to rearrange in that case." },
+                { type = "paragraph", text = "If things come off your bars by accident, |cffffd700Drag buttons only while Shift is held|r on the General page makes a plain drag do nothing - Shift and drag still moves a button, and dropping something new onto a bar still works. A bar's own |cffffd700Lock buttons|r stops dragging on that bar entirely." },
+            },
+        },
+
+        {
+            title = "Filled in for you",
+            blocks = {
+                { type = "paragraph", text = "A new character logs in with its abilities already placed: forms, stances, auras and stealth on the first side bar, everything else on the main one. After that:" },
+                { type = "list", items = {
+                    "A spell you learn takes the first empty slot.",
+                    "A new rank of something you already have just starts casting from the same button.",
+                    "Anything you no longer know is cleared at login and after a respec.",
+                } },
+                { type = "paragraph", text = "The game's stance bar is hidden, since your stances are on a bar of your own. All of that has a switch on the |cffffd700General|r page, and |cffffd700Fill empty slots with my unplaced abilities|r there runs the same pass on a character that already exists." },
+            },
+        },
+
         {
             title = "Flyouts",
             blocks = {
-                { type = "lead", text = "One slot that holds several actions. Left-click casts one of them, right-click opens the rest." },
-                { type = "paragraph", text = "A flyout is for the group of abilities you want near at hand but not spread across six slots: portals and teleports, aspects, summons, totems, your stack of conjured food and water. The slot shows whichever action it is currently set to cast, with a small arrow marking the way the grid opens." },
-                { type = "h2", text = "Making one" },
+                { type = "paragraph", text = "One slot holding several actions. Left-click casts one of them; right-click opens the rest." },
+                { type = "paragraph", text = "It is for the group of things you want near at hand but not spread across six slots: portals and teleports, aspects, summons, totems, your conjured food and water. The slot shows whichever action it is set to cast, with a small arrow marking the way the grid will open." },
+                { type = "h3", text = "Making one" },
                 { type = "list", items = {
-                    "|cffffd700Shift+Right-Click|r an empty slot and choose to create a flyout there",
-                    "The grid opens straight away; drag spells, items or macros into its squares",
-                    "|cffffd700Right-click|r the slot any time to open or close the grid",
-                }},
-                { type = "paragraph", text = "Anything a bar slot understands can go in a flyout, not just spells. Where you drop something is where it stays, so you can leave a square empty to group things the way you think of them." },
-                { type = "h2", text = "What the button casts" },
-                { type = "table",
-                  columns = { "You do this", "The button does this" },
-                  rows = {
-                      { "|cffffd700Left-click|r the slot",      "Casts its current action" },
-                      { "|cffffd700Left-click|r a square",      "Casts that action, and the slot switches to it" },
-                      { "|cffffd700Right-click|r a square",     "Pins it, so the slot always casts that one" },
-                      { "|cffffd700Right-click|r it again",     "Unpins, back to whatever you used last" },
-                      { "|cffffd700Drag|r a square out",        "Takes that action off the grid" },
-                  },
-                },
-                { type = "h2", text = "Shape" },
-                { type = "paragraph", text = "|cffffd700Shift+Right-Click|r the slot for its menu: which way the grid opens, how many rows and columns it has, and whether the button casts the pinned action or the last one you used. The same menu clears the slot." },
-                { type = "note", style = "tip", text = "A flyout near the bottom of the screen wants to open upwards, one near the right edge wants to open left. The arrow on the slot always shows which way it will go." },
-                { type = "note", text = "A spell you no longer know is dropped from the grid and the rest of the flyout is left alone, so respeccing or unlearning one ability never costs you the whole arrangement. If nothing usable is left, the slot clears itself." },
+                    "|cffffd700Shift and right-click|r an empty slot and choose to make a flyout there.",
+                    "The grid opens at once - drag spells, items or macros into its squares.",
+                    "|cffffd700Right-click|r the slot any time to open or close it.",
+                } },
+                { type = "paragraph", text = "Anything a bar slot understands can go in a flyout. Where you drop something is where it stays, and a square left empty stays empty, so you can group things the way you think of them." },
+                { type = "h3", text = "What the button casts" },
+                { type = "table", columns = { "You do this", "It does this" }, rows = {
+                    { "Left-click the slot", "Casts whatever it is currently set to." },
+                    { "Left-click a square", "Casts that one, and the slot switches to it." },
+                    { "Right-click a square", "Pins it, so the slot always casts that one." },
+                    { "Right-click it again", "Unpins, back to whatever you used last." },
+                    { "Drag a square out", "Takes that action off the grid." },
+                } },
+                { type = "h3", text = "Shape" },
+                { type = "paragraph", text = "|cffffd700Shift and right-click|r the slot for its menu: which way the grid opens, how many rows and columns it has, and whether the button casts the pinned action or the last one you used. The same menu clears the slot." },
+                { type = "note", text = "A flyout near the bottom of the screen wants to open upward and one near the right edge wants to open left. The arrow always shows which way it will go." },
+                { type = "paragraph", text = "A spell you no longer know is dropped from the grid and the rest is left alone, so unlearning one ability never costs you the whole arrangement. If nothing usable is left, the slot clears itself." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Editing a Bar
-        ----------------------------------------------------------------
         {
-            title = "Editing a Bar",
+            title = "Setting a bar up",
             blocks = {
-                ImageRow("bar-settings-popup", "Per-bar settings popup. Selected bar highlighted yellow; everything you can configure for the bar is here.", {
-                    { type = "paragraph", text = "While in Edit Mode, click any BazBar to select it (yellow highlight). Click again to open its settings popup." },
-                    { type = "paragraph", text = "Every per-bar option lives here: layout, visibility, keybinds, appearance, behavior, and actions like duplicate / export / delete." },
+                ImageRow("bar-settings-popup", "A bar's settings in Edit Mode. The selected bar is highlighted; everything about it is on this panel.", {
+                    { type = "paragraph", text = "In Edit Mode, click a bar to select it, then click again for its settings. Everything about that one bar is here - the same settings as the full options page, in reach of the bar you are looking at." },
                 }),
-                { type = "h2", text = "Layout" },
-                { type = "list", items = {
-                    "|cffffd700Bar Name|r — custom display name",
-                    "|cffffd700Orientation|r — horizontal or vertical",
-                    "|cffffd700Rows / Icons|r — resize the button grid (up to 24×24)",
-                    "|cffffd700Icon Size|r — scale from 50% to 250%",
-                    "|cffffd700Icon Padding|r — spacing between buttons",
-                }},
-                { type = "h2", text = "Visibility" },
-                { type = "paragraph", text = "Use Blizzard macro conditionals to control when the bar appears." },
+                { type = "h3", text = "Layout" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Name", "What the bar is called in the lists and menus." },
+                    { "Orientation", "Across or down." },
+                    { "Icons per row / Rows", "The size of the grid, up to 24 by 24." },
+                } },
+                { type = "h3", text = "Appearance" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Icon size", "How large the buttons are." },
+                    { "Icon padding", "The gap between them." },
+                    { "Bar opacity", "How solid the whole bar is." },
+                    { "Side endcaps", "The art on each end of the bar, and whether there is any." },
+                    { "Scale endcaps with the bar's height", "Keeps the caps in proportion as the buttons grow." },
+                    { "Endcap size", "Their size, when they are not scaling themselves." },
+                } },
+                { type = "h3", text = "Visibility" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Always show buttons", "Empty slots stay visible instead of disappearing." },
+                    { "Show slot art", "The frame behind each button." },
+                    { "Fade until hovered", "The bar fades out until your cursor is on it." },
+                    { "Show when", "A macro condition deciding when the bar exists at all. Empty means always." },
+                } },
                 { type = "code", text = "[combat] show; hide" },
-                { type = "paragraph", text = "Examples: |cffffd700[stance:1]|r, |cffffd700[vehicleui]|r, |cffffd700[group]|r, |cffffd700[mod:shift]|r." },
-                { type = "note", style = "tip", text = "Or use the |cffffd700Bar Visibility|r preset dropdown in Appearance for common cases (always visible, in combat, etc.) without writing macros." },
-                { type = "h2", text = "Keybinds" },
-                ImageRow("quick-keybinding", "Quick Keybind Mode active — hover any button, press the key you want, done.", {
-                    { type = "paragraph", text = "|cffffd700Quick Keybind Mode|r lets you bind keys directly to buttons. Open it from the Keybinds section, then hover a button and press the key (or mouse button) you want bound. Esc clears a binding." },
-                    { type = "list", items = {
-                        "Keyboard keys, modifier combos (Shift+E, Ctrl+1, etc.)",
-                        "Middle mouse, mouse4, mouse5",
-                        "Left and right mouse clicks are reserved (they interact with the button)",
-                    }},
-                }),
-                { type = "note", style = "info", text = "If the key you press is already bound to a Blizzard action, BazUI Bars will evict the old binding and tell you in chat. The Blizzard side is preserved if you ever clear the BazUI Bars binding." },
-                { type = "h2", text = "Appearance" },
-                { type = "list", items = {
-                    "|cffffd700Always Show Buttons|r — toggle empty-slot visibility",
-                    "|cffffd700Show Slot Art|r — toggle the background slot texture under each button",
-                    "|cffffd700Bar Opacity|r — overall transparency from 0–100%",
-                    "|cffffd700Mouseover Fade|r — fade out when not hovered, fade back on hover",
-                    "|cffffd700Bar Visibility|r — preset visibility states without writing macros",
-                    "|cffffd700Masque skinning|r — per-bar Masque support (when Masque is installed)",
-                    "Cooldown sweep + hotkey text visibility",
-                }},
-                { type = "h2", text = "Behavior" },
-                { type = "list", items = {
-                    "|cffffd700Right-Click Self-Cast|r — cast helpful spells / use items on yourself with right-click on any button",
-                    "|cffffd700Edit Button Macrotext|r — write a custom |cff00ff00/cast|r conditional macro per button. Supports |cff00ff00#showtooltip SpellName|r so the icon and tooltip update to whichever spell the macro will cast.",
-                }},
-                { type = "h2", text = "Actions" },
-                { type = "table",
-                  columns = { "Action", "What it does" },
-                  rows = {
-                      { "|cffffd700Revert Changes|r",      "Undo every change made since selecting the bar" },
-                      { "|cffffd700Reset Position|r",      "Snap the bar back to the center of the screen" },
-                      { "|cffffd700BazUI Bars Settings|r",    "Jump to the full options panel" },
-                      { "|cffffd700Export Bar Config|r",   "Copy the bar's complete layout + buttons + settings as a shareable string" },
-                      { "|cffffd700Duplicate This Bar|r",  "Clone the bar with all its assignments in one click" },
-                      { "|cffffd700Delete This Bar|r",     "Remove the bar permanently (asks for confirmation)" },
-                  }},
-                { type = "h2", text = "The full Bar Customizer" },
-                ImageRow("bar-editor", "The Bar Customizer page. Same per-bar settings as the Edit Mode popup, just with all your bars visible at once.", {
-                    { type = "paragraph", text = "Same settings, fuller layout. Open via |cff00ff00/bb|r or |cffffd700Options > AddOns > BazUI > Bars > Bar Options|r — pick a bar from the dropdown at the top of the page, with New, Duplicate and Delete beside it. Values every bar should share live under General." },
+                { type = "paragraph", text = "Anything the game's macro conditions understand works here - |cffffd700[stance:1]|r, |cffffd700[group]|r, |cffffd700[mod:shift]|r, |cffffd700[stealth]|r and the rest." },
+                { type = "h3", text = "Behavior" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Lock buttons", "Nothing can be dragged off or swapped." },
+                    { "Right-click casts on yourself", "A right-click uses a helpful spell or an item on you." },
+                    { "Click-through", "The buttons ignore the mouse entirely. Cooldowns, range tinting and glows still show - it is for a bar you watch rather than press." },
+                } },
+                { type = "h3", text = "Actions" },
+                { type = "table", columns = { "Action", "What it does" }, rows = {
+                    { "Revert Changes", "Undoes everything since you selected the bar." },
+                    { "Reset Position", "Back to the middle of the screen." },
+                    { "Quick Keybind Mode", "Binding keys by hovering - see the next page." },
+                    { "BazUI Bars Settings", "Opens the full options page." },
+                    { "Export Bar Config", "The bar as a string you can share." },
+                    { "Duplicate This Bar", "A copy with every button on it." },
+                    { "Delete This Bar", "Gone, after it asks." },
+                } },
+                ImageRow("bar-editor", "The Bar Options page - the same settings with every bar in one place.", {
+                    { type = "paragraph", text = "|cffffd700Options > AddOns > BazUI > Bars > Bar Options|r is the same settings laid out fully, with a dropdown at the top to pick a bar and New, Duplicate and Delete beside it." },
                 }, "right"),
             },
         },
 
-        ----------------------------------------------------------------
-        -- Edit Mode Tools
-        ----------------------------------------------------------------
         {
-            title = "Edit Mode Tools",
+            title = "Keybinds",
             blocks = {
-                { type = "paragraph", text = "Bars play by Edit Mode's rules:" },
-                { type = "list", items = {
-                    "Drag to move",
-                    "Snap to the grid",
-                    "Nudge with arrow keys for pixel-precise placement",
-                    "Selection states use Blizzard's native cyan/yellow highlight art",
-                }},
-                { type = "note", style = "info", text = "Bar positions save to your active Edit Mode layout. Switching layouts in Edit Mode loads the matching bar positions." },
+                ImageRow("quick-keybinding", "Quick Keybind Mode: hover a button, press the key you want.", {
+                    { type = "paragraph", text = "|cffffd700Quick Keybind Mode|r is on a bar's Actions list. Turn it on, hover a button, and press the key you want on it. Escape clears a binding." },
+                    { type = "list", items = {
+                        "Keys and modifier combinations - Shift+E, Ctrl+1, and so on.",
+                        "Middle mouse, mouse 4 and mouse 5.",
+                        "Left and right clicks are reserved; they press the button.",
+                    } },
+                }),
+                { type = "note", text = "If the key you press is already bound to something of the game's, that binding is taken and you are told in chat which one. Clearing the BazUI binding later gives it back." },
+                { type = "paragraph", text = "|cffffd700Show keybind text|r on the General page decides whether the key appears in the corner of the button." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Import / Export
-        ----------------------------------------------------------------
         {
-            title = "Import / Export",
+            title = "Settings for every bar",
             blocks = {
-                { type = "lead", text = "BazUIBars exports any bar's complete configuration as a shareable string — layout, every button, every setting. Paste a string back to recreate the bar on any character." },
-                { type = "h2", text = "Exporting" },
-                { type = "list", items = {
-                    "Edit Mode > click a bar > Settings popup > Actions > |cffffd700Export Bar Config|r",
-                    "Or via slash: |cff00ff00/bb export <id>|r",
-                    "A copy-paste dialog opens with the encoded string — copy it, share it, save it for later",
-                }},
-                { type = "h2", text = "Importing" },
-                { type = "list", items = {
-                    "|cff00ff00/bb import|r opens an empty paste dialog",
-                    "Paste the shared string and confirm — a new bar with the imported config spawns at the center of your screen",
-                    "Drag it where you want and you're done",
-                }},
-                { type = "h2", text = "Duplicating" },
-                { type = "paragraph", text = "Duplicate copies a bar plus every button assignment, position-shifted slightly so it doesn't sit directly on top of the original. Use Edit Mode > Actions > Duplicate This Bar, or |cff00ff00/bb duplicate <id>|r." },
+                { type = "paragraph", text = "The |cffffd700General|r page holds what applies across the module rather than to one bar." },
+                { type = "h3", text = "Blizzard UI" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Hide Blizzard's main action bar", "Once your own bars hold everything, the stock one is in the way." },
+                    { "Hide only its art", "The bar's buttons stay, the frame around them goes." },
+                    { "Hide Blizzard's stance bar", "On by default, since your stances are placed on a bar of your own." },
+                    { "Show Blizzard's experience bar", "And the reputation bar, each on its own switch - for people who would rather keep them than use the Unit Frames versions." },
+                } },
+                { type = "h3", text = "Buttons" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Tint the whole button when out of range", "Rather than just the key text." },
+                    { "Show keybind text", "The key in the corner." },
+                    { "Show macro names", "The name under the icon." },
+                    { "Drag buttons only while Shift is held", "Stops things coming off your bars by accident." },
+                    { "Show tooltips", "And where they appear, on the setting below it." },
+                } },
+                { type = "h3", text = "All bars" },
+                { type = "paragraph", text = "An override that forces one value on every bar at once - icon size, opacity, slot art and the like. A bar's own version of that setting is grayed out while the override is on, so it is always clear which one is deciding." },
+                { type = "h3", text = "Abilities" },
+                { type = "paragraph", text = "The switches behind |cffffd700Filled in for you|r: placing a new character's abilities, adding newly learned spells, and a button that fills empty slots on a character you already have." },
+                { type = "h3", text = "Combat" },
+                { type = "paragraph", text = "|cffffd700BazUI bars always cast on key release.|r |cffffd700Blizzard bars cast on key down|r is the game's own setting, put here so both are in one place rather than in two." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Profiles
-        ----------------------------------------------------------------
+        {
+            title = "Moving bars around",
+            blocks = {
+                { type = "list", items = {
+                    "Drag to move.",
+                    "Snap to the grid.",
+                    "Arrow keys nudge a pixel at a time.",
+                    "A selected bar wears the same highlight the game puts on its own frames, so a screen of mixed bars reads as one thing.",
+                } },
+                { type = "note", text = "Positions are saved in your BazUI profile. Switch profiles and every bar moves to where that profile left it." },
+            },
+        },
+
+        {
+            title = "Sharing a bar",
+            blocks = {
+                { type = "paragraph", text = "A bar exports as a string carrying its whole arrangement: size, every button, every setting. Paste it back on any character to rebuild it." },
+                { type = "h3", text = "Out" },
+                { type = "list", items = {
+                    "Edit Mode, click the bar, Actions, |cffffd700Export Bar Config|r.",
+                    "Or |cffffd700/bb export <id>|r.",
+                    "A dialog opens with the string ready to copy.",
+                } },
+                { type = "h3", text = "In" },
+                { type = "list", items = {
+                    "|cffffd700/bb import|r opens an empty box; paste and confirm.",
+                    "The new bar appears in the middle of the screen. Drag it where you want it.",
+                } },
+                { type = "h3", text = "Copying one you have" },
+                { type = "paragraph", text = "|cffffd700Duplicate|r copies a bar and everything on it, offset slightly so it is not sitting exactly on top of the original. It is on the Actions list and on |cffffd700/bb duplicate <id>|r." },
+            },
+        },
+
         {
             title = "Profiles",
             blocks = {
-                { type = "lead", text = "Switch between named profiles to keep different bar setups for different content — PvE, PvP, Raid, Mythic+, alt-specific layouts." },
-                { type = "paragraph", text = "Each profile stores the complete BazUI Bars state: every bar's position, layout, button assignments, keybinds, visibility macros, and per-bar settings. Switching profiles swaps the entire UI in one go." },
-                { type = "paragraph", text = "Open |cffffd700Options > AddOns > BazUI > Profiles|r (Create, Switch, Copy From, Reset, Delete)." },
-                { type = "note", style = "tip", text = "One profile covers every BazUI module, so switching it changes Bars, Drawers, Chat and Bags together." },
+                { type = "paragraph", text = "A profile holds every bar's position, size, contents, keybinds, visibility conditions and settings, so switching profiles swaps the whole arrangement at once." },
+                { type = "paragraph", text = "|cffffd700One profile covers every BazUI module|r - switching it moves Bars, Drawers, Chat, Bags and the rest together. Create, switch, copy and delete them on |cffffd700BazUI > Profiles|r." },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Slash Commands
-        ----------------------------------------------------------------
         {
-            title = "Slash Commands",
+            title = "Slash commands",
             blocks = {
-                { type = "table",
-                  columns = { "Command", "Effect" },
-                  rows = {
-                      { "/bb",                          "Open the BazUI Bars settings page" },
-                      { "/bb create [cols] [rows]",     "Create a new bar (optional grid size)" },
-                      { "/bb delete <id>",              "Delete a bar by ID" },
-                      { "/bb duplicate <id>",           "Duplicate a bar with all its button assignments" },
-                      { "/bb export <id>",              "Export a bar's config as a shareable string" },
-                      { "/bb import",                   "Open the import dialog" },
-                      { "/bb scale <id> <value>",       "Set a bar's scale" },
-                      { "/bb padding <id> <pixels>",    "Set button spacing" },
-                      { "/bb reset",                    "Reset all bars (reloads UI)" },
-                      { "/bb help",                     "Print every command" },
-                      { "/bazbars",                     "Alias for /bb — every subcommand works on either form" },
-                  },
-                },
+                { type = "table", columns = { "Command", "What it does" }, rows = {
+                    { "/bb", "Opens the Bars settings. /bazbars is the same, and both take every subcommand." },
+                    { "/bb create [cols] [rows]", "A new bar, optionally at a size." },
+                    { "/bb delete <id>", "Deletes one." },
+                    { "/bb duplicate <id>", "Copies one with everything on it." },
+                    { "/bb export <id>", "The bar as a string." },
+                    { "/bb import", "Opens the paste box." },
+                    { "/bb scale <id> <value>", "Sets a bar's icon size." },
+                    { "/bb padding <id> <pixels>", "Sets the gap between its buttons." },
+                    { "/bb reset", "Resets every bar, and reloads." },
+                } },
             },
         },
 
-        ----------------------------------------------------------------
-        -- Tips
-        ----------------------------------------------------------------
         {
-            title = "Tips",
+            title = "Things worth knowing",
             blocks = {
                 { type = "list", items = {
-                    "Use a visibility macro like |cffffd700[combat] show; hide|r to make a bar appear only in combat",
-                    "Items show live bag counts — handy for tracking herbs, ore, or potion stacks while farming",
-                    "Random Favorite Mount works as a button — one click to roll a random mount",
-                    "Bars don't take action slots, so all 120 default slots stay free",
-                    "Combine Bars with the Drawers module for a fully customized UI without Blizzard slot constraints",
-                }},
+                    "|cffffd700[combat] show; hide|r in Show when gives you a bar that only exists in a fight.",
+                    "Item buttons count your bags, which makes a bar a decent readout as well as a set of buttons.",
+                    "These bars spend none of the game's 120 action slots, so whatever you had before is still where you left it.",
+                    "Click-through plus Fade until hovered makes a bar that watches rather than waits - cooldowns visible, nothing to misclick.",
+                } },
             },
         },
     },
