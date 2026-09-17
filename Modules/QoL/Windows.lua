@@ -84,27 +84,27 @@ local function SavePosition(key, frame)
     }
 end
 
+-- What we know about each window, kept here rather than as fields on the
+-- frame. These are Blizzard's windows, and writing to them is the habit
+-- that broke three of their files on Forever. Weak keys, so a frame going
+-- away takes its entry with it.
+local wired  = setmetatable({}, { __mode = "k" })   -- scripts attached
+local moving = setmetatable({}, { __mode = "k" })   -- under the cursor now
+
 -- Put it back where it was left, anchored to the screen rather than to
 -- whatever the panel manager had it hanging off. Anchored to a sibling
 -- panel it would move again the moment that panel opened or closed.
---
--- Answered in the same frame as whatever moved it, never a tick later.
--- The manager anchors a panel with SetPoint while it is opening it, and
--- all of that finishes before the frame is drawn - so a restore deferred
--- to the next tick draws once at Blizzard's position first, and the
--- window is visibly in its old place for an instant before it jumps.
+
 local function Reassert(def, frame)
-    if frame._bazDragBusy or frame._bazDragMoving then return end
+    if moving[frame] then return end
     if not addon:Enabled(def.key) then return end
     if not Draggable(def, frame) then return end
 
     local pos = Positions()[def.key]
     if not pos or InCombatLockdown() then return end
 
-    frame._bazDragBusy = true
     frame:ClearAllPoints()
     frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    frame._bazDragBusy = false
 end
 
 function addon:ClearWindowPositions()
@@ -121,8 +121,8 @@ end
 -- switch that is off leaves the window behaving exactly as the game
 -- intended.
 local function Wire(def, frame)
-    if frame._bazDragWired then return end
-    frame._bazDragWired = true
+    if wired[frame] then return end
+    wired[frame] = true
 
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
@@ -133,23 +133,28 @@ local function Wire(def, frame)
         if not addon:Enabled(def.key) then return end
         if not Draggable(def, self) then return end
         if InCombatLockdown() then return end
-        self._bazDragMoving = true
+        moving[self] = true
         self:StartMoving()
     end)
 
     frame:HookScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         if addon:Enabled(def.key) then SavePosition(def.key, self) end
-        self._bazDragMoving = nil
+        moving[self] = nil
     end)
 
-    -- Two ways in, because the windows are not all the same kind. A
-    -- panel the manager owns is anchored every time it opens, and the
-    -- hook below catches that anchoring as it happens. A window the
-    -- manager has never heard of - the options panel - is never anchored
-    -- again after the XML placed it, so it needs asking on the way up.
+    -- OnShow is enough, and it is the only safe place.
+    --
+    -- The panel manager anchors before it shows: SetUIPanel calls
+    -- UpdateUIPanelPositions and only then frame:Show(), so a position
+    -- set here runs after theirs and wins, with nothing drawn in between.
+    -- This used to also hooksecurefunc the frame's SetPoint, on the
+    -- assumption that the anchoring came later. It does not - and writing
+    -- to the method table of a frame we do not own is what broke the
+    -- objective tracker, the tooltip and the nameplates on Forever, and
+    -- is the likeliest source of the taint that made Blizzard's party
+    -- frames error on entering Edit Mode.
     frame:HookScript("OnShow", function(self) Reassert(def, self) end)
-    hooksecurefunc(frame, "SetPoint", function(self) Reassert(def, self) end)
 end
 
 -- Wire it if it is there, and wait for its addon if it is not. Called
