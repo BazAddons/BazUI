@@ -70,6 +70,11 @@ local function AllModuleSettings(create)
             hasCopyTable = type(CopyTable) == "function",
             build      = select(4, GetBuildInfo()),
         }
+        -- Saved as well as held, because the answer is usually wanted after
+        -- something has gone wrong, and a client that crashed is a client
+        -- that cannot be asked. It rides along in the profile and can be
+        -- read straight out of SavedVariables\BazUI.lua.
+        addon.db.dbRepair = addon.dbRepair
     end
 
     all = {}
