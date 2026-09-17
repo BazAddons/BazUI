@@ -34,6 +34,64 @@ local EditModeNineSliceLayout = {
 }
 
 ---------------------------------------------------------------------------
+-- What an overlay says about a frame
+--
+-- The atlas says whether a frame is selected. The colour says what it is
+-- in a dock stack, which is otherwise invisible while editing: move the
+-- host and everything hanging off it comes too, move a follower and it
+-- only changes its place in the stack. Those are different enough actions
+-- that they should not look the same before you take them.
+--
+--   gold   the frame a stack hangs off
+--   blue   carried by a host
+--   plain  stands on its own
+---------------------------------------------------------------------------
+
+local OVERLAY_TINTS = {
+    host     = { 1.00, 0.82, 0.00 },
+    follower = { 0.35, 0.70, 1.00 },
+    free     = { 1.00, 1.00, 1.00 },
+}
+
+local NINE_SLICE_PIECES = {
+    "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner",
+    "TopEdge", "BottomEdge", "LeftEdge", "RightEdge", "Center",
+}
+
+local function DockRole(frame)
+    local Dock = BazUI.Dock
+    if not Dock then return "free" end
+    if Dock.IsDocked and Dock:IsDocked(frame) then return "follower" end
+    local followers = Dock.GetFollowers and Dock:GetFollowers(frame)
+    if followers and #followers > 0 then return "host" end
+    return "free"
+end
+
+-- Re-applies the layout as well as the tint, because ApplyLayout replaces
+-- the textures and a colour set before it would be thrown away.
+local function ApplyOverlayLook(frame, overlay)
+    if not overlay then return end
+    NineSliceUtil.ApplyLayout(overlay, EditModeNineSliceLayout,
+        overlay.isSelected and "editmode-actionbar-selected" or "editmode-actionbar-highlight")
+
+    local tint = OVERLAY_TINTS[DockRole(frame)] or OVERLAY_TINTS.free
+    for _, piece in ipairs(NINE_SLICE_PIECES) do
+        local tex = overlay[piece]
+        if tex and tex.SetVertexColor then
+            tex:SetVertexColor(tint[1], tint[2], tint[3])
+        end
+    end
+end
+
+-- A stack can be rearranged inside a session, so the colours are worked
+-- out again rather than settled once when the overlay was built.
+function BazUI:RefreshEditOverlays()
+    for frame in pairs(registeredFrames) do
+        ApplyOverlayLook(frame, frame._bazEditOverlay)
+    end
+end
+
+---------------------------------------------------------------------------
 -- Grid Snap Preview Lines
 ---------------------------------------------------------------------------
 
@@ -190,7 +248,7 @@ local function CreateEditOverlay(frame, config)
     overlay:SetFrameLevel(frame:GetFrameLevel() + 10)
     overlay.isSelected = false
 
-    NineSliceUtil.ApplyLayout(overlay, EditModeNineSliceLayout, "editmode-actionbar-highlight")
+    ApplyOverlayLook(frame, overlay)
 
     local label = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightHuge")
     label:SetPoint("CENTER")
@@ -225,6 +283,7 @@ local function CreateEditOverlay(frame, config)
 
         SnapToGrid(parent)
         SavePosition(parent, config)
+        BazUI:RefreshEditOverlays()
         BazUI:RefreshInspectorSide()
     end)
 
@@ -905,6 +964,7 @@ local function BuildPopup()
     hint:SetPoint("TOPLEFT", 12, -10)
     hint:SetWidth(POPUP_WIDTH - 44)
     hint:SetJustifyH("LEFT")
+    hint:SetSpacing(2)
     hint:SetText("Click anything highlighted, or pick it from the list.")
     hint:Hide()
     f.hint = hint
@@ -1037,10 +1097,13 @@ local function ShowInspectorList()
 
     popup.hint:SetText(#entries > 0
         and "Click anything highlighted, or pick it from the list."
+            .. "\n\n|cffffd100Gold|r carries other things with it. "
+            .. "|cff59b3ffBlue|r is carried by something else."
         or  "Nothing to arrange yet. Create something to get started.")
     popup.hint:Show()
 
-    local y = -40
+    -- Below the hint, whatever height it wrapped to.
+    local y = -(math.max(20, popup.hint:GetStringHeight() or 20) + 24)
     for _, entry in ipairs(entries) do
         local btn = BazUI.Skin.Theme.CreateButton(popup.content, {
             text = entry.label, width = POPUP_WIDTH - 44, height = 22,
@@ -1225,7 +1288,7 @@ function BazUI:SelectEditFrame(frame)
     local overlay = frame._bazEditOverlay
     if overlay then
         overlay.isSelected = true
-        NineSliceUtil.ApplyLayout(overlay, EditModeNineSliceLayout, "editmode-actionbar-selected")
+        ApplyOverlayLook(frame, overlay)
         overlay.label:SetText(config.label or "")
         overlay.label:Show()
     end
@@ -1248,7 +1311,7 @@ function BazUI:DeselectEditFrame(frame)
     local overlay = frame._bazEditOverlay
     if overlay then
         overlay.isSelected = false
-        NineSliceUtil.ApplyLayout(overlay, EditModeNineSliceLayout, "editmode-actionbar-highlight")
+        ApplyOverlayLook(frame, overlay)
         overlay.label:Hide()
     end
 
@@ -1285,6 +1348,7 @@ local function EnterEditMode()
             config.onEnter(frame)
         end
     end
+    BazUI:RefreshEditOverlays()
     ShowInspectorList()
     BazUI:Fire("BAZ_EDITMODE_ENTER")
 end
