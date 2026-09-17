@@ -1821,30 +1821,30 @@ local function HookBlizzardBagToggles()
     ToggleBag      = function() Toggle() end
     OpenBag        = function() Open() end
 
-    -- Close paths keep calling Blizzard's originals so any stock bag
-    -- frame another addon opened directly closes too. They report
-    -- whether anything was closed, as Blizzard's do: the Escape chain
-    -- (CloseAllWindows) uses that so the press that closes the bag
-    -- stops there instead of also clearing the target.
-    local origCloseAll, origCloseBackpack, origCloseBag = CloseAllBags, CloseBackpack, CloseBag
+    -- Close paths are hooked, not replaced.
+    --
+    -- Assigning these three used to taint them, and Blizzard reads them
+    -- from a place that matters: CloseAllWindows does `CloseAllBags()`,
+    -- and CloseAllWindows sits in the panel-manager path that opens Edit
+    -- Mode. Reading a global we had assigned tainted that whole call, so
+    -- entering Edit Mode ended in their compact party frames comparing a
+    -- secret colour and erroring. Found in taint.log, not by reasoning.
+    --
+    -- hooksecurefunc on a global runs ours after theirs without taking
+    -- the global over, so any stock bag another addon opened still
+    -- closes, and so does ours.
+    --
+    -- What is lost: our close no longer contributes to their return
+    -- value, which the Escape chain uses to decide the press was spent.
+    -- Nothing depends on that here - the panel is registered in
+    -- UISpecialFrames (uiSpecialFrame = true, above), and CloseWindows
+    -- reports that itself.
     local function CloseOurs()
-        local wasShown = frame and frame:IsShown() or false
         Bag:Hide()
-        return wasShown
     end
-    local function Wrap(orig)
-        return function(...)
-            local closed = CloseOurs()
-            if orig then
-                local ok, result = pcall(orig, ...)
-                if ok and result then closed = true end
-            end
-            return closed
-        end
-    end
-    CloseAllBags  = Wrap(origCloseAll)
-    CloseBackpack = Wrap(origCloseBackpack)
-    CloseBag      = Wrap(origCloseBag)
+    hooksecurefunc("CloseAllBags", CloseOurs)
+    hooksecurefunc("CloseBackpack", CloseOurs)
+    hooksecurefunc("CloseBag", CloseOurs)
 end
 
 BazUI:QueueForModule("Bags", HookBlizzardBagToggles)
