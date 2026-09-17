@@ -849,6 +849,12 @@ BazUI:QueueForLogin(function()
                     BazUI:ToggleEditMode()
                 end,
             },
+            sv = {
+                desc = "Report whether the saved variables were there when BazUI started",
+                handler = function()
+                    BazUI:ReportSavedVariables()
+                end,
+            },
             taint = {
                 desc = "Report which Blizzard globals and frames BazUI has taken over (add 'all' for every addon)",
                 handler = function(args)
@@ -891,18 +897,28 @@ end)
 -- BazUI is standalone. Running it next to the BazCore-based suite means two
 -- addons fighting over the minimap, quest tracker and chat, so say so once.
 ---------------------------------------------------------------------------
-BazUI:QueueForLogin(function()
-    BazUI:RecordModuleFlagsAtLogin()
-
-    local t = BazUI._svTrace
-    t.atLogin = CountKeys(_G.BazUIDB)
+function BazUI:ReportSavedVariables()
+    local t = BazUI._svTrace or {}
     local function Say(n)
+        n = n or -1
         if n < 0 then return "|cffff4444absent|r" end
         if n == 0 then return "|cffff4444empty|r" end
         return "|cff00ff00" .. n .. " keys|r"
     end
-    BazUI:Print(("Saved variables - at file load: %s, at ADDON_LOADED: %s, at login: %s"):format(
-        Say(t.atFileLoad), Say(t.atAddonLoaded or -1), Say(t.atLogin)))
+    BazUI:Print(("Saved variables - Core.lua ran: %s, ADDON_LOADED: %s, login: %s, now: %s"):format(
+        Say(t.atFileLoad), Say(t.atAddonLoaded), Say(t.atLogin), Say(CountKeys(_G.BazUIDB))))
+
+    local log = _G.BazUIDB and _G.BazUIDB.moduleSwitchLog
+    if type(log) == "table" then
+        print("  logins remembered: " .. #log .. " (more than one means the file is being read back)")
+        for i = math.max(1, #log - 4), #log do print("    " .. tostring(log[i])) end
+    end
+end
+
+BazUI:QueueForLogin(function()
+    BazUI._svTrace.atLogin = CountKeys(_G.BazUIDB)
+    BazUI:ReportSavedVariables()
+    BazUI:RecordModuleFlagsAtLogin()
 end)
 
 BazUI:QueueForLogin(function()
