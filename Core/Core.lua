@@ -126,9 +126,48 @@ function BazUI:IsModuleEnabled(name)
     return not (flags and flags[name] == false)
 end
 
+-- What the flags looked like at login, written down once so a reload can
+-- be compared against what the switch was set to.
+function BazUI:RecordModuleFlagsAtLogin()
+    local sv = _G.BazUIDB
+    if not sv then return end
+    local flags = ModuleFlags()
+    local seen = {}
+    if flags then
+        for k, v in pairs(flags) do seen[#seen + 1] = k .. "=" .. tostring(v) end
+    end
+    table.sort(seen)
+    sv.moduleSwitchLog = sv.moduleSwitchLog or {}
+    local log = sv.moduleSwitchLog
+    log[#log + 1] = ("%s LOGIN flags:[%s] profile:%s"):format(
+        date("%H:%M:%S"),
+        #seen > 0 and table.concat(seen, ",") or "empty",
+        tostring(sv.activeProfile))
+    while #log > 40 do table.remove(log, 1) end
+end
+
+-- A record of every switch thrown, kept in the saved variables.
+--
+-- The module switches have been going back on by themselves and reading
+-- the code has not explained it, so this writes down what actually
+-- happened: who asked, for what, and whether the flag was there to write
+-- to. Read it out of SavedVariables\BazUI.lua under moduleSwitchLog.
+local function RecordSwitch(name, enabled, wrote)
+    local sv = _G.BazUIDB
+    if not sv then return end
+    sv.moduleSwitchLog = sv.moduleSwitchLog or {}
+    local log = sv.moduleSwitchLog
+    log[#log + 1] = ("%s %s -> %s (%s)"):format(
+        date("%H:%M:%S"), name, tostring(enabled),
+        wrote and "written" or "NO FLAGS TABLE")
+    -- Keep it short; only the last few matter.
+    while #log > 40 do table.remove(log, 1) end
+end
+
 function BazUI:SetModuleEnabled(name, enabled)
     if ALWAYS_ON[name] then return end
     local flags = ModuleFlags()
+    RecordSwitch(name, enabled, flags ~= nil)
     if not flags then return end
 
     -- Written out rather than `enabled and nil or false`, which cannot
@@ -820,6 +859,8 @@ end)
 -- BazUI is standalone. Running it next to the BazCore-based suite means two
 -- addons fighting over the minimap, quest tracker and chat, so say so once.
 ---------------------------------------------------------------------------
+BazUI:QueueForLogin(function() BazUI:RecordModuleFlagsAtLogin() end)
+
 BazUI:QueueForLogin(function()
     local clash = {}
     for _, name in ipairs({ "BazCore", "BazWidgetDrawers", "LibBazWidget", "BazWidgets", "BazChat", "BazBags", "BazBars", "BazNotificationCenter" }) do
