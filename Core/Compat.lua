@@ -12,7 +12,7 @@
 -- bug in our code.
 --
 -- So every one of those holds is declared next to the code that takes it,
--- and /bazui check reads the lot back:
+-- and /baz check reads the lot back:
 --
 --   BazUI:RegisterDependency{
 --       module = "Nameplates",
@@ -148,7 +148,7 @@ local suppressedByUs = setmetatable({}, { __mode = "k" })
 -- nil. Called plainly from here, that write belongs to BazUI, and
 -- EditModeFrameSetup reads snappedToFrame on the way into Edit Mode - which
 -- is how hiding an action bar surfaced as their compact party frames
--- comparing a secret colour. /bazui taint named the field.
+-- comparing a secret colour. /baz taint named the field.
 --
 -- securecallfunction runs their method as theirs. The frame still hides;
 -- nothing it writes on the way down is ours afterwards.

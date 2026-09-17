@@ -201,7 +201,7 @@ end)
 -- What we are leaning on
 --
 -- Another addon's furniture rather than the game's, which makes it more
--- likely to move, not less. Declared so /bazui check says so plainly
+-- likely to move, not less. Declared so /baz check says so plainly
 -- instead of leaving a notification that quietly never arrives or a card
 -- that quietly does nothing.
 ---------------------------------------------------------------------------

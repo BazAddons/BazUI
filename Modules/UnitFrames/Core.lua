@@ -102,7 +102,7 @@ function addon:MigrateRankStyle()
     self:SetSetting("rankStyle", nil)
 end
 
--- The rank glyphs, declared so /bazui check says whether they are on
+-- The rank glyphs, declared so /baz check says whether they are on
 -- disk. A missing one is not fatal - the rank falls back to the marks
 -- it is made of - but it is still worth being told about, because the
 -- fallback is quieter than the thing it stands in for.

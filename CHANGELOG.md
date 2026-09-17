@@ -35,6 +35,6 @@ Changes are applied as you make them. Skins can be exported and imported as a st
 - Blizzard's own frames are only hidden where you ask, on a switch per frame.
 - Everything can be moved in BazUI's Edit Mode, docked to anything else, and nudged a pixel at a time.
 - A **User Manual** sits at the foot of the settings list, with a page per module.
-- `/bazui` opens the options. `/bazui check` reports anything the addon expects from the game's own interface and cannot find - useful for telling a real bug from a client that has moved something.
+- `/baz` opens the options. `/baz check` reports anything the addon expects from the game's own interface and cannot find - useful for telling a real bug from a client that has moved something.
 
 Built for World of Warcraft: Forever, and still in development - bug reports and suggestions are welcome.

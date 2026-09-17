@@ -26,8 +26,8 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 
 ## Commands
 
-- `/bazui` (or `/bui`) opens the options window.
-- `/bazui profile <name>`, `/bazui profiles`, `/bazui default <name>` manage profiles.
+- `/baz` (or `/bazui`, `/bui`) opens the options window.
+- `/baz profile <name>`, `/baz profiles`, `/baz default <name>` manage profiles.
 - `/bwd toggle|show|hide|open <name>|list` drives the drawer.
 - `/bbg` (or `/bazbags`) toggles the bag panel; `/bbg sort`, `/bbg categorize`.
 - `/bb` (or `/bazbars`) for bars: `create`, `delete`, `duplicate`, `export`, `import`, `scale`, `padding`, `reset`.

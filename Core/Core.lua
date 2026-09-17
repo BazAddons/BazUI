@@ -344,7 +344,7 @@ BazUI._ctxSections = BazUI._ctxSections or {}
 
 -- The menu frame the game hands back is what gets our chrome, and its
 -- own background is hidden to make room. Both are things about the menu
--- system rather than API, so /bazui check asks after them.
+-- system rather than API, so /baz check asks after them.
 --
 -- Queued rather than declared here and now: this is the first file the
 -- addon loads, and Core/Compat.lua, which takes the declaration, has not
@@ -639,7 +639,7 @@ BazUI:QueueForLogin(function()
             for modName in pairs(BazUI.addons) do
                 if modName ~= "BazUI" then n = n + 1 end
             end
-            print(string.format("|cff3399ffBazUI|r v%s loaded (%d module%s). Type |cff00ff00/bazui|r for options.",
+            print(string.format("|cff3399ffBazUI|r v%s loaded (%d module%s). Type |cff00ff00/baz|r for options.",
                 tostring(BazUI.VERSION or "?"), n, n == 1 and "" or "s"))
         end)
     end
@@ -734,7 +734,7 @@ end)
 
 ---------------------------------------------------------------------------
 -- BazUI's own slash commands
--- /bazui (or /bui) opens BazUI in the Options > AddOns panel. Sub-commands cover the most
+-- /baz (or /bazui, /bui) opens BazUI in the Options > AddOns panel. Sub-commands cover the most
 -- common day-to-day actions: profile switching and default-profile setup.
 ---------------------------------------------------------------------------
 
@@ -743,7 +743,7 @@ BazUI:QueueForLogin(function()
 
     BazUI:RegisterCommands("BazUI", {
         title = "BazUI",
-        slash = { "/bazui", "/bui" },
+        slash = { "/baz", "/bazui", "/bui" },
         defaultHandler = function()
             if BazUI.OpenOptionsPanel then
                 BazUI:OpenOptionsPanel("BazUI")
