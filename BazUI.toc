@@ -162,12 +162,12 @@ Modules\Bars\Keybinds.lua
 Modules\Bars\Options.lua
 Modules\Bars\UserGuide.lua
 
-# Modules\UnitFrames\Core.lua
-# Modules\UnitFrames\UnitBars.lua
-# Modules\UnitFrames\BarOptions.lua
-# Modules\UnitFrames\Settings.lua
-# Modules\UnitFrames\UserGuide.lua
-# Modules\UnitFrames\Nameplate.lua
+Modules\UnitFrames\Core.lua
+Modules\UnitFrames\UnitBars.lua
+Modules\UnitFrames\BarOptions.lua
+Modules\UnitFrames\Settings.lua
+Modules\UnitFrames\UserGuide.lua
+Modules\UnitFrames\Nameplate.lua
 
 # Name plates - the bar over a unit's head. Unrelated to
 # Skin\Nameplate.lua, which is a panel with a name on it.

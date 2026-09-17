@@ -359,17 +359,16 @@ BazUI:RegisterDependency({
     check  = function() return BazUI.Has.Member(_G.SECURE_ACTIONS, "togglemenu") end,
 })
 
-local hiddenStock
-local stockParents = {}
+-- Which of the game's frames are meant to be down, held here rather than
+-- on their frames. They used to be reparented to a hidden carrier, with
+-- the old parent written onto the frame - both of them writes to things
+-- we do not own. PlayerFrame, TargetFrame, PlayerCastingBarFrame and
+-- PartyFrame are all Edit Mode systems on this client, and Edit Mode
+-- walks them on the way in; anything of ours left on them taints that
+-- walk. BazUI.SuppressFrame hides them through their own OnShow instead,
+-- and calls Hide as Blizzard rather than as us.
+local stockHidden = setmetatable({}, { __mode = "k" })
 local suppressKey
-
-local function HiddenStock()
-    if not hiddenStock then
-        hiddenStock = CreateFrame("Frame")
-        hiddenStock:Hide()
-    end
-    return hiddenStock
-end
 
 function UnitBars:SuppressStock()
     -- Asked on every save, and a save happens every time a bar is
@@ -396,13 +395,10 @@ function UnitBars:SuppressStock()
             local frame = _G[name]
             if frame then
                 found = true
-                if hide and not stockParents[frame] then
-                    stockParents[frame] = frame:GetParent() or UIParent
-                    frame:SetParent(HiddenStock())
-                elseif not hide and stockParents[frame] then
-                    frame:SetParent(stockParents[frame])
-                    stockParents[frame] = nil
-                end
+                stockHidden[frame] = hide or nil
+                BazUI.SuppressFrame(frame, function()
+                    return stockHidden[frame] and true or false
+                end)
             end
         end
     end
@@ -901,7 +897,16 @@ function UnitBars:SyncCast(bar)
         channel = name ~= nil
     end
 
-    if name and startMS and endMS then
+    -- UnitCastingInfo is SecretWhenUnitSpellCastRestricted: for some units
+    -- these come back as values we are not allowed to read, and even the
+    -- truth test above would raise. A cast bar needs to work out how far
+    -- through the cast is, which secret values cannot be, so a cast we are
+    -- not allowed to know about counts as no cast and the bar stays down.
+    local castable = BazUI.Secret.Read(function()
+        return (name and startMS and endMS) and true or false
+    end, false)
+
+    if castable then
         frame:SetAlpha(1)
         frame:SetFillColor(channel and CHANNEL_COLOR or CAST_COLOR)
         frame._cast = { name = CastName(display, name, channel),
