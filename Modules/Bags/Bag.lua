@@ -1836,9 +1836,9 @@ local function HookBlizzardBagToggles()
     --
     -- What is lost: our close no longer contributes to their return
     -- value, which the Escape chain uses to decide the press was spent.
-    -- Nothing depends on that here - the panel is registered in
-    -- UISpecialFrames (uiSpecialFrame = true, above), and CloseWindows
-    -- reports that itself.
+    -- Nothing depends on that here - the panel takes Escape itself
+    -- (uiSpecialFrame = true above, which is BazUI.CloseOnEscape now)
+    -- and stops the press propagating when it uses it.
     local function CloseOurs()
         Bag:Hide()
     end

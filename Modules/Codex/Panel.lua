@@ -593,7 +593,7 @@ local function Build()
     Codex.frame = frame
 
     -- Escape closes it, like every other BazUI window.
-    tinsert(UISpecialFrames, "BazUICodexFrame")
+    BazUI.CloseOnEscape(frame)
 
     local title = Theme.FontString(frame, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", PAD, -9)

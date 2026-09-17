@@ -204,8 +204,9 @@ local function CreateDialog()
     f.stats:SetPoint("BOTTOMLEFT", 16, 38)
     f.stats:SetTextColor(0.55, 0.55, 0.55)
 
-    -- ESC closes via UISpecialFrames.
-    table.insert(UISpecialFrames, "BazUICopyDialog")
+    -- ESC closes without putting us on UISpecialFrames, which taints
+    -- Blizzard's panel manager when it walks that list.
+    BazUI.CloseOnEscape(f)
 
     return f
 end

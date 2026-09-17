@@ -396,7 +396,7 @@ local function BuildPicker()
     end)
 
     -- ESC closes
-    tinsert(UISpecialFrames, "BazUIIconPicker")
+    BazUI.CloseOnEscape(f)
 
     pickerFrame = f
     return f

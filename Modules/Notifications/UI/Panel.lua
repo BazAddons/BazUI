@@ -573,7 +573,7 @@ local function CreatePanel()
         addon.Events:Trigger("PANEL_HIDDEN")
     end)
 
-    table.insert(UISpecialFrames, "BazUINotifPanel")
+    BazUI.CloseOnEscape(panel)
     addon.panel = panel
 end
 

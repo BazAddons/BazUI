@@ -299,9 +299,10 @@ function BazUI:CreatePortraitWindow(globalName, opts)
         end
     end)
 
-    -- ESC closes via Blizzard's UISpecialFrames mechanism.
+    -- ESC closes by watching the key ourselves. UISpecialFrames makes
+    -- Blizzard's panel manager read our global, which taints it.
     if opts.uiSpecialFrame and globalName then
-        tinsert(UISpecialFrames, globalName)
+        BazUI.CloseOnEscape(f)
     end
 
     -- Portrait interactivity - adds a click overlay on top of the

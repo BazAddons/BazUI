@@ -161,6 +161,44 @@ function BazUI.SuppressFrame(frame, wanted)
 end
 
 ---------------------------------------------------------------------------
+-- Escape closes this window
+--
+-- Not through UISpecialFrames, which is the sanctioned way and, on
+-- Forever, a taint source. Their CloseSpecialWindows walks that list
+-- doing `_G[name]`, and reading a global an addon created taints the
+-- read - inside the panel manager, which then carries the taint into
+-- whatever it was doing. Opening Edit Mode goes through ShowUIPanel ->
+-- CloseWindows -> CloseSpecialWindows, so every one of our frames on
+-- that list poisoned it.
+--
+-- A keyboard handler on the frame itself touches nothing of theirs.
+-- Keys propagate normally; only Escape is taken, and only while the
+-- frame is up.
+---------------------------------------------------------------------------
+
+function BazUI.CloseOnEscape(frame, onEscape)
+    if not (frame and frame.EnableKeyboard) then return false end
+
+    frame:EnableKeyboard(true)
+    frame:SetPropagateKeyboardInput(true)
+    frame:HookScript("OnKeyDown", function(self, key)
+        if key ~= "ESCAPE" then
+            self:SetPropagateKeyboardInput(true)
+            return
+        end
+        -- Taken, so the press does not also reach the game menu.
+        self:SetPropagateKeyboardInput(false)
+        if onEscape then onEscape(self) else self:Hide() end
+    end)
+    -- Left propagating when it goes away, so a frame that is hidden
+    -- while Escape is held cannot swallow the next key it sees.
+    frame:HookScript("OnHide", function(self)
+        self:SetPropagateKeyboardInput(true)
+    end)
+    return true
+end
+
+---------------------------------------------------------------------------
 -- The spell book
 --
 -- Era answers GetNumSpellTabs / GetSpellTabInfo / GetSpellBookItemInfo,

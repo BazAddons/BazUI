@@ -171,8 +171,9 @@ local function CreatePopupFrame()
     f.fieldArea = CreateFrame("Frame", nil, f)
     -- Sized + positioned in ApplyOpts after the body height is known.
 
-    -- ESC closes via UISpecialFrames.
-    table.insert(UISpecialFrames, "BazUIPopup")
+    -- ESC closes without putting us on UISpecialFrames, which taints
+    -- Blizzard's panel manager when it walks that list.
+    BazUI.CloseOnEscape(f)
 
     return f
 end
