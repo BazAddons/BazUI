@@ -12,6 +12,25 @@ BazUI.ADDON_NAME = ADDON_NAME
 BazUI.VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "?"
 
 ---------------------------------------------------------------------------
+-- Did the saved variables arrive?
+--
+-- Positions, bar contents and the module switches all revert on reload,
+-- and two consecutive saves each held one login entry rather than the
+-- second holding both - so the file is written and then not read back.
+-- This writes down what BazUIDB held at each of the three moments it
+-- could go missing, and says so at login.
+---------------------------------------------------------------------------
+
+local function CountKeys(t)
+    if type(t) ~= "table" then return -1 end
+    local n = 0
+    for _ in pairs(t) do n = n + 1 end
+    return n
+end
+
+BazUI._svTrace = { atFileLoad = CountKeys(_G.BazUIDB) }
+
+---------------------------------------------------------------------------
 -- Addon Object Prototype
 -- Other modules extend this via BazUI.AddonMixin
 ---------------------------------------------------------------------------
@@ -471,6 +490,7 @@ end
 
 -- Initialize unified profile structure early (before addons load)
 EventUtil.ContinueOnAddOnLoaded("BazUI", function()
+    BazUI._svTrace.atAddonLoaded = CountKeys(_G.BazUIDB)
     BazUIDB = BazUIDB or {}
     if BazUI.InitProfiles then
         BazUI:InitProfiles()
@@ -871,7 +891,19 @@ end)
 -- BazUI is standalone. Running it next to the BazCore-based suite means two
 -- addons fighting over the minimap, quest tracker and chat, so say so once.
 ---------------------------------------------------------------------------
-BazUI:QueueForLogin(function() BazUI:RecordModuleFlagsAtLogin() end)
+BazUI:QueueForLogin(function()
+    BazUI:RecordModuleFlagsAtLogin()
+
+    local t = BazUI._svTrace
+    t.atLogin = CountKeys(_G.BazUIDB)
+    local function Say(n)
+        if n < 0 then return "|cffff4444absent|r" end
+        if n == 0 then return "|cffff4444empty|r" end
+        return "|cff00ff00" .. n .. " keys|r"
+    end
+    BazUI:Print(("Saved variables - at file load: %s, at ADDON_LOADED: %s, at login: %s"):format(
+        Say(t.atFileLoad), Say(t.atAddonLoaded or -1), Say(t.atLogin)))
+end)
 
 BazUI:QueueForLogin(function()
     local clash = {}
