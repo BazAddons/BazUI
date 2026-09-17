@@ -60,52 +60,52 @@ Core\AddonListButton.lua
 Core\IconPicker.lua
 
 # Modules
-Modules\Drawers\Core.lua
-Modules\Drawers\Compat.lua
-Modules\Drawers\Drawer.lua
-Modules\Drawers\WidgetHost.lua
-Modules\Drawers\Settings.lua
-Modules\Drawers\Widgets\MinimapButtons.lua
-Modules\Drawers\Widgets\Minimap.lua
-Modules\Drawers\Widgets\MinimapInfoBar.lua
-Modules\Drawers\Widgets\ZoneText.lua
-Modules\Drawers\Widgets\QuestTracker\Constants.lua
-Modules\Drawers\Widgets\QuestTracker\State.lua
-Modules\Drawers\Widgets\QuestTracker\Collapse.lua
-Modules\Drawers\Widgets\QuestTracker\Data.lua
-Modules\Drawers\Widgets\QuestTracker\Headers.lua
-Modules\Drawers\Widgets\QuestTracker\Blocks.lua
-Modules\Drawers\Widgets\QuestTracker\Options.lua
-Modules\Drawers\Widgets\QuestTracker\Init.lua
-Modules\Drawers\Widgets\DungeonFinder.lua
-Modules\Drawers\Widgets\HearthstoneCD.lua
-Modules\Drawers\Widgets\ResetTimers.lua
-Modules\Drawers\Widgets\FreeBagSlots.lua
-Modules\Drawers\Widgets\Performance.lua
-Modules\Drawers\Widgets\FPS.lua
-Modules\Drawers\Widgets\PullTimer.lua
-Modules\Drawers\Widgets\TrinketTracker.lua
-Modules\Drawers\Widgets\TrackedReputation.lua
-Modules\Drawers\Widgets\Repair.lua
-Modules\Drawers\Widgets\GoldTracker.lua
-Modules\Drawers\Widgets\Coordinates.lua
-Modules\Drawers\Widgets\SpeedMonitor.lua
-Modules\Drawers\Widgets\StatSummary.lua
-Modules\Drawers\Widgets\ItemLevel.lua
-Modules\Drawers\Widgets\Tooltip.lua
-Modules\Drawers\Widgets\NotePad.lua
-Modules\Drawers\Widgets\Stopwatch.lua
-Modules\Drawers\Widgets\TodoList.lua
-Modules\Drawers\Widgets\Calculator.lua
-Modules\Drawers\Widgets\Broker.lua
-Modules\Drawers\UserGuide.lua
+# Modules\Drawers\Core.lua
+# Modules\Drawers\Compat.lua
+# Modules\Drawers\Drawer.lua
+# Modules\Drawers\WidgetHost.lua
+# Modules\Drawers\Settings.lua
+# Modules\Drawers\Widgets\MinimapButtons.lua
+# Modules\Drawers\Widgets\Minimap.lua
+# Modules\Drawers\Widgets\MinimapInfoBar.lua
+# Modules\Drawers\Widgets\ZoneText.lua
+# Modules\Drawers\Widgets\QuestTracker\Constants.lua
+# Modules\Drawers\Widgets\QuestTracker\State.lua
+# Modules\Drawers\Widgets\QuestTracker\Collapse.lua
+# Modules\Drawers\Widgets\QuestTracker\Data.lua
+# Modules\Drawers\Widgets\QuestTracker\Headers.lua
+# Modules\Drawers\Widgets\QuestTracker\Blocks.lua
+# Modules\Drawers\Widgets\QuestTracker\Options.lua
+# Modules\Drawers\Widgets\QuestTracker\Init.lua
+# Modules\Drawers\Widgets\DungeonFinder.lua
+# Modules\Drawers\Widgets\HearthstoneCD.lua
+# Modules\Drawers\Widgets\ResetTimers.lua
+# Modules\Drawers\Widgets\FreeBagSlots.lua
+# Modules\Drawers\Widgets\Performance.lua
+# Modules\Drawers\Widgets\FPS.lua
+# Modules\Drawers\Widgets\PullTimer.lua
+# Modules\Drawers\Widgets\TrinketTracker.lua
+# Modules\Drawers\Widgets\TrackedReputation.lua
+# Modules\Drawers\Widgets\Repair.lua
+# Modules\Drawers\Widgets\GoldTracker.lua
+# Modules\Drawers\Widgets\Coordinates.lua
+# Modules\Drawers\Widgets\SpeedMonitor.lua
+# Modules\Drawers\Widgets\StatSummary.lua
+# Modules\Drawers\Widgets\ItemLevel.lua
+# Modules\Drawers\Widgets\Tooltip.lua
+# Modules\Drawers\Widgets\NotePad.lua
+# Modules\Drawers\Widgets\Stopwatch.lua
+# Modules\Drawers\Widgets\TodoList.lua
+# Modules\Drawers\Widgets\Calculator.lua
+# Modules\Drawers\Widgets\Broker.lua
+# Modules\Drawers\UserGuide.lua
 
-Modules\Bags\Core.lua
-Modules\Bags\Categories.lua
-Modules\Bags\Layouts.lua
-Modules\Bags\Bag.lua
-Modules\Bags\CategoriesPage.lua
-Modules\Bags\UserGuide.lua
+# Modules\Bags\Core.lua
+# Modules\Bags\Categories.lua
+# Modules\Bags\Layouts.lua
+# Modules\Bags\Bag.lua
+# Modules\Bags\CategoriesPage.lua
+# Modules\Bags\UserGuide.lua
 
 # Chat is switched off on the Forever beta.
 #
@@ -141,116 +141,116 @@ Modules\Bags\UserGuide.lua
 # Modules\Chat\Options\TabsPage.lua
 # Modules\Chat\UserGuide.lua
 
-Modules\Bars\Constants.lua
-Modules\Bars\Core.lua
-Modules\Bars\Actions\Registry.lua
-Modules\Bars\Actions\MacroText.lua
-Modules\Bars\Actions\Spell.lua
-Modules\Bars\Actions\Mount.lua
-Modules\Bars\Actions\Macro.lua
-Modules\Bars\Actions\EquipmentSet.lua
-Modules\Bars\Actions\Item.lua
-Modules\Bars\Actions\Flyout.lua
-Modules\Bars\Bars.xml
-Modules\Bars\Button.lua
-Modules\Bars\FlyoutPopup.lua
-Modules\Bars\Bar.lua
-Modules\Bars\AutoFill.lua
-Modules\Bars\Dialogs.lua
-Modules\Bars\Keybinds.lua
-Modules\Bars\Options.lua
-Modules\Bars\UserGuide.lua
+# Modules\Bars\Constants.lua
+# Modules\Bars\Core.lua
+# Modules\Bars\Actions\Registry.lua
+# Modules\Bars\Actions\MacroText.lua
+# Modules\Bars\Actions\Spell.lua
+# Modules\Bars\Actions\Mount.lua
+# Modules\Bars\Actions\Macro.lua
+# Modules\Bars\Actions\EquipmentSet.lua
+# Modules\Bars\Actions\Item.lua
+# Modules\Bars\Actions\Flyout.lua
+# Modules\Bars\Bars.xml
+# Modules\Bars\Button.lua
+# Modules\Bars\FlyoutPopup.lua
+# Modules\Bars\Bar.lua
+# Modules\Bars\AutoFill.lua
+# Modules\Bars\Dialogs.lua
+# Modules\Bars\Keybinds.lua
+# Modules\Bars\Options.lua
+# Modules\Bars\UserGuide.lua
 
-Modules\UnitFrames\Core.lua
-Modules\UnitFrames\UnitBars.lua
-Modules\UnitFrames\BarOptions.lua
-Modules\UnitFrames\Settings.lua
-Modules\UnitFrames\UserGuide.lua
-Modules\UnitFrames\Nameplate.lua
+# Modules\UnitFrames\Core.lua
+# Modules\UnitFrames\UnitBars.lua
+# Modules\UnitFrames\BarOptions.lua
+# Modules\UnitFrames\Settings.lua
+# Modules\UnitFrames\UserGuide.lua
+# Modules\UnitFrames\Nameplate.lua
 
 # Name plates - the bar over a unit's head. Unrelated to
 # Skin\Nameplate.lua, which is a panel with a name on it.
-Modules\Nameplates\Core.lua
-Modules\Nameplates\Plates.lua
-Modules\Nameplates\Settings.lua
-Modules\Nameplates\UserGuide.lua
+# Modules\Nameplates\Core.lua
+# Modules\Nameplates\Plates.lua
+# Modules\Nameplates\Settings.lua
+# Modules\Nameplates\UserGuide.lua
 
 # Quality of life - small changes to how the game behaves, each one
 # a switch of its own.
-Modules\QoL\Core.lua
-Modules\QoL\Tweaks.lua
-Modules\QoL\Windows.lua
-Modules\QoL\Settings.lua
-Modules\QoL\UserGuide.lua
+# Modules\QoL\Core.lua
+# Modules\QoL\Tweaks.lua
+# Modules\QoL\Windows.lua
+# Modules\QoL\Settings.lua
+# Modules\QoL\UserGuide.lua
 
-Modules\Auras\Core.lua
-Modules\Auras\Auras.xml
-Modules\Auras\Frames.lua
-Modules\Auras\Settings.lua
-Modules\Auras\UserGuide.lua
+# Modules\Auras\Core.lua
+# Modules\Auras\Auras.xml
+# Modules\Auras\Frames.lua
+# Modules\Auras\Settings.lua
+# Modules\Auras\UserGuide.lua
 
-Modules\Notifications\Namespace.lua
-Modules\Notifications\Utils\SafeCall.lua
-Modules\Notifications\Utils\TimeFormat.lua
-Modules\Notifications\Utils\Anchoring.lua
-Modules\Notifications\Core\Init.lua
-Modules\Notifications\Core\Events.lua
-Modules\Notifications\Core\Database.lua
-Modules\Notifications\Core\History.lua
-Modules\Notifications\Core\SlashCommands.lua
-Modules\Notifications\Core\BlizzardFrames.lua
-Modules\Notifications\Core\DoNotDisturb.lua
-Modules\Notifications\Utils\SafeString.lua
-Modules\Notifications\API\ModuleRegistry.lua
-Modules\Notifications\API\Notifications.lua
-Modules\Notifications\API\ModuleHelpers.lua
-Modules\Notifications\UI\Colors.lua
-Modules\Notifications\UI\Animations.lua
-Modules\Notifications\UI\NotificationCard.lua
-Modules\Notifications\UI\GroupHeader.lua
-Modules\Notifications\UI\Toast.lua
-Modules\Notifications\UI\PanelScroll.lua
-Modules\Notifications\UI\Panel.lua
-Modules\Notifications\UI\ToggleButton.lua
-Modules\Notifications\Options\OptionsPanel.lua
-Modules\Notifications\Sources\Auction.lua
-Modules\Notifications\Sources\Group.lua
-Modules\Notifications\Sources\Instance.lua
-Modules\Notifications\Sources\Inventory.lua
-Modules\Notifications\Sources\Loot.lua
-Modules\Notifications\Sources\Mail.lua
-Modules\Notifications\Sources\Professions.lua
-Modules\Notifications\Sources\Quests.lua
-Modules\Notifications\Sources\Reputation.lua
-Modules\Notifications\Sources\Social.lua
-Modules\Notifications\Sources\System.lua
-Modules\Notifications\Sources\XP.lua
-Modules\Notifications\Sources\Zones.lua
-Modules\Notifications\Sources\Zygor.lua
-Modules\Notifications\UserGuide.lua
+# Modules\Notifications\Namespace.lua
+# Modules\Notifications\Utils\SafeCall.lua
+# Modules\Notifications\Utils\TimeFormat.lua
+# Modules\Notifications\Utils\Anchoring.lua
+# Modules\Notifications\Core\Init.lua
+# Modules\Notifications\Core\Events.lua
+# Modules\Notifications\Core\Database.lua
+# Modules\Notifications\Core\History.lua
+# Modules\Notifications\Core\SlashCommands.lua
+# Modules\Notifications\Core\BlizzardFrames.lua
+# Modules\Notifications\Core\DoNotDisturb.lua
+# Modules\Notifications\Utils\SafeString.lua
+# Modules\Notifications\API\ModuleRegistry.lua
+# Modules\Notifications\API\Notifications.lua
+# Modules\Notifications\API\ModuleHelpers.lua
+# Modules\Notifications\UI\Colors.lua
+# Modules\Notifications\UI\Animations.lua
+# Modules\Notifications\UI\NotificationCard.lua
+# Modules\Notifications\UI\GroupHeader.lua
+# Modules\Notifications\UI\Toast.lua
+# Modules\Notifications\UI\PanelScroll.lua
+# Modules\Notifications\UI\Panel.lua
+# Modules\Notifications\UI\ToggleButton.lua
+# Modules\Notifications\Options\OptionsPanel.lua
+# Modules\Notifications\Sources\Auction.lua
+# Modules\Notifications\Sources\Group.lua
+# Modules\Notifications\Sources\Instance.lua
+# Modules\Notifications\Sources\Inventory.lua
+# Modules\Notifications\Sources\Loot.lua
+# Modules\Notifications\Sources\Mail.lua
+# Modules\Notifications\Sources\Professions.lua
+# Modules\Notifications\Sources\Quests.lua
+# Modules\Notifications\Sources\Reputation.lua
+# Modules\Notifications\Sources\Social.lua
+# Modules\Notifications\Sources\System.lua
+# Modules\Notifications\Sources\XP.lua
+# Modules\Notifications\Sources\Zones.lua
+# Modules\Notifications\Sources\Zygor.lua
+# Modules\Notifications\UserGuide.lua
 
-Modules\MicroMenu\Core.lua
-Modules\MicroMenu\Bar.lua
-Modules\MicroMenu\Settings.lua
-Modules\MicroMenu\UserGuide.lua
+# Modules\MicroMenu\Core.lua
+# Modules\MicroMenu\Bar.lua
+# Modules\MicroMenu\Settings.lua
+# Modules\MicroMenu\UserGuide.lua
 
 
-Modules\Tooltip\Core.lua
-Modules\Tooltip\Tooltips.lua
-Modules\Tooltip\Settings.lua
-Modules\Tooltip\UserGuide.lua
+# Modules\Tooltip\Core.lua
+# Modules\Tooltip\Tooltips.lua
+# Modules\Tooltip\Settings.lua
+# Modules\Tooltip\UserGuide.lua
 
-Modules\Codex\Core.lua
-Modules\Codex\Panel.lua
-Modules\Codex\Data\Gates.lua
-Modules\Codex\Data\Access.lua
-Modules\Codex\Data\Goals.lua
-Modules\Codex\Sources\Today.lua
-Modules\Codex\Sources\Quests.lua
-Modules\Codex\Sources\Access.lua
-Modules\Codex\Sources\Goals.lua
-Modules\Codex\Sources\Achieved.lua
-Modules\Codex\Sources\Items.lua
-Modules\Codex\Sources\Wishlist.lua
-Modules\Codex\Settings.lua
-Modules\Codex\UserGuide.lua
+# Modules\Codex\Core.lua
+# Modules\Codex\Panel.lua
+# Modules\Codex\Data\Gates.lua
+# Modules\Codex\Data\Access.lua
+# Modules\Codex\Data\Goals.lua
+# Modules\Codex\Sources\Today.lua
+# Modules\Codex\Sources\Quests.lua
+# Modules\Codex\Sources\Access.lua
+# Modules\Codex\Sources\Goals.lua
+# Modules\Codex\Sources\Achieved.lua
+# Modules\Codex\Sources\Items.lua
+# Modules\Codex\Sources\Wishlist.lua
+# Modules\Codex\Settings.lua
+# Modules\Codex\UserGuide.lua
