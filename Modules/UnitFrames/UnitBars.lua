@@ -662,9 +662,7 @@ end
 -- Greater than nought, as far as we can tell. A bar whose maximum we
 -- cannot measure is better assumed to have some than faded away.
 local function PositiveOrUnknown(value)
-    local ok, positive = pcall(function() return (value or 0) > 0 end)
-    if not ok then return true end
-    return positive
+    return BazUI.Secret.Read(function() return (value or 0) > 0 end, true)
 end
 
 -- The wording the user picked, or the plain pair if building it needs
@@ -1699,8 +1697,13 @@ function UnitBars:CheckRange()
         if def.kind == "health" or def.kind == "power" then
             local out = false
             if fade and def.unit ~= "player" and UnitExists(def.unit) then
+                -- Both of these can be secret, and `checked and ...` is a
+                -- truth test, which is a read. A unit whose range we are
+                -- not allowed to know is treated as in range: a bar faded
+                -- for no reason is worse than one that never fades.
                 local inRange, checked = UnitInRange(def.unit)
-                out = (checked and not inRange) or false
+                out = BazUI.Secret.Read(
+                    function() return (checked and not inRange) or false end, false)
             end
             if out ~= bar._outOfRange then
                 bar._outOfRange = out

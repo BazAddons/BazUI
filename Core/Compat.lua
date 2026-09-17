@@ -92,6 +92,33 @@ function BazUI.Has.CVar(name)
 end
 
 ---------------------------------------------------------------------------
+-- Values we may not be allowed to look at
+--
+-- Forever can hand back a number or a boolean that an addon may hold and
+-- pass on to a widget, but may not read. Reading means more than it
+-- sounds: comparing it, doing arithmetic on it, and even testing it for
+-- truth all count, and all of them raise rather than answering.
+--
+--   local hasPower = BazUI.Secret.Read(function() return max > 0 end, true)
+--
+-- The reading goes in the function; the fallback is what to believe when
+-- we are not allowed to know, and should be the answer that leaves the
+-- interface looking normal rather than the one that hides something.
+--
+-- Always ask by trying. Never test the client version instead: which
+-- values are secret varies by power type, by unit and by context, so a
+-- rule written here would be a guess that goes stale.
+---------------------------------------------------------------------------
+
+BazUI.Secret = {}
+
+function BazUI.Secret.Read(fn, fallback)
+    local ok, value = pcall(fn)
+    if not ok then return fallback end
+    return value
+end
+
+---------------------------------------------------------------------------
 -- The spell book
 --
 -- Era answers GetNumSpellTabs / GetSpellTabInfo / GetSpellBookItemInfo,
