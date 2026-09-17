@@ -1435,6 +1435,22 @@ end
 
 function addon:Initialize()
     if initialized then return end
+
+    -- Every row in this module is a secure aura header, and the client
+    -- either ships that template or it does not - there is no drawing
+    -- our way around it, because only Blizzard's secure code is allowed
+    -- to decide which aura goes in which button.
+    --
+    -- Forever moved SecureAuraHeaderTemplate into its own file, gated on
+    -- the client's game type, so a client outside that gate has the rest
+    -- of the secure templates and not this one. Ask before building
+    -- rather than letting CreateFrame throw once per row.
+    if not BazUI.Has.Template("SecureAuraHeaderTemplate") then
+        self.unavailable = "This client does not provide secure aura headers, so aura rows cannot be built."
+        BazUI:Print("Auras are off: " .. self.unavailable)
+        return
+    end
+
     initialized = true
     -- Secure frames must not be created in combat.
     if InCombatLockdown() then
