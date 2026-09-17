@@ -92,6 +92,123 @@ function BazUI:RefreshEditOverlays()
 end
 
 ---------------------------------------------------------------------------
+-- The grid
+--
+-- Ours. Snapping used to read EditModeManagerFrame.Grid, which meant it
+-- only worked inside Blizzard's edit mode - open ours and there was
+-- nothing to snap to.
+--
+-- Drawn from the middle of the screen outward, so the centre line is a
+-- real centre however wide the display is, and so the two halves always
+-- match. The centre pair is brighter than the rest: lining something up
+-- with the middle of the screen is the one alignment worth calling out.
+---------------------------------------------------------------------------
+
+local GRID_DEFAULT_SPACING = 32
+local GRID_MIN_SPACING     = 16
+local GRID_MAX_SPACING     = 128
+
+local gridFrame
+
+local function GridSettings()
+    BazUIDB = BazUIDB or {}
+    BazUIDB.editMode = BazUIDB.editMode or {}
+    local cfg = BazUIDB.editMode
+    if cfg.grid == nil then cfg.grid = true end
+    cfg.spacing = cfg.spacing or GRID_DEFAULT_SPACING
+    return cfg
+end
+
+local function GridSpacing()
+    return math.max(GRID_MIN_SPACING, math.min(GRID_MAX_SPACING, GridSettings().spacing))
+end
+
+local function GridActive()
+    return (isEditMode and GridSettings().grid) and true or false
+end
+
+-- Where a point lands once the grid has it. The origin is the middle of
+-- the screen, which is what makes a centred frame stay centred.
+local function SnapPoint(cx, cy)
+    local spacing = GridSpacing()
+    local gx, gy = UIParent:GetWidth() / 2, UIParent:GetHeight() / 2
+    return gx + math.floor((cx - gx) / spacing + 0.5) * spacing,
+           gy + math.floor((cy - gy) / spacing + 0.5) * spacing
+end
+
+local function GridLine(f)
+    f.used = f.used + 1
+    local t = f.lines[f.used]
+    if not t then
+        t = f:CreateTexture(nil, "BACKGROUND")
+        f.lines[f.used] = t
+    end
+    t:ClearAllPoints()
+    t:Show()
+    return t
+end
+
+function BazUI:RefreshEditGrid()
+    if not gridFrame then
+        gridFrame = CreateFrame("Frame", "BazUIEditGrid", UIParent)
+        gridFrame:SetAllPoints(UIParent)
+        -- Above the world, below everything drawn on it, so the grid is
+        -- never in front of the thing being lined up with it.
+        gridFrame:SetFrameStrata("BACKGROUND")
+        gridFrame.lines = {}
+        gridFrame.used = 0
+    end
+
+    local f = gridFrame
+    for _, t in ipairs(f.lines) do t:Hide() end
+    f.used = 0
+
+    if not GridActive() then
+        f:Hide()
+        return
+    end
+
+    local spacing = GridSpacing()
+    local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+    local cx, cy = w / 2, h / 2
+
+    local function Vertical(x, centre)
+        local t = GridLine(f)
+        t:SetWidth(centre and 2 or 1)
+        t:SetColorTexture(1, 1, 1, centre and 0.30 or 0.08)
+        t:SetPoint("TOP", f, "TOPLEFT", x, 0)
+        t:SetPoint("BOTTOM", f, "BOTTOMLEFT", x, 0)
+    end
+
+    local function Horizontal(y, centre)
+        local t = GridLine(f)
+        t:SetHeight(centre and 2 or 1)
+        t:SetColorTexture(1, 1, 1, centre and 0.30 or 0.08)
+        t:SetPoint("LEFT", f, "BOTTOMLEFT", 0, y)
+        t:SetPoint("RIGHT", f, "BOTTOMRIGHT", 0, y)
+    end
+
+    Vertical(cx, true)
+    Horizontal(cy, true)
+
+    local x = cx + spacing
+    while x < w do
+        Vertical(x)
+        Vertical(cx - (x - cx))
+        x = x + spacing
+    end
+
+    local y = cy + spacing
+    while y < h do
+        Horizontal(y)
+        Horizontal(cy - (y - cy))
+        y = y + spacing
+    end
+
+    f:Show()
+end
+
+---------------------------------------------------------------------------
 -- Grid Snap Preview Lines
 ---------------------------------------------------------------------------
 
@@ -114,25 +231,13 @@ local function GetSnapLines()
 end
 
 local function ShowSnapPreview(frame)
-    if not (EditModeManagerFrame and EditModeManagerFrame.Grid
-        and EditModeManagerFrame.Grid:IsShown()
-        and EditModeManagerFrame.Grid.gridSpacing) then
-        return
-    end
+    if not GridActive() then return end
 
-    local spacing = EditModeManagerFrame.Grid.gridSpacing
     local cx, cy = frame:GetCenter()
     local scale = frame:GetScale()
-    if not (cx and cy and spacing > 0) then return end
+    if not (cx and cy) then return end
 
-    cx = cx * scale
-    cy = cy * scale
-
-    local gridCX, gridCY = EditModeManagerFrame.Grid:GetCenter()
-    local relX = cx - gridCX
-    local relY = cy - gridCY
-    local snapX = gridCX + math.floor(relX / spacing + 0.5) * spacing
-    local snapY = gridCY + math.floor(relY / spacing + 0.5) * spacing
+    local snapX, snapY = SnapPoint(cx * scale, cy * scale)
 
     local hLine, vLine = GetSnapLines()
 
@@ -157,25 +262,13 @@ end
 ---------------------------------------------------------------------------
 
 local function SnapToGrid(frame)
-    if not (EditModeManagerFrame and EditModeManagerFrame.Grid
-        and EditModeManagerFrame.Grid:IsShown()
-        and EditModeManagerFrame.Grid.gridSpacing) then
-        return
-    end
+    if not GridActive() then return end
 
-    local spacing = EditModeManagerFrame.Grid.gridSpacing
     local cx, cy = frame:GetCenter()
     local scale = frame:GetScale()
-    if not (cx and cy and spacing > 0) then return end
+    if not (cx and cy) then return end
 
-    cx = cx * scale
-    cy = cy * scale
-
-    local gridCX, gridCY = EditModeManagerFrame.Grid:GetCenter()
-    local relX = cx - gridCX
-    local relY = cy - gridCY
-    local snapX = gridCX + math.floor(relX / spacing + 0.5) * spacing
-    local snapY = gridCY + math.floor(relY / spacing + 0.5) * spacing
+    local snapX, snapY = SnapPoint(cx * scale, cy * scale)
 
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", snapX / scale, snapY / scale)
@@ -333,7 +426,7 @@ local POPUP_WIDTH = 340
 -- column every widget above is built for; the panel is that plus the
 -- gutter its scroll bar lives in.
 local INSPECTOR_WIDTH  = POPUP_WIDTH + 24
-local INSPECTOR_TOP    = 44
+local INSPECTOR_TOP    = 78
 local INSPECTOR_BOTTOM = 42
 
 -- Which edge it sits on. Right by default; it moves to the left only to
@@ -931,6 +1024,42 @@ local function BuildPopup()
         end
     end)
 
+    -- Grid controls sit under the title rather than in a section, because
+    -- they belong to the session and not to whatever is selected - they
+    -- have to stay reachable while a frame's settings fill the body.
+    local grid = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    grid:SetSize(24, 24)
+    grid:SetPoint("TOPLEFT", 10, -42)
+    grid:SetChecked(GridSettings().grid and true or false)
+    grid:SetScript("OnClick", function(self)
+        GridSettings().grid = self:GetChecked() and true or false
+        BazUI:RefreshEditGrid()
+    end)
+
+    local gridLabel = Theme.FontString(f, "ARTWORK", "GameFontHighlightSmall")
+    gridLabel:SetPoint("LEFT", grid, "RIGHT", 2, 0)
+    gridLabel:SetText("Grid")
+
+    local spacing = CreateFrame("Frame", nil, f, "MinimalSliderWithSteppersTemplate")
+    spacing:SetPoint("LEFT", gridLabel, "RIGHT", 10, 0)
+    spacing:SetSize(INSPECTOR_WIDTH - 130, 24)
+    spacing.Slider:SetMinMaxValues(GRID_MIN_SPACING, GRID_MAX_SPACING)
+    spacing.Slider:SetValueStep(4)
+    spacing.Slider:SetObeyStepOnDrag(true)
+    spacing.Slider:SetValue(GridSpacing())
+
+    -- Its own font string, not a field written onto Blizzard's template.
+    local spacingValue = Theme.FontString(f, "ARTWORK", "GameFontHighlightSmall")
+    spacingValue:SetPoint("LEFT", spacing, "RIGHT", 6, 0)
+    spacingValue:SetText(tostring(GridSpacing()))
+
+    spacing.Slider:SetScript("OnValueChanged", function(_, value)
+        local step = math.floor(value + 0.5)
+        GridSettings().spacing = step
+        spacingValue:SetText(tostring(step))
+        BazUI:RefreshEditGrid()
+    end)
+
     local create = Theme.CreateButton(f, {
         text = "Create", width = 150, height = 22, style = "primary",
         onClick = function(self) BazUI:OpenEditModeCreateMenu(self) end,
@@ -1367,6 +1496,7 @@ local function EnterEditMode()
             config.onEnter(frame)
         end
     end
+    BazUI:RefreshEditGrid()
     BazUI:RefreshEditOverlays()
     ShowInspectorList()
     BazUI:Fire("BAZ_EDITMODE_ENTER")
@@ -1389,6 +1519,7 @@ local function ExitEditMode()
         end
     end
     if settingsPopup then settingsPopup:Hide() end
+    BazUI:RefreshEditGrid()
     BazUI:Fire("BAZ_EDITMODE_EXIT")
 end
 
