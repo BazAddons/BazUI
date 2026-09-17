@@ -139,6 +139,7 @@ end
 ---------------------------------------------------------------------------
 
 local suppressWanted = setmetatable({}, { __mode = "k" })
+local suppressedByUs = setmetatable({}, { __mode = "k" })
 
 function BazUI.SuppressFrame(frame, wanted)
     if not (frame and frame.HookScript and type(wanted) == "function") then
@@ -149,6 +150,7 @@ function BazUI.SuppressFrame(frame, wanted)
         frame:HookScript("OnShow", function(self)
             local test = suppressWanted[self]
             if test and test() and not InCombatLockdown() then
+                suppressedByUs[self] = true
                 self:Hide()
             end
         end)
@@ -156,7 +158,17 @@ function BazUI.SuppressFrame(frame, wanted)
     suppressWanted[frame] = wanted
 
     if InCombatLockdown() then return true end
-    if wanted() then frame:Hide() else frame:Show() end
+    if wanted() then
+        suppressedByUs[frame] = true
+        frame:Hide()
+    elseif suppressedByUs[frame] then
+        -- Only ever put back what we took down. Calling Show on a frame
+        -- we do not own marks its shown state as ours, and Blizzard's
+        -- Edit Mode reads that state on the way in; anything we never
+        -- hid is left entirely alone.
+        suppressedByUs[frame] = nil
+        frame:Show()
+    end
     return true
 end
 

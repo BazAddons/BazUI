@@ -27,6 +27,7 @@ Core\ObjectPool.lua
 Core\Format.lua
 Core\Units.lua
 Core\Compat.lua
+Core\TaintScan.lua
 Core\MinimapButton.lua
 Core\ButtonGlow.lua
 Core\EditMode.lua

@@ -823,6 +823,12 @@ BazUI:QueueForLogin(function()
                     print("  Everything false or empty with the target still existing means Esc reached ClearTarget and was blocked: check BugSack for 'ClearTarget'.")
                 end,
             },
+            taint = {
+                desc = "Report which Blizzard globals and frames BazUI has taken over (add 'all' for every addon)",
+                handler = function(args)
+                    BazUI.Taint.Report(not (args and args:lower():find("all")))
+                end,
+            },
             profiles = {
                 desc = "List all profiles",
                 handler = function()
