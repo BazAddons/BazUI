@@ -403,18 +403,9 @@ end
 -- required either way.
 ---------------------------------------------------------------------------
 
-local hiddenParent
-local function GetHiddenParent()
-    if not hiddenParent then
-        hiddenParent = CreateFrame("Frame")
-        hiddenParent:Hide()
-    end
-    return hiddenParent
-end
-
 -- Two independent toggles:
 --
---   ART  - reparent the chrome to the hidden carrier too. Classic's
+--   ART  - hide the chrome as well. Classic's
 --          MainMenuBarArtFrame is separate from MainActionBar, and
 --          Blizzard can Show its artwork again during layout updates.
 --
@@ -429,26 +420,36 @@ end
 -- moot (everything is invisible anyway).
 ---------------------------------------------------------------------------
 
-local function HideOne(f, hidden)
+-- Hidden without being touched.
+--
+-- These used to be reparented under a hidden frame, with the old parent
+-- and shown state written onto the frame as fields. Every part of that
+-- is a write to something we do not own, and MainActionBar inherits
+-- EditModeActionBarTemplate - it is one of Blizzard's Edit Mode systems,
+-- which EditModeFrameSetup walks on the way in. Touching it tainted that
+-- walk, and their compact party frames errored on a secret colour two
+-- calls later.
+--
+-- BazUI.SuppressFrame hooks the frame's own OnShow and hides it again,
+-- which is what the reparenting was for. Which frames are meant to be
+-- down is held here, on our side.
+local suppressed = setmetatable({}, { __mode = "k" })
+
+local function HideOne(f)
     if not f then return end
-    if f._bbOriginalParent then return end   -- already hidden
-    f._bbOriginalParent = f:GetParent() or _G.UIParent
-    f._bbWasShown      = f:IsShown()
-    f:SetParent(hidden)
-    f:Hide()
+    suppressed[f] = true
+    BazUI.SuppressFrame(f, function() return suppressed[f] and true or false end)
 end
 
 local function RestoreOne(f)
-    if not f or not f._bbOriginalParent then return end
-    f:SetParent(f._bbOriginalParent)
-    if f._bbWasShown then f:Show() else f:Hide() end
-    f._bbOriginalParent = nil
-    f._bbWasShown      = nil
+    if not f then return end
+    suppressed[f] = nil
+    BazUI.SuppressFrame(f, function() return false end)
 end
 
 local function SetBlizzardArtShown(show)
     local function Apply(frame)
-        if show then RestoreOne(frame) else HideOne(frame, GetHiddenParent()) end
+        if show then RestoreOne(frame) else HideOne(frame) end
     end
     -- Era's decorative frame is a sibling of the action-button container.
     -- Its textures (including both endcaps) stay hidden even when Show is
@@ -461,22 +462,20 @@ local function SetBlizzardArtShown(show)
     end
 end
 
-local function HideMainActionBar(hidden)
+local function HideMainActionBar()
     local bar = _G.MainActionBar
     if not bar then return end
-    HideOne(bar, hidden)
-    if not bar._bbEventsCleared then
-        bar:UnregisterAllEvents()
-        bar._bbEventsCleared = true
-    end
+    -- No UnregisterAllEvents any more. Stripping the events off one of
+    -- Blizzard's Edit Mode systems taints it, and could only ever be
+    -- undone by a reload. Hidden is enough: it can keep listening.
+    HideOne(bar)
 end
 
 local function ShowMainActionBar()
     local bar = _G.MainActionBar
     if not bar then return false end
-    local needsReload = bar._bbEventsCleared and true or false
     RestoreOne(bar)
-    return needsReload
+    return false
 end
 
 ---------------------------------------------------------------------------
@@ -550,7 +549,7 @@ function addon:ApplyStatusBarVisibility()
         -- out of both.
         local gone = hide.xp and hide.rep
         if gone then
-            HideOne(manager, GetHiddenParent())
+            HideOne(manager)
         else
             RestoreOne(manager)
             manager:UpdateBarsShown()
@@ -562,7 +561,7 @@ function addon:ApplyStatusBarVisibility()
         for _, name in ipairs(names) do
             local frame = _G[name]
             if frame then
-                if hide[kind] then HideOne(frame, GetHiddenParent()) else RestoreOne(frame) end
+                if hide[kind] then HideOne(frame) else RestoreOne(frame) end
             end
         end
     end
@@ -585,7 +584,7 @@ function addon:ApplyDefaultBarVisibility()
     if hideBar then
         -- Capture the artwork's visible state before hiding its button parent.
         SetBlizzardArtShown(false)
-        HideMainActionBar(GetHiddenParent())
+        HideMainActionBar()
     else
         local needsReload = ShowMainActionBar()
         -- Bar visible: apply art toggle independently.
@@ -599,7 +598,7 @@ function addon:ApplyDefaultBarVisibility()
     -- under the hidden carrier none of it is visible.
     local stance = _G.StanceBar
     if stance then
-        if p.hideStanceBar ~= false then HideOne(stance, GetHiddenParent()) else RestoreOne(stance) end
+        if p.hideStanceBar ~= false then HideOne(stance) else RestoreOne(stance) end
     end
     return true
 end
