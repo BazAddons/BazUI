@@ -1690,6 +1690,11 @@ end
 local RANGE_INTERVAL = 0.2
 local rangeTicker
 
+-- Whether this client will let us read a unit's range at all. Set false
+-- the first time it refuses, and never asked again: the check runs on a
+-- ticker, so asking per bar per tick means thousands of thrown errors.
+local rangeReadable = true
+
 function UnitBars:CheckRange()
     local fade = addon:GetSetting("rangeFade") ~= false
     for _, bar in pairs(self.bars) do
@@ -1701,9 +1706,22 @@ function UnitBars:CheckRange()
                 -- truth test, which is a read. A unit whose range we are
                 -- not allowed to know is treated as in range: a bar faded
                 -- for no reason is worse than one that never fades.
-                local inRange, checked = UnitInRange(def.unit)
-                out = BazUI.Secret.Read(
-                    function() return (checked and not inRange) or false end, false)
+                --
+                -- Asked once, not once per bar per tick. On a client that
+                -- keeps range secret every call raises and is caught, and
+                -- this runs on a ticker: it was 1130 thrown-and-caught
+                -- errors in one session before the answer was remembered.
+                if rangeReadable then
+                    local inRange, checked = UnitInRange(def.unit)
+                    local ok, value = pcall(function()
+                        return (checked and not inRange) or false
+                    end)
+                    if ok then
+                        out = value
+                    else
+                        rangeReadable = false
+                    end
+                end
             end
             if out ~= bar._outOfRange then
                 bar._outOfRange = out

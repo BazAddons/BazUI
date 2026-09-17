@@ -445,6 +445,11 @@ function BazUI:PromptReload(reason)
         if #reloadReasons == 0 then
             body = "This needs the interface reloaded before it takes effect."
         end
+        -- Always say what to type. ReloadUI is protected on some clients
+        -- and refuses a tainted caller - Forever blocks it outright - so
+        -- the button below can do nothing at all and say nothing about
+        -- why. The instruction always works.
+        body = body .. "|n|n|cffffd700If the button does nothing, type|r /reload"
         wipe(reloadReasons)
 
         BazUI:OpenPopup({
