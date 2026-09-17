@@ -119,6 +119,48 @@ function BazUI.Secret.Read(fn, fallback)
 end
 
 ---------------------------------------------------------------------------
+-- Keeping one of Blizzard's frames out of the way
+--
+-- Not by replacing its Show, and not by replacing its OnShow. Both write
+-- to a frame we do not own. Forever's Edit Mode managed frames are
+-- protected, and writing to ObjectiveTrackerFrame's method table left
+-- Blizzard's own `self:Show()` looking at a nil - an error in their file,
+-- from our hook, with nothing in the message to say so.
+--
+-- HookScript appends a handler and touches nothing else, so the frame
+-- keeps every script it shipped with. State is held here rather than in
+-- fields on their frame, for the same reason.
+--
+--   BazUI.SuppressFrame(ObjectiveTrackerFrame, function() return hide end)
+--
+-- The test is asked each time the frame shows, so the switch can change
+-- without anything being unhooked. Hiding is skipped in combat: these are
+-- protected frames, and the call would fail anyway.
+---------------------------------------------------------------------------
+
+local suppressWanted = setmetatable({}, { __mode = "k" })
+
+function BazUI.SuppressFrame(frame, wanted)
+    if not (frame and frame.HookScript and type(wanted) == "function") then
+        return false
+    end
+
+    if suppressWanted[frame] == nil then
+        frame:HookScript("OnShow", function(self)
+            local test = suppressWanted[self]
+            if test and test() and not InCombatLockdown() then
+                self:Hide()
+            end
+        end)
+    end
+    suppressWanted[frame] = wanted
+
+    if InCombatLockdown() then return true end
+    if wanted() then frame:Hide() else frame:Show() end
+    return true
+end
+
+---------------------------------------------------------------------------
 -- The spell book
 --
 -- Era answers GetNumSpellTabs / GetSpellTabInfo / GetSpellBookItemInfo,

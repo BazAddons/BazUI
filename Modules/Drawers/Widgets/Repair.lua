@@ -68,7 +68,6 @@ local DURABILITY_SCALE = 1.20  -- upscale the native DurabilityFrame inside our 
 
 local durabilityDocked = false
 local durabilitySuppressed = false
-local durabilityHooked = false
 local savedOnEditModeEnter, savedOnEditModeExit, savedHighlightSystem
 local savedDefaultHideSelection, savedSelectionShow
 
@@ -88,21 +87,13 @@ local function SuppressDurabilityFrame()
     if durabilitySuppressed or not DurabilityFrame then return end
 
     DurabilityFrame.ignoreFramePositionManager = true
-    DurabilityFrame:Hide()
-
-    -- Hook Show ONCE so any Blizzard-initiated Show is immediately
-    -- re-hidden. hooksecurefunc runs AFTER the original method, so
-    -- the frame flickers for one frame then hides - imperceptible.
-    if not durabilityHooked then
-        hooksecurefunc(DurabilityFrame, "Show", function(self)
-            if durabilitySuppressed then
-                self:Hide()
-            end
-        end)
-        durabilityHooked = true
-    end
-
     durabilitySuppressed = true
+
+    -- Through the shared suppressor: it hooks OnShow rather than writing
+    -- to the frame's method table, which is what broke the objective
+    -- tracker on Forever. Hooked once; the test below is re-asked each
+    -- time the frame shows.
+    BazUI.SuppressFrame(DurabilityFrame, function() return durabilitySuppressed end)
 end
 
 local function UnsuppressDurabilityFrame()

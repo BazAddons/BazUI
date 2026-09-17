@@ -11,7 +11,6 @@ local C  = QT.C
 -- Blizzard tracker visibility
 ---------------------------------------------------------------------------
 
-local blizzTrackerHooked = false
 local blizzTrackerSuppressed = false
 
 function QT.ApplyBlizzardTrackerVisibility()
@@ -22,24 +21,12 @@ function QT.ApplyBlizzardTrackerVisibility()
     local hide = addon:GetWidgetSetting(C.WIDGET_ID, "hideBlizzardTracker", true)
     blizzTrackerSuppressed = (hide ~= false)
 
-    if blizzTrackerSuppressed then
-        tracker:Hide()
-    else
-        tracker:Show()
-    end
-
-    -- Hook Show once (hooksecurefunc preserves the original secure
-    -- method so it doesn't taint the frame's method table - unlike
-    -- the old approach of replacing Show with Hide which tainted
-    -- everything downstream including UnitFrame health bars).
-    if not blizzTrackerHooked then
-        hooksecurefunc(tracker, "Show", function(self)
-            if blizzTrackerSuppressed then
-                self:Hide()
-            end
-        end)
-        blizzTrackerHooked = true
-    end
+    -- Through the shared suppressor, which hooks the frame's OnShow and
+    -- never writes to the frame itself. This used to hooksecurefunc its
+    -- Show, and on Forever - where the tracker is an Edit Mode managed,
+    -- and so protected, frame - that left Blizzard's own self:Show()
+    -- calling a nil.
+    BazUI.SuppressFrame(tracker, function() return blizzTrackerSuppressed end)
 end
 
 ---------------------------------------------------------------------------
