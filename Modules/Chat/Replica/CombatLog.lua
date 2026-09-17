@@ -46,7 +46,9 @@ addon.CombatLog = CombatLog
 local function SecureCall(fn, ...)
     if type(fn) ~= "function" then return end
     if securecallfunction then
-        return securecallfunction(fn, ...)
+        -- Still inside a pcall: this used to be one, and losing the guard
+        -- would turn a fault in their code into a fault in ours.
+        return pcall(securecallfunction, fn, ...)
     end
     return pcall(fn, ...)
 end
