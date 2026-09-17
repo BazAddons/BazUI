@@ -60,52 +60,52 @@ Core\AddonListButton.lua
 Core\IconPicker.lua
 
 # Modules
-# Modules\Drawers\Core.lua
-# Modules\Drawers\Compat.lua
-# Modules\Drawers\Drawer.lua
-# Modules\Drawers\WidgetHost.lua
-# Modules\Drawers\Settings.lua
-# Modules\Drawers\Widgets\MinimapButtons.lua
-# Modules\Drawers\Widgets\Minimap.lua
-# Modules\Drawers\Widgets\MinimapInfoBar.lua
-# Modules\Drawers\Widgets\ZoneText.lua
-# Modules\Drawers\Widgets\QuestTracker\Constants.lua
-# Modules\Drawers\Widgets\QuestTracker\State.lua
-# Modules\Drawers\Widgets\QuestTracker\Collapse.lua
-# Modules\Drawers\Widgets\QuestTracker\Data.lua
-# Modules\Drawers\Widgets\QuestTracker\Headers.lua
-# Modules\Drawers\Widgets\QuestTracker\Blocks.lua
-# Modules\Drawers\Widgets\QuestTracker\Options.lua
-# Modules\Drawers\Widgets\QuestTracker\Init.lua
-# Modules\Drawers\Widgets\DungeonFinder.lua
-# Modules\Drawers\Widgets\HearthstoneCD.lua
-# Modules\Drawers\Widgets\ResetTimers.lua
-# Modules\Drawers\Widgets\FreeBagSlots.lua
-# Modules\Drawers\Widgets\Performance.lua
-# Modules\Drawers\Widgets\FPS.lua
-# Modules\Drawers\Widgets\PullTimer.lua
-# Modules\Drawers\Widgets\TrinketTracker.lua
-# Modules\Drawers\Widgets\TrackedReputation.lua
-# Modules\Drawers\Widgets\Repair.lua
-# Modules\Drawers\Widgets\GoldTracker.lua
-# Modules\Drawers\Widgets\Coordinates.lua
-# Modules\Drawers\Widgets\SpeedMonitor.lua
-# Modules\Drawers\Widgets\StatSummary.lua
-# Modules\Drawers\Widgets\ItemLevel.lua
-# Modules\Drawers\Widgets\Tooltip.lua
-# Modules\Drawers\Widgets\NotePad.lua
-# Modules\Drawers\Widgets\Stopwatch.lua
-# Modules\Drawers\Widgets\TodoList.lua
-# Modules\Drawers\Widgets\Calculator.lua
-# Modules\Drawers\Widgets\Broker.lua
-# Modules\Drawers\UserGuide.lua
+Modules\Drawers\Core.lua
+Modules\Drawers\Compat.lua
+Modules\Drawers\Drawer.lua
+Modules\Drawers\WidgetHost.lua
+Modules\Drawers\Settings.lua
+Modules\Drawers\Widgets\MinimapButtons.lua
+Modules\Drawers\Widgets\Minimap.lua
+Modules\Drawers\Widgets\MinimapInfoBar.lua
+Modules\Drawers\Widgets\ZoneText.lua
+Modules\Drawers\Widgets\QuestTracker\Constants.lua
+Modules\Drawers\Widgets\QuestTracker\State.lua
+Modules\Drawers\Widgets\QuestTracker\Collapse.lua
+Modules\Drawers\Widgets\QuestTracker\Data.lua
+Modules\Drawers\Widgets\QuestTracker\Headers.lua
+Modules\Drawers\Widgets\QuestTracker\Blocks.lua
+Modules\Drawers\Widgets\QuestTracker\Options.lua
+Modules\Drawers\Widgets\QuestTracker\Init.lua
+Modules\Drawers\Widgets\DungeonFinder.lua
+Modules\Drawers\Widgets\HearthstoneCD.lua
+Modules\Drawers\Widgets\ResetTimers.lua
+Modules\Drawers\Widgets\FreeBagSlots.lua
+Modules\Drawers\Widgets\Performance.lua
+Modules\Drawers\Widgets\FPS.lua
+Modules\Drawers\Widgets\PullTimer.lua
+Modules\Drawers\Widgets\TrinketTracker.lua
+Modules\Drawers\Widgets\TrackedReputation.lua
+Modules\Drawers\Widgets\Repair.lua
+Modules\Drawers\Widgets\GoldTracker.lua
+Modules\Drawers\Widgets\Coordinates.lua
+Modules\Drawers\Widgets\SpeedMonitor.lua
+Modules\Drawers\Widgets\StatSummary.lua
+Modules\Drawers\Widgets\ItemLevel.lua
+Modules\Drawers\Widgets\Tooltip.lua
+Modules\Drawers\Widgets\NotePad.lua
+Modules\Drawers\Widgets\Stopwatch.lua
+Modules\Drawers\Widgets\TodoList.lua
+Modules\Drawers\Widgets\Calculator.lua
+Modules\Drawers\Widgets\Broker.lua
+Modules\Drawers\UserGuide.lua
 
-# Modules\Bags\Core.lua
-# Modules\Bags\Categories.lua
-# Modules\Bags\Layouts.lua
-# Modules\Bags\Bag.lua
-# Modules\Bags\CategoriesPage.lua
-# Modules\Bags\UserGuide.lua
+Modules\Bags\Core.lua
+Modules\Bags\Categories.lua
+Modules\Bags\Layouts.lua
+Modules\Bags\Bag.lua
+Modules\Bags\CategoriesPage.lua
+Modules\Bags\UserGuide.lua
 
 # Chat is switched off on the Forever beta.
 #

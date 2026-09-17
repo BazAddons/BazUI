@@ -779,24 +779,30 @@ local function AdoptQueueEye(widget)
     end
     RemoveFromMicroMenu()
 
-    -- Hook MicroMenu:Layout to persistently keep QueueStatusButton
-    -- out of the micro menu's layout. Blizzard rebuilds the layout
-    -- on various events (instance entry, queue changes, UI reload)
-    -- which can re-add the button and re-parent it back. After each
-    -- Layout pass, we re-remove it and trigger a deferred relayout
-    -- of our widget so it re-adopts the button into our grid.
-    if MicroMenu and MicroMenu.Layout then
-        hooksecurefunc(MicroMenu, "Layout", function()
+    -- Keep QueueStatusButton out of the micro menu's layout, checked on
+    -- a ticker rather than by hooking MicroMenu:Layout.
+    --
+    -- Blizzard rebuilds that layout on instance entry, queue changes and
+    -- reloads, and re-adds the button each time. Hooking their Layout
+    -- caught every rebuild, but hooksecurefunc writes to the method
+    -- table of a frame we do not own, and on Forever that left their own
+    -- `MicroMenu:Layout()` calling a nil while Edit Mode was anchoring.
+    --
+    -- Watching instead means the button can sit in their row for up to
+    -- half a second after a rebuild before being taken back. Nobody sees
+    -- a rebuild happen, and nothing is tainted.
+    local guard, guardSince = CreateFrame("Frame"), 0
+    guard:SetScript("OnUpdate", function(_, elapsed)
+        guardSince = guardSince + elapsed
+        if guardSince < 0.5 then return end
+        guardSince = 0
+        if not (MicroMenu and QueueStatusButton) then return end
+        if QueueStatusButton:GetParent() == MicroMenu
+            or (MicroMenu.buttonsToLayout and #MicroMenu.buttonsToLayout > 0) then
             RemoveFromMicroMenu()
-            -- If Blizzard stole the button back during Layout,
-            -- re-adopt it on the next frame
-            C_Timer.After(0, function()
-                if QueueStatusButton and QueueStatusButton:IsShown() then
-                    widget:LayoutButtons()
-                end
-            end)
-        end)
-    end
+            if QueueStatusButton:IsShown() then widget:LayoutButtons() end
+        end
+    end)
 
     -- Use SetScale - QueueStatusButton has a child Eye frame at 30×30
     -- plus a 96×96 glow overlay child, and those aren't reachable via
