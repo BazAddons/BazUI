@@ -38,4 +38,24 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 
 ## License
 
-GPL v2. See LICENSE.
+BazUI - one addon for your whole interface in World of Warcraft
+Copyright (C) 2026 Baz Studios LLC
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, see <https://www.gnu.org/licenses/>.
+
+The full text is in [LICENSE](LICENSE), and the complete source is this
+repository - <https://github.com/BazAddons/BazUI>.
+
+`Skin/Assets/DORISBR.TTF` is a bundled font and carries its own license,
+separate from the addon's.

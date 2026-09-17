@@ -477,15 +477,33 @@ function O.BuildTitleBar(parent, opts)
     titleText:SetText(opts.title or opts.addonName or "")
     titleText:SetTextColor(unpack(O.GOLD))
 
+    -- Version, license and copyright on one dim line under the title.
+    -- All three are read from the addon's own .toc, so what the panel
+    -- shows is the notice that shipped rather than a second copy of it
+    -- written out here and left to drift. An addon whose .toc says
+    -- nothing simply gets a shorter line.
+    local function Meta(field)
+        if not (opts.addonName and C_AddOns and C_AddOns.GetAddOnMetadata) then return nil end
+        local value = C_AddOns.GetAddOnMetadata(opts.addonName, field)
+        if value == "" then return nil end
+        return value
+    end
+
     local addonVersion = opts.version
         or (addonConfig and addonConfig.version)
-    if not addonVersion and opts.addonName and C_AddOns and C_AddOns.GetAddOnMetadata then
-        addonVersion = C_AddOns.GetAddOnMetadata(opts.addonName, "Version")
-    end
-    if addonVersion then
+        or Meta("Version")
+
+    local credits = {}
+    if addonVersion then credits[#credits + 1] = "v" .. addonVersion end
+    local license = Meta("X-License")
+    if license then credits[#credits + 1] = license end
+    local copyright = Meta("X-Copyright")
+    if copyright then credits[#credits + 1] = copyright end
+
+    if #credits > 0 then
         local versionText = frame:CreateFontString(nil, "OVERLAY", O.SMALL_FONT)
         versionText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -2)
-        versionText:SetText("v" .. addonVersion)
+        versionText:SetText(table.concat(credits, "  -  "))
         versionText:SetTextColor(unpack(O.DIM))
         headerHeight = headerHeight + 6
     end

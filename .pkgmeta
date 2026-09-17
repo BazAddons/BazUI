@@ -4,10 +4,14 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
+# LICENSE is deliberately not ignored: the GPL requires a copy of the
+# license to be distributed with the program, so it ships in the package.
 ignore:
   - .git
+  - .github
   - .gitignore
   - .pkgmeta
-  - LICENSE
   - CHANGELOG.md
   - DEVELOPERS.md
+  - Modules/UnitFrames/README.md
+  - Modules/UnitFrames/REDESIGN.md
