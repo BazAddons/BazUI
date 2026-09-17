@@ -823,6 +823,12 @@ BazUI:QueueForLogin(function()
                     print("  Everything false or empty with the target still existing means Esc reached ClearTarget and was blocked: check BugSack for 'ClearTarget'.")
                 end,
             },
+            edit = {
+                desc = "Open BazUI's edit mode, to move and resize what BazUI draws",
+                handler = function()
+                    BazUI:ToggleEditMode()
+                end,
+            },
             taint = {
                 desc = "Report which Blizzard globals and frames BazUI has taken over (add 'all' for every addon)",
                 handler = function(args)

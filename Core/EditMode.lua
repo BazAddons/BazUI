@@ -1116,6 +1116,7 @@ end
 ---------------------------------------------------------------------------
 
 local function EnterEditMode()
+    if isEditMode then return end
     isEditMode = true
     for frame, config in pairs(registeredFrames) do
         if not frame._bazEditOverlay then
@@ -1128,10 +1129,12 @@ local function EnterEditMode()
             config.onEnter(frame)
         end
     end
+    BazUI:ShowEditModeBar(true)
     BazUI:Fire("BAZ_EDITMODE_ENTER")
 end
 
 local function ExitEditMode()
+    if not isEditMode then return end
     if selectedFrame then
         BazUI:DeselectEditFrame(selectedFrame)
     end
@@ -1146,12 +1149,46 @@ local function ExitEditMode()
             config.onExit(frame)
         end
     end
+    BazUI:ShowEditModeBar(false)
     BazUI:Fire("BAZ_EDITMODE_EXIT")
 end
 
 if EventRegistry then
     EventRegistry:RegisterCallback("EditMode.Enter", EnterEditMode)
     EventRegistry:RegisterCallback("EditMode.Exit", ExitEditMode)
+end
+
+---------------------------------------------------------------------------
+-- Our own session
+--
+-- Nothing above needs Blizzard's Edit Mode to be open. The callbacks stay
+-- so that opening theirs still lights ours up, but these are the way in
+-- that does not involve their manager at all: the Game Menu button, the
+-- slash command, and anything else that wants to arrange the interface.
+--
+-- Both are guarded above, so entering from both at once is not two
+-- sessions - whichever arrives first opens it, and the other is a no-op.
+---------------------------------------------------------------------------
+
+function BazUI:EnterEditMode()
+    if InCombatLockdown() then
+        BazUI:Print("The interface cannot be rearranged during combat.")
+        return false
+    end
+    EnterEditMode()
+    return true
+end
+
+function BazUI:ExitEditMode()
+    ExitEditMode()
+end
+
+function BazUI:ToggleEditMode()
+    if isEditMode then
+        ExitEditMode()
+        return false
+    end
+    return BazUI:EnterEditMode()
 end
 
 -- No hook on EditModeManagerFrame:SelectSystem.
@@ -1252,18 +1289,108 @@ function BazUI:OpenEditModeCreateMenu(anchor)
     BazUI:OpenContextMenu("editmode-create", anchor, {}, { title = "Create" })
 end
 
-function BazUI:SetupEditModeCreateButton()
-    if not EditModeManagerFrame or self._editCreateButton then return end
+---------------------------------------------------------------------------
+-- The BazUI Edit bar
+--
+-- The Create button used to be parented to EditModeManagerFrame, which put
+-- one of our frames inside one of theirs and meant it only existed while
+-- their Edit Mode was open. It lives here instead, on a bar of our own that
+-- appears for the length of a BazUI edit session - including a session
+-- started from inside Blizzard's, so nothing is lost by the move.
+---------------------------------------------------------------------------
 
-    local button = BazUI.Skin.Theme.CreateButton(EditModeManagerFrame)
-    button:SetText("Create")
-    button:SetSize((button.Text:GetStringWidth() or 120) + 28, 22)
-    button:SetScale(1.2)
-    button:SetPoint("BOTTOM", EditModeManagerFrame, "BOTTOM", 0, -36)
-    button:SetScript("OnClick", function(self) BazUI:OpenEditModeCreateMenu(self) end)
-    self._editCreateButton = button
+local editBar
+
+local function BuildEditBar()
+    local Theme = BazUI.Skin.Theme
+
+    local f = CreateFrame("Frame", "BazUIEditBar", UIParent)
+    f:SetFrameStrata("DIALOG")
+    f:SetFrameLevel(300)
+    f:SetSize(260, 56)
+    f:SetPoint("TOP", UIParent, "TOP", 0, -120)
+    f:SetClampedToScreen(true)
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    f:Hide()
+
+    local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
+    border:SetAllPoints()
+
+    local title = Theme.FontString(f, "ARTWORK", "GameFontNormal")
+    title:SetPoint("TOP", 0, -10)
+    title:SetText("BazUI Edit")
+
+    local create = Theme.CreateButton(f, {
+        text = "Create", width = 110, height = 22, style = "primary",
+        onClick = function(self) BazUI:OpenEditModeCreateMenu(self) end,
+    })
+    create:SetPoint("BOTTOMLEFT", 14, 10)
+
+    local done = Theme.CreateButton(f, {
+        text = "Done", width = 110, height = 22,
+        onClick = function() BazUI:ExitEditMode() end,
+    })
+    done:SetPoint("BOTTOMRIGHT", -14, 10)
+
+    -- Escape leaves the session, the way it leaves Blizzard's. Taken on
+    -- the bar itself rather than through UISpecialFrames, which is a taint
+    -- source on Forever - see Core/Compat.lua.
+    BazUI.CloseOnEscape(f, function() BazUI:ExitEditMode() end)
+
+    return f
+end
+
+function BazUI:ShowEditModeBar(show)
+    if not show then
+        if editBar then editBar:Hide() end
+        return
+    end
+    editBar = editBar or BuildEditBar()
+    editBar:Show()
+end
+
+---------------------------------------------------------------------------
+-- The way in: a button on the Game Menu
+--
+-- GameMenuFrameMixin:AddButton is how Blizzard adds their own, and their
+-- InitButtons rebuilds the list on every OnShow, so ours is added on each
+-- show rather than once. HookScript appends a handler and touches nothing
+-- else; our handler runs after theirs, so the button lands at the bottom.
+--
+-- The AddButton call goes through securecallfunction because it writes
+-- buttonCount, nextLayoutIndex and the button list onto GameMenuFrame.
+-- Made under our taint, those stores would belong to BazUI, and their own
+-- menu callbacks - Log Out, Exit Game, Edit Mode - read them on the way to
+-- protected calls.
+---------------------------------------------------------------------------
+
+local function AddGameMenuButton()
+    local menu = _G.GameMenuFrame
+    if not (menu and menu.AddButton) then return end
+
+    local function OnClick()
+        local ok = BazUI:EnterEditMode()
+        if ok and menu.Hide then
+            securecallfunction(menu.Hide, menu)
+        end
+    end
+
+    menu:HookScript("OnShow", function(self)
+        if securecallfunction then
+            if self.AddSection then securecallfunction(self.AddSection, self) end
+            securecallfunction(self.AddButton, self, "BazUI Edit", OnClick)
+        else
+            if self.AddSection then self:AddSection() end
+            self:AddButton("BazUI Edit", OnClick)
+        end
+        if self.Layout then self:Layout() end
+    end)
 end
 
 BazUI:QueueForLogin(function()
-    BazUI:SetupEditModeCreateButton()
+    AddGameMenuButton()
 end)
