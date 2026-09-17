@@ -197,6 +197,7 @@ end
 ---------------------------------------------------------------------------
 
 local pending
+local ignoreNextCursorChange = false
 local follower
 
 local function Follower()
@@ -257,6 +258,9 @@ function Flyout.fromCursor()
 end
 
 function Flyout.pickup(data)
+    -- Our own clear will raise CURSOR_CHANGED; the watcher below must not
+    -- read that as the player abandoning the carry we are about to start.
+    ignoreNextCursorChange = true
     ClearCursor()
     if not data then return end
     pending = data
@@ -266,16 +270,25 @@ function Flyout.pickup(data)
 end
 
 BazUI:QueueForModule("Bars", function()
-    if ClearCursor then
-        hooksecurefunc("ClearCursor", function()
-            if pending then Flyout.ClearPending() end
-        end)
-    end
     local watcher = CreateFrame("Frame")
     watcher:RegisterEvent("GLOBAL_MOUSE_UP")
-    watcher:SetScript("OnEvent", function()
-        -- Frame-level drop handlers run before this fires, so anything
-        -- still here was released over nothing.
+    -- CURSOR_CHANGED rather than a hook on ClearCursor: hooking a global
+    -- marks it tainted for every Blizzard call that reads it afterwards,
+    -- and ClearCursor is read from 34 of their files.
+    watcher:RegisterEvent("CURSOR_CHANGED")
+    watcher:SetScript("OnEvent", function(_, event)
+        if event == "CURSOR_CHANGED" then
+            if ignoreNextCursorChange then
+                ignoreNextCursorChange = false
+                return
+            end
+            -- The cursor moved on without us - either the player picked
+            -- something else up or dropped what they had.
+            if pending then Flyout.ClearPending() end
+            return
+        end
+        -- Frame-level drop handlers run before GLOBAL_MOUSE_UP fires, so
+        -- anything still here was released over nothing.
         if pending then Flyout.ClearPending() end
     end)
 end)
