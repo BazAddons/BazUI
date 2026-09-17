@@ -139,10 +139,8 @@ local function SetupHook()
             end
         end
 
-        hooksecurefunc(RaidBossEmoteFrame, "Show", function(self)
-            if GetSetting("hideDefaultText") ~= false then
-                self:Hide()
-            end
+        BazUI.SuppressFrame(RaidBossEmoteFrame, function()
+            return GetSetting("hideDefaultText") ~= false
         end)
     end
 
@@ -156,7 +154,21 @@ local function SetupHook()
     end
 
     if EventToastManagerFrame then
-        hooksecurefunc(EventToastManagerFrame, "DisplayToast", function(self, ...)
+        -- Watched through the event, not by hooking their method.
+        --
+        -- This used to hooksecurefunc EventToastManagerFrame:DisplayToast.
+        -- That writes to the frame's method table, and on Forever their
+        -- own OnEvent then found DisplayToast nil. DISPLAY_EVENT_TOASTS is
+        -- the same event that makes them call it, so we listen for it and
+        -- read the toast they put up, touching nothing of theirs.
+        --
+        -- A tick later, because the toast is chosen inside their handler:
+        -- currentDisplayingToast is not set yet when the event arrives.
+        local toastWatcher = CreateFrame("Frame")
+        toastWatcher:RegisterEvent("DISPLAY_EVENT_TOASTS")
+        toastWatcher:SetScript("OnEvent", function()
+            C_Timer.After(0, function()
+            local self = EventToastManagerFrame
             if GetSetting("showEventToasts") == false then return end
 
             local title = ""
@@ -222,6 +234,7 @@ local function SetupHook()
                     self:Hide()
                 end)
             end
+            end)
         end)
     end
 end

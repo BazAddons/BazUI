@@ -420,7 +420,6 @@ local HIDE_TARGETS = {
     },
 }
 
-local hideHooked = {}
 
 -- Apply one hide setting. `userToggled` is true when the player just
 -- flipped the option; only then do we call Show() on the frames, because
@@ -434,15 +433,12 @@ local function ApplyHideSetting(key, userToggled)
     for _, f in ipairs(def.frames()) do
         if f and f.Hide then
             if hide then
-                f:Hide()
-                if not hideHooked[f] then
-                    hideHooked[f] = true
-                    hooksecurefunc(f, "Show", function(self)
-                        if addon:GetWidgetSetting(WIDGET_ID, key, def.default or false) then
-                            self:Hide()
-                        end
-                    end)
-                end
+                -- Through the shared suppressor: it hooks OnShow rather
+                -- than writing to the frame's method table, which on
+                -- Forever leaves Blizzard's own Show() calling a nil.
+                BazUI.SuppressFrame(f, function()
+                    return addon:GetWidgetSetting(WIDGET_ID, key, def.default or false) and true or false
+                end)
             elseif userToggled then
                 f:Show()
             end

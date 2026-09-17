@@ -814,12 +814,11 @@ local function AdoptQueueEye(widget)
     -- prevents recursion when this hook fires as a downstream effect of
     -- a layout pass (e.g. from slot:Show cascading effective visibility
     -- changes on child buttons).
-    hooksecurefunc(QueueStatusButton, "Show", function()
-        widget:LayoutButtons()
-    end)
-    hooksecurefunc(QueueStatusButton, "Hide", function()
-        widget:LayoutButtons()
-    end)
+    -- HookScript, not hooksecurefunc: the latter writes to the button's
+    -- method table, and on Forever that leaves Blizzard's own Show/Hide
+    -- calling a nil. OnShow and OnHide fire for exactly the same moments.
+    QueueStatusButton:HookScript("OnShow", function() widget:LayoutButtons() end)
+    QueueStatusButton:HookScript("OnHide", function() widget:LayoutButtons() end)
 end
 
 function MinimapButtonsWidget:Scan()
