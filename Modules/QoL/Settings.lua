@@ -13,6 +13,7 @@ local SECTIONS = {
     quests      = { label = "Quests",      order = 1 },
     vendors     = { label = "Vendors",     order = 2 },
     convenience = { label = "Convenience", order = 3 },
+    windows     = { label = "Draggable windows", order = 4 },
     other       = { label = "Other",       order = 9 },
 }
 
@@ -30,6 +31,22 @@ local function BuildSpec()
             set     = function(_, value) addon:SetEnabled(def.key, value) end,
         }
     end
+
+    entries[#entries + 1] = {
+        key = "windowsNote", type = "note", section = "windows", order = 0.5,
+        style = "info",
+        text = "The game places these itself and puts them back every time "
+            .. "they open. Switch one on and it stays where you drag it "
+            .. "instead. Everything else about the window is the game's.",
+    }
+
+    entries[#entries + 1] = {
+        key = "resetWindows", label = "Forget where I put them",
+        type = "execute", section = "windows", order = 98,
+        desc = "Every window goes back to opening where the game puts it. "
+            .. "The switches stay on, so they are draggable again from there.",
+        func = function() addon:ClearWindowPositions() end,
+    }
 
     entries[#entries + 1] = {
         key = "note", type = "note", section = "other", order = 99, style = "info",

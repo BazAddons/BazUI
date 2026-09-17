@@ -1,9 +1,11 @@
 ## Interface: 11509
 ## Title: BazUI
-## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification centre, sharing one look and one settings panel.
+## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
 ## Version: 001
-## X-License: GPL v2
+## X-License: GPL-2.0-or-later
+## X-Copyright: Copyright (C) 2026 Baz Studios LLC
+## X-Website: https://github.com/BazAddons/BazUI
 ## Category: BazUI
 ## X-Category: Interface Enhancements
 ## SavedVariables: BazUIDB
@@ -160,12 +162,15 @@ Modules\UnitFrames\Nameplate.lua
 Modules\Nameplates\Core.lua
 Modules\Nameplates\Plates.lua
 Modules\Nameplates\Settings.lua
+Modules\Nameplates\UserGuide.lua
 
 # Quality of life - small changes to how the game behaves, each one
 # a switch of its own.
 Modules\QoL\Core.lua
 Modules\QoL\Tweaks.lua
+Modules\QoL\Windows.lua
 Modules\QoL\Settings.lua
+Modules\QoL\UserGuide.lua
 
 Modules\Auras\Core.lua
 Modules\Auras\Auras.xml
