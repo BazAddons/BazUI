@@ -333,7 +333,6 @@ local POPUP_WIDTH = 340
 -- column every widget above is built for; the panel is that plus the
 -- gutter its scroll bar lives in.
 local INSPECTOR_WIDTH  = POPUP_WIDTH + 24
-local INSPECTOR_MARGIN = 16
 local INSPECTOR_TOP    = 44
 local INSPECTOR_BOTTOM = 42
 
@@ -888,8 +887,20 @@ local function BuildPopup()
     f:SetFrameLevel(200)
     f:EnableMouse(true)
 
-    local border = CreateFrame("Frame", nil, f, "DialogBorderTranslucentTemplate")
-    border:SetAllPoints()
+    -- Flat, and flush to the screen edge. The carved dialog border this
+    -- used to wear drew a box around a panel that has no box to draw -
+    -- two of its four sides are the edge of the screen. What is left is
+    -- one hairline down the inner side, which DockInspector moves when
+    -- the panel changes edges.
+    Theme.ApplyFlatPanel(f, Theme.colors.bg, Theme.colors.edge)
+    for _, edge in ipairs(f._bazFlatPanel and f._bazFlatPanel.edges or {}) do
+        edge:Hide()
+    end
+
+    local seam = f:CreateTexture(nil, "BORDER", nil, 7)
+    seam:SetWidth(1)
+    seam:SetColorTexture(unpack(Theme.colors.edge))
+    f.seam = seam
 
     local title = f:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     title:SetPoint("TOP", 0, -14)
@@ -1012,12 +1023,20 @@ local function DockInspector(side)
     local f = GetOrCreatePopup()
     inspectorSide = side or inspectorSide
 
-    f:SetHeight(math.max(320, UIParent:GetHeight() - INSPECTOR_MARGIN * 2))
+    -- Anchored top and bottom rather than given a height, so it fills the
+    -- screen however tall that is.
     f:ClearAllPoints()
+    f.seam:ClearAllPoints()
     if inspectorSide == "LEFT" then
-        f:SetPoint("LEFT", UIParent, "LEFT", INSPECTOR_MARGIN, 0)
+        f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
+        f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+        f.seam:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+        f.seam:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT")
     else
-        f:SetPoint("RIGHT", UIParent, "RIGHT", -INSPECTOR_MARGIN, 0)
+        f:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)
+        f:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+        f.seam:SetPoint("TOPLEFT", f, "TOPLEFT")
+        f.seam:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT")
     end
 end
 
