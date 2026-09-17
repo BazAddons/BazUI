@@ -1154,13 +1154,18 @@ if EventRegistry then
     EventRegistry:RegisterCallback("EditMode.Exit", ExitEditMode)
 end
 
-if EditModeManagerFrame then
-    hooksecurefunc(EditModeManagerFrame, "SelectSystem", function()
-        if selectedFrame then
-            BazUI:DeselectEditFrame(selectedFrame)
-        end
-    end)
-end
+-- No hook on EditModeManagerFrame:SelectSystem.
+--
+-- This used to deselect our own frame when Blizzard's Edit Mode selected
+-- one of theirs. hooksecurefunc writes to the frame's method table, and
+-- EnterEditMode is a method on that same frame - so a write here taints
+-- it, and their party frame setup then errors on entering Edit Mode.
+-- There is no EditMode.SelectSystem event to listen to instead, so the
+-- deselect goes: our highlight may linger while one of their systems is
+-- selected, which is a blemish inside Edit Mode and nothing else.
+--
+-- The EditMode.Enter/Exit callbacks above are on Blizzard's own
+-- EventRegistry and touch nothing of theirs, so they stay.
 
 ---------------------------------------------------------------------------
 -- Public API
