@@ -137,12 +137,25 @@ end
 ---------------------------------------------------------------------------
 
 function BazUI:InitAddonProfile(addonName, config)
+    -- Set the profile structure up rather than giving up on it. This used
+    -- to return when BazUIDB.profiles was missing, which left the module
+    -- with no defaults at all: the db proxy creates its section on the
+    -- first write, so the section existed but held only whatever had been
+    -- written by hand. addon.db.profile.bars came back nil and creating a
+    -- bar errored. Nothing here depends on load order any more.
+    BazUIDB = BazUIDB or {}
     local sv = BazUIDB
-    if not sv or not sv.profiles then return end
+    if not sv.profiles and self.InitProfiles then
+        self:InitProfiles()
+    end
+    if not sv.profiles then return end
 
     local profileName = sv.activeProfile or DEFAULT_PROFILE
     local profile = sv.profiles[profileName]
-    if not profile then return end
+    if not profile then
+        profile = {}
+        sv.profiles[profileName] = profile
+    end
 
     -- Ensure addon section exists; a brand-new one also gets the starter layout
     local fresh = profile[addonName] == nil
@@ -154,6 +167,31 @@ function BazUI:InitAddonProfile(addonName, config)
     FillAddonDefaults(profile[addonName], config.defaults)
     if fresh then ApplyStarter(addonName, profile[addonName]) end
 end
+
+---------------------------------------------------------------------------
+-- Defaults, checked over again
+--
+-- One pass at login over every module that keeps settings in a profile,
+-- filling anything the active profile is missing. A module that registered
+-- before the profile structure existed, a profile written by an older
+-- build, a section the db proxy created on a stray write - all of them end
+-- up whole. Only missing keys are written, so nobody's settings change.
+---------------------------------------------------------------------------
+
+function BazUI:RepairProfileDefaults()
+    local sv = BazUIDB
+    if not sv or not sv.profiles then return end
+
+    local profileName = sv.activeProfile or DEFAULT_PROFILE
+    local profile = sv.profiles[profileName]
+    if not profile then return end
+
+    FillAllAddonDefaults(profile)
+end
+
+BazUI:QueueForLogin(function()
+    BazUI:RepairProfileDefaults()
+end)
 
 ---------------------------------------------------------------------------
 -- Migration: Pull old per-addon SavedVariables into BazUIDB
