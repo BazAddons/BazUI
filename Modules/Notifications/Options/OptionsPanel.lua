@@ -335,9 +335,7 @@ local function GetSourcesOptionsTable()
                 name = "Enabled",
                 get = function() return BNC:IsModuleEnabled(id) end,
                 set = function(_, val)
-                    if not addon.db then return end
-                    addon.db.modules[id] = addon.db.modules[id] or {}
-                    addon.db.modules[id].enabled = val
+                    BNC:SetModuleSetting(id, "enabled", val)
                     addon.Events:Trigger("MODULE_TOGGLED", id, val)
                     Refresh(PAGE_SOURCES)
                 end,

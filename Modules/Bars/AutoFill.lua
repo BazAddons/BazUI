@@ -28,7 +28,6 @@ addon.AutoFill = AutoFill
 -- riding; only these two belong on a bar.
 local GENERAL_TAB_SPELLS = { [6603] = true, [5019] = true }   -- Attack, Shoot
 
-local BOOK = _G.BOOKTYPE_SPELL or "spell"
 local SPELL_KIND = _G.Enum and _G.Enum.SpellBookItemType and _G.Enum.SpellBookItemType.Spell or 1
 
 local pending = {}   -- spellIDs learned in combat, placed when it ends
@@ -75,12 +74,13 @@ end
 -- from General), in spellbook order.
 local function BookSpells()
     local list, seen = {}, {}
-    for tab = 1, (GetNumSpellTabs() or 0) do
-        local _, _, offset, numSpells = GetSpellTabInfo(tab)
-        for i = (offset or 0) + 1, (offset or 0) + (numSpells or 0) do
-            local kind, id = GetSpellBookItemInfo(i, BOOK)
+    for tab = 1, BazUI.SpellBook.NumSkillLines() do
+        local offset, numSpells = BazUI.SpellBook.SkillLine(tab)
+        for i = offset + 1, offset + numSpells do
+            local kind, id, passive = BazUI.SpellBook.Item(i)
             local isSpell = kind == "SPELL" or kind == SPELL_KIND
-            if isSpell and id and not seen[id] and (tab > 1 or GENERAL_TAB_SPELLS[id]) and not IsPassive(id) then
+            if passive == nil then passive = IsPassive(id) end
+            if isSpell and id and not seen[id] and (tab > 1 or GENERAL_TAB_SPELLS[id]) and not passive then
                 seen[id] = true
                 list[#list + 1] = id
             end
@@ -222,7 +222,7 @@ function AutoFill:PruneUnknown()
         return 0
     end
     prunePending = false
-    if (GetNumSpellTabs() or 0) == 0 then return 0 end
+    if BazUI.SpellBook.NumSkillLines() == 0 then return 0 end
 
     local stale, total = {}, 0
     for _, frame in pairs(addon.Bar:GetAll()) do

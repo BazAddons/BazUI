@@ -29,6 +29,75 @@ local BNC = addon.API
 
 addon.moduleOptionDefs = {}
 
+---------------------------------------------------------------------------
+-- Getting at a source's settings
+--
+-- Every source's settings live in addon.db.modules, and everything below
+-- used to reach into that table after checking `addon.db`. That check
+-- cannot fail: addon.db is a proxy onto the active profile, so it is a
+-- table whether or not there is anything behind it. When the profile
+-- section has not been filled in - a brand-new install, a profile made
+-- while the module was switched off - addon.db.modules is nil and the
+-- reach through it errors.
+--
+-- So: one way in, and it answers a table or nothing, never a crash.
+-- ModuleSettings makes what is missing, PeekModuleSettings does not, and
+-- the difference is whether the caller is about to write.
+---------------------------------------------------------------------------
+
+-- Set the first time the table had to be built here rather than by the
+-- profile defaults. It should never happen; if it does, this says what
+-- the world looked like at the time. Read it with
+--   /dump BazUI.Notifications.dbRepair
+addon.dbRepair = nil
+
+local function AllModuleSettings(create)
+    if not addon.db then return nil end
+
+    local all = addon.db.modules
+    if type(all) == "table" then return all end
+    if not create then return nil end
+
+    if not addon.dbRepair then
+        local sv = BazUIDB
+        local profileName = sv and (sv.activeProfile or "?") or "no BazUIDB"
+        local section = sv and sv.profiles and sv.profiles[profileName]
+        addon.dbRepair = {
+            when       = date("%Y-%m-%d %H:%M:%S"),
+            profile    = profileName,
+            hadProfile = section ~= nil,
+            hadSection = section and section.Notifications ~= nil or false,
+            hasCopyTable = type(CopyTable) == "function",
+            build      = select(4, GetBuildInfo()),
+        }
+    end
+
+    all = {}
+    addon.db.modules = all
+    return all
+end
+
+local function ModuleSettings(moduleId)
+    local all = AllModuleSettings(true)
+    if not all then return nil end
+    local one = all[moduleId]
+    if not one then
+        one = { enabled = true }
+        all[moduleId] = one
+    end
+    return one
+end
+
+local function PeekModuleSettings(moduleId)
+    local all = AllModuleSettings(false)
+    return all and all[moduleId] or nil
+end
+
+-- Published so the rest of the module reads settings the same way.
+function BNC:GetModuleSettings(moduleId)
+    return PeekModuleSettings(moduleId)
+end
+
 --- Create a GetSetting closure for a module. Eliminates per-module boilerplate.
 --- Usage: local GetSetting = BNC:CreateGetSetting("mymodule")
 -- The colour of a source's band. Always answers something drawable.
@@ -71,11 +140,7 @@ function BNC:RegisterModule(moduleInfo)
     addon.modules[id] = module
 
     -- Ensure per-module settings exist with defaults
-    if addon.db then
-        if not addon.db.modules[id] then
-            addon.db.modules[id] = { enabled = true }
-        end
-    end
+    ModuleSettings(id)
 
     addon.Events:Trigger("MODULE_REGISTERED", module)
     return module
@@ -126,9 +191,10 @@ function BNC:RegisterModuleOptions(moduleId, optionsDef)
 
     addon.moduleOptionDefs[moduleId] = optionsDef
 
-    if addon.db and addon.db.modules[moduleId] then
+    local settings = ModuleSettings(moduleId)
+    if settings then
         for _, opt in ipairs(optionsDef) do
-            ApplyDefault(addon.db.modules[moduleId], opt)
+            ApplyDefault(settings, opt)
         end
     end
 
@@ -136,16 +202,15 @@ function BNC:RegisterModuleOptions(moduleId, optionsDef)
 end
 
 function BNC:GetModuleSetting(moduleId, key)
-    if not addon.db or not addon.db.modules[moduleId] then return nil end
-    return addon.db.modules[moduleId][key]
+    local settings = PeekModuleSettings(moduleId)
+    if not settings then return nil end
+    return settings[key]
 end
 
 function BNC:SetModuleSetting(moduleId, key, value)
-    if not addon.db then return end
-    if not addon.db.modules[moduleId] then
-        addon.db.modules[moduleId] = { enabled = true }
-    end
-    addon.db.modules[moduleId][key] = value
+    local settings = ModuleSettings(moduleId)
+    if not settings then return end
+    settings[key] = value
     addon.Events:Trigger("MODULE_SETTING_CHANGED", moduleId, key, value)
 end
 
@@ -249,9 +314,10 @@ function BNC:UnregisterModule(id)
 end
 
 function BNC:IsModuleEnabled(id)
-    if not addon.db then return true end  -- default enabled before DB loads
-    local settings = addon.db.modules[id]
-    if not settings then return true end  -- default enabled if no settings yet
+    -- Enabled unless the settings say otherwise, which covers both "no
+    -- database yet" and "no settings for this source yet".
+    local settings = PeekModuleSettings(id)
+    if not settings then return true end
     return settings.enabled ~= false
 end
 

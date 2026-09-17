@@ -106,6 +106,7 @@ function BNC:Push(data)
                     message = existing.message,
                     icon = existing.icon,
                     priority = existing.priority,
+                    emphasis = existing.emphasis,
                     realTime = realTime,
                 },
             })
@@ -133,6 +134,9 @@ function BNC:Push(data)
         duration = data.duration,
         waypoint = data.waypoint,
         itemLink = data.itemLink,
+        -- A card whose message is the point of it, read before the title
+        -- rather than after.
+        emphasis = data.emphasis or nil,
         dupeCount = 1,
     }
 
@@ -189,6 +193,7 @@ function BNC:Push(data)
                 message = notification.message,
                 icon = notification.icon,
                 priority = notification.priority,
+                emphasis = notification.emphasis,
                 realTime = realTime,
             },
         })
@@ -199,7 +204,7 @@ function BNC:Push(data)
 
     -- A toast needs both the global switch and the source's own, and
     -- so does a sound. A source may also pick its own sound, or none.
-    local moduleSettings = addon.db and addon.db.modules[data.module]
+    local moduleSettings = BNC:GetModuleSettings(data.module)
     local toastsEnabled = not addon.db or addon.db.toastsEnabled ~= false
     local soundEnabled  = not addon.db or addon.db.soundEnabled ~= false
     local soundChoice   = "default"

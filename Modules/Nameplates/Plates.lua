@@ -150,11 +150,11 @@ function Plates:UpdateHealth(ours)
     local unit = ours and ours.unit
     if not (unit and UnitExists(unit)) then return end
 
-    -- The suite's bars take a fraction rather than a range: there is one
-    -- SetValue and it means the same thing on every bar in the addon.
-    local max = UnitHealthMax(unit) or 0
-    local now = UnitHealth(unit) or 0
-    ours.health:SetValue(max > 0 and (now / max) or 0)
+    -- Value and maximum, handed straight to the bar rather than divided
+    -- into a fraction here. Unit health is a secret value on clients that
+    -- have them - one this code may pass along but never compare or
+    -- divide - so the widget does the measuring. See Core\StatusBar.lua.
+    ours.health:SetValue(UnitHealth(unit), UnitHealthMax(unit))
     ours.health:SetFillColor(BazUI.UnitColor(unit, {
         classColor = Setting("classColor") ~= false,
         reaction   = true,
@@ -171,13 +171,16 @@ function Plates:UpdateName(ours)
         reaction   = true,
     })))
 
-    local level = UnitLevel(unit)
-    local wanted = Setting("showLevel") ~= false and level and level > 0
-    ours.level:SetShown(wanted and true or false)
-    if wanted then
-        -- A level the game will not name is a unit far enough above you
-        -- that the number stopped being the point.
-        ours.level:SetText(level == -1 and "??" or tostring(level))
+    -- The level and the rank are one field, written the same way the
+    -- unit bars write them - a plate and a target bar looking at the
+    -- same mob should not disagree about what it is.
+    local text = BazUI.UnitLevelText(unit, {
+        level = Setting("showLevel") ~= false,
+        rank  = Setting("showRank")  ~= false,
+    })
+    ours.level:SetShown(text and true or false)
+    if text then
+        ours.level:SetText(text)
         ours.level:SetTextColor(unpack(BazUI.Skin.Theme.colors.text))
     end
 end

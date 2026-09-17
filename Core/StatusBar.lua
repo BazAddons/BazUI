@@ -155,12 +155,44 @@ end
 function BarMixin:SetFillDirection(from)
     self._reversed = (from == "RIGHT")
     self.fill:SetReverseFill(self._reversed)
-    self:SetValue(self._value or 0)
+    if self._rawMax ~= nil then
+        self:SetValue(self._rawValue, self._rawMax)
+    else
+        self:SetValue(self._value or 0)
+    end
 end
 
-function BarMixin:SetValue(fraction)
+-- One value, given one of two ways.
+--
+-- Normally a fraction, which the bar clamps and then measures against so
+-- it can place a spark and an overlay.
+--
+-- The other way is a value and its maximum, handed straight to the
+-- widget underneath. That exists for numbers we are not allowed to read:
+-- Forever made unit health and power *secret*, meaning an addon may hold
+-- one and pass it to a widget but may not compare it, divide it, or turn
+-- it into a string. Nothing can be measured against a number we cannot
+-- look at, so the spark and the overlay - both of which need the
+-- fraction - sit out, and the widget, which is allowed to see what we
+-- are not, does the filling.
+--
+-- Callers with a real maximum should pass both on either client. A plain
+-- number goes through this path just as happily as a secret one.
+function BarMixin:SetValue(fraction, maximum)
+    if maximum ~= nil then
+        self._rawValue, self._rawMax = fraction, maximum
+        self._value = nil
+        self.fill:SetMinMaxValues(0, maximum)
+        self.fill:SetValue(fraction)
+        if self.spark then self.spark:Hide() end
+        if self.overlay then self.overlay:Hide() end
+        return
+    end
+
+    self._rawValue, self._rawMax = nil, nil
     fraction = math.max(0, math.min(1, tonumber(fraction) or 0))
     self._value = fraction
+    self.fill:SetMinMaxValues(0, 1)
     self.fill:SetValue(fraction)
 
     -- The spark sits at the leading edge, which is the other end when
@@ -179,7 +211,12 @@ function BarMixin:SetValue(fraction)
     self:_LayoutOverlay()
 end
 
+-- The fraction this bar is showing, or nil when it was given a value it
+-- is not allowed to read. Nothing in the suite reads this today; it
+-- answers nil rather than nought so that anything which starts to read
+-- it cannot mistake "cannot say" for "empty".
 function BarMixin:GetValue()
+    if self._rawMax ~= nil then return nil end
     return self._value or 0
 end
 
@@ -216,9 +253,35 @@ end
 
 function BarMixin:SetText(text)
     if not self.text then return end
+    self._rawText = nil
     self._text = text
     self.text:SetText(text or "")
     self:_RefreshText()
+end
+
+-- Text built from numbers we are not allowed to read.
+--
+-- SetText is given a string this addon assembled, and _RefreshText then
+-- measures that string to fit it to the bar. Neither is possible for a
+-- secret: only the widget may turn one into text. So the format and the
+-- values go straight to the font string, and the fitting is skipped -
+-- there is nothing here to measure.
+function BarMixin:SetFormattedText(format, ...)
+    if not self.text then return end
+    self._text = nil
+    self._rawText = true
+    self.text:SetFormattedText(format, ...)
+    self:_RefreshText()
+end
+
+-- How big the text in this bar currently is. Anything drawing inline with
+-- it - an icon in the middle of the string - has to match a size it did
+-- not choose, and SetBarSize works this out from the bar's height rather
+-- than from a setting anyone can read.
+function BarMixin:TextSize()
+    if not self.text then return 12 end
+    local _, size = self.text:GetFont()
+    return tonumber(size) or 12
 end
 
 function BarMixin:SetTextMode(mode)
@@ -226,12 +289,75 @@ function BarMixin:SetTextMode(mode)
     self:_RefreshText()
 end
 
+---------------------------------------------------------------------------
+-- A mark in front of the text
+--
+-- A real texture rather than one of the client's inline text escapes. An
+-- escape is laid against the font's baseline and can only be the size of
+-- the writing it sits in, and a mark on a bar wants to be the size of the
+-- bar: on a tall bar the text stops growing at twelve pixels and an inline
+-- glyph stops with it, leaving a speck in a lot of empty height.
+--
+-- The text is centred in the fill, so an icon hanging off its left would
+-- carry the pair off centre. Both move instead: the text shifts right by
+-- half of what the icon and its gap take up, which puts the two of them
+-- together back in the middle.
+---------------------------------------------------------------------------
+
+local LEAD_GAP = 3
+
+function BarMixin:SetLeadIcon(path, size)
+    if not self.text then return end
+
+    if not path then
+        self._leadSize = nil
+        if self.leadIcon then self.leadIcon:Hide() end
+        self:_RefreshText()
+        return
+    end
+
+    local icon = self.leadIcon
+    if not icon then
+        icon = self.fill:CreateTexture(nil, "OVERLAY")
+        self.leadIcon = icon
+    end
+
+    size = math.max(1, math.floor(tonumber(size) or self:TextSize()))
+    icon:SetTexture(path)
+    icon:SetSize(size, size)
+    icon:ClearAllPoints()
+    -- Against the text rather than the bar, so it stays with the writing
+    -- it belongs to however the pair ends up centred.
+    icon:SetPoint("RIGHT", self.text, "LEFT", -LEAD_GAP, 0)
+
+    self._leadSize = size
+    self:_RefreshText()
+end
+
+-- Where the text sits, how much room it has and whether it is shown at
+-- all, in one place - because the icon in front of it changes all three
+-- and two owners would drift.
 function BarMixin:_RefreshText()
     if not self.text then return end
     local mode = self._textMode or "always"
-    local wanted = (self._text or "") ~= ""
+    -- Text we cannot read is still text. _text is empty for a secret,
+    -- so asking only that would hide the string the moment anything
+    -- refreshed the layout - a hover, a resize.
+    local hasText = (self._text or "") ~= "" or self._rawText == true
+    local wanted = hasText
         and (mode == "always" or (mode == "hover" and self._hovered))
     self.text:SetShown(wanted)
+
+    -- The mark is only there to lead the text, so it goes when the text
+    -- does.
+    local lead = wanted and self._leadSize or nil
+    if self.leadIcon then self.leadIcon:SetShown(lead and true or false) end
+
+    local taken = lead and (lead + LEAD_GAP) or 0
+    local width = self._innerWidth or self:GetWidth() or 0
+    self.text:SetWidth(math.max(10, width - 10 - taken))
+    self.text:ClearAllPoints()
+    self.text:SetPoint("CENTER", self.fill, "CENTER", taken / 2, 0)
 end
 
 ---------------------------------------------------------------------------
@@ -334,9 +460,9 @@ function BarMixin:SetBarSize(width, height)
 
     if self.spark then self.spark:SetSize(2, self._innerHeight) end
     if self.text then
-        self.text:SetWidth(math.max(10, self._innerWidth - 10))
         self.text:SetFont(Theme and Theme.FontFile() or STANDARD_TEXT_FONT,
             math.max(8, math.min(12, height - 2)), "OUTLINE")
+        self:_RefreshText()
     end
 
     self:SetTicks(self._tickCount or 0)

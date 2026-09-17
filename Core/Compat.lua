@@ -55,6 +55,33 @@ function BazUI.Has.Template(name)
     return info ~= nil
 end
 
+-- A texture file. The client has no way to be asked whether a file
+-- exists, so it is asked to load one: a texture that failed comes back
+-- with nothing on it. Cached, because the answer cannot change without
+-- restarting the game - the client reads its art at startup the same way
+-- it reads its fonts.
+local textureCache = {}
+
+function BazUI.Has.Texture(path)
+    if type(path) ~= "string" or path == "" then return false end
+    local known = textureCache[path]
+    if known ~= nil then return known end
+
+    local probe = BazUI._texProbe
+    if not probe then
+        probe = UIParent:CreateTexture(nil, "BACKGROUND")
+        probe:Hide()
+        BazUI._texProbe = probe
+    end
+
+    local ok = pcall(probe.SetTexture, probe, path)
+    local present = ok and probe:GetTexture() ~= nil
+    pcall(probe.SetTexture, probe, nil)
+
+    textureCache[path] = present
+    return present
+end
+
 -- A console setting. GetCVar answers nil for one the client has never
 -- heard of, which is what a renamed setting looks like.
 function BazUI.Has.CVar(name)
@@ -62,6 +89,63 @@ function BazUI.Has.CVar(name)
     if not get then return false end
     local ok, value = pcall(get, name)
     return ok and value ~= nil
+end
+
+---------------------------------------------------------------------------
+-- The spell book
+--
+-- Era answers GetNumSpellTabs / GetSpellTabInfo / GetSpellBookItemInfo,
+-- a run of loose values. Forever replaced the family with C_SpellBook,
+-- which hands back tables and takes a spell bank rather than a book
+-- type. Two clients, one book, so callers ask here and get the three
+-- things they actually want: how many lines, where a line starts, and
+-- what is sitting in a slot.
+---------------------------------------------------------------------------
+
+BazUI.SpellBook = {}
+
+local BOOK_TYPE  = _G.BOOKTYPE_SPELL or "spell"
+local SPELL_BANK = _G.Enum and _G.Enum.SpellBookSpellBank
+    and _G.Enum.SpellBookSpellBank.Player or 0
+
+function BazUI.SpellBook.NumSkillLines()
+    if C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines then
+        return C_SpellBook.GetNumSpellBookSkillLines() or 0
+    end
+    if _G.GetNumSpellTabs then return _G.GetNumSpellTabs() or 0 end
+    return 0
+end
+
+-- Where a line starts and how long it is. The first slot in the line is
+-- the offset plus one, which is the one part both clients agree on.
+function BazUI.SpellBook.SkillLine(index)
+    if C_SpellBook and C_SpellBook.GetSpellBookSkillLineInfo then
+        local info = C_SpellBook.GetSpellBookSkillLineInfo(index)
+        if not info then return 0, 0 end
+        return info.itemIndexOffset or 0, info.numSpellBookItems or 0
+    end
+    if _G.GetSpellTabInfo then
+        local _, _, offset, count = _G.GetSpellTabInfo(index)
+        return offset or 0, count or 0
+    end
+    return 0, 0
+end
+
+-- What is in one slot: its kind, its spell, and whether it is passive.
+-- The kind is whatever that client calls it - Era says "SPELL", Forever
+-- gives an Enum.SpellBookItemType - so callers compare against both
+-- rather than this deciding for them.
+function BazUI.SpellBook.Item(slot)
+    if C_SpellBook and C_SpellBook.GetSpellBookItemInfo then
+        local info = C_SpellBook.GetSpellBookItemInfo(slot, SPELL_BANK)
+        if not info then return nil, nil, false end
+        return info.itemType, info.spellID or info.actionID, info.isPassive or false
+    end
+    if _G.GetSpellBookItemInfo then
+        local kind, id = _G.GetSpellBookItemInfo(slot, BOOK_TYPE)
+        return kind, id, nil
+    end
+    return nil, nil, false
 end
 
 ---------------------------------------------------------------------------
