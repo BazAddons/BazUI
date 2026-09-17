@@ -541,7 +541,11 @@ function addon:ApplyStatusBarVisibility()
     statusHidden.xp, statusHidden.rep = hide.xp, hide.rep
 
     if manager then
-        manager:UpdateBarsShown()
+        -- Their method, run as theirs. UpdateBarsShown stores what it
+        -- works out onto the manager and its bars, and a store made
+        -- under our taint belongs to us from then on - the same way
+        -- hiding an action bar left MainActionBar.snappedToFrame ours.
+        securecallfunction(manager.UpdateBarsShown, manager)
 
         -- With both of them hidden the container has nothing left to
         -- draw, and the game's own Edit Mode still offers it as "Status
@@ -552,7 +556,7 @@ function addon:ApplyStatusBarVisibility()
             HideOne(manager)
         else
             RestoreOne(manager)
-            manager:UpdateBarsShown()
+            securecallfunction(manager.UpdateBarsShown, manager)
         end
     end
 

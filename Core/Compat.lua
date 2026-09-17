@@ -141,6 +141,27 @@ end
 local suppressWanted = setmetatable({}, { __mode = "k" })
 local suppressedByUs = setmetatable({}, { __mode = "k" })
 
+-- Hide and Show are not simple on one of Blizzard's Edit Mode systems.
+-- EditModeSystemMixin replaces both, and their versions write back into the
+-- frame's own snap state: HideOverride breaks snapped frames, and breaking a
+-- snap ends in ClearAllPointsOverride -> ClearFrameSnap -> snappedToFrame =
+-- nil. Called plainly from here, that write belongs to BazUI, and
+-- EditModeFrameSetup reads snappedToFrame on the way into Edit Mode - which
+-- is how hiding an action bar surfaced as their compact party frames
+-- comparing a secret colour. /bazui taint named the field.
+--
+-- securecallfunction runs their method as theirs. The frame still hides;
+-- nothing it writes on the way down is ours afterwards.
+local function CallClean(frame, method)
+    local fn = frame[method]
+    if type(fn) ~= "function" then return end
+    if securecallfunction then
+        securecallfunction(fn, frame)
+    else
+        fn(frame)
+    end
+end
+
 function BazUI.SuppressFrame(frame, wanted)
     if not (frame and frame.HookScript and type(wanted) == "function") then
         return false
@@ -151,7 +172,7 @@ function BazUI.SuppressFrame(frame, wanted)
             local test = suppressWanted[self]
             if test and test() and not InCombatLockdown() then
                 suppressedByUs[self] = true
-                self:Hide()
+                CallClean(self, "Hide")
             end
         end)
     end
@@ -160,14 +181,14 @@ function BazUI.SuppressFrame(frame, wanted)
     if InCombatLockdown() then return true end
     if wanted() then
         suppressedByUs[frame] = true
-        frame:Hide()
+        CallClean(frame, "Hide")
     elseif suppressedByUs[frame] then
         -- Only ever put back what we took down. Calling Show on a frame
         -- we do not own marks its shown state as ours, and Blizzard's
         -- Edit Mode reads that state on the way in; anything we never
         -- hid is left entirely alone.
         suppressedByUs[frame] = nil
-        frame:Show()
+        CallClean(frame, "Show")
     end
     return true
 end
