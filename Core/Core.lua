@@ -28,7 +28,17 @@ local function CountKeys(t)
     return n
 end
 
-BazUI._svTrace = { atFileLoad = CountKeys(_G.BazUIDB) }
+-- The names matter more than the count: four keys at ADDON_LOADED is
+-- either four of the nine the file holds, or four somebody else put there.
+local function KeyNames(t)
+    if type(t) ~= "table" then return "absent" end
+    local names = {}
+    for k in pairs(t) do names[#names + 1] = tostring(k) end
+    table.sort(names)
+    return #names > 0 and table.concat(names, ", ") or "none"
+end
+
+BazUI._svTrace = { atFileLoad = CountKeys(_G.BazUIDB), namesAtFileLoad = KeyNames(_G.BazUIDB) }
 
 ---------------------------------------------------------------------------
 -- Addon Object Prototype
@@ -491,6 +501,7 @@ end
 -- Initialize unified profile structure early (before addons load)
 EventUtil.ContinueOnAddOnLoaded("BazUI", function()
     BazUI._svTrace.atAddonLoaded = CountKeys(_G.BazUIDB)
+    BazUI._svTrace.namesAtAddonLoaded = KeyNames(_G.BazUIDB)
     BazUIDB = BazUIDB or {}
     if BazUI.InitProfiles then
         BazUI:InitProfiles()
@@ -907,6 +918,10 @@ function BazUI:ReportSavedVariables()
     end
     BazUI:Print(("Saved variables - Core.lua ran: %s, ADDON_LOADED: %s, login: %s, now: %s"):format(
         Say(t.atFileLoad), Say(t.atAddonLoaded), Say(t.atLogin), Say(CountKeys(_G.BazUIDB))))
+
+    print("  when Core.lua ran: " .. tostring(t.namesAtFileLoad))
+    print("  at ADDON_LOADED:  " .. tostring(t.namesAtAddonLoaded))
+    print("  now:              " .. KeyNames(_G.BazUIDB))
 
     local log = _G.BazUIDB and _G.BazUIDB.moduleSwitchLog
     if type(log) == "table" then
