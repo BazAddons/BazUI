@@ -2,7 +2,7 @@
 local addon = BazUI:GetModule("Tooltip")
 local Theme = BazUI.Skin.Theme
 local tracked, holder = {}, nil
-local healthParent, settingOwner
+local healthParent
 local anchorFrame, unlocked
 local names = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2",
     "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "SmallTextTooltip", "WorldMapTooltip" }
@@ -228,13 +228,15 @@ function addon:Initialize()
     hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tip)
         if tip == GameTooltip then self:Anchor(tip) end
     end)
-    hooksecurefunc(GameTooltip, "SetOwner", function(tip, owner)
-        if settingOwner or not self:OverridesAnchor() then return end
-        settingOwner = true
-        tip:SetOwner(owner, "ANCHOR_NONE")
-        settingOwner = false
-        self:Anchor(tip)
-    end)
+    -- No hook on GameTooltip:SetOwner.
+    --
+    -- Writing to a Blizzard frame's method table is what broke the
+    -- objective tracker and the nameplates on Forever, and GameTooltip
+    -- is no different: their GameTooltip_SetDefaultAnchor then found a
+    -- nil SetOwner. The hook above, on the global function rather than
+    -- on the frame, already re-anchors every default-anchored tooltip,
+    -- which is the case this was for. A tooltip that sets its own owner
+    -- without going through that path keeps the owner it asked for.
     -- The bag's own idea of where a tooltip goes
     --
     -- Hovering a bag slot, the game calls

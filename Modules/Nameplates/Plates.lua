@@ -52,15 +52,18 @@ BazUI:RegisterDependency({
 local function SuppressStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
+    frame._bazSuppressed = true
     frame:SetAlpha(0)
-    if not frame._bazSuppressed then
-        frame._bazSuppressed = true
-        -- The pool hands these out again, so the hook is installed once
-        -- and answers for every unit that frame ever carries.
-        hooksecurefunc(frame, "SetAlpha", function(self, value)
-            if self._bazSuppressed and value ~= 0 then self:SetAlpha(0) end
-        end)
-    end
+
+    -- Set once, and not hooked.
+    --
+    -- This used to hooksecurefunc the frame's SetAlpha to put it back at
+    -- nought whenever the game raised it. On Forever that left
+    -- CompactUnitFrame_UpdateCenterStatusIcon calling a nil SetAlpha on
+    -- the plate - alpha is one of the aspects the client now guards, and
+    -- writing to the method table of a frame we do not own is what broke
+    -- it. Blizzard raising the alpha again will show their plate through
+    -- ours, which is a blemish; an error on every nameplate is not.
 end
 
 local function RestoreStock(plate)
