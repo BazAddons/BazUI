@@ -31,6 +31,15 @@ addon.db      = nil   -- proxied by BazUI once profiles init
 local DEFAULTS = {
     enabled = true,
 
+    -- Blizzard's combat log addon is LoadOnDemand and nothing in the
+    -- game's own UI loads it, so the Log tab only gets their formatted
+    -- output if we ask for it. On the Forever beta that load leaves
+    -- their refilter ticker erroring every frame - hundreds a session,
+    -- in their file, on something we cannot reach - so it is off until
+    -- the client stops doing that. Switch it on for their filters and
+    -- quick buttons on any client where it behaves.
+    loadBlizzardCombatLog = false,
+
     -- Persistent typed-message history. Up-arrow / down-arrow in any
     -- chat edit box cycles through these. Capped at MAX_LINES inside
     -- Replica/History.lua (50 lines today). Survives /reload and game

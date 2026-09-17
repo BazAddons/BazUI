@@ -208,8 +208,25 @@ end
 ---------------------------------------------------------------------------
 
 function CombatLog:Apply()
-    -- Their ADDON_LOADED handler applies a filter and starts a refilter
-    -- while this call is still on the stack, so it has to go in clean.
+    -- Off by default, and this is the whole reason why.
+    --
+    -- Blizzard_CombatLog is LoadOnDemand and nothing in the game's own
+    -- UI loads it, so the only way their formatted output reaches the
+    -- Log tab is if we ask for it. Their ADDON_LOADED handler then calls
+    -- C_CombatLog.RefilterEntries() unconditionally, and on the Forever
+    -- beta the refilter ticker errors every tick: it asks
+    -- C_CombatLogSecure.GetEntryCount(), gets nil, and hands that to
+    -- math.min. Hundreds of errors a session, in their file, on a
+    -- function in a secure environment we cannot reach or patch.
+    --
+    -- Not tested by client version: the switch is the user's, and any
+    -- client where it behaves can have it on. If it is off we simply
+    -- never load their addon, and the Log tab keeps whatever BazUI
+    -- itself puts there.
+    local core = addon.core
+    if not (core and core.GetSetting
+        and core:GetSetting("loadBlizzardCombatLog")) then return end
+
     if C_AddOns and C_AddOns.LoadAddOn then
         SecureCall(C_AddOns.LoadAddOn, "Blizzard_CombatLog")
     end

@@ -101,6 +101,16 @@ local SPEC = {
               addon.core:SetSetting("enabled", v)
           end },
 
+        { key = "loadBlizzardCombatLog", label = "Use Blizzard's combat log", section = "master",
+          type = "toggle", order = 2,
+          desc = "Load Blizzard's combat log addon so the Log tab gets their formatted output, their filters and their quick buttons. Off by default: nothing in the game's own interface loads that addon, and on the Forever beta loading it leaves their own refilter erroring every frame. Turn it on where it behaves. Takes effect on /reload.",
+          get = function() return addon.core and addon.core:GetSetting("loadBlizzardCombatLog") end,
+          set = function(_, v)
+              if not addon.core then return end
+              addon.core:SetSetting("loadBlizzardCombatLog", v)
+              addon.core:Print("Takes effect on /reload.")
+          end },
+
         -----------------------------------------------------------------
         -- Appearance: opacity + sizing (BOTH panels)
         -----------------------------------------------------------------
