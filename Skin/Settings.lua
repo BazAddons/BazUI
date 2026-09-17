@@ -206,12 +206,10 @@ local function CreateBandWidget(parent, opt, contentWidth)
     number:SetJustifyH("CENTER")
 
     local function Step(label, relativeTo, dx, delta)
-        local button = CreateFrame("Button", nil, box, "UIPanelButtonTemplate")
+        local button = Theme.CreateButton(box)
         button:SetSize(STEP_W, 18)
         button:SetPoint("RIGHT", relativeTo, "LEFT", dx, 0)
         button:SetText(label)
-        local fs = button:GetFontString()
-        if fs then fs:SetFontObject("GameFontHighlightSmall") end
         button:SetScript("OnClick", function()
             if opt.onThickness then
                 opt.onThickness(opt.index, (tonumber(Band().thickness) or 1) + delta)

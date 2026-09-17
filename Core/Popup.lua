@@ -55,20 +55,18 @@ local buttonFrames     -- array of created button frames for current popup
 ---------------------------------------------------------------------------
 
 local STYLE_COLORS = {
-    default     = nil,                       -- inherit template default
+    default     = nil,                       -- the plain white the face carries
     primary     = { 1.00, 0.82, 0.00 },      -- BazUI gold
     destructive = { 1.00, 0.40, 0.40 },      -- soft red
 }
 
+-- Through the button's font objects rather than its font string: a
+-- button puts its own object back whenever its state changes, and takes
+-- the object's color with it, so a tinted string lasts until the first
+-- hover and no longer.
 local function ApplyButtonStyle(btn, style)
     if not btn or not style then return end
-    local rgb = STYLE_COLORS[style]
-    local fs  = btn:GetFontString()
-    if fs and rgb then
-        fs:SetTextColor(rgb[1], rgb[2], rgb[3])
-    elseif fs then
-        fs:SetTextColor(1, 1, 1)             -- white default
-    end
+    BazUI.Skin.Theme.SetButtonFont(btn, nil, STYLE_COLORS[style])
 end
 
 ---------------------------------------------------------------------------
@@ -287,7 +285,7 @@ local function ApplyOpts(opts)
     local rightCursor = -O.PAD
     for i = #buttons, 1, -1 do
         local def = buttons[i]
-        local btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        local btn = BazUI.Skin.Theme.CreateButton(f)
         btn:SetHeight(BUTTON_HEIGHT)
         btn:SetText(def.label or "OK")
         local autoW = (btn:GetTextWidth() or 40) + BUTTON_PAD_X

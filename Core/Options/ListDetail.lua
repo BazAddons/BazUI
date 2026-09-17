@@ -79,15 +79,10 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
     local rightEdge = row
     local rightX = -O.ROW_PAD
     local function AddButton(text, width, onClick, danger)
-        local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        local btn = BazUI.Skin.Theme.CreateButton(row, { style = danger and "danger" or nil })
         btn:SetSize(width, 22)
         btn:SetPoint("RIGHT", rightEdge, rightEdge == row and "RIGHT" or "LEFT", rightX, 0)
         btn:SetText(text)
-        local fs = btn:GetFontString()
-        if fs then
-            fs:SetFontObject("GameFontHighlightSmall")
-            if danger then fs:SetTextColor(1, 0.45, 0.45) end
-        end
         btn:SetScript("OnClick", onClick)
         rightEdge, rightX = btn, -6
         return btn

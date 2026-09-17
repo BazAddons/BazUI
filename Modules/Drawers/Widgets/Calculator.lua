@@ -149,22 +149,25 @@ local LAYOUT = {
       { label = "=", action = PressEquals, accent = "eq" } },
 }
 
+-- What a key does, in its color: gold for an operator, green for
+-- equals, muted red for a function key. Digits keep the face's own.
+local ACCENT_COLORS = {
+    op = { 1.00, 0.82, 0.00 },
+    eq = { 0.40, 1.00, 0.40 },
+    fn = { 0.80, 0.60, 0.60 },
+}
+
 local function MakeButton(parent, label, action, accent, width, height)
-    local btn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    local btn = BazUI.Skin.Theme.CreateButton(parent, {
+        font  = "GameFontNormal",
+        color = ACCENT_COLORS[accent],
+    })
     btn:SetSize(width, height)
     btn:SetText(label)
     btn:SetScript("OnClick", function()
         action()
         CalcWidget:UpdateDisplay()
     end)
-    local fs = btn:GetFontString()
-    if fs then
-        fs:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormal"))
-        if accent == "op" then fs:SetTextColor(1, 0.82, 0)
-        elseif accent == "eq" then fs:SetTextColor(0.4, 1, 0.4)
-        elseif accent == "fn" then fs:SetTextColor(0.8, 0.6, 0.6)
-        end
-    end
     return btn
 end
 

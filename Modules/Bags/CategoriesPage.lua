@@ -305,7 +305,7 @@ local function CreateRuleRowWidget(parent, opt, contentWidth)
     BuildValueControl(frame, tag, key, idx, valueLeftPx, rightInset)
 
     -- 4. Remove button (right-aligned)
-    local rmBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    local rmBtn = BazUI.Skin.Theme.CreateButton(frame)
     rmBtn:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
     rmBtn:SetSize(REMOVE_W, 22)
     rmBtn:SetText("Remove")

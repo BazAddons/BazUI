@@ -197,18 +197,30 @@ local function CreateRangeWidget(parent, opt, contentWidth)
     end)
     overlay:SetScript("OnHide", function(self) dragging = false; self:SetScript("OnUpdate", nil) end)
 
+    local typed = false
     slider.Slider:SetScript("OnValueChanged", function(_, value)
+        if typed then return end
         value = math.floor(value / step + 0.5) * step
         valueBox:SetText(FormatValue(value))
         if (not dragging or opt.live) and opt.set then opt.set(nil, value) end
     end)
 
+    -- A typed number is taken as it is, clamped to the ends but not
+    -- rounded to the step. The step is there so dragging feels like
+    -- something; typing is how you say a number the drag cannot reach,
+    -- and snapping it back would be answering a different question.
     valueBox:SetScript("OnEnterPressed", function(self)
-        local n = tonumber((self:GetText():gsub("%%", "")))
+        local n = tonumber(((self:GetText() or ""):gsub("[^%-%d%.]", "")))
         if n then
             if opt.isPercent or opt.format == "percent" then n = n / 100 end
             n = math.max(minVal, math.min(maxVal, n))
-            slider.Slider:SetValue(math.floor(n / step + 0.5) * step)
+            -- Past OnValueChanged, which rounds what the slider lands on:
+            -- it cannot tell a drag from a typed number, so it is told.
+            typed = true
+            slider.Slider:SetValue(n)
+            typed = false
+            self:SetText(FormatValue(n))
+            if opt.set then opt.set(nil, n) end
         else
             self:SetText(FormatValue(slider.Slider:GetValue()))
         end
@@ -273,6 +285,16 @@ local function CreateExecuteWidget(parent, opt, contentWidth)
     -- description, so the row doesn't say the same thing twice.
     local rowOpt = { name = opt.desc and opt.name or "", desc = opt.desc }
     local btnText = opt.name or "Run"
+
+    -- A destructive action says so in red. The name sometimes arrives
+    -- with the color already written into it, and the button wears its
+    -- color itself, so the escape comes back out of the text.
+    local danger = opt.style == "danger" or opt.confirmStyle == "destructive"
+        or (btnText:find("|cffff4444", 1, true) and true or false)
+    if danger then
+        btnText = btnText:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    end
+
     local probe = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     probe:SetText(btnText)
     local btnW = math.max(O.BUTTON_MIN_W, math.min(O.BUTTON_MAX_W, (probe:GetStringWidth() or 60) + 28))
@@ -280,17 +302,9 @@ local function CreateExecuteWidget(parent, opt, contentWidth)
 
     local frame, h = BuildRow(parent, rowOpt, contentWidth, btnW)
     if rowOpt.name == "" then frame.label:SetText("") end
-    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    local btn = BazUI.Skin.Theme.CreateButton(frame, { style = danger and "danger" or nil })
     AnchorControl(frame, btn, btnW, 22)
     btn:SetText(btnText)
-    local fs = btn:GetFontString()
-    if fs then fs:SetFontObject("GameFontHighlightSmall") end
-    local danger = opt.style == "danger" or opt.confirmStyle == "destructive"
-        or (type(opt.name) == "string" and opt.name:find("|cffff4444", 1, true))
-    if danger and fs then
-        fs:SetText((opt.name or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
-        fs:SetTextColor(1, 0.45, 0.45)
-    end
     -- Left-align the button when the row has no label of its own, so a
     -- lone action reads as part of the form rather than floating right.
     if rowOpt.name == "" and not opt.alignRight then

@@ -38,6 +38,16 @@ Theme.colors = {
     caution   = { 0.95, 0.72, 0.20, 1.00 },  -- a window closing
     warn      = { 0.95, 0.50, 0.15, 1.00 },
     danger    = { 0.85, 0.30, 0.30, 1.00 },
+
+    -- What rank a unit is. Borrowed from item quality, because that is a
+    -- reading every player already has: blue is rare, purple is rarer,
+    -- and red is the one that kills you. Elite takes gold rather than a
+    -- quality color, since a gold dragon is what elite has always looked
+    -- like.
+    rankRare      = { 0.40, 0.68, 1.00, 0.85 },
+    rankElite     = { 1.00, 0.78, 0.25, 0.85 },
+    rankRareElite = { 0.70, 0.40, 1.00, 0.85 },
+    rankBoss      = { 1.00, 0.35, 0.30, 0.90 },
 }
 
 -- Mix two colors. Used for readings that shift as they run: a reset
@@ -194,6 +204,135 @@ function Theme.RefreshFills()
     end
 end
 
+-- And the same again for glows, which are a color painted onto textures
+-- like a border is, but on their own frames and their own schedule.
+local glowing = setmetatable({}, { __mode = "k" })
+
+function Theme.TrackGlow(target, redraw)
+    if target and redraw then glowing[target] = redraw end
+end
+
+function Theme.RefreshGlows()
+    for target, redraw in pairs(glowing) do
+        if not pcall(redraw, target) then glowing[target] = nil end
+    end
+end
+
+---------------------------------------------------------------------------
+-- A glow around a frame
+--
+-- Rings. One rectangular outline per pixel of glow, each a step fainter
+-- than the one inside it, so the whole thing reads as light falling away
+-- from the edge.
+--
+-- The first attempt at this was four gradient strips, and the corners
+-- gave it away: the top strip had to run past the frame's sides to cover
+-- them, and it arrived there still at full strength, so each corner came
+-- out a bright rectangular flange. A gradient only fades along one axis
+-- and a corner needs it to fade along two.
+--
+-- Rings have no such problem. Every ring is a complete outline at one
+-- alpha, so a corner is simply part of its ring and cannot be brighter
+-- or dimmer than the rest of it. Within a ring the top and bottom run
+-- the full width and the sides only what is left between them - touching,
+-- never overlapping, because these are drawn ADD and an overlap would
+-- show as a seam.
+--
+-- No art either way, which is the point: a glow made of numbers takes
+-- its color from the skin like everything else instead of needing a file
+-- per color.
+--
+-- It does not pulse. A pulse says something just happened; this says
+-- what a thing is, and a thing that is permanently true should not be
+-- permanently moving in the corner of your eye.
+---------------------------------------------------------------------------
+
+Theme.GLOW_SIZE = 6
+Theme.MAX_GLOW_SIZE = 16
+
+local function RedrawGlow(frame)
+    Theme.SetGlow(frame, frame._bazGlowColor, frame._bazGlowSize)
+end
+
+-- color nil takes the glow off. The color table is held rather than
+-- copied, so a skin change reaches it: RefreshGlows draws it again with
+-- whatever numbers are in the table by then.
+function Theme.SetGlow(frame, color, size)
+    if not frame then return end
+    frame._bazGlowColor = color
+    frame._bazGlowSize  = size
+
+    local parts = frame._bazGlow
+    if not color then
+        if parts then
+            for _, texture in ipairs(parts) do texture:Hide() end
+        end
+        return
+    end
+
+    size = math.max(1, math.min(Theme.MAX_GLOW_SIZE,
+        math.floor(tonumber(size) or Theme.GLOW_SIZE)))
+
+    parts = parts or {}
+    frame._bazGlow = parts
+
+    local r, g, b = color[1] or 1, color[2] or 1, color[3] or 1
+    local base = color[4] or 1
+
+    local slot = 0
+    for ring = 1, size do
+        -- Squared rather than straight, because light falls away faster
+        -- than a straight line does and a linear ramp reads as a flat
+        -- band with an edge on it.
+        local t = 1 - (ring - 1) / size
+        local alpha = base * t * t
+
+        -- How far out this ring sits, and the gap its sides have to fill
+        -- between the top and bottom of the same ring.
+        local out = ring
+        local inset = ring - 1
+
+        -- Every piece is anchored by its own TOPLEFT and BOTTOMRIGHT, so
+        -- each one is fully sized by where it is pinned rather than
+        -- needing a width or a height of its own. Which of the frame's
+        -- corners it hangs from is what makes it a top, a side or a
+        -- bottom.
+        --
+        --   { relativePoint, x, y, relativePoint, x, y }
+        local sides = {
+            -- Top and bottom run the full width of this ring, corners
+            -- included, so the corners belong to exactly one piece.
+            { "TOPLEFT",    -out,   out,    "TOPRIGHT",     out,   inset  },
+            { "BOTTOMLEFT", -out,  -inset,  "BOTTOMRIGHT",  out,  -out    },
+            -- The sides fill only what is left between them.
+            { "TOPLEFT",    -out,   inset,  "BOTTOMLEFT",  -inset, -inset },
+            { "TOPRIGHT",    inset, inset,  "BOTTOMRIGHT",  out,   -inset },
+        }
+
+        for _, side in ipairs(sides) do
+            slot = slot + 1
+            local texture = parts[slot]
+            if not texture then
+                -- Outside the frame, so it covers nothing the frame owns
+                -- and the sublevel only has to be stable.
+                texture = frame:CreateTexture(nil, "BACKGROUND", nil, Sublevel(-8))
+                parts[slot] = texture
+            end
+            texture:SetColorTexture(r, g, b, alpha)
+            texture:SetBlendMode("ADD")
+            texture:ClearAllPoints()
+            texture:SetPoint("TOPLEFT",     frame, side[1], side[2], side[3])
+            texture:SetPoint("BOTTOMRIGHT", frame, side[4], side[5], side[6])
+            texture:Show()
+        end
+    end
+
+    -- Left over from a larger glow than this one.
+    for index = slot + 1, #parts do parts[index]:Hide() end
+
+    Theme.TrackGlow(frame, RedrawGlow)
+end
+
 -- A band needs a thickness of at least a pixel and a color to draw; a
 -- skin arriving from a paste box may have neither.
 function Theme.SetBorder(layers)
@@ -280,28 +419,55 @@ end
 -- so every string using it follows when the switch changes: flipping
 -- it calls RefreshFontObjects and the text redraws with no reload.
 local fontObjects = {}
+local fontRecipes = {}
 
-function Theme.FontObject(blizzardName)
+-- Built once per recipe and edited in place from then on. The key is the
+-- Blizzard name, plus the tint where there is one, so two buttons asking
+-- for the same small white text share one object and a third asking for
+-- it in red gets its own.
+local function BuildFontObject(key, blizzardName, color)
     local base = _G[blizzardName]
     if not base then return nil end
 
-    local obj = fontObjects[blizzardName]
+    local obj = fontObjects[key]
     if not obj then
-        obj = CreateFont("BazUI" .. blizzardName)
-        fontObjects[blizzardName] = obj
+        obj = CreateFont("BazUI" .. key:gsub("%W", ""))
+        fontObjects[key] = obj
+        fontRecipes[key] = { name = blizzardName, color = color }
     end
 
     local baseFace, size, flags = base:GetFont()
     local face = baseFace
     if Theme.IsFontEnabled() and Theme.IsFontLoadable() then face = Theme.FONT_FILE end
     obj:SetFont(face, size or 12, flags or "")
-    obj:SetTextColor(base:GetTextColor())
+    if color then
+        obj:SetTextColor(color[1], color[2], color[3], color[4] or 1)
+    else
+        obj:SetTextColor(base:GetTextColor())
+    end
     obj:SetShadowColor(base:GetShadowColor())
     obj:SetShadowOffset(base:GetShadowOffset())
     local h, v = base:GetJustifyH(), base:GetJustifyV()
     if h then obj:SetJustifyH(h) end
     if v then obj:SetJustifyV(v) end
     return obj
+end
+
+function Theme.FontObject(blizzardName)
+    return BuildFontObject(blizzardName, blizzardName, nil)
+end
+
+-- The same mirror in a color of its own. Text on a button cannot be
+-- tinted with SetTextColor, because the button puts its font object back
+-- whenever its state changes and takes the object's color with it - so a
+-- button that wants red text needs a red font object, not a red string.
+function Theme.TintedFontObject(blizzardName, color)
+    if not color then return Theme.FontObject(blizzardName) end
+    local key = ("%s:%02x%02x%02x"):format(blizzardName,
+        math.floor((color[1] or 0) * 255 + 0.5),
+        math.floor((color[2] or 0) * 255 + 0.5),
+        math.floor((color[3] or 0) * 255 + 0.5))
+    return BuildFontObject(key, blizzardName, color)
 end
 
 -- CreateFontString names a Blizzard font object to inherit from, which
@@ -311,6 +477,90 @@ function Theme.FontString(parent, layer, blizzardName, sublevel)
     local obj = Theme.FontObject(blizzardName)
     if obj then fs:SetFontObject(obj) end
     return fs
+end
+
+---------------------------------------------------------------------------
+-- Text on a button
+--
+-- A button does not simply draw its font string: it holds a normal, a
+-- highlight and a disabled font object and puts the right one back on
+-- the string every time its state changes. UIPanelButtonTemplate's
+-- normal font is GameFontNormalOutline - yellow, twelve point - so a
+-- button fonted by reaching for GetFontString() and setting the object
+-- there looks right until the first hover, and from then on wears
+-- Blizzard's yellow and stays there.
+--
+-- So font the button, not the string. One face serves both resting and
+-- hovered: the highlight texture already says the mouse is over it, and
+-- text that changes size under the cursor reads as a fault.
+---------------------------------------------------------------------------
+
+Theme.BUTTON_FONT = "GameFontHighlightSmall"
+
+-- The colors button text comes in. A style at the call site rather than
+-- three numbers, so every destructive button in the suite is the same
+-- red and changing that red is one edit.
+Theme.BUTTON_STYLES = {
+    danger  = { 1.00, 0.45, 0.45 },
+    primary = Theme.colors.gold,
+}
+
+-- Font object names come in a Normal / Highlight / Disable set around a
+-- shared prefix and suffix, so the grey sibling of a face can be worked
+-- out rather than asked for.
+local FONT_ROLES = { "Normal", "Highlight", "Disable" }
+
+local function DisabledSibling(blizzardName)
+    for _, role in ipairs(FONT_ROLES) do
+        local prefix, suffix = blizzardName:match("^(.-)" .. role .. "(.*)$")
+        if prefix then
+            local sized = prefix .. "Disable" .. suffix
+            if _G[sized] then return sized end
+            local plain = prefix .. "Disable"
+            if _G[plain] then return plain end
+            return nil
+        end
+    end
+end
+
+function Theme.SetButtonFont(button, blizzardName, color)
+    if not (button and button.SetNormalFontObject) then return end
+    blizzardName = blizzardName or Theme.BUTTON_FONT
+
+    local face = Theme.TintedFontObject(blizzardName, color)
+    if not face then return end
+
+    local greyName = DisabledSibling(blizzardName)
+    local grey = greyName and Theme.FontObject(greyName) or face
+
+    button:SetNormalFontObject(face)
+    button:SetHighlightFontObject(face)
+    button:SetDisabledFontObject(grey)
+
+    -- Those are only read when the state changes, so put the resting one
+    -- on the string now instead of waiting for the first hover.
+    local fs = button:GetFontString()
+    if fs then fs:SetFontObject(face) end
+end
+
+-- The one way to make a push button.
+--
+--   Theme.CreateButton(parent, { text = "Save", width = 80, height = 22 })
+--   Theme.CreateButton(row, { text = "Remove", style = "danger" })
+--
+-- Size and anchors are left to the caller where it is easier to read
+-- them beside the rest of the layout; what the factory guarantees is
+-- that the text is in the suite's face and stays there.
+function Theme.CreateButton(parent, opts)
+    opts = opts or {}
+    local button = CreateFrame("Button", opts.name, parent,
+        opts.template or "UIPanelButtonTemplate")
+    if opts.width and opts.height then button:SetSize(opts.width, opts.height) end
+    if opts.text then button:SetText(opts.text) end
+    Theme.SetButtonFont(button, opts.font or Theme.BUTTON_FONT,
+        opts.color or (opts.style and Theme.BUTTON_STYLES[opts.style]))
+    if opts.onClick then button:SetScript("OnClick", opts.onClick) end
+    return button
 end
 
 -- Re-point every mirrored object at the face now in force.
@@ -372,7 +622,7 @@ function Theme.ReleaseFontObject(name)
 end
 
 function Theme.RefreshFontObjects()
-    for name in pairs(fontObjects) do Theme.FontObject(name) end
+    for key, recipe in pairs(fontRecipes) do BuildFontObject(key, recipe.name, recipe.color) end
     for name in pairs(adoptedFonts) do DrawAdopted(name) end
 end
 
@@ -1121,6 +1371,44 @@ end
 -- is a different and much larger claim than making ours match.
 ---------------------------------------------------------------------------
 
+-- The suite's face on a menu's words.
+--
+-- A menu's text belongs to its buttons, not to the menu, so the walk goes
+-- down: the regions of this frame, then each child and its regions in
+-- turn. Depth-capped because a menu with a submenu open is a tree, and an
+-- unbounded walk over somebody else's frames is a good way to find a
+-- cycle nobody knew was there.
+--
+-- Through the font object rather than the file. The menu compositor
+-- forbids SetFont on the strings it owns, and it refuses on the key being
+-- read rather than on the call - so even reaching for the function to
+-- hand it to pcall is enough to raise. Every read below is inside the
+-- pcall for that reason.
+--
+-- Mirroring the object the string is already using is what keeps its
+-- size: the mirror copies size, flags, colour and justification from the
+-- one it was made from, and changes only the face. A menu sets its sizes
+-- deliberately and this leaves them alone.
+local function ApplyMenuFont(frame, depth)
+    if not (frame and frame.GetRegions) or depth > 4 then return end
+
+    for _, region in ipairs({ frame:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "FontString" then
+            pcall(function()
+                local base = region:GetFontObject()
+                local name = base and base.GetName and base:GetName()
+                local mirrored = name and Theme.FontObject(name)
+                if mirrored then region:SetFontObject(mirrored) end
+            end)
+        end
+    end
+
+    if not frame.GetChildren then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        ApplyMenuFont(child, depth + 1)
+    end
+end
+
 function Theme.ApplyMenuChrome(menu)
     -- Asked only about GetRegions. A menu frame's metatable raises on so
     -- much as reading CreateTexture, CreateFontString or CreateMaskTexture
@@ -1155,6 +1443,13 @@ function Theme.ApplyMenuChrome(menu)
     chrome:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
     chrome:Show()
     Theme.ApplyDialog(chrome)
+
+    -- After the menu has laid itself out, since that is when its buttons
+    -- have their text. Re-done on every open rather than once, because a
+    -- menu frame is reused and comes back with the game's font object on
+    -- it again.
+    ApplyMenuFont(menu, 0)
+
     return menu
 end
 

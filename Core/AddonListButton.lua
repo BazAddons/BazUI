@@ -26,7 +26,7 @@ local function AttachAddonOptionsButton()
     if not AddonList or not AddonList.OkayButton then return end
     if AddonList.BazUIAddonOptionsButton then return end
 
-    local btn = CreateFrame("Button", "BazUIAddonOptionsButton", AddonList, "UIPanelButtonTemplate")
+    local btn = BazUI.Skin.Theme.CreateButton(AddonList, { name = "BazUIAddonOptionsButton" })
     btn:SetText("Addon Options")
     btn:SetSize(AddonList.OkayButton:GetWidth() + 60, AddonList.OkayButton:GetHeight())
     btn:SetPoint("RIGHT", AddonList.OkayButton, "LEFT", -4, 0)

@@ -260,7 +260,7 @@ local function CreateKeybindFrame()
     cbLabel:SetText("Character Specific Keybindings")
 
     -- Buttons row
-    local okayBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    local okayBtn = BazUI.Skin.Theme.CreateButton(f)
     okayBtn:SetSize(120, 28)
     okayBtn:SetPoint("BOTTOMLEFT", 20, 18)
     okayBtn:SetText("Okay")
@@ -268,7 +268,7 @@ local function CreateKeybindFrame()
         Keybinds:ExitMode()
     end)
 
-    local defaultsBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    local defaultsBtn = BazUI.Skin.Theme.CreateButton(f)
     defaultsBtn:SetSize(120, 28)
     defaultsBtn:SetPoint("BOTTOM", 0, 18)
     defaultsBtn:SetText("Reset To Default")
@@ -295,7 +295,7 @@ local function CreateKeybindFrame()
         end
     end)
 
-    local cancelBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    local cancelBtn = BazUI.Skin.Theme.CreateButton(f)
     cancelBtn:SetSize(120, 28)
     cancelBtn:SetPoint("BOTTOMRIGHT", -20, 18)
     cancelBtn:SetText("Cancel")
