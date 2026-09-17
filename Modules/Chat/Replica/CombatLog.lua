@@ -26,6 +26,31 @@ local addon   = BazUI.Chat            -- Chat's private namespace
 local CombatLog = {}
 addon.CombatLog = CombatLog
 
+---------------------------------------------------------------------------
+-- Calling into Blizzard's combat log without tainting it
+--
+-- Taint follows the call, and it does not wash off. Blizzard_CombatLog
+-- applies its filters while it loads, which starts the processor's
+-- refilter ticker - and that ticker calls C_CombatLogSecure, a namespace
+-- the client marks SecureOnly. A tainted caller gets nothing back from
+-- it, and their own code takes the answer straight to math.min, whose
+-- documented return is not nilable. So loading their addon from our code
+-- gave 300 errors a session in a file we never touch.
+--
+-- securecallfunction is the way in: the callee runs without our taint, so
+-- the load, the filter it applies and the ticker it starts are all clean.
+-- Falls back to pcall where the client has no such thing, which keeps the
+-- old behaviour rather than inventing a new one.
+---------------------------------------------------------------------------
+
+local function SecureCall(fn, ...)
+    if type(fn) ~= "function" then return end
+    if securecallfunction then
+        return securecallfunction(fn, ...)
+    end
+    return pcall(fn, ...)
+end
+
 -- The Log tab is window index 4 (DEFAULTS.windows[4] in Core/Init.lua,
 -- eventGroup = "LOG"). Resolved lazily so the rebind survives any
 -- future renumbering.
@@ -160,9 +185,7 @@ local function ApplyRedirect()
     -- our frame - the layout reads COMBATLOG width to decide which
     -- buttons fit on the strip. Safe to call any time after the
     -- combat-log addon's OnLoad has run.
-    if _G.Blizzard_CombatLog_Update_QuickButtons then
-        pcall(_G.Blizzard_CombatLog_Update_QuickButtons)
-    end
+    SecureCall(_G.Blizzard_CombatLog_Update_QuickButtons)
 
     -- Sync the message limit Blizzard's driver tracks with our Log
     -- frame's actual SetMaxLines value so OnCombatLogMessageLimitChanged
@@ -183,8 +206,10 @@ end
 ---------------------------------------------------------------------------
 
 function CombatLog:Apply()
+    -- Their ADDON_LOADED handler applies a filter and starts a refilter
+    -- while this call is still on the stack, so it has to go in clean.
     if C_AddOns and C_AddOns.LoadAddOn then
-        C_AddOns.LoadAddOn("Blizzard_CombatLog")
+        SecureCall(C_AddOns.LoadAddOn, "Blizzard_CombatLog")
     end
 
     if ApplyRedirect() then return end
