@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - "*"
+  # A run you can start by hand, which packages and stops. Nothing is
+  # uploaded and nothing is published, so it is safe to use to find out
+  # what the packager makes of a TOC before committing to a release.
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload to CurseForge (otherwise package only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,13 +27,26 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # -g classic builds the Classic Era flavour while development happens
-      # there. World of Warcraft: Forever has no packager or CurseForge game
-      # version yet; revisit when the beta client and CurseForge catch up.
+      # No -g. The flavour used to be forced to classic while development
+      # happened on Classic Era; the TOC now declares Interface 16001, which
+      # is World of Warcraft: Forever, and -g classic expects 11xxx. Left to
+      # itself the packager reads the TOC and decides, which is one fewer
+      # place for the two of them to disagree.
       - name: Package and release
         uses: BigWigsMods/packager@v2
         with:
-          args: -g classic
+          args: ${{ (github.event_name == 'workflow_dispatch' && !inputs.upload) && '-d' || '' }}
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only for a hand-started run: the zip is kept on the run itself so it
+      # can be downloaded and looked at, rather than having to be rebuilt
+      # locally to see what would have shipped.
+      - name: Keep the package
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BazUI-package
+          path: .release/*.zip
+          if-no-files-found: warn
