@@ -643,6 +643,92 @@ local function ApplyRankIcon(bar, unit)
     bar.frame:SetLeadIcon(path, math.min(size, math.max(1, fill)))
 end
 
+---------------------------------------------------------------------------
+-- Resting
+--
+-- The game marks a rested player with an animated zZ beside the portrait.
+-- There is no portrait here, so it goes on the health bar - and since the
+-- mark is a flipbook rather than a still, it needs an animation of its own
+-- rather than a texture swap.
+--
+-- The art is the game's own atlas, asked for by name the way any texture
+-- is. The animation is ours: seven rows of six, forty-two frames, a second
+-- and a half a loop, which is the shape the atlas is drawn in. A client
+-- without the atlas gets no icon and no error.
+---------------------------------------------------------------------------
+
+local REST_ATLAS = "UI-HUD-UnitFrame-Player-Rest-Flipbook"
+local REST_ROWS, REST_COLS, REST_FRAMES, REST_DURATION = 7, 6, 42, 1.5
+
+local restIcons = setmetatable({}, { __mode = "k" })
+
+local function HasRestAtlas()
+    return C_Texture and C_Texture.GetAtlasInfo
+        and C_Texture.GetAtlasInfo(REST_ATLAS) ~= nil
+end
+
+local function RestIcon(frame)
+    local icon = restIcons[frame]
+    if icon then return icon end
+    if not HasRestAtlas() then return nil end
+
+    icon = CreateFrame("Frame", nil, frame)
+    icon:SetFrameLevel(frame:GetFrameLevel() + 3)
+    icon.texture = icon:CreateTexture(nil, "OVERLAY")
+    icon.texture:SetAtlas(REST_ATLAS)
+    icon.texture:SetAllPoints(icon)
+
+    local group = icon:CreateAnimationGroup()
+    group:SetLooping("REPEAT")
+    local flip = group:CreateAnimation("FlipBook")
+    flip:SetTarget(icon.texture)
+    flip:SetDuration(REST_DURATION)
+    flip:SetFlipBookRows(REST_ROWS)
+    flip:SetFlipBookColumns(REST_COLS)
+    flip:SetFlipBookFrames(REST_FRAMES)
+    flip:SetFlipBookFrameWidth(0)
+    flip:SetFlipBookFrameHeight(0)
+    icon.anim = group
+
+    icon:Hide()
+    restIcons[frame] = icon
+    return icon
+end
+
+-- Only the player's health bar wears it: resting is a fact about you, and
+-- saying it twice on two bars says nothing more.
+local function ApplyRestIcon(bar, unit)
+    local wanted = bar.def.kind == "health"
+        and unit == "player"
+        and addon:GetSetting("restIcon") ~= false
+        and IsResting and IsResting() and true or false
+
+    local icon = restIcons[bar.frame]
+    if not wanted then
+        if icon then
+            icon.anim:Stop()
+            icon:Hide()
+        end
+        return
+    end
+
+    icon = icon or RestIcon(bar.frame)
+    if not icon then return end
+
+    -- Sized to the fill rather than to the bar, so it sits inside the
+    -- coloured part at any height, and never smaller than it can be read.
+    local _, fill = bar.frame:GetFillSize()
+    local size = math.max(12, math.floor((fill or 16) * 1.1 + 0.5))
+    icon:SetSize(size, size)
+    icon:ClearAllPoints()
+    icon:SetPoint("RIGHT", bar.frame, "RIGHT", -4, 0)
+
+    if not icon:IsShown() then
+        icon:Show()
+        icon.anim:Play()
+    end
+end
+
 -- The glow is the same fact as the word, drawn instead of written. Only
 -- health bars wear it: a unit's rank on both its bars is the same thing
 -- said twice, and twice as bright.
@@ -695,6 +781,7 @@ local function UpdateHealth(bar)
     local unit = bar.def.unit
     ApplyRankGlow(bar, unit)
     ApplyRankIcon(bar, unit)
+    ApplyRestIcon(bar, unit)
     if not UnitExists(unit) then
         if previewing then DrawPlaceholder(bar, "health") end
         return

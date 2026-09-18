@@ -33,6 +33,11 @@ addon = BazUI:RegisterModule("UnitFrames", {
         rankGlow     = true,
         rankIcon     = true,
         rankWord     = false,
+        -- The game's animated zZ for a rested player, on the player's
+        -- own health bar. On by default: it is a fact the stock frame
+        -- always showed, and losing it is a regression rather than a
+        -- simplification.
+        restIcon     = true,
         showLevel    = false,
         -- A bar showing something the game has a window for is a way into
         -- that window: reputation and experience each have one.

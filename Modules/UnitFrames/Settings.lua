@@ -97,6 +97,14 @@ local SPEC = {
               addon:SetSetting("rankIcon", value and true or false)
               addon.UnitBars:UpdateAll()
           end },
+        { key = "restIcon", label = "Resting mark", type = "toggle",
+          section = "general", order = 3.4,
+          desc = "The game's animated zZ, on your own health bar, while you are somewhere that rests you. The mark is the game's own art; where the client has no such art, the setting does nothing.",
+          get = function() return addon:GetSetting("restIcon") ~= false end,
+          set = function(_, value)
+              addon:SetSetting("restIcon", value and true or false)
+              addon.UnitBars:UpdateAll()
+          end },
         { key = "rankWord", label = "Rank written beside the name", type = "toggle",
           section = "general", order = 3.3,
           desc = "Rare, Elite, Rare Elite or Boss, spelled out after the name. The plainest of the three, and the one that costs the name the most room.",
