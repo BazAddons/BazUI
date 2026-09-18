@@ -36,10 +36,26 @@ function BazUI.UnitColor(unit, opts)
     if UnitIsConnected and not UnitIsConnected(unit) then return C.offline end
     if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then return C.dead end
 
+    -- UnitClass is SecretWhenUnitIdentityRestricted, and identity comes and
+    -- goes: the same unit answers plainly one moment and with a value we
+    -- are not allowed to read the next. Indexing RAID_CLASS_COLORS with one
+    -- of those yields a colour whose parts are secret too, and a bar
+    -- painted with it comes out black - which is what made health and power
+    -- bars flick to black and back for no visible reason.
+    --
+    -- Read it properly, and where the answer is not ours to have, fall back
+    -- to the ordinary living colour rather than to something that looks
+    -- like an error. A class we cannot know is not a unit in trouble.
     if opts.classColor and UnitIsPlayer(unit) then
-        local _, class = UnitClass(unit)
-        local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-        if color then return { color.r, color.g, color.b, 1 } end
+        local color = BazUI.Secret.Read(function()
+            local _, class = UnitClass(unit)
+            local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+            if not c then return nil end
+            -- Touched here, inside the read, so a secret component raises
+            -- here rather than on its way to SetVertexColor.
+            return { c.r + 0, c.g + 0, c.b + 0, 1 }
+        end, nil)
+        if color then return color end
     end
 
     if opts.reaction then

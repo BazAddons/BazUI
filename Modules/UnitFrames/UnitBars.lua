@@ -291,7 +291,13 @@ UnitBars.STOCK = {
         label   = "Casting bar",
         desc    = "The game's own casting bar, under the middle of the screen.",
         default = true,
-        frames  = { "CastingBarFrame", "PlayerCastingBarFrame" },
+        -- Four names for one bar. PlayerCastingBarFrame is the managed
+        -- one at the bottom, Overlay is the copy that appears over the
+        -- player frame, Gamepad is its own frame again, and
+        -- CastingBarFrame is what older builds called it. A name that
+        -- does not exist costs nothing.
+        frames  = { "PlayerCastingBarFrame", "OverlayPlayerCastingBarFrame",
+                    "GamepadPlayerCastingBarFrame", "CastingBarFrame" },
     },
     {
         key    = "hidePartyFrames",
@@ -422,11 +428,18 @@ local function HealthColor(unit)
     return BazUI.UnitColor(unit, { classColor = addon:GetSetting("classColor") })
 end
 
+-- Read the same careful way as the health colour. UnitPowerType is not
+-- documented as secret-returning, but a restricted unit hands back values
+-- of every sort, and a colour built from one paints the bar black. The
+-- parts are added to zero inside the read so a secret raises here rather
+-- than arriving at the texture.
 local function PowerColor(unit)
-    local powerType, token = UnitPowerType(unit)
-    local color = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
-    if color then return { color.r, color.g, color.b, 1 } end
-    return { 0.1, 0.3, 1, 1 }
+    return BazUI.Secret.Read(function()
+        local powerType, token = UnitPowerType(unit)
+        local c = PowerBarColor and (PowerBarColor[token] or PowerBarColor[powerType])
+        if not c then return nil end
+        return { c.r + 0, c.g + 0, c.b + 0, 1 }
+    end, nil) or { 0.1, 0.3, 1, 1 }
 end
 
 -- What a bar says about itself. A health bar has more to say than an
