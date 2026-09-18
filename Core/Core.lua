@@ -48,6 +48,28 @@ BazUI._svTrace = {
     saysLoadedAtFileLoad = C_AddOns.IsAddOnLoaded(ADDON_NAME) and "yes" or "no",
 }
 
+-- Every change to the table, in order.
+--
+-- The readings so far are snapshots, and a snapshot cannot say whether the
+-- file's eight keys ever arrived and were then replaced. This watches the
+-- global every frame from here until login and writes down each distinct
+-- shape it takes. If a table holding barsCharButtons or moduleSwitchLog
+-- ever appears, the file is being read and something of ours is discarding
+-- it; if one never does, the file is never executed.
+BazUI._svTrace.shapes = {}
+
+local sampler = CreateFrame("Frame")
+local lastShape
+sampler:SetScript("OnUpdate", function()
+    local shape = KeyNames(_G.BazUIDB)
+    if shape ~= lastShape then
+        lastShape = shape
+        local shapes = BazUI._svTrace.shapes
+        shapes[#shapes + 1] = shape
+        if #shapes > 12 then sampler:SetScript("OnUpdate", nil) end
+    end
+end)
+
 local svProbe = CreateFrame("Frame")
 svProbe:RegisterEvent("ADDON_LOADED")
 svProbe:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -60,6 +82,7 @@ svProbe:SetScript("OnEvent", function(self, event, name)
         self:UnregisterEvent("ADDON_LOADED")
     else
         t.atEnteringWorld = CountKeys(_G.BazUIDB)
+        sampler:SetScript("OnUpdate", nil)
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
     end
 end)
@@ -949,6 +972,10 @@ function BazUI:ReportSavedVariables()
     print("  our ADDON_LOADED:   " .. tostring(t.namesAtAddonLoaded))
     print("  entering world:     " .. tostring(t.atEnteringWorld) .. " keys")
     print("  now:              " .. KeyNames(_G.BazUIDB))
+
+    for i, shape in ipairs(BazUI._svTrace.shapes or {}) do
+        print("  shape " .. i .. ": " .. shape)
+    end
 
     local _, build, _, iface = GetBuildInfo()
     print(("  client build %s wants interface |cffffd700%s|r; our TOC says |cffffd700%s|r")
