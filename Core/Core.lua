@@ -112,6 +112,16 @@ svProbe:SetScript("OnEvent", function(self, event, name)
         t.namesAtRawEvent = KeyNames(_G.BazUIDB)
         self:UnregisterEvent("ADDON_LOADED")
 
+        -- The account-wide file is written every time and never read
+        -- back - BugGrabber's own session counter sits at 1 across saves
+        -- too, so it is the client rather than us. This asks the same
+        -- question of a per-character file: if that one comes back, there
+        -- is a workaround; if it does not, nothing an addon saves survives
+        -- a reload on this build and it belongs in a bug report.
+        _G.BazUICharDB = _G.BazUICharDB or {}
+        t.charLoads = _G.BazUICharDB.loads or 0
+        _G.BazUICharDB.loads = t.charLoads + 1
+
         variablesReady = true
         for _, entry in ipairs(variablesQueue) do entry() end
         wipe(variablesQueue)
@@ -1011,6 +1021,9 @@ function BazUI:ReportSavedVariables()
     for i, shape in ipairs(BazUI._svTrace.shapes or {}) do
         print("  shape " .. i .. ": " .. shape)
     end
+
+    print(("  per-character file remembered %s previous load%s"):format(
+        tostring(t.charLoads), (t.charLoads == 1) and "" or "s"))
 
     local _, build, _, iface = GetBuildInfo()
     print(("  client build %s wants interface |cffffd700%s|r; our TOC says |cffffd700%s|r")

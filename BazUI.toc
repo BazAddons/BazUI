@@ -9,6 +9,7 @@
 ## Category: BazUI
 ## X-Category: Interface Enhancements
 ## SavedVariables: BazUIDB
+## SavedVariablesPerCharacter: BazUICharDB
 ## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
 
 # 16001 is World of Warcraft: Forever 1.60.1. It was 11509 (Classic Era)
