@@ -1,45 +1,54 @@
-## 001
+## 002
 
-**On the World of Warcraft: Forever beta, the chat module is not included.**
-A chat replacement has to take over DEFAULT_CHAT_FRAME, and on that client
-taking over a global the game reads breaks its Edit Mode. Everything else is
-here; the game's own chat is untouched and works as it always has.
+**Settings do not stick on the World of Warcraft: Forever beta, and that is
+not BazUI.** That client writes every addon's settings when you log out and
+never reads them back when you log in, so everything starts from defaults each
+launch. It is not just this addon - it affects every addon on the beta, and
+Blizzard's own settings too. Nothing an addon can do about it. When Blizzard
+fixes the client, BazUI will simply start remembering again with no update
+needed.
 
-The first release of BazUI: the Baz Suite rebuilt as a single addon, with one options window, one profile system and one look across every part of it.
+Until then, what you get on every launch is the built-in starting layout, which
+has been rebuilt this release to be a real arrangement rather than a stub:
+action bars along the bottom, health and power under them, target frames up
+top, buffs and debuffs sharing a line above the main bar, bags on the right,
+and the minimap and quest tracker in the drawer.
 
-**Your interface**
+**Chat is back on Forever.** It was held out of the first release over a
+conflict with the game's Edit Mode. That turned out to be narrower than
+feared, and chat now loads on both clients again - tabs, channels, history,
+timestamps, copy and the combat log tab.
 
-- **Action bars** you create, holding spells, items, macros, mounts, equipment sets and flyouts, with quick keybinds and import/export. A new character's abilities are placed for you on first login, newly learned spells take the first empty slot, and the active stance or form lights up.
-- **Unit frames** as bars you make yourself: health, power, casting, experience and reputation, floating or docked to an action bar or to each other. There are no portraits, which is what lets any bar dock to anything else. Party bars, party pets, range fading, and a way to copy a whole docked stack onto another unit.
-- **Nameplates** over each unit's head in the same look, colored by whether it will attack you, with the one you have targeted picked out.
-- **Rares and elites** marked on your target and on nameplates: a glow around the bar colored by rank, a word beside the name, or both.
-- **Auras** in rows that dock to any bar, each with its own icon size, spacing, growth direction, sorting and limits. Right-click still cancels a buff.
-- **Bags**: one panel for every bag and the keyring, grouped by bag or by category, with pinning, search and gold. Free space is a category you can move and collapse, a rarity glow around slots, the free count in the title bar, and a button that sells your greys when a merchant is open.
-- **Chat**: a tabbed replacement with per-tab channels, tabs you can pull out into a window of their own or group together and flow either direction, timestamps, persistent history, copy, and the combat log on its own tab.
-- **Minimap and drawers**: the minimap in its own frame, every addon's minimap button collected into one row, and a slide-out drawer of widgets - clock, coordinates, gold, durability, free slots, quest tracker, notepad, calculator, performance and twenty more. Anything publishing a LibDataBroker feed becomes a widget too.
-- **Notifications**: toasts and a browsable history for loot, quests, reputation, mail, experience, zones, instances, groups, professions, the auction house, friends and guild, with a movable bell and Do Not Disturb. Each card carries a band in its source's color. If you run Zygor, its notifications can come through here too, clicks and all.
-- **Codex**: one window for what you have done and what is left - today's quests and lockouts, reputations, goals, items and a wishlist.
-- **Micro menu** on a movable bar as round icons, with your portrait on the character button.
-- **Tooltip** in the same skin and the same face, anchored where you want it.
-- **Quality of life**: instant quest text, repairing and selling greys at a vendor, a screenshot when you level, declining duels, and the game's own windows made draggable one at a time - the character sheet, the map, the spellbook, the options window and more. All off until you turn them on.
+### Fixed
 
-**Make it look how you like**
+- **Health and power bars no longer flick to black.** On the beta the game
+  sometimes will not tell an addon what class someone is. Bars now get the
+  right colour anyway instead of turning black for a few seconds.
+- **Auras work again on the beta.** Buff and debuff rows could not be built at
+  all on that client. They are rebuilt on BazUI's own rows now, and
+  right-clicking a buff still cancels it.
+- **The quest tracker shows your quests.** It was switched on but always
+  empty on the beta. It now also handles scenarios, dungeon timers, bonus
+  objectives, world quests, achievements and tracked recipes where the client
+  has them.
+- **No more errors while fighting** from the nameplates, which tripped over
+  units like your target's target.
+- **Bars stop erroring when you close the editor mid-fight.** Closing BazUI's
+  edit mode while something was attacking you could fail; the change is now
+  applied the moment combat ends.
 
-Nearly everything BazUI draws is a plain texture tinted by a handful of colors, so the whole look is a list of numbers rather than a folder of art. The Skin tab lets you change any of it:
+### New
 
-- **Colors** - nineteen of them, grouped by what they are for, each with a color picker.
-- **Borders** - a list of bands running outward from the fill. Change a color or a thickness, add as many as you like, or take them all off for a bare edge. Every edge in the addon follows: bars, panels, nameplates, round buttons, tooltips.
-- **Bar fill** - gloss, marble, flat, or a gradient worked out from each bar's own color. If you have LibSharedMedia, everything it knows about is in the list too.
-
-Changes are applied as you make them. Skins can be exported and imported as a string, and another addon can ship one.
-
-**How it behaves**
-
-- A fresh install lays itself out at any resolution: frames, bars, bags, chat, micro menu and drawer all placed.
-- Every module has an off switch, per profile. Turn one off and the game's own version comes back.
-- Blizzard's own frames are only hidden where you ask, on a switch per frame.
-- Everything can be moved in BazUI's Edit Mode, docked to anything else, and nudged a pixel at a time.
-- A **User Manual** sits at the foot of the settings list, with a page per module.
-- `/baz` opens the options. `/baz check` reports anything the addon expects from the game's own interface and cannot find - useful for telling a real bug from a client that has moved something.
-
-Built for World of Warcraft: Forever, and still in development - bug reports and suggestions are welcome.
+- **Aura rows can take half the width of what they are docked to**, so two
+  rows share one line - buffs on the left of your action bar and debuffs on
+  the right. Set it under Takes, with a Space beside slider for the gap.
+- **Settings that do not apply right now are greyed out instead of
+  disappearing.** A row that vanishes leaves you wondering whether the setting
+  exists at all; now it stays put and tells you something else has to change
+  first.
+- **More of the game's windows can be made draggable** - the quest log,
+  professions and the auction house were missing on the beta because they go
+  by different names there.
+- **`/baz check`** lists everything BazUI takes hold of in the game's own
+  interface and says what is missing. Worth running first on a new client
+  build.

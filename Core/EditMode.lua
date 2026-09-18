@@ -441,6 +441,42 @@ local BTN_WIDTH = POPUP_WIDTH - 30
 
 -- Widget Builders
 
+-- Greying out, for every kind of row
+--
+-- A control that does not apply right now stays where it is and goes grey.
+-- It does not disappear. Hiding rearranges the panel under your cursor and
+-- leaves you wondering whether a setting exists at all - the row that is
+-- there and grey tells you both that it exists and that something else has
+-- to change first.
+--
+-- `disabled` is a function so it can be asked repeatedly; the state is
+-- polled rather than pushed, because a widget is usually disabled by what
+-- some other widget in the same panel was just set to, and there is no
+-- panel-wide refresh to hang it off. Five times a second is well under
+-- what anyone notices and costs one boolean compare, and the handler is
+-- only registered for rows that ask for it.
+local DISABLED_POLL = 0.2
+
+local function BindDisabled(row, widgetDef, apply)
+    if not widgetDef.disabled then return end
+
+    row.UpdateDisabled = function(self)
+        local isDisabled = widgetDef.disabled() and true or false
+        if isDisabled == self._lastDisabled then return end
+        self._lastDisabled = isDisabled
+        apply(isDisabled)
+    end
+
+    row:SetScript("OnUpdate", function(self, elapsed)
+        self._t = (self._t or 0) + elapsed
+        if self._t < DISABLED_POLL then return end
+        self._t = 0
+        self:UpdateDisabled()
+    end)
+
+    row:UpdateDisabled()
+end
+
 local function CreateSettingSlider(parent, widgetDef)
     local row = CreateFrame("Frame", nil, parent)
     row:SetSize(POPUP_WIDTH - 30, ROW_HEIGHT)
@@ -563,6 +599,18 @@ local function CreateSettingSlider(parent, widgetDef)
         return row._value
     end
 
+    BindDisabled(row, widgetDef, function(off)
+        if slider.SetEnabled then slider:SetEnabled(not off) end
+        valBox:SetEnabled(not off)
+        if off then
+            text:SetTextColor(0.5, 0.5, 0.5)
+            valBox:SetTextColor(0.5, 0.5, 0.5)
+        else
+            text:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+            valBox:SetTextColor(1, 1, 1)
+        end
+    end)
+
     return row
 end
 
@@ -599,6 +647,15 @@ local function CreateSettingCheckbox(parent, widgetDef)
         return cb:GetChecked()
     end
 
+    BindDisabled(row, widgetDef, function(off)
+        cb:SetEnabled(not off)
+        if off then
+            text:SetTextColor(0.5, 0.5, 0.5)
+        else
+            text:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+        end
+    end)
+
     return row
 end
 
@@ -621,42 +678,28 @@ local function CreateSettingDropdown(parent, widgetDef)
     row.options = options
     row.selectedValue = nil
 
-    -- Refresh enabled-state from widgetDef.disabled() callback. Polled
-    -- via OnUpdate (throttled) so the dropdown reacts live to other
-    -- widgets toggling its disabled state. Grayed visually + click
-    -- disabled + (optional) `disabledLabel` shown instead of value.
-    row.UpdateDisabled = function(self)
-        local isDisabled = (widgetDef.disabled and widgetDef.disabled())
-            and true or false
-        if isDisabled == self._lastDisabled then return end
-        self._lastDisabled = isDisabled
-        if isDisabled then
-            btn:Disable()
-            text:SetTextColor(0.5, 0.5, 0.5)
-            if widgetDef.disabledLabel then
-                btn:SetDefaultText(widgetDef.disabledLabel)
-            end
-        else
-            btn:Enable()
-            text:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
-            if self.selectedValue then self:SetValue(self.selectedValue) end
+    -- Painting the button's text is its own job, separate from choosing a
+    -- value. Both the choice and the disabled state want to repaint it, and
+    -- routing either through the other is what turned this into an infinite
+    -- loop: SetValue re-asserted the disabled state, whose enable path
+    -- called SetValue.
+    local function PaintText()
+        if widgetDef.disabled and widgetDef.disabled() and widgetDef.disabledLabel then
+            btn:SetDefaultText(widgetDef.disabledLabel)
+            return
         end
+        for _, opt in ipairs(options) do
+            if opt.value == row.selectedValue then
+                btn:SetDefaultText(opt.label)
+                return
+            end
+        end
+        btn:SetDefaultText("Custom")
     end
 
     row.SetValue = function(self, val)
         self.selectedValue = val
-        local found = false
-        for _, opt in ipairs(options) do
-            if opt.value == val then
-                btn:SetDefaultText(opt.label)
-                found = true
-                break
-            end
-        end
-        if not found then
-            btn:SetDefaultText("Custom")
-        end
-        self:UpdateDisabled()
+        PaintText()
     end
 
     row.Setup = function(self)
@@ -673,18 +716,16 @@ local function CreateSettingDropdown(parent, widgetDef)
         end)
     end
 
-    -- Live-poll disabled state at ~5 Hz when a callback is provided.
-    -- Cheap (a single bool compare per tick) and avoids needing a
-    -- popup-wide refresh API. Only registers OnUpdate when actually
-    -- needed (most widgets don't use disabled, so they pay nothing).
-    if widgetDef.disabled then
-        row:SetScript("OnUpdate", function(self, elapsed)
-            self._t = (self._t or 0) + elapsed
-            if self._t < 0.2 then return end
-            self._t = 0
-            self:UpdateDisabled()
-        end)
-    end
+    BindDisabled(row, widgetDef, function(off)
+        if off then
+            btn:Disable()
+            text:SetTextColor(0.5, 0.5, 0.5)
+        else
+            btn:Enable()
+            text:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+        end
+        PaintText()
+    end)
 
     return row
 end
@@ -720,6 +761,17 @@ local function CreateSettingInput(parent, widgetDef)
     row.GetValue = function(self)
         return editBox:GetText()
     end
+
+    BindDisabled(row, widgetDef, function(off)
+        editBox:SetEnabled(not off)
+        if off then
+            label:SetTextColor(0.5, 0.5, 0.5)
+            editBox:SetTextColor(0.5, 0.5, 0.5)
+        else
+            label:SetTextColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+            editBox:SetTextColor(1, 1, 1)
+        end
+    end)
 
     return row
 end

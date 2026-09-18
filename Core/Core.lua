@@ -1055,10 +1055,18 @@ function BazUI:ReportSavedVariables()
     print(("  per-character file remembered %s previous load%s"):format(
         tostring(t.charLoads), (t.charLoads == 1) and "" or "s"))
 
+    -- "Interface" is not a metadata key the client hands back, which is why
+    -- this used to print a question mark and tell us nothing at all. Any X-
+    -- field is readable, so the TOC carries a copy of its own interface line
+    -- under one.
+    --
+    -- Worth having because a TOC is read when the client launches and never
+    -- again - /reload does not re-read it - so a test of a TOC change that
+    -- cannot tell those two apart proves nothing either way.
     local _, build, _, iface = GetBuildInfo()
-    print(("  client build %s wants interface |cffffd700%s|r; our TOC says |cffffd700%s|r")
+    print(("  client build %s wants interface |cffffd700%s|r; our TOC declares |cffffd700%s|r")
         :format(tostring(build), tostring(iface),
-            tostring(C_AddOns.GetAddOnMetadata(BazUI.ADDON_NAME, "Interface") or "?")))
+            tostring(C_AddOns.GetAddOnMetadata(BazUI.ADDON_NAME, "X-Interface-Stamp") or "?")))
 
     local log = _G.BazUIDB and _G.BazUIDB.moduleSwitchLog
     if type(log) == "table" then

@@ -118,6 +118,85 @@ function BazUI.Secret.Read(fn, fallback)
     return value
 end
 
+-- Which functions will take one
+--
+-- The client documents this itself. Every entry in
+-- Blizzard_APIDocumentationGenerated carries a SecretArguments field, and
+-- "AllowedWhenTainted" means an addon may pass a secret to it. That is a
+-- short list, and worth knowing by heart, because everything on it is a
+-- place a value we may not read can still do its job:
+--
+--   StatusBar   SetValue, SetMinMaxValues, SetStatusBarColor,
+--               SetStatusBarDesaturated
+--   FontString  SetText, SetFormattedText, SetTextColor, SetTextToFit
+--   Texture     SetTexture, SetAtlas, SetColorTexture, SetVertexColor,
+--               SetTexCoord, SetDesaturated, SetRotation
+--   Frame       SetAlpha, SetAlphaFromBoolean, SetID
+--   Numbers     BreakUpLargeNumbers, AbbreviateNumbers,
+--               RoundToNearestString, FloorToNearestString,
+--               TruncateWhenZero
+--   Color       GetClassColor, EvaluateColorFromBoolean, WrapTextInColor
+--
+-- So a health bar can be filled, a number can be written out with its
+-- thousands separators, and a class color can be found, all without ever
+-- being allowed to look. Anything absent raises: SetGradient, string
+-- format, indexing a table with one, and every comparison.
+--
+-- Note what that costs. A color whose parts are secret can be painted but
+-- not shaded, so whatever holds one has to know. Ours say so with a
+-- `secret` field, and Core/StatusBar drops its gradient when it sees it.
+
+-- Keep what a call handed back without looking at any of it. The number of
+-- values returned is never itself secret, so it is the one thing we can
+-- test - which is what makes this safe where `if r then` would raise.
+function BazUI.Secret.Color(...)
+    if select("#", ...) < 3 then return nil end
+    local r, g, b = ...
+    return { r, g, b, 1, secret = true }
+end
+
+-- Refused, which is not the same as secret
+--
+-- Most guarded APIs hand back a secret value and let you carry it about.
+-- A few refuse instead, and the aura reads are the ones that matter to us:
+-- C_UnitAuras.GetAuraDataByIndex and its neighbours carry
+-- RequiresUnitAuraAccess, whose documented failure mode is "Error" rather
+-- than "ReturnNothing".
+--
+-- **pcall does not catch it.** It is reported as a restriction violation
+-- with the taint attached, not as a Lua error the caller may swallow, so
+-- wrapping the call changes nothing except where the traceback points. The
+-- only way not to have the error is not to make the call.
+--
+-- Which the client will tell us, and precisely: C_Secrets answers per unit,
+-- per index, before anything is read. Ask first.
+--
+-- HasSecretRestrictions is the cheap way out on a client that has none of
+-- this - Classic Era - where every Should* would answer false anyway.
+
+function BazUI.Secret.AurasReadable()
+    if not C_Secrets then return true end
+    if C_Secrets.HasSecretRestrictions and not C_Secrets.HasSecretRestrictions() then
+        return true
+    end
+    if C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then
+        return false
+    end
+    return true
+end
+
+function BazUI.Secret.AuraReadable(unit, index, filter)
+    if not BazUI.Secret.AurasReadable() then return false end
+    if C_Secrets and C_Secrets.ShouldUnitAuraIndexBeSecret then
+        -- Plain arguments in, plain boolean out, so this one really can be
+        -- pcall'd: it is a question about a restriction, not a read through
+        -- one.
+        local ok, secret = pcall(C_Secrets.ShouldUnitAuraIndexBeSecret, unit, index, filter)
+        if ok and secret then return false end
+    end
+    return true
+end
+
 ---------------------------------------------------------------------------
 -- Can this client run a secure handler snippet?
 --

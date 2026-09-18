@@ -2,18 +2,24 @@
 ---------------------------------------------------------------------------
 -- BazUI Auras: headers, buttons and painting
 --
--- Four SecureAuraHeaderTemplate frames (buffs and debuffs for the
--- player, buffs and debuffs for the target) are parented to the BazUI
--- unit frames so they scale, move and hide with them. Each header
--- creates BazUIAuraButtonTemplate buttons, stamps "index" and "filter"
--- (or "target-slot" for weapon enchants) on each, sorts and positions
--- them, and handles the right-click cancel securely. The target frame
--- shows and hides through a secure state driver, so its headers follow
--- the target in and out of combat.
+-- A row is a header frame carrying BazUIAuraButtonTemplate buttons, with
+-- "index" and "filter" (or "target-slot" for weapon enchants) stamped on
+-- each. The header is ours: Blizzard's SecureAuraHeaderTemplate is gated
+-- to the classic game type, and on a client where it does load it works
+-- by compiling snippets, which Forever cannot do either.
 --
--- Everything here that touches a protected frame (attributes, anchors,
--- sizes, parent) runs out of combat only; a change requested in combat
--- is applied when combat ends. Painting icons and text is unrestricted.
+-- The buttons are still SecureActionButtonTemplate, because cancelling a
+-- buff is protected and a right-click on a real secure button is the only
+-- way an addon may do it.
+--
+-- What that arrangement costs, and where: everything protected - making a
+-- button, sizing it, placing it, showing it, stamping which aura it
+-- cancels - happens out of combat only, so a row is laid out with a few
+-- spare slots and keeps its order for the length of a fight. Painting is
+-- never restricted, so the icons themselves stay live throughout: each
+-- slot draws whatever aura now sits at the index stamped on it, which is
+-- also the aura it would cancel. Sorting by time or name is therefore
+-- applied between fights, not during one.
 ---------------------------------------------------------------------------
 
 local addon = BazUI:GetModule("Auras")
@@ -53,15 +59,42 @@ local LayoutDemo
 -- Reading auras
 ---------------------------------------------------------------------------
 
+-- Reading an aura can be refused outright, not merely answered with a
+-- secret. C_UnitAuras.GetAuraDataByIndex carries RequiresUnitAuraAccess,
+-- whose failure mode is an error rather than an empty answer, and access
+-- goes away in combat: while C_Secrets.ShouldAurasBeSecret() is true every
+-- aura read from addon code throws, including the player's own buffs.
+--
+-- So the fifth return is `blocked`, and it means something different from
+-- "no aura here". Nothing there fades the slot; blocked leaves the slot
+-- exactly as it was, which is why a row keeps showing what it had when the
+-- fight started instead of emptying itself the moment you are attacked.
+--
+-- Worth keeping separate: the alternative is an error on every button on
+-- every UNIT_AURA, and this client stops reporting errors after a hundred
+-- in a session, so a row like that would swallow the error budget and hide
+-- whatever else went wrong.
+--
+-- Asked rather than attempted, because this particular refusal is not a Lua
+-- error and pcall does not catch it. BazUI.Secret.AuraReadable puts the
+-- question to C_Secrets first, per unit and per index.
 local function ReadAura(unit, index, filter)
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        local a = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
-        if not a then return nil end
-        return a.icon, a.applications, a.dispelName, a.expirationTime
+    if not BazUI.Secret.AuraReadable(unit, index, filter) then
+        return nil, nil, nil, nil, true
     end
-    local name, icon, count, dispelType, _, expirationTime = UnitAura(unit, index, filter)
-    if not name then return nil end
-    return icon, count, dispelType, expirationTime
+    local ok, data = pcall(function()
+        if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+            local a = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+            if not a then return false end
+            return { a.icon, a.applications, a.dispelName, a.expirationTime }
+        end
+        local name, icon, count, dispelType, _, expirationTime = UnitAura(unit, index, filter)
+        if not name then return false end
+        return { icon, count, dispelType, expirationTime }
+    end)
+    if not ok then return nil, nil, nil, nil, true end
+    if not data then return nil end
+    return data[1], data[2], data[3], data[4], false
 end
 
 -- Weapon enchants come from GetWeaponEnchantInfo, with expirations in
@@ -100,8 +133,12 @@ local function UpdateDuration(btn, now)
         btn.Duration:SetText("")
         return
     end
-    local remaining = btn.expirationTime - now
-    if remaining <= 0 then
+    -- An expiry can arrive secret, and subtracting from one raises. Where
+    -- we may not know how long is left, say nothing rather than guess.
+    local remaining = BazUI.Secret.Read(function()
+        return btn.expirationTime - now
+    end, nil)
+    if not remaining or remaining <= 0 then
         btn.Duration:SetText("")
         return
     end
@@ -123,15 +160,20 @@ local function UpdateButton(btn)
     local slot   = tonumber(btn:GetAttribute("target-slot"))
     local index  = btn:GetAttribute("index")
     local filter = btn:GetAttribute("filter")
-    local icon, count, dispel, expirationTime
+    local icon, count, dispel, expirationTime, blocked
 
     if slot then
         btn.isWeapon = true
         icon, count, expirationTime = ReadWeapon(slot)
     elseif index then
         btn.isWeapon = false
-        icon, count, dispel, expirationTime = ReadAura(ButtonUnit(btn), index, filter)
+        icon, count, dispel, expirationTime, blocked = ReadAura(ButtonUnit(btn), index, filter)
     end
+
+    -- Not allowed to look, rather than nothing to see. Leave the slot
+    -- showing whatever it last knew: a frozen icon is closer to the truth
+    -- than a row that empties itself the moment a fight starts.
+    if blocked then return end
 
     if not icon then
         -- Nothing at this position (the unit died, or the header is a
@@ -223,8 +265,14 @@ function Auras.OnButtonEnter(btn)
         local slot = tonumber(btn:GetAttribute("target-slot"))
         if slot then GameTooltip:SetInventoryItem("player", slot) end
     else
-        local index = btn:GetAttribute("index")
-        if index then GameTooltip:SetUnitAura(ButtonUnit(btn), index, btn:GetAttribute("filter")) end
+        -- The tooltip reads the aura too, so it is refused on the same
+        -- terms. No tooltip is better than an error per mouseover.
+        local index  = btn:GetAttribute("index")
+        local unit   = ButtonUnit(btn)
+        local filter = btn:GetAttribute("filter")
+        if index and BazUI.Secret.AuraReadable(unit, index, filter) then
+            GameTooltip:SetUnitAura(unit, index, filter)
+        end
     end
     GameTooltip:Show()
 end
@@ -255,25 +303,108 @@ local function CreateHeader(def)
     end
     if InCombatLockdown() then return nil end
 
-    local h = CreateFrame("Frame", "BazUIAuraRow" .. def.id, UIParent,
-        "SecureAuraHeaderTemplate")
+    -- Our own header, not Blizzard's.
+    --
+    -- SecureAuraHeaderTemplate is gated to the classic game type and
+    -- Forever is camelot, so it never loads - and restoring it would buy
+    -- nothing, because it works by compiling initialConfigFunction
+    -- snippets in the restricted environment, and snippets are dead on
+    -- this client. That is almost certainly why Blizzard gated it; their
+    -- own buff frame does not use it either.
+    --
+    -- So this is an ordinary frame, and the layout below is ours. What we
+    -- give up is Blizzard's secure re-sorting during a fight; what we keep
+    -- is right-click cancel, because the buttons are still real secure
+    -- action buttons and their index attribute is stamped out of combat
+    -- and left alone thereafter.
+    local h = CreateFrame("Frame", "BazUIAuraRow" .. def.id, UIParent)
     h:SetAttribute("unit", def.unit)
     h:SetAttribute("filter", def.filter)
-    h:SetAttribute("template", TEMPLATE)
-    h:SetAttribute("weaponTemplate", TEMPLATE)
-    h:SetAttribute("templateType", "Button")
+    h.bazButtons = {}
     h:Hide()
-
-    -- A secure nudge when the unit dies or is revived: the attribute
-    -- change makes the header re-run its update, clearing a dead unit's
-    -- leftover buttons even if no aura event follows.
-    if def.unit ~= "player" then
-        RegisterAttributeDriver(h, "state-unitdead",
-            ("[@%s,dead] 1; 0"):format(def.unit))
-    end
 
     headers[def.id] = h
     return h
+end
+
+---------------------------------------------------------------------------
+-- Which auras, in which order
+---------------------------------------------------------------------------
+
+-- Everything the unit currently has for this filter, as far as the cap.
+-- Names and expiry ride along so a row can be sorted by either without
+-- asking the game twice.
+local function AuraList(unit, filter, cap)
+    local list = {}
+    for index = 1, cap do
+        -- Same refusal as ReadAura, asked the same way. This only ever runs
+        -- out of combat, so it should not fire, but a row that stops laying
+        -- itself out is a better failure than one that throws on login.
+        if not BazUI.Secret.AuraReadable(unit, index, filter) then break end
+        local ok, entry = pcall(function()
+            if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+                local a = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+                if not a then return false end
+                return { a.name, a.expirationTime }
+            end
+            local n, _, _, _, _, exp = UnitAura(unit, index, filter)
+            if not n then return false end
+            return { n, exp }
+        end)
+        if not ok or not entry then break end
+        -- Read here, not stored. A name or an expiry can come back secret
+        -- even out of combat - an encounter, a challenge or a PvP match
+        -- does it too - and a secret in the list would raise later, inside
+        -- table.sort, where there is nothing sensible to do about it.
+        -- Anything unreadable sorts as if it never runs out.
+        list[#list + 1] = {
+            index = index,
+            name  = BazUI.Secret.Read(function()
+                return (type(entry[1]) == "string") and entry[1] or ""
+            end, ""),
+            -- No expiry means it does not run out, which sorts last rather
+            -- than first: a permanent buff is not the most urgent thing on
+            -- the row.
+            expiration = BazUI.Secret.Read(function()
+                local e = entry[2]
+                if e and e > 0 then return e end
+                return math.huge
+            end, math.huge),
+        }
+    end
+    return list
+end
+
+local function SortAuras(list, method, direction)
+    if method == "TIME" then
+        table.sort(list, function(a, b)
+            if a.expiration == b.expiration then return a.index < b.index end
+            return a.expiration < b.expiration
+        end)
+    elseif method == "NAME" then
+        table.sort(list, function(a, b)
+            if a.name == b.name then return a.index < b.index end
+            return a.name < b.name
+        end)
+    else
+        table.sort(list, function(a, b) return a.index < b.index end)
+    end
+    if direction == "-" then
+        for i = 1, math.floor(#list / 2) do
+            list[i], list[#list - i + 1] = list[#list - i + 1], list[i]
+        end
+    end
+    return list
+end
+
+-- The weapon enchants, as pseudo-auras carrying a slot instead of an
+-- index. Only ever the player's own buffs.
+local function WeaponSlots()
+    local slots = {}
+    local hasMain, _, _, _, hasOff = GetWeaponEnchantInfo()
+    if hasMain then slots[#slots + 1] = 16 end
+    if hasOff  then slots[#slots + 1] = 17 end
+    return slots
 end
 
 local function ParkHeader(def)
@@ -312,9 +443,7 @@ local function ConfigureHeader(def, below)
 
     local point = (below and "TOP" or "BOTTOM") .. (right and "LEFT" or "RIGHT")
 
-    h:SetAttribute("point", point)
-    h:SetAttribute("xOffset", right and step or -step)
-    h:SetAttribute("yOffset", 0)
+    local xOffset = right and step or -step
     -- A total to show, spread evenly rather than filling rows of perRow
     -- and overshooting: ten at eight across is two rows of five, not two
     -- rows of eight. The header can only stop at the end of a row, so
@@ -333,58 +462,164 @@ local function ConfigureHeader(def, below)
         end
     end
 
-    h:SetAttribute("wrapAfter", across)
-    h:SetAttribute("wrapXOffset", 0)
-    h:SetAttribute("wrapYOffset", below and -step or step)
-    -- How many rows at most, nought for as many as there are auras. A
-    -- row on somebody else wants a limit: sixteen debuffs on a party
-    -- member is a legal state of affairs and a tower of icons through
-    -- the middle of your screen is not what anyone meant by showing
-    -- them. The header does the cutting off, securely, so a limit still
-    -- holds while everything else is frozen.
-    h:SetAttribute("maxWraps", rows)
+    local wrapYOffset = below and -step or step
 
-    -- No floor on the header's own size. It measures itself to the box
-    -- its buttons occupy unless these say otherwise, and that box is the
-    -- only honest answer to how big the row is: two icons should measure
-    -- two icons, not a full row's worth of mostly nothing.
-    h:SetAttribute("minWidth", 1)
-    h:SetAttribute("minHeight", 1)
-    h:SetAttribute("sortMethod", addon:RowValue(def, "sortMethod"))
-    h:SetAttribute("sortDirection", addon:RowValue(def, "sortDirection"))
     -- Which row a button belongs to, for anything that has only the
     -- button and needs the row's settings.
     h._bazRow = def.id
     local isPlayer = def.unit == "player"
     local weapons = isPlayer and def.filter == "HELPFUL"
         and addon:GetSetting("showWeapons") ~= false
-    h:SetAttribute("includeWeapons", weapons and 1 or nil)
 
-    -- Only mine: the header does the filtering, so this is a filter
-    -- string rather than anything we check per icon. Changing it re-runs
-    -- the header's update, which is fine out of combat, and this never
-    -- runs in combat.
+    -- Only mine. A filter string rather than a per-icon check, because
+    -- the game can do it while counting.
     local filter = def.filter
     if def.onlyMine and not isPlayer then filter = filter .. "|PLAYER" end
     h:SetAttribute("filter", filter)
-    -- Buttons the header creates during combat still get the right size:
-    -- this snippet runs in the header's secure environment. The
-    -- template's right-click is "cancelaura", which always cancels the
-    -- PLAYER's aura at the button's index, so buttons for any other unit
-    -- lose it: right-clicking a target's buff must not drop one of yours.
-    local snippet = ("self:SetWidth(%d); self:SetHeight(%d)"):format(size, size)
-    if not isPlayer then
-        snippet = snippet .. '; self:SetAttribute("type2", nil)'
-    end
-    h:SetAttribute("initialConfigFunction", snippet)
+
+    h.bazCfg = {
+        unit          = def.unit,
+        filter        = filter,
+        size          = size,
+        point         = point,
+        xOffset       = xOffset,
+        wrapYOffset   = wrapYOffset,
+        across        = across,
+        -- Nought rows means as many as there are auras. A row on somebody
+        -- else wants a limit: sixteen debuffs on a party member is a legal
+        -- state of affairs, and a tower of icons through the middle of the
+        -- screen is not what anyone meant by showing them.
+        rows          = rows,
+        sortMethod    = addon:RowValue(def, "sortMethod"),
+        sortDirection = addon:RowValue(def, "sortDirection"),
+        -- Right-click cancels the PLAYER's aura at the button's index,
+        -- whatever unit the row is watching, so only a player row may
+        -- carry it: right-clicking a target's buff must never drop one of
+        -- yours.
+        cancel        = isPlayer,
+        weapons       = weapons,
+    }
 
     -- Inside its group, at the corner the rows run from. Anchored once,
-    -- out of combat: moving a secure header is protected, which is the
+    -- out of combat: the header carries secure buttons, and this is the
     -- whole reason the group frame exists.
     local frame = addon:RowFrame(def.id)
     if frame then
         h:ClearAllPoints()
         h:SetPoint(point, frame, point, 0, 0)
+    end
+
+    addon:LayoutHeader(def)
+end
+
+---------------------------------------------------------------------------
+-- Filling a header
+--
+-- Everything protected happens here, and only out of combat: creating a
+-- button, sizing it, placing it, showing or hiding it, and stamping which
+-- aura it cancels. Once a fight starts none of that may change, so the
+-- row is laid out with a little room to spare and the icons that arrive
+-- mid-fight land in slots that were already there.
+--
+-- Painting is free at any time, which is what keeps the row honest during
+-- a fight: UpdateButton reads whatever aura now sits at the button's index
+-- and draws it, or draws nothing and fades the slot out. Because the index
+-- is what was stamped, the buff a slot cancels is always the buff it
+-- shows.
+---------------------------------------------------------------------------
+
+-- A row lays out a few more slots than it needs so auras cast during a
+-- fight have somewhere to go. They are transparent until something fills
+-- them.
+local HEADROOM = 4
+
+function addon:LayoutHeader(def)
+    local h = headers[def.id]
+    if not h then return end
+    local cfg = h.bazCfg
+    if not cfg then return end
+    if InCombatLockdown() then
+        pendingApply = true
+        return
+    end
+
+    local hardCap = (cfg.rows > 0) and (cfg.across * cfg.rows) or 40
+
+    local list = AuraList(cfg.unit, cfg.filter, hardCap)
+    SortAuras(list, cfg.sortMethod, cfg.sortDirection)
+
+    local slots = {}
+    for _, entry in ipairs(list) do
+        slots[#slots + 1] = { index = entry.index }
+    end
+    if cfg.weapons then
+        for _, slot in ipairs(WeaponSlots()) do
+            slots[#slots + 1] = { weapon = slot }
+        end
+    end
+
+    local capacity = math.min(#slots + HEADROOM, hardCap)
+    if capacity < 1 then capacity = 1 end
+
+    local pool = h.bazButtons
+    for i = 1, capacity do
+        local btn = pool[i]
+        if not btn then
+            btn = CreateFrame("Button", "$parentAura" .. i, h, TEMPLATE)
+            pool[i] = btn
+        end
+
+        local slot = slots[i]
+        -- Stamped before it is shown, so the first paint has something to
+        -- read. An empty slot keeps a plausible index rather than none:
+        -- cancelling an aura that is not there is a no-op, and a slot with
+        -- no index at all would paint nothing even once one arrives.
+        btn:SetAttribute("target-slot", slot and slot.weapon or nil)
+        btn:SetAttribute("index", (slot and not slot.weapon) and slot.index or i)
+        btn:SetAttribute("filter", cfg.filter)
+        btn:SetAttribute("type2", cfg.cancel and "cancelaura" or nil)
+
+        Auras.ApplyButtonSize(btn)
+
+        local col = (i - 1) % cfg.across
+        local row = math.floor((i - 1) / cfg.across)
+        btn:ClearAllPoints()
+        btn:SetPoint(cfg.point, h, cfg.point,
+            col * cfg.xOffset, row * cfg.wrapYOffset)
+        btn:Show()
+        UpdateButton(btn)
+    end
+
+    for i = capacity + 1, #pool do
+        pool[i]:Hide()
+    end
+
+    -- The header measures the box its buttons occupy, and nothing more:
+    -- two icons should measure two icons, not a full row of mostly
+    -- nothing. Only the slots actually carrying an aura count, so the
+    -- headroom never shows up as width.
+    if #slots == 0 then
+        -- An empty row measures nothing at all, and SizeRows decides
+        -- whether its frame collapses or holds a row's height open for
+        -- Edit Mode. Measuring one icon here would put that decision in
+        -- two places.
+        h:SetSize(1, 1)
+    else
+        local acrossUsed = math.min(#slots, cfg.across)
+        local rowsUsed   = math.ceil(#slots / cfg.across)
+        local spacingX   = math.abs(cfg.xOffset) - cfg.size
+        local spacingY   = math.abs(cfg.wrapYOffset) - cfg.size
+        h:SetSize(
+            math.max(1, acrossUsed * cfg.size + (acrossUsed - 1) * spacingX),
+            math.max(1, rowsUsed   * cfg.size + (rowsUsed   - 1) * spacingY))
+    end
+
+    h.bazFilled = #slots
+end
+
+function addon:LayoutHeaders()
+    for _, def in ipairs(self:Rows()) do
+        self:LayoutHeader(def)
     end
 end
 
@@ -418,6 +653,7 @@ local UNITS   = {
 addon.ROW_FILTERS = FILTERS
 addon.ROW_UNITS   = UNITS
 addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+addon.ROW_TAKES   = { full = "All of it", half = "Half of it", own = "Its own width" }
 addon.ROW_GROWTH  = { RIGHT = "Left to right", LEFT = "Right to left" }
 addon.ROW_STACK   = { AUTO = "Away from the dock", DOWN = "Downward", UP = "Upward" }
 addon.ROW_SORTS   = { INDEX = "Order applied", TIME = "Time remaining", NAME = "Name" }
@@ -478,8 +714,33 @@ local ROW_DEFAULT = {
 -- not a choice, and it changes whenever the host does.
 local fillSizes = {}
 
+-- How much of its host's width a row takes:
+--
+--   "full"  all of it, and a line to itself
+--   "half"  half of it, so two rows share one line - buffs on the left of
+--           an action bar and debuffs on the right, which is what the dock
+--           calls share = 2
+--   "own"   its own width, sitting at whichever end it is aligned to
+--
+-- `fill` was the boolean this replaced, and profiles written before the
+-- third choice existed still carry it. True meant all of it; false meant
+-- its own width. Read through here rather than anywhere else so those keep
+-- working without being rewritten.
+function addon:RowTakes(def)
+    if def.takes then return def.takes end
+    return def.fill and "full" or "own"
+end
+
+-- True when the dock decides the row's width rather than the row. Both of
+-- the first two, and it is what makes icon size a consequence instead of a
+-- choice: the icons are sized to fit whatever the host gave us.
+function addon:RowMeasured(def)
+    local takes = self:RowTakes(def)
+    return takes == "full" or takes == "half"
+end
+
 function addon:RowValue(def, key)
-    if key == "iconSize" and def and def.fill and fillSizes[def.id] then
+    if key == "iconSize" and def and self:RowMeasured(def) and fillSizes[def.id] then
         return fillSizes[def.id]
     end
     local value = def and def[key]
@@ -694,7 +955,7 @@ function addon:BuildRow(def)
     -- filling row measures its icons again when that happens; the guard
     -- is because sizing the row is itself a size change.
     frame:HookScript("OnSizeChanged", function()
-        if refitting or InCombatLockdown() or not def.fill then return end
+        if refitting or InCombatLockdown() or not addon:RowMeasured(def) then return end
         refitting = true
         if addon:FitRow(def) then
             ConfigureHeader(def, RowsBelow(def))
@@ -762,13 +1023,12 @@ end
 -- them securely, and the size is taken again when combat ends. Left and
 -- right aligned rows never needed it anyway, since they grow from their
 -- anchored end; a centered one is briefly off center.
+-- How many icons the row is actually carrying - not how many slots it has
+-- laid out. A row keeps a few spare slots shown but transparent so auras
+-- cast mid-fight have somewhere to land, and counting those would widen
+-- the row by an icon or four of empty space.
 local function VisibleIcons(header)
-    local count = 0
-    for index = 1, select("#", header:GetChildren()) do
-        local child = select(index, header:GetChildren())
-        if child:IsShown() then count = count + 1 end
-    end
-    return count
+    return header.bazFilled or 0
 end
 
 -- Size the icons so a full row spans exactly what it is docked to.
@@ -776,7 +1036,7 @@ end
 -- attributes for the same number is work nobody needs.
 function addon:FitRow(def)
     local frame = rowFrames[def.id]
-    if not (frame and def.fill and BazUI.Dock:IsDocked(frame)) then
+    if not (frame and self:RowMeasured(def) and BazUI.Dock:IsDocked(frame)) then
         local had = fillSizes[def.id] ~= nil
         fillSizes[def.id] = nil
         return had
@@ -808,7 +1068,7 @@ function addon:SizeRows()
             -- it, whether or not there are enough icons to cover it.
             -- That is the point of it: the row is as wide as the bar
             -- above it, always, and the icons are sized to suit.
-            local filling = def.fill and BazUI.Dock:IsDocked(frame)
+            local filling = self:RowMeasured(def) and BazUI.Dock:IsDocked(frame)
 
             if count == 0 then
                 -- Nothing to show, so it takes up no height: a docked
@@ -866,12 +1126,18 @@ function addon:ApplyRows()
     for _, def in ipairs(self:Rows()) do
         local frame = rowFrames[def.id]
         if frame then
-            local dock = def.dock or { host = "float" }
+            local dock  = def.dock or { host = "float" }
+            local takes = self:RowTakes(def)
             BazUI.Dock:AttachTo(frame, dock.host, {
                 edge  = dock.edge or "BOTTOM",
-                mode  = def.fill and "stretch" or "align",
-                align = def.align or "LEFT",
-                gap   = def.gap,
+                -- Half is an aligned follower that still takes its width
+                -- from the host: the dock hands it (host - gutter) / 2, so
+                -- two of them leave exactly the gutter between.
+                mode   = (takes == "full") and "stretch" or "align",
+                align  = def.align or "LEFT",
+                share  = (takes == "half") and 2 or nil,
+                gutter = def.gutter,
+                gap    = def.gap,
                 offset = dock.offset,
                 -- Past every bar, so rows stay next to each other in the
                 -- order: two of them can only share a line if nothing
@@ -983,8 +1249,6 @@ function addon:RowEditSettings(def)
         end
     end
 
-    local docked = def.dock and def.dock.host and def.dock.host ~= "float"
-
     local widgets = {
         { type = "dropdown", section = "Docking", label = "Dock to",
           options = dockOptions,
@@ -992,50 +1256,70 @@ function addon:RowEditSettings(def)
           set = function(value)
               def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
               Refresh()
-              -- Floating and docked do not offer the same choices.
-              addon:RefreshRowEditSettings()
+              -- No panel rebuild: the rows below grey themselves.
           end },
     }
 
-    if docked then
-        widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
-            options = Values(addon.ROW_EDGES),
-            get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
-            set = function(value)
-                def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
-                Refresh()
-            end }
-        widgets[#widgets + 1] = { type = "checkbox", section = "Docking", label = "Fill the width",
-            get = function() return def.fill == true end,
-            set = function(value)
-                def.fill = value and true or false
-                Refresh()
-                -- Filling has no end to be aligned to, and its icon size
-                -- is no longer a choice.
-                addon:RefreshRowEditSettings()
-            end }
-        if not def.fill then
-            widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
-                options = Values(addon.ROW_ALIGNS),
-                get = function() return def.align or "LEFT" end,
-                set = function(value) def.align = value Refresh() end }
-        end
-        widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Gap",
-            min = 0, max = 24, step = 1,
-            get = function() return def.gap or 4 end,
-            set = function(value) def.gap = value Refresh() end }
-    end
+    -- Always here, never conditional. A control that does not apply right
+    -- now goes grey where it stands rather than vanishing: a row that comes
+    -- and goes rearranges the panel under the cursor and leaves you unsure
+    -- whether the setting exists at all.
+    -- Named for what they disable on, so `disabled = Floating` reads as
+    -- what it does. Everything in Docking needs a host; Aligned and the
+    -- space beside only mean anything once the row is not taking the whole
+    -- width, because there is then something to sit beside.
+    local function Floating() return not (def.dock and def.dock.host and def.dock.host ~= "float") end
+    local function NotBeside() return Floating() or addon:RowTakes(def) == "full" end
 
-    local function Slider(label, key, low, high)
+    widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
+        options = Values(addon.ROW_EDGES),
+        disabled = Floating,
+        get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
+        set = function(value)
+            def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
+            Refresh()
+        end }
+    widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Takes",
+        options = Values(addon.ROW_TAKES),
+        disabled = Floating,
+        get = function() return addon:RowTakes(def) end,
+        set = function(value)
+            def.takes = value
+            -- The boolean this replaced goes with it, so the two can never
+            -- disagree in a saved profile.
+            def.fill = nil
+            Refresh()
+        end }
+    widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
+        options = Values(addon.ROW_ALIGNS),
+        disabled = NotBeside,
+        get = function() return def.align or "LEFT" end,
+        set = function(value) def.align = value Refresh() end }
+    widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Space beside",
+        min = 0, max = 40, step = 1,
+        disabled = NotBeside,
+        get = function() return def.gutter or 0 end,
+        set = function(value) def.gutter = value Refresh() end }
+    widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Gap",
+        min = 0, max = 24, step = 1,
+        disabled = Floating,
+        get = function() return def.gap or 4 end,
+        set = function(value) def.gap = value Refresh() end }
+
+    local function Slider(label, key, low, high, disabled)
         widgets[#widgets + 1] = { type = "slider", section = "Icons", label = label,
             min = low, max = high, step = 1,
+            disabled = disabled,
             get = function() return addon:RowValue(def, key) end,
             set = function(value) def[key] = value Refresh() end }
     end
 
-    if not (def.fill and docked) then
-        Slider("Icon size", "iconSize", 12, 48)
-    end
+    -- A row the dock measures has its icon size worked out for it, so the
+    -- control is shown greyed at whatever it came out as rather than taken
+    -- away.
+    Slider("Icon size", "iconSize", 12, 48, function()
+        return not Floating() and addon:RowMeasured(def)
+    end)
     Slider("Spacing", "spacing", 0, 12)
     Slider("Icons per row", "perRow", 1, 20)
 
@@ -1251,17 +1535,18 @@ function LayoutDemo()
         if h and h:GetNumPoints() > 0 then
             local size   = addon:RowValue(def, "iconSize")
             local perRow = addon:RowValue(def, "perRow")
-            local point = h:GetAttribute("point") or "BOTTOMLEFT"
-            local xOff  = h:GetAttribute("xOffset") or 0
-            local yWrap = h:GetAttribute("wrapYOffset") or 0
-            local wrap  = math.max(1, h:GetAttribute("wrapAfter") or perRow)
+            local cfg   = h.bazCfg or {}
+            local point = cfg.point or "BOTTOMLEFT"
+            local xOff  = cfg.xOffset or 0
+            local yWrap = cfg.wrapYOffset or 0
+            local wrap  = math.max(1, cfg.across or perRow)
 
             -- Under the row's own limits, read from the header so there
             -- is one answer rather than two. A preview that ignores them
             -- shows a layout the row will never produce, which is worse
             -- than no preview: it was showing three rows to somebody who
             -- had just asked for one.
-            local maxWraps = tonumber(h:GetAttribute("maxWraps")) or 0
+            local maxWraps = tonumber(cfg.rows) or 0
             local rows  = (maxWraps > 0) and maxWraps or DEMO_ROWS
             local count = wrap * rows
             -- The header lives in its unit frame's scale; the stand-ins
@@ -1362,8 +1647,17 @@ end
 ---------------------------------------------------------------------------
 
 function addon:RefreshAll()
-    for btn in pairs(buttons) do
-        if btn:IsShown() then UpdateButton(btn) end
+    -- Out of combat the row is rebuilt: slots re-sorted, the count of them
+    -- matched to the auras, sizes re-taken. In combat none of that is
+    -- allowed, so the slots that are already there simply repaint - which
+    -- is enough, because each one shows whatever aura now sits at the
+    -- index it was stamped with.
+    if not InCombatLockdown() then
+        self:LayoutHeaders()
+    else
+        for btn in pairs(buttons) do
+            if btn:IsShown() then UpdateButton(btn) end
+        end
     end
     self:SizeRows()
 end
@@ -1407,22 +1701,15 @@ function addon:ApplySettings()
 
     for btn in pairs(buttons) do
         Auras.ApplyButtonSize(btn)
-        -- Buttons that already exist get the same treatment as new ones.
-        if ButtonUnit(btn) ~= "player" and btn:GetAttribute("type2") then
-            btn:SetAttribute("type2", nil)
-        end
     end
     SetBlizzardHidden(enabled and self:GetSetting("hideBlizzard") ~= false)
     self:RefreshAll()
     if demoActive then LayoutDemo() end
 end
 
--- The headers refresh themselves, securely, on their unit's UNIT_AURA
--- (which also fires with a full update when the target changes) and on
--- any attribute change. Never call SecureAuraHeader_Update from addon
--- code: buttons it creates during such a call are tainted, and every
--- later secure update that touches them in combat is blocked, leaving
--- stale icons frozen on screen.
+-- Rows refresh on their unit's UNIT_AURA, which also fires with a full
+-- update when the target changes. Out of combat that rebuilds the row;
+-- in combat it repaints the slots that are already there.
 
 function addon:QueueApply()
     if applyQueued then return end
@@ -1436,19 +1723,18 @@ end
 function addon:Initialize()
     if initialized then return end
 
-    -- Every row in this module is a secure aura header, and the client
-    -- either ships that template or it does not - there is no drawing
-    -- our way around it, because only Blizzard's secure code is allowed
-    -- to decide which aura goes in which button.
+    -- Rows are built here rather than by Blizzard's secure aura header,
+    -- which is gated to the classic game type and absent on Forever. What
+    -- is still needed is the plain secure action button, which every
+    -- client has, because cancelling a buff is protected and can only
+    -- happen through one.
     --
-    -- Forever moved SecureAuraHeaderTemplate into its own file, gated on
-    -- the client's game type, so a client outside that gate has the rest
-    -- of the secure templates and not this one. Ask before building
-    -- rather than letting CreateFrame throw once per row.
-    if not BazUI.Has.Template("SecureAuraHeaderTemplate") then
-        self.unavailable = "This client does not provide secure aura headers, so aura rows cannot be built."
-        BazUI:Print("Auras are off: " .. self.unavailable)
-        return
+    -- Without it the rows would still draw; they would just have no
+    -- right-click. Say so and carry on rather than turning the module
+    -- off, since showing auras is most of what it is for.
+    if not BazUI.Has.Template("SecureActionButtonTemplate") then
+        self.unavailable = "This client does not provide secure action buttons, so auras cannot be cancelled by right-clicking."
+        BazUI:Print("Auras: " .. self.unavailable)
     end
 
     initialized = true

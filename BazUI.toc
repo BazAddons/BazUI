@@ -1,8 +1,14 @@
-## Interface: 16001
+## Interface: 16001, 11509
+# A readable copy of the line above. The client does not expose
+# "Interface" through GetAddOnMetadata, but it does expose any X- field,
+# so this is how /baz sv can say whether the TOC it is running was the
+# one on disk - a TOC is only re-read when the client launches, never on
+# /reload, and a test that cannot tell those apart proves nothing.
+## X-Interface-Stamp: 16001,11509
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 001
+## Version: 002
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -13,10 +19,27 @@
 ## SavedVariablesPerCharacter: BazUICharDB
 ## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
 
-# 16001 is World of Warcraft: Forever 1.60.1. It was 11509 (Classic Era)
-# while development happened there, and the beta client refused to hand the
-# addon its saved variables under that number - nothing persisted across a
-# reload. /baz sv prints what the client asks for against what this says.
+# 16001 is World of Warcraft: Forever 1.60.1; 11509 is Classic Era, where
+# development started. Those are the two clients this addon runs on, and
+# nothing else belongs here.
+#
+# Tried and abandoned: leading with 120100 (retail Midnight) because one
+# addon that appeared to save its settings declared it first. It made no
+# difference - measured with the stamp below, on a cold start, with the
+# settings seed cleared so nothing could mask it - and the addon it was
+# based on turned out not to save reliably either. The saved variables bug
+# is the client's, it affects everyone, and no TOC line works around it.
+# See Core/Seed.lua. Declaring retail support we do not have would only have
+# put the addon in front of players it was never built for.
+#
+# /baz sv prints what the client asks for against this, and whether the
+# per-character file remembers more than one load.
+
+# Before everything: stands in for the saved variables the client will not
+# read. Empty in the repository; tools/bake-seed.py fills in a local copy.
+# Must stay first, because an addon file runs before its saved variables do
+# and the real ones are meant to overwrite this.
+Core\Seed.lua
 
 # Core - forked from BazCore. Module registry, profiles, options window,
 # Edit Mode, popups and UI helpers.
@@ -79,6 +102,9 @@ Modules\Drawers\Widgets\QuestTracker\Constants.lua
 Modules\Drawers\Widgets\QuestTracker\State.lua
 Modules\Drawers\Widgets\QuestTracker\Collapse.lua
 Modules\Drawers\Widgets\QuestTracker\Data.lua
+Modules\Drawers\Widgets\QuestTracker\Scenario.lua
+Modules\Drawers\Widgets\QuestTracker\ChallengeMode.lua
+Modules\Drawers\Widgets\QuestTracker\Waypoints.lua
 Modules\Drawers\Widgets\QuestTracker\Headers.lua
 Modules\Drawers\Widgets\QuestTracker\Blocks.lua
 Modules\Drawers\Widgets\QuestTracker\Options.lua
@@ -113,39 +139,45 @@ Modules\Bags\Bag.lua
 Modules\Bags\CategoriesPage.lua
 Modules\Bags\UserGuide.lua
 
-# Chat is switched off on the Forever beta.
+# Chat, back on for testing (2026-09-18).
 #
-# A chat replacement has to assign DEFAULT_CHAT_FRAME, and assigning a
-# global Blizzard reads taints every call that reads it. Theirs reads it
-# inside EnterEditMode, one line before their party frames compare a
-# secret colour, so opening Edit Mode errors. There is no way to route
-# their messaging to our window without that assignment.
+# It was off because a chat replacement has to assign DEFAULT_CHAT_FRAME,
+# and assigning a global Blizzard reads taints every call that reads it -
+# which was believed to break Edit Mode. Re-checked against the client's
+# own source since: that read is in EditModeManager's
+# NotifyChatOfLayoutChange, reached on a spec change or when a layout is
+# applied, not on opening Edit Mode. BazUI also has its own Edit Mode now,
+# and UnitColor no longer lets a secret colour reach a widget.
 #
-# Commented out rather than left to the module switch, because that
-# switch does not currently survive a reload - a separate bug, still
-# open. Uncomment the block below to bring chat back.
-# Modules\Chat\Core\Init.lua
-# Modules\Chat\Core\Frames.lua
-# Modules\Chat\Replica\HideDefault.lua
-# Modules\Chat\Replica\Chat.xml
-# Modules\Chat\Replica\Chrome.lua
-# Modules\Chat\Replica\Tabs.lua
-# Modules\Chat\Replica\AutoHide.lua
-# Modules\Chat\Replica\Channels.lua
-# Modules\Chat\Replica\Persistence.lua
-# Modules\Chat\Replica\Timestamps.lua
-# Modules\Chat\Replica\TimestampOverlay.lua
-# Modules\Chat\Replica\ChannelNames.lua
-# Modules\Chat\Replica\SettingsSpec.lua
-# Modules\Chat\Replica\Window.lua
-# Modules\Chat\Replica\History.lua
-# Modules\Chat\Replica\TabDrag.lua
-# Modules\Chat\Replica\CopyChat.lua
-# Modules\Chat\Replica\CombatLog.lua
-# Modules\Chat\Replica\Init.lua
-# Modules\Chat\Options\Settings.lua
-# Modules\Chat\Options\TabsPage.lua
-# Modules\Chat\UserGuide.lua
+# So the blocker is narrower than it was written up as, and worth
+# measuring rather than assuming. If it does misbehave, the fix is to stop
+# assigning that global at all: make window 1 be ChatFrame1, restyled,
+# rather than a frame of ours that has to claim its name.
+#
+# To switch off again, comment the block below back out.
+Modules\Chat\Core\Init.lua
+Modules\Chat\Core\Frames.lua
+Modules\Chat\Replica\HideDefault.lua
+Modules\Chat\Replica\Gamepad.lua
+Modules\Chat\Replica\Chat.xml
+Modules\Chat\Replica\Chrome.lua
+Modules\Chat\Replica\Tabs.lua
+Modules\Chat\Replica\AutoHide.lua
+Modules\Chat\Replica\Channels.lua
+Modules\Chat\Replica\Persistence.lua
+Modules\Chat\Replica\Timestamps.lua
+Modules\Chat\Replica\TimestampOverlay.lua
+Modules\Chat\Replica\ChannelNames.lua
+Modules\Chat\Replica\SettingsSpec.lua
+Modules\Chat\Replica\Window.lua
+Modules\Chat\Replica\History.lua
+Modules\Chat\Replica\TabDrag.lua
+Modules\Chat\Replica\CopyChat.lua
+Modules\Chat\Replica\CombatLog.lua
+Modules\Chat\Replica\Init.lua
+Modules\Chat\Options\Settings.lua
+Modules\Chat\Options\TabsPage.lua
+Modules\Chat\UserGuide.lua
 
 Modules\Bars\Constants.lua
 Modules\Bars\Core.lua

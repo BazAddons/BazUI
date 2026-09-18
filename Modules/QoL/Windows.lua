@@ -33,7 +33,10 @@ local WINDOWS = {
       desc = "Drag the options window - the game's settings, and BazUI's own pages inside it - where you want it." },
     { key = "dragCharacter",  label = "Character",     frame = "CharacterFrame"    },
     { key = "dragSpellbook",  label = "Spellbook",     frame = "SpellBookFrame"    },
-    { key = "dragQuestLog",   label = "Quest log",     frame = "QuestLogFrame"     },
+    -- Two names, because two clients. Classic has a quest log window of
+    -- its own; on Forever the quest log lives in the map. First one the
+    -- client actually has wins - see Resolve below.
+    { key = "dragQuestLog",   label = "Quest log",     frame = { "QuestMapFrame", "QuestLogFrame" } },
     { key = "dragSocial",     label = "Social",        frame = "FriendsFrame"      },
     { key = "dragMap",        label = "World map",     frame = "WorldMapFrame",
       windowed = true,
@@ -43,14 +46,17 @@ local WINDOWS = {
     { key = "dragBank",       label = "Bank",          frame = "BankFrame"         },
     { key = "dragTrainer",    label = "Class trainer", frame = "ClassTrainerFrame",
       loadedBy = "Blizzard_TrainerUI" },
-    { key = "dragProfession", label = "Profession",    frame = "TradeSkillFrame",
-      loadedBy = "Blizzard_TradeSkillUI" },
+    { key = "dragProfession", label = "Profession",    frame = { "ProfessionsFrame", "TradeSkillFrame" },
+      loadedBy = { "Blizzard_Professions", "Blizzard_TradeSkillUI" } },
+    -- Classic's separate enchanting window. Forever folds enchanting into
+    -- the professions frame above, so this offers itself only where it
+    -- exists rather than becoming a second switch for the same window.
     { key = "dragCraft",      label = "Enchanting",    frame = "CraftFrame",
       loadedBy = "Blizzard_CraftUI" },
     { key = "dragMacros",     label = "Macros",        frame = "MacroFrame",
       loadedBy = "Blizzard_MacroUI" },
-    { key = "dragAuction",    label = "Auction house", frame = "AuctionFrame",
-      loadedBy = "Blizzard_AuctionUI" },
+    { key = "dragAuction",    label = "Auction house", frame = { "AuctionHouseFrame", "AuctionFrame" },
+      loadedBy = { "Blizzard_AuctionHouseUI", "Blizzard_AuctionUI" } },
 }
 
 -- Whether this one may be moved right now, which for most of them is
@@ -157,11 +163,29 @@ local function Wire(def, frame)
     frame:HookScript("OnShow", function(self) Reassert(def, self) end)
 end
 
+-- A window may be known by more than one name, because the same panel is
+-- not called the same thing on every client: Classic's TradeSkillFrame is
+-- Forever's ProfessionsFrame, its QuestLogFrame is the map. Naming both and
+-- taking whichever exists keeps one list serving both, instead of a branch
+-- on the flavour that goes stale the next time Blizzard renames something.
+local function Each(value)
+    if type(value) == "table" then return ipairs(value) end
+    return ipairs({ value })
+end
+
+local function Resolve(def)
+    for _, name in Each(def.frame) do
+        local frame = _G[name]
+        if frame then return frame end
+    end
+    return nil
+end
+
 -- Wire it if it is there, and wait for its addon if it is not. Called
 -- when the switch is thrown and again at login, so a window whose addon
 -- loads later is picked up when it arrives.
 local function Apply(def)
-    local frame = _G[def.frame]
+    local frame = Resolve(def)
     if frame then
         Wire(def, frame)
         return
@@ -169,10 +193,12 @@ local function Apply(def)
     if not def.loadedBy or def._waiting then return end
     def._waiting = true
     if EventUtil and EventUtil.ContinueOnAddOnLoaded then
-        EventUtil.ContinueOnAddOnLoaded(def.loadedBy, function()
-            local late = _G[def.frame]
-            if late then Wire(def, late) end
-        end)
+        for _, addOnName in Each(def.loadedBy) do
+            EventUtil.ContinueOnAddOnLoaded(addOnName, function()
+                local late = Resolve(def)
+                if late then Wire(def, late) end
+            end)
+        end
     end
 end
 
@@ -185,15 +211,18 @@ end
 -- something to assume.
 ---------------------------------------------------------------------------
 
-local function Installed(name)
+local function Installed(value)
     local GetInfo = C_AddOns and C_AddOns.GetAddOnInfo or _G.GetAddOnInfo
     if not GetInfo then return false end
-    local ok, title = pcall(GetInfo, name)
-    return ok and title and true or false
+    for _, name in Each(value) do
+        local ok, title = pcall(GetInfo, name)
+        if ok and title then return true end
+    end
+    return false
 end
 
 for index, def in ipairs(WINDOWS) do
-    if _G[def.frame] or (def.loadedBy and Installed(def.loadedBy)) then
+    if Resolve(def) or (def.loadedBy and Installed(def.loadedBy)) then
         addon:RegisterTweak({
             key     = def.key,
             label   = def.label,

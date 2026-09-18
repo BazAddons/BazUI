@@ -8,11 +8,11 @@
 -- its own edge, alignment and gap. Eight per row, as many rows as there
 -- are auras.
 --
--- Blizzard's secure aura header (SecureAuraHeaderTemplate) creates the
--- icon buttons, sorts them, lays them out and owns the right-click
--- cancel, so all of that keeps working in combat. This module only
--- reads the attributes the header stamps on each button and paints the
--- icon, count, duration and rim.
+-- The rows are built here rather than by Blizzard's secure aura header,
+-- which does not exist on every client. Each row creates its own icon
+-- buttons, sorts them, lays them out and stamps the aura each one shows
+-- on it; the buttons are real secure action buttons, so right-clicking
+-- still cancels a buff. See Frames.lua for what that costs in combat.
 ---------------------------------------------------------------------------
 
 local MODULE_NAME = "Auras"

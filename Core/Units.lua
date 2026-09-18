@@ -43,19 +43,34 @@ function BazUI.UnitColor(unit, opts)
     -- painted with it comes out black - which is what made health and power
     -- bars flick to black and back for no visible reason.
     --
-    -- Read it properly, and where the answer is not ours to have, fall back
-    -- to the ordinary living colour rather than to something that looks
-    -- like an error. A class we cannot know is not a unit in trouble.
+    -- Two ways to the same colour, and the first is the one we want.
+    -- RAID_CLASS_COLORS gives ordinary numbers, which a gradient can shade,
+    -- so the bar keeps its lit top edge.
+    --
+    -- Where identity is not ours to have, that lookup raises and
+    -- GetClassColor answers instead: it is one of the few the client lets a
+    -- tainted caller hand a secret to, and what it returns is something a
+    -- status bar will still accept. Flat rather than shaded, and right -
+    -- which beats the green we used to fall back to, since the unit is not
+    -- a stranger, only one we are not allowed to name.
     if opts.classColor and UnitIsPlayer(unit) then
-        local color = BazUI.Secret.Read(function()
-            local _, class = UnitClass(unit)
+        local class = select(2, UnitClass(unit))
+
+        local plain = BazUI.Secret.Read(function()
             local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
             if not c then return nil end
             -- Touched here, inside the read, so a secret component raises
             -- here rather than on its way to SetVertexColor.
             return { c.r + 0, c.g + 0, c.b + 0, 1 }
         end, nil)
-        if color then return color end
+        if plain then return plain end
+
+        if GetClassColor then
+            local secret = BazUI.Secret.Read(function()
+                return BazUI.Secret.Color(GetClassColor(class))
+            end, nil)
+            if secret then return secret end
+        end
     end
 
     if opts.reaction then

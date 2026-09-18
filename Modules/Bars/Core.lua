@@ -706,6 +706,16 @@ addon.config.onReady = function(self)
         end
     end)
 
+    -- And any bar whose own visibility driver could not be set while the
+    -- fight was on - closing Edit Mode in combat is the way in.
+    self:On("PLAYER_REGEN_ENABLED", function()
+        local pending = addon.Bar and addon.Bar.pendingVisibility
+        if not pending then return end
+        for frame in pairs(pending) do
+            addon.Bar:ApplyVisibility(frame)
+        end
+    end)
+
     -- Targeted updates - only run the sub-update each event actually
     -- needs, instead of the full 8-function UpdateButton for every
     -- button on every event. High-frequency combat events like

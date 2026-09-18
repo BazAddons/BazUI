@@ -56,11 +56,11 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
           min = 0, max = 10, step = 1, get = Get("spacing"), set = Set("spacing") },
         { key = "preview", label = "Preview a full spread of auras", type = "execute", section = "layout", order = 6,
           desc = "Three rows of made-up icons on every side. Ends when combat starts.",
-          hidden = function() return addon:PreviewWanted() end,
+          disabled = function() return addon:PreviewWanted() end,
           func = function() addon:SetPreviewWanted(true) end },
         { key = "previewOff", label = "Hide the preview", type = "execute", section = "layout", order = 6,
           desc = "Three rows of made-up icons on every side. Ends when combat starts.",
-          hidden = function() return not addon:PreviewWanted() end,
+          disabled = function() return not addon:PreviewWanted() end,
           func = function() addon:SetPreviewWanted(false) end },
         { key = "reset", label = "Reset layout", type = "execute", section = "layout", order = 7,
           func = function() addon:ResetLayout() end },
@@ -188,7 +188,7 @@ local function RowArgs(def, index)
             onlyMine = {
                 order = 4, type = "toggle", name = "Only mine",
                 desc = "Hide auras other players applied.",
-                hidden = function() return def.unit == "player" end,
+                disabled = function() return def.unit == "player" end,
                 get = getMine, set = setMine,
             },
 
@@ -206,35 +206,47 @@ local function RowArgs(def, index)
             dockEdge = {
                 order = 12, type = "select", name = "On the",
                 values = { BOTTOM = "Below", TOP = "Above" },
-                hidden = function() return not Docked() end,
+                disabled = function() return not Docked() end,
                 get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
                 set = function(_, value)
                     def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
                     Apply()
                 end,
             },
-            fill = {
-                order = 13, type = "toggle", name = "Fill the width",
-                desc = "The row spans whatever it is docked to, and the icons are sized to suit: icons per row decides how big they are. Off keeps the icons their own size and aligns the row to one end.",
-                hidden = function() return not Docked() end,
-                get = function() return def.fill == true end,
+            takes = {
+                order = 13, type = "select", name = "Takes",
+                desc = "How much of its host's width the row uses. All of it spans the whole thing and sizes the icons to suit, so icons per row decides how big they are. Half of it does the same across half, which lets two rows share one line: buffs on the left of an action bar and debuffs on the right. Its own width keeps the icons the size you chose and sits the row at one end.",
+                values = addon.ROW_TAKES,
+                disabled = function() return not Docked() end,
+                get = function() return addon:RowTakes(def) end,
                 set = function(_, value)
-                    def.fill = value and true or false
+                    def.takes = value
+                    -- The boolean this replaced goes with it, so a saved
+                    -- profile can never carry both answers.
+                    def.fill = nil
                     Apply()
                 end,
             },
             align = {
                 order = 14, type = "select", name = "Aligned",
-                desc = "Which end of its host the row starts from.",
+                desc = "Which end of its host the row starts from. Two rows sharing a line want opposite ends.",
                 values = addon.ROW_ALIGNS,
-                hidden = function() return not Docked() or def.fill end,
+                disabled = function() return not Docked() or addon:RowTakes(def) == "full" end,
                 get = getAlign, set = setAlign,
+            },
+            gutter = {
+                order = 14.5, type = "range", name = "Space beside",
+                desc = "Pixels left between this row and whatever shares its line. One number for the line, so setting it on either of the two is enough.",
+                min = 0, max = 40, step = 1,
+                disabled = function() return not Docked() or addon:RowTakes(def) == "full" end,
+                get = function() return def.gutter or 0 end,
+                set = function(_, value) def.gutter = value Apply() end,
             },
             gap = {
                 order = 15, type = "range", name = "Gap",
                 desc = "Pixels between this row and what it is docked to.",
                 min = 0, max = 24, step = 1,
-                hidden = function() return not Docked() end,
+                disabled = function() return not Docked() end,
                 get = getGap, set = setGap,
             },
 
@@ -242,7 +254,7 @@ local function RowArgs(def, index)
             iconSize = {
                 order = 21, type = "range", name = "Icon size",
                 desc = "This row only. Leave every row alone and they follow the size on the General page.",
-                hidden = function() return def.fill and Docked() end,
+                disabled = function() return Docked() and addon:RowMeasured(def) end,
                 min = 12, max = 48, step = 1,
                 get = function() return addon:RowValue(def, "iconSize") end,
                 set = setIconSize,
@@ -309,7 +321,7 @@ local function RowArgs(def, index)
             durationSize = {
                 order = 29, type = "range", name = "Timer size",
                 desc = "Nought sizes the timer from the icon, which is what it did before this existed. That has a floor of eight points, and on a row of small icons eight points is most of the icon - so set a number here, or turn the timers off.",
-                hidden = function() return addon:RowValue(def, "showDuration") == false end,
+                disabled = function() return addon:RowValue(def, "showDuration") == false end,
                 min = 0, max = 24, step = 1,
                 get = function() return addon:RowValue(def, "durationSize") end,
                 set = function(_, value)

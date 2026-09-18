@@ -298,7 +298,12 @@ function Bar:RegisterEditMode(frame, barData)
         -- combat, so the :Show call here can't trigger ADDON_ACTION
         -- _BLOCKED.
         onEnter = function(f)
-            UnregisterStateDriver(f, "visibility")
+            -- Same protection as ApplyVisibility. Edit Mode is opened out
+            -- of combat, so this normally goes through; the guard is for
+            -- the case where something re-enters it during a fight.
+            if not InCombatLockdown() then
+                UnregisterStateDriver(f, "visibility")
+            end
             f:Show()
         end,
         onExit = function(f)
@@ -861,7 +866,23 @@ function Bar:SetVisibilityMacro(frame, macro)
     Bar:ApplyVisibility(frame)
 end
 
+-- Bars whose visibility could not be applied because a fight was on.
+-- Weak-keyed: a bar deleted before combat ends is not worth remembering.
+Bar.pendingVisibility = setmetatable({}, { __mode = "k" })
+
 function Bar:ApplyVisibility(frame)
+    -- Registering or clearing a state driver writes an attribute onto
+    -- Blizzard's SecureStateDriverManager, which is protected in combat.
+    --
+    -- Reachable from Edit Mode: you can open it standing still and be
+    -- attacked before you close it, and closing re-applies every bar's
+    -- visibility. That is exactly how this was found.
+    if InCombatLockdown() then
+        Bar.pendingVisibility[frame] = true
+        return
+    end
+    Bar.pendingVisibility[frame] = nil
+
     local macro = frame.barData.visibilityMacro
     -- Unregister any existing driver
     UnregisterStateDriver(frame, "visibility")

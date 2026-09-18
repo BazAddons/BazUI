@@ -54,15 +54,29 @@
         </Layers>
     </Button>
 
-    <!-- One real aura icon. The secure aura header creates these itself
-         (its "template" attribute) and stamps index, filter or target-slot
-         on each; BazUI.Auras.* only reads those and paints.
-         SecureAuraButtonTemplate brings the right-click cancel
-         (type2 = cancelaura). It registers the press only; the secure
-         click handler acts on the press or the release depending on the
-         "cast on key down" setting, so both are registered here and the
-         handler fires the cancel exactly once either way. -->
-    <Button name="BazUIAuraButtonTemplate" inherits="SecureAuraButtonTemplate, BazUIAuraVisualTemplate" registerForClicks="RightButtonDown, RightButtonUp" virtual="true">
+    <!-- One real aura icon. BazUI's own header creates these and stamps
+         index, filter or target-slot on each; BazUI.Auras.* only reads
+         those and paints.
+
+         This used to inherit SecureAuraButtonTemplate, which is declared
+         inside Blizzard's SecureAuraHeader.xml - a file gated to the
+         classic game type, and so absent on Forever. Inheriting a
+         template that does not exist takes the whole button with it.
+         That template is only SecureActionButtonTemplate plus the one
+         attribute below, so it is cheaper to say so directly than to
+         depend on a file that may or may not have loaded.
+
+         type2 = cancelaura is what makes right-click cancel a buff.
+         Cancelling is protected - CancelUnitBuff and
+         C_UnitAuras.CancelAuraByInstanceID both are - so it can only
+         happen through a secure button acting on a real click. It
+         registers both press and release because the secure handler acts
+         on one or the other depending on the "cast on key down" setting,
+         and fires the cancel exactly once either way. -->
+    <Button name="BazUIAuraButtonTemplate" inherits="SecureActionButtonTemplate, BazUIAuraVisualTemplate" registerForClicks="RightButtonDown, RightButtonUp" virtual="true">
+        <Attributes>
+            <Attribute name="type2" value="cancelaura"/>
+        </Attributes>
         <Scripts>
             <OnLoad>BazUI.Auras.OnButtonLoad(self)</OnLoad>
             <OnAttributeChanged>BazUI.Auras.OnButtonAttributeChanged(self, name, value)</OnAttributeChanged>

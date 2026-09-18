@@ -46,7 +46,7 @@ BazUI:RegisterUserGuide("Auras", {
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Dock to", "Floating, or the name of a bar or action bar. Docked, it follows its host and hides when the host hides." },
                     { "On the", "Above or below the host." },
-                    { "Fill the width", "The row spans its host and the icons are sized to suit - icons per row then decides how big they come out. Off keeps the icons their own size and aligns the row to one end." },
+                    { "Takes", "How much of its host's width the row uses. All of it spans the whole thing and sizes the icons to suit, so icons per row decides how big they come out. Half of it does the same across half the width, which is how two rows share one line - buffs on the left of an action bar and debuffs on the right, aligned to opposite ends. Its own width keeps the icons the size you chose." },
                     { "Aligned", "Which end of its host the row starts from: left, center or right." },
                     { "Gap", "Pixels between this row and what it is docked to." },
                 } },

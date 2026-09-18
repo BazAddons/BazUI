@@ -21,6 +21,8 @@
 --   not somebody's save file.
 ---------------------------------------------------------------------------
 
+-- Keys that never belong in a starter profile, dropped wherever they turn
+-- up. A starter profile is a shape, not somebody's save file.
 local PERSONAL = {
     keybinds = true,
     globalOverrides = true,
@@ -28,7 +30,43 @@ local PERSONAL = {
     _bbCharButtonsMigrated = true,
     buttons = true,
     minimap = true,
+
+    -- Another addon's data, which we do not ship on principle. The order
+    -- of the minimap buttons is a list of whatever happened to be
+    -- installed - LibDBIcon10_BugSack and friends - and means nothing to
+    -- anyone else.
+    buttonOrder = true,
+
+    -- Collected by playing, not by arranging. The Codex item index can run
+    -- to thousands of rows, and a wish list is as personal as it gets.
+    itemIndex = true,
+    wishlist = true,
+
+    -- Which thing happened to be open or folded shut when the export was
+    -- taken. Not layout, just where the session had got to.
+    collapsed = true,
+    widgetCollapsed = true,
+    sectionCollapsed = true,
+    activeTab = true,
+    activeDrawer = true,
 }
+
+-- The same idea where the key is not a fixed name but a shape. A broker
+-- widget is created per LibDataBroker source that happens to be installed -
+-- bazdrawer_ldb_BugSack - so these turn up as keys inside widgetEnabled and
+-- its neighbours rather than as a table of their own. Nobody else has the
+-- same addons, and we do not ship another addon's data.
+local PERSONAL_PATTERNS = {
+    "^bazdrawer_ldb_",
+}
+
+local function IsPersonal(key)
+    if PERSONAL[key] then return true end
+    for _, pattern in ipairs(PERSONAL_PATTERNS) do
+        if key:find(pattern) then return true end
+    end
+    return false
+end
 
 ---------------------------------------------------------------------------
 -- Positions
@@ -170,7 +208,7 @@ local function Write(value, out, depth, key, scale)
 
         local names = {}
         for k in pairs(value) do
-            if type(k) == "string" and not PERSONAL[k] then names[#names + 1] = k end
+            if type(k) == "string" and not IsPersonal(k) then names[#names + 1] = k end
         end
         table.sort(names)
 
@@ -185,7 +223,21 @@ local function Write(value, out, depth, key, scale)
 
         out[#out + 1] = Indent(depth) .. "}"
     elseif t == "string" then
-        out[#out + 1] = "\"" .. value:gsub("\"", "\\\"") .. "\""
+        -- The backslash goes first, or the escapes added after it get
+        -- escaped in turn.
+        --
+        -- This mattered more than it looks. Texture paths are full of
+        -- backslashes - Interface\Icons\INV_Misc_Gear_01 - and Lua 5.1 does
+        -- not complain about an escape it does not recognise, it silently
+        -- drops the backslash and keeps the letter. An unescaped path is
+        -- therefore not a syntax error anybody would notice; it loads as
+        -- InterfaceIconsINV_Misc_Gear_01 and the icon quietly never appears.
+        local escaped = value
+            :gsub("\\", "\\\\")
+            :gsub("\"", "\\\"")
+            :gsub("\n", "\\n")
+            :gsub("\r", "\\r")
+        out[#out + 1] = "\"" .. escaped .. "\""
     elseif t == "number" then
         out[#out + 1] = tostring(Rounded(value))
     else

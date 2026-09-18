@@ -226,11 +226,23 @@ function Plates:ApplyAll()
 end
 
 -- Whoever is carrying this unit right now, or nobody.
+--
+-- Answered from our own map rather than by asking the game. The unit
+-- events this feeds - UNIT_HEALTH and its neighbours - fire for every
+-- token the client has an opinion about, including "targettarget" and the
+-- other compound ones, and C_NamePlate.GetNamePlateForUnit raises on
+-- those rather than returning nothing:
+--
+--   Target-of-target unit tokens are not allowed for this call
+--
+-- Filtering by token name would mean keeping a list of what is allowed and
+-- being wrong the moment the client adds one. We already know which unit
+-- is on which plate, because the game told us when it added it, so look it
+-- up here and let anything we were never told about miss.
+local byUnit = {}
+
 local function Find(unit)
-    if not unit then return nil end
-    local host = C_NamePlate and C_NamePlate.GetNamePlateForUnit
-        and C_NamePlate.GetNamePlateForUnit(unit)
-    return host and active[host] or nil
+    return unit and byUnit[unit] or nil
 end
 
 ---------------------------------------------------------------------------
@@ -246,7 +258,13 @@ function Plates:Added(unit)
 
     local ours = active[host] or Acquire(host)
     active[host] = ours
+    -- A plate frame gets reused for whoever stands there next, so let go
+    -- of the token it was carrying before claiming the new one.
+    if ours.unit and ours.unit ~= unit and byUnit[ours.unit] == ours then
+        byUnit[ours.unit] = nil
+    end
     ours.unit = unit
+    byUnit[unit] = ours
 
     -- A plate the game shows for a friendly unit can be left to the game
     -- by turning this off; it is still the game that decides whether
@@ -270,6 +288,8 @@ function Plates:Removed(unit)
     local ours = active[host]
     if not ours then return end
     active[host] = nil
+    if byUnit[unit] == ours then byUnit[unit] = nil end
+    if ours.unit and byUnit[ours.unit] == ours then byUnit[ours.unit] = nil end
     Release(ours)
 end
 

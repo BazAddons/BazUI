@@ -1,0 +1,40 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+---------------------------------------------------------------------------
+-- BazUI Settings Seed
+--
+-- A stand-in for the saved variables on a client that will not read them.
+--
+-- Forever (1.60.1, builds 69893 and 69913 checked) writes
+-- WTF/Account/<account>/SavedVariables/BazUI.lua correctly at every logout
+-- and never reads one back. Account and per-character scopes both; the
+-- client's own global saved variables load fine, so it is those two scopes
+-- specifically. Proven from the files themselves - BugGrabber's session
+-- counter reads 1 in both the live file and its .bak, two sessions running,
+-- neither having seen the other - and independently by somebody else with a
+-- pre-seeded file, which came back nil from the main chunk through to
+-- logout. Nothing an addon can do about it from inside the game.
+--
+-- Addon Lua files do still load, though, so this is a saved variables file
+-- wearing an addon file's clothes. tools/bake-seed.py reads what the client
+-- last wrote and rewrites this, and the settings come back.
+--
+-- Why this is safe on a client that works properly: an addon's files run
+-- BEFORE its saved variables do. So on any healthy client - Classic Era, or
+-- Forever once Blizzard fixes it - the real file loads a moment after this
+-- one and replaces whatever is set here. Real saved variables always win,
+-- and this quietly stops mattering the day the client is fixed. That is
+-- also why it must stay first in the TOC and why nothing here may read
+-- BazUIDB expecting it to be final.
+--
+-- What is deliberately not seeded: BazUICharDB. It holds one counter, whose
+-- whole job is to answer "has the client started reading saved variables
+-- yet" - /baz sv prints it as `per-character file remembered N previous
+-- loads`. Seeding it would forge the one honest signal we have.
+--
+-- Shipped empty, and it stays empty in the repository. A baked seed is
+-- somebody's personal settings and belongs on their disk, not in the
+-- package - a fresh install is meant to get Core/StarterProfile.lua.
+---------------------------------------------------------------------------
+
+-- Nothing baked. tools/bake-seed.py replaces the line below.
+_G.BazUIDB = _G.BazUIDB or nil

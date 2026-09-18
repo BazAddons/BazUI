@@ -24,7 +24,13 @@
          that, securecallfunction or not). ChatFrameTemplate's OnLoad
          runs at CreateFrame time; Window.lua overrides its defaults.
          ================================================================= -->
+    <!-- BazUIChatGamepadMixin supplies the four gamepad methods Blizzard's
+         shared chat code calls on whatever frame an edit box belongs to.
+         See Gamepad.lua for why this is four methods of our own rather
+         than FloatingChatFrameMixin, which looks like the tidier answer
+         and puts our windows into CHAT_FRAMES. -->
     <ScrollingMessageFrame name="BazUIChatFrameTemplate"
+        mixin="BazUIChatGamepadMixin"
         movable="true" enableMouse="false" resizable="true"
         inherits="ChatFrameTemplate,FloatingBorderedFrame"
         frameStrata="MEDIUM" toplevel="false"
