@@ -653,14 +653,43 @@ addon.config.onReady = function(self)
     -- changes and the clear runs again; each newly learned spell takes
     -- the first empty slot.
     if self.AutoFill then
-        local firstWorld = true
+        -- Two things have to be true before the bars can be filled: the
+        -- world has been entered, and the spellbook has arrived. Waiting a
+        -- second and a half for the second one was a guess, and it showed -
+        -- the bars sat empty for the whole of it on every reload.
+        --
+        -- SPELLS_CHANGED is the game saying the spellbook is ready, and it
+        -- usually arrives long before the guess did. The timer stays as a
+        -- backstop for a login where it never comes, and whichever is first
+        -- does the work once.
+        local worldReady, spellsReady, filled = false, false, false
+
+        local function FillOnce()
+            if filled or not (worldReady and spellsReady) then return end
+            filled = true
+            addon.AutoFill:OnWorldEntered()
+        end
+
         self:On("PLAYER_ENTERING_WORLD", function()
-            if not firstWorld then return end
-            firstWorld = false
-            C_Timer.After(1.5, function() addon.AutoFill:OnWorldEntered() end)
+            if worldReady then return end
+            worldReady = true
+            FillOnce()
+            C_Timer.After(1.5, function()
+                -- The backstop fires whether or not the spellbook ever
+                -- said anything, so a login that never sends the event
+                -- still ends up with bars.
+                spellsReady = true
+                FillOnce()
+            end)
         end)
+
         self:On("SPELLS_CHANGED", function()
-            if not firstWorld then addon.AutoFill:QueuePrune() end
+            spellsReady = true
+            if not filled then
+                FillOnce()
+            else
+                addon.AutoFill:QueuePrune()
+            end
         end)
         self:On("LEARNED_SPELL_IN_SKILL_LINE", function(_, spellID) addon.AutoFill:OnLearned(spellID) end)
         self:On("PLAYER_REGEN_ENABLED", function()
