@@ -651,18 +651,26 @@ BazUI:QueueForLogin(function()
                     set = function(_, val) BazUIDB.welcomeMessage = val end,
                 },
                 -- Beta clients carry a draggable Issue Reporter that sits
-                -- on top of whatever is under it. Only offered where it
-                -- exists, and only ever hidden when asked: it is Blizzard's
-                -- frame and reporting bugs is the point of a beta.
+                -- on top of whatever is under it, and it is in the way more
+                -- often than it is wanted, so it starts hidden. The switch
+                -- is here to put it back - /PTR opens the reporter without
+                -- it either way - and only appears on a client that has one.
                 hideIssueReporter = {
                     order = 3,
                     type = "toggle",
                     name = "Hide the Issue Reporter",
                     desc = "The beta client's draggable bug-report button.",
                     hidden = function() return _G.PTR_IssueReporter == nil end,
-                    get = function() return BazUIDB.hideIssueReporter == true end,
+                    -- Written out rather than `val and nil or false`, which
+                    -- cannot ever yield nil: `true and nil` is nil, and the
+                    -- or takes over every time.
+                    get = function() return BazUIDB.hideIssueReporter ~= false end,
                     set = function(_, val)
-                        BazUIDB.hideIssueReporter = val and true or nil
+                        if val then
+                            BazUIDB.hideIssueReporter = nil
+                        else
+                            BazUIDB.hideIssueReporter = false
+                        end
                         BazUI:ApplyIssueReporterVisibility()
                     end,
                 },
@@ -1059,13 +1067,13 @@ function BazUI:ReportSavedVariables()
     end
 end
 
--- The beta client's Issue Reporter, down only when asked. SuppressFrame
+-- The beta client's Issue Reporter, down unless asked for. SuppressFrame
 -- keeps it down: theirs shows itself again on a good few events.
 function BazUI:ApplyIssueReporterVisibility()
     local frame = _G.PTR_IssueReporter
     if not frame then return end
     BazUI.SuppressFrame(frame, function()
-        return _G.BazUIDB and _G.BazUIDB.hideIssueReporter == true
+        return _G.BazUIDB == nil or _G.BazUIDB.hideIssueReporter ~= false
     end)
 end
 
