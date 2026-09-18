@@ -85,15 +85,8 @@ end
 
 -- Blizzard's "you have something new" flash (talent points, guild
 -- invites) drives the stock Flash texture, which now sits on the hidden
--- holder. Mirror it as a brighter ring and lit disc instead.
-local byButton = {}
-
-local function SetPulsing(button, on)
-    local entry = byButton[button]
-    if not entry then return end
-    entry.pulsing = on and true or false
-    RefreshState(entry)
-end
+-- holder. Mirrored as a brighter ring and lit disc instead, read off
+-- their FlashBorder by the ticker in OnBlizzardUpdate.
 
 local function UpdatePortrait(entry)
     if entry.def.portrait and entry.icon then
@@ -110,7 +103,6 @@ local function Adopt(def)
         origW = button:GetWidth(), origH = button:GetHeight(),
     }
     adopted[def.key] = entry
-    byButton[button] = entry
     CollectChrome(entry)
 
     local icon = button:CreateTexture(nil, "ARTWORK")
@@ -374,7 +366,15 @@ end
 -- re-run the layout in case a button was shown or hidden.
 function addon:OnBlizzardUpdate()
     if not bar or self:GetSetting("enabled") == false then return end
-    for _, entry in pairs(adopted) do RefreshState(entry) end
+    for _, entry in pairs(adopted) do
+        -- Whether a button is calling for attention, read rather than
+        -- hooked. MicroButtonPulse flashes the button's own FlashBorder
+        -- and MicroButtonPulseStop stops it, so the flag is already on
+        -- their frame and does not need us to intercept the call.
+        local flash = entry.button and entry.button.FlashBorder
+        entry.pulsing = (flash and flash:IsShown()) and true or false
+        RefreshState(entry)
+    end
     self:Layout()
 end
 
@@ -419,8 +419,6 @@ function addon:Initialize()
         addon:OnBlizzardUpdate()
     end)
 
-    hooksecurefunc("MicroButtonPulse",     function(button) SetPulsing(button, true) end)
-    hooksecurefunc("MicroButtonPulseStop", function(button) SetPulsing(button, false) end)
     self:On("UNIT_PORTRAIT_UPDATE", function(_, unit)
         if unit == "player" then self:UpdatePortraits() end
     end)

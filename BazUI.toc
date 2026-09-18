@@ -105,12 +105,12 @@ Core\IconPicker.lua
 # Modules\Drawers\Widgets\Broker.lua
 # Modules\Drawers\UserGuide.lua
 
-# Modules\Bags\Core.lua
-# Modules\Bags\Categories.lua
-# Modules\Bags\Layouts.lua
-# Modules\Bags\Bag.lua
-# Modules\Bags\CategoriesPage.lua
-# Modules\Bags\UserGuide.lua
+Modules\Bags\Core.lua
+Modules\Bags\Categories.lua
+Modules\Bags\Layouts.lua
+Modules\Bags\Bag.lua
+Modules\Bags\CategoriesPage.lua
+Modules\Bags\UserGuide.lua
 
 # Chat is switched off on the Forever beta.
 #
@@ -234,10 +234,10 @@ Modules\UnitFrames\Nameplate.lua
 # Modules\Notifications\Sources\Zygor.lua
 # Modules\Notifications\UserGuide.lua
 
-# Modules\MicroMenu\Core.lua
-# Modules\MicroMenu\Bar.lua
-# Modules\MicroMenu\Settings.lua
-# Modules\MicroMenu\UserGuide.lua
+Modules\MicroMenu\Core.lua
+Modules\MicroMenu\Bar.lua
+Modules\MicroMenu\Settings.lua
+Modules\MicroMenu\UserGuide.lua
 
 
 # Modules\Tooltip\Core.lua

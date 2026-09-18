@@ -1821,30 +1821,33 @@ local function HookBlizzardBagToggles()
     ToggleBag      = function() Toggle() end
     OpenBag        = function() Open() end
 
-    -- Close paths are hooked, not replaced.
+    -- The close paths are not touched at all.
     --
-    -- Assigning these three used to taint them, and Blizzard reads them
-    -- from a place that matters: CloseAllWindows does `CloseAllBags()`,
-    -- and CloseAllWindows sits in the panel-manager path that opens Edit
-    -- Mode. Reading a global we had assigned tainted that whole call, so
-    -- entering Edit Mode ended in their compact party frames comparing a
-    -- secret colour and erroring. Found in taint.log, not by reasoning.
+    -- CloseAllBags was the first thing taint.log ever named: CloseAllWindows
+    -- does `CloseAllBags()`, CloseAllWindows sits in the panel-manager path
+    -- that opens Edit Mode, and reading a global BazUI had taken over tainted
+    -- that whole call - ending in their compact party frames comparing a
+    -- secret colour four files away. hooksecurefunc was tried next and is no
+    -- better: the string form leaves the global counting as tainted just the
+    -- same, which the micro menu proved separately with UpdateMicroButtons.
     --
-    -- hooksecurefunc on a global runs ours after theirs without taking
-    -- the global over, so any stock bag another addon opened still
-    -- closes, and so does ours.
+    -- So the panel closes on its own terms instead:
     --
-    -- What is lost: our close no longer contributes to their return
-    -- value, which the Escape chain uses to decide the press was spent.
-    -- Nothing depends on that here - the panel takes Escape itself
-    -- (uiSpecialFrame = true above, which is BazUI.CloseOnEscape now)
-    -- and stops the press propagating when it uses it.
-    local function CloseOurs()
-        Bag:Hide()
-    end
-    hooksecurefunc("CloseAllBags", CloseOurs)
-    hooksecurefunc("CloseBackpack", CloseOurs)
-    hooksecurefunc("CloseBag", CloseOurs)
+    --   Escape        BazUI.CloseOnEscape, on the frame itself.
+    --   Toggle        our own ToggleBackpack / ToggleBag / OpenBag above.
+    --   Interactions  a vendor, bank or mailbox closing fires an event, and
+    --                 an event costs nothing to listen to.
+    --
+    -- What is lost is the case where some other addon calls CloseAllBags by
+    -- hand and expects everyone's bags to shut. Nothing in BazUI does that,
+    -- and no part of the game closes bags without one of the three above
+    -- happening as well.
+    local closeWatcher = CreateFrame("Frame")
+    closeWatcher:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
+    closeWatcher:RegisterEvent("BANKFRAME_CLOSED")
+    closeWatcher:RegisterEvent("MERCHANT_CLOSED")
+    closeWatcher:RegisterEvent("MAIL_CLOSED")
+    closeWatcher:SetScript("OnEvent", function() Bag:Hide() end)
 end
 
 BazUI:QueueForModule("Bags", HookBlizzardBagToggles)
