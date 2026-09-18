@@ -25,7 +25,6 @@
 
 BazUI.StarterProfile = {
     UnitFrames = {
-        scale = 0.8,
         showValues = "hover",
         classColor = true,
         barClicks = true,
@@ -40,10 +39,7 @@ BazUI.StarterProfile = {
         -- are what replaces them. The target frame is left alone.
         hidePlayerFrame = true,
         hidePlayerCastBar = true,
-        modelLayer = "below", modelScale = 0.9, modelX = 3, modelY = 1, modelDistance = 0.9,
         position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 190 },
-        targetScale = 0.8,
-        targetPortraitStyle = "flat",
         targetShowValues = "hover",
         targetPosition = { point = "CENTER", relPoint = "TOP", x = 0, y = -80 },
 

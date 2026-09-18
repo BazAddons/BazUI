@@ -126,12 +126,12 @@ local POSITION_KEYS = { pos = true, position = true, targetPosition = true }
 
 -- Of those, the ones whose offsets are in a scaled frame's own units.
 --
--- Only a bar is scaled. UnitFrames carries a `scale` setting too, but
--- nothing reads it - UnitBars never calls SetScale, and the key is a
--- leftover from the portrait frames the module no longer draws. Inheriting
--- it divided every status bar's offsets by 0.8 and put the target bars a
--- fifth of the screen from where they were left. A scale is only a scale
--- where some frame is actually wearing it.
+-- Only a bar is scaled. A profile that has picked up a `scale` key from
+-- somewhere else must not lend it to anything nested inside: UnitFrames
+-- carried one that nothing read, and inheriting it divided every status
+-- bar's offsets by 0.8 and put the target bars a fifth of the screen from
+-- where they were left. A scale is only a scale where some frame is
+-- actually wearing it.
 local SCALED_POSITION_KEYS = { pos = true }
 
 local function Indent(depth)
