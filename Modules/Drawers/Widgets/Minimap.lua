@@ -246,8 +246,33 @@ local FRAME_OVERLAP = 5
 
 local ring
 
+-- Every piece of the game's own ring, found rather than listed.
+--
+-- The named three were Era's and retail's, and they missed Forever's: this
+-- client draws the ring from Skin.lua as MinimapCompassTexture plus a
+-- MinimapCompassTextureUnderlay when the map rotates, and the runes showed
+-- through our frame because nothing here knew that second name.
+--
+-- Naming them one client at a time is a losing game, so the named ones are
+-- a floor and the rest are swept off MinimapBackdrop - which is the frame
+-- Blizzard draws its ring on, and where ours goes too. Our own art is
+-- skipped by identity, so the sweep cannot fade the frame it is protecting.
 local function BlizzardRingTextures()
-    return { MinimapBorder, MinimapNorthTag, MinimapCompassTexture }
+    local found = { MinimapBorder, MinimapNorthTag,
+                    MinimapCompassTexture, _G.MinimapCompassTextureUnderlay }
+
+    local backdrop = MinimapBackdrop
+    if backdrop and backdrop.GetRegions then
+        local ours = ring and ring.art
+        for _, region in ipairs({ backdrop:GetRegions() }) do
+            if region ~= ours and region.SetAlpha and region.GetObjectType
+                and region:GetObjectType() == "Texture" then
+                found[#found + 1] = region
+            end
+        end
+    end
+
+    return found
 end
 
 -- Where the frame is drawn.
