@@ -85,12 +85,27 @@ end
 -- anchor is chosen from the wrong arithmetic and the frame lands about a
 -- seventh of the screen away from where it was left.
 local function NormalisePosition(pos, scale)
-    if type(pos) ~= "table" or not pos.relPoint then return pos end
+    if type(pos) ~= "table" then return pos end
     scale = (type(scale) == "number" and scale > 0) and scale or 1
 
-    local originX, originY = AnchorOrigin(pos.relPoint)
-    local absX = originX + (pos.x or 0) * scale
-    local absY = originY + (pos.y or 0) * scale
+    local originX, originY, absX, absY
+
+    if pos.relPoint then
+        originX, originY = AnchorOrigin(pos.relPoint)
+        absX = originX + (pos.x or 0) * scale
+        absY = originY + (pos.y or 0) * scale
+    elseif pos.x and pos.y then
+        -- Edit Mode's other shape: the frame's centre as a screen-pixel
+        -- offset from the centre of the screen, with no anchor at all.
+        -- Left alone it would put a 4K arrangement three hundred pixels
+        -- off the top of a smaller monitor, which is the whole reason
+        -- this conversion exists.
+        local ui = UIParent:GetEffectiveScale()
+        absX = UIParent:GetWidth() / 2 + pos.x / ui
+        absY = UIParent:GetHeight() / 2 + pos.y / ui
+    else
+        return pos
+    end
 
     local anchor = ScreenAnchor(absX, absY)
     local newOriginX, newOriginY = AnchorOrigin(anchor)

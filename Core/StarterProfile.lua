@@ -27,7 +27,7 @@ BazUI.StarterProfile = {
     UnitFrames = {
         scale = 0.8,
         showValues = "hover",
-        classColor = false,
+        classColor = true,
         barClicks = true,
         showLevel = false,
         rankGlow = true,
@@ -36,6 +36,10 @@ BazUI.StarterProfile = {
         rangeFade = true,
         rangeAlpha = 0.5,
         unitTooltips = true,
+        -- The game's own player frame and cast bar are hidden; these bars
+        -- are what replaces them. The target frame is left alone.
+        hidePlayerFrame = true,
+        hidePlayerCastBar = true,
         modelLayer = "below", modelScale = 0.9, modelX = 3, modelY = 1, modelDistance = 0.9,
         position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 190 },
         targetScale = 0.8,
@@ -48,13 +52,13 @@ BazUI.StarterProfile = {
         -- placed: the host carries its followers, so moving one moves the
         -- stack. The positions are where each lands when nothing docks it.
         --
-        -- Health bars are 24 high and read as the main thing; power and cast
-        -- are 10, so a glance finds health first.
+        -- Health bars are 24 high and read as the main thing; power, cast
+        -- and experience are 10, so a glance finds health first.
         statusBars = {
             {
                 id = 1, kind = "health", unit = "player", name = "Player Health 1",
                 width = 240, height = 24, ticks = 0,
-                textFormat = "namePercent", textMode = "always",
+                textFormat = "nameLevel", hoverFormat = "current/max", textMode = "always",
                 dock = { host = "bar:2", edge = "BOTTOM" },
                 position = { point = "CENTER", relPoint = "BOTTOM", x = -256, y = 220 },
             },
@@ -77,7 +81,7 @@ BazUI.StarterProfile = {
                 width = 240, height = 24, ticks = 0,
                 textFormat = "namePercent", textMode = "always",
                 dock = { host = "float", edge = "BOTTOM" },
-                position = { point = "CENTER", relPoint = "TOP", x = 0, y = -60 },
+                position = { point = "CENTER", relPoint = "TOP", x = -240, y = -362 },
             },
             {
                 id = 5, kind = "power", unit = "target", name = "Target Power 1",
@@ -86,27 +90,19 @@ BazUI.StarterProfile = {
                 dock = { host = "statusbar:4", edge = "BOTTOM" },
                 position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
             },
-            -- Experience and reputation along the main action bar, taking
-            -- its full width: a docked bar with takes = "full" stretches to
-            -- its host, so they line up with the buttons whatever size the
-            -- bar is. Blizzard's own pair is hidden above (stockXP, stockRep),
-            -- so these are the experience and reputation bars.
-            --
-            -- The experience bar takes itself out of the dock at maximum
-            -- level, and reputation closes the gap.
+            -- Experience under the main action bar, centred and taking its
+            -- full width: a docked bar with takes = "full" stretches to its
+            -- host, so it lines up with the buttons whatever size the bar is.
+            -- Blizzard's own is hidden by stockXP above, so this is the
+            -- experience bar. It takes itself out of the dock at maximum
+            -- level and anything under it closes the gap.
             {
-                id = 6, kind = "xp", unit = "player", name = "Experience",
+                id = 6, kind = "xp", unit = "player", name = "XP Bar 1",
                 width = 240, height = 10, ticks = 10,
-                textFormat = "detailed", textMode = "always",
+                textFormat = "detailed", textMode = "hover",
+                align = "CENTER", gap = 6,
                 dock = { host = "bar:1", edge = "BOTTOM" },
-                position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 40 },
-            },
-            {
-                id = 7, kind = "rep", unit = "player", name = "Reputation",
-                width = 240, height = 10, ticks = 0,
-                textFormat = "detailed", textMode = "always",
-                dock = { host = "statusbar:6", edge = "BOTTOM" },
-                position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 26 },
+                position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
             },
         },
     },
@@ -138,7 +134,7 @@ BazUI.StarterProfile = {
                 mouseoverFade = false, mouseoverAlpha = 0.3,
                 locked = false, rightClickSelfCast = false,
                 buttons = {},
-                pos = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 64.3 },
+                pos = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 85.7 },
             },
             {
                 id = 2, cols = 8, rows = 2, scale = 0.7, alpha = 1, spacing = 3,
@@ -201,7 +197,7 @@ BazUI.StarterProfile = {
 
     MicroMenu = {
         enabled = true,
-        buttonSize = 25,
+        buttonSize = 26,
         spacing = 4,
         orientation = "horizontal",
         hideBlizzard = true,
