@@ -170,10 +170,27 @@ function BazUI:ExportStarterProfile()
     Write(profile, out, 0)
     out[#out + 1] = "\n"
 
+    local text = table.concat(out)
+
+    -- Stashed in the saved variables as well as shown. Writing works on
+    -- this client even though reading does not, so the file on disk is a
+    -- reliable way to hand a finished layout out of the game without
+    -- anybody copying anything: run this, reload, and the text is in
+    -- SavedVariables/BazUI.lua under starterExport - screen anchors and
+    -- all, which is the part only the running client can work out.
+    _G.BazUIDB = _G.BazUIDB or {}
+    _G.BazUIDB.starterExport = text
+    _G.BazUIDB.starterExportScreen = {
+        width  = Rounded(UIParent:GetWidth()),
+        height = Rounded(UIParent:GetHeight()),
+        when   = date("%Y-%m-%d %H:%M:%S"),
+    }
+    BazUI:Print("Layout written to the saved variables. |cffffd700/reload|r puts it on disk.")
+
     BazUI:OpenCopyDialog({
         title    = "Starter profile",
         subtitle = "The '" .. tostring(profileName) .. "' profile as Lua, for Core/StarterProfile.lua.",
-        content  = table.concat(out),
+        content  = text,
         editable = true,
         width    = 700,
         height   = 560,
