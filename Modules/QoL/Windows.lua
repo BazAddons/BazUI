@@ -231,6 +231,12 @@ for index, def in ipairs(WINDOWS) do
                     .. " window where you want it. It opens there from then on."),
             section = "windows",
             order   = index,
+            -- On to begin with. Every other tweak starts off because it
+            -- changes how the game behaves; this one only adds the
+            -- ability to drag a window, and until you drag one nothing is
+            -- any different. Turning one off is still yours to do, and a
+            -- switch you have turned off stays off.
+            default = true,
             OnApply = function(enabled)
                 if enabled then Apply(def) end
             end,

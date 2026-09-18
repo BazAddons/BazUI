@@ -8,13 +8,14 @@ if not BazUI or not BazUI.RegisterUserGuide then return end
 BazUI:RegisterUserGuide("QoL", {
     title = "Quality of Life",
     intro = "Small changes to how the game behaves rather than how it looks. "
-        .. "Every one of them starts off.",
+        .. "Every one of them starts off, bar the draggable windows.",
 
     pages = {
         {
             title = "How this module works",
             blocks = {
-                { type = "paragraph", text = "Each tweak is one switch and does one thing. They all start off, and that is deliberate: these change what the game does rather than how it looks, and a switch you did not throw yourself is one you cannot find again when you want it back." },
+                { type = "paragraph", text = "Each tweak is one switch and does one thing. They start off, and that is deliberate: these change what the game does rather than how it looks, and a switch you did not throw yourself is one you cannot find again when you want it back." },
+                { type = "paragraph", text = "The draggable windows are the exception and start on. Making a window draggable does nothing at all until you drag it, so there is no surprise to protect you from - and a window you cannot move is a thing people go looking for a setting to fix." },
                 { type = "paragraph", text = "Two kinds live here. Some set a console setting the game already has - those remember what you had before and put it back when you switch them off. The rest listen for something happening and act when it does; they ask whether they are switched on at the moment they fire, so one that is off is genuinely doing nothing." },
                 { type = "note", text = "|cffffd700Open it with|r /bazqol, or Options > AddOns > BazUI > Quality of Life." },
             },

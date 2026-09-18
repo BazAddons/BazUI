@@ -36,8 +36,10 @@ local function BuildSpec()
         key = "windowsNote", type = "note", section = "windows", order = 0.5,
         style = "info",
         text = "The game places these itself and puts them back every time "
-            .. "they open. Switch one on and it stays where you drag it "
-            .. "instead. Everything else about the window is the game's.",
+            .. "they open. With one of these on, the window stays where "
+            .. "you drag it instead. They all start on: until you drag "
+            .. "something nothing is any different. Everything else about "
+            .. "the window is the game's.",
     }
 
     entries[#entries + 1] = {
@@ -50,11 +52,13 @@ local function BuildSpec()
 
     entries[#entries + 1] = {
         key = "note", type = "note", section = "other", order = 99, style = "info",
-        text = "Everything here starts off. These change how the game "
-            .. "behaves rather than how it looks, and a switch you did not "
-            .. "throw yourself is one you cannot find again when you want "
-            .. "it back. Console settings are put back the way you had "
-            .. "them when you turn a tweak off.",
+        text = "Everything on this page starts off except the draggable "
+            .. "windows, which cannot change anything until you drag "
+            .. "something. The rest change how the game behaves rather "
+            .. "than how it looks, and a switch you did not throw yourself "
+            .. "is one you cannot find again when you want it back. "
+            .. "Console settings are put back the way you had them when "
+            .. "you turn a tweak off.",
     }
 
     return { sections = SECTIONS, entries = entries }

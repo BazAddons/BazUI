@@ -377,6 +377,13 @@ BazUI:RegisterDependency({
 -- walk. BazUI.SuppressFrame hides them through their own OnShow instead,
 -- and calls Hide as Blizzard rather than as us.
 local stockHidden = setmetatable({}, { __mode = "k" })
+
+-- Which of the names in STOCK we have actually taken hold of, by name
+-- rather than by frame, so it survives the frame itself being collected
+-- and can be read back by /bazframes stock.
+local stockHooked = {}
+UnitBars.stockHooked = stockHooked
+
 local suppressKey
 
 function UnitBars:SuppressStock()
@@ -387,7 +394,26 @@ function UnitBars:SuppressStock()
         parts[#parts + 1] = self:StockHidden(entry) and "1" or "0"
     end
     local key = table.concat(parts)
-    if key == suppressKey then return end
+
+    -- The other reason to do the work: a frame that was not there last
+    -- time is there now.
+    --
+    -- Not every frame in this list exists at login. The raid manager is
+    -- the one that matters: Blizzard build it hidden and only show it
+    -- once you are in a group, and several of the others belong to
+    -- add-ons of Blizzard's own that load later than we do. Keying the
+    -- skip on the settings alone meant the first pass found five frames,
+    -- decided nothing had changed since, and never looked for the sixth.
+    -- So a switch that reads as on did nothing.
+    local fresh = false
+    for _, entry in ipairs(self.STOCK) do
+        for _, name in ipairs(entry.frames) do
+            if _G[name] and not stockHooked[name] then fresh = true break end
+        end
+        if fresh then break end
+    end
+
+    if key == suppressKey and not fresh then return end
 
     -- Reparenting Blizzard's frames is protected. The key is left alone
     -- so the next call after combat picks this up.
@@ -404,6 +430,7 @@ function UnitBars:SuppressStock()
             local frame = _G[name]
             if frame then
                 found = true
+                stockHooked[name] = true
                 stockHidden[frame] = hide or nil
                 BazUI.SuppressFrame(frame, function()
                     return stockHidden[frame] and true or false
@@ -413,6 +440,36 @@ function UnitBars:SuppressStock()
     end
 
     if found then suppressKey = key end
+end
+
+-- What actually happened to each of Blizzard's frames, for /bazframes
+-- stock. A switch that reads as on and a frame still on screen has four
+-- possible explanations and this tells them apart: the frame does not
+-- exist under that name, we never took hold of it, we took hold of it and
+-- something showed it again, or the frame is protected and we are in
+-- combat.
+function UnitBars:StockReport()
+    local lines = {}
+    for _, entry in ipairs(self.STOCK) do
+        local hide = self:StockHidden(entry)
+        lines[#lines + 1] = ("|cffffd100%s|r switch: %s"):format(
+            entry.label, hide and "hide" or "leave alone")
+        for _, name in ipairs(entry.frames) do
+            local frame = _G[name]
+            if not frame then
+                lines[#lines + 1] = ("    %s: no such frame"):format(name)
+            else
+                lines[#lines + 1] = ("    %s: hooked %s, shown %s, visible %s, protected %s"):format(
+                    name,
+                    tostring(stockHooked[name] and true or false),
+                    tostring(frame:IsShown() and true or false),
+                    tostring(frame:IsVisible() and true or false),
+                    tostring(frame.IsProtected and frame:IsProtected() and true or false))
+            end
+        end
+    end
+    lines[#lines + 1] = ("in combat: %s"):format(tostring(InCombatLockdown()))
+    return lines
 end
 
 ---------------------------------------------------------------------------

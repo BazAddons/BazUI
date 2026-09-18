@@ -57,6 +57,15 @@ addon = BazUI:RegisterModule("UnitFrames", {
             desc = "Print every bar and row with what it is docked to",
             handler = function() addon:PrintStacks() end,
         },
+        stock = {
+            desc = "Print what happened to each of the game's own frames the Blizzard's Frames switches cover",
+            handler = function()
+                addon:Print("Blizzard's own frames:")
+                for _, line in ipairs(addon.UnitBars:StockReport()) do
+                    print("  " .. line)
+                end
+            end,
+        },
         preview = {
             desc = "Show bars for units that are not there, to arrange them",
             handler = function()
@@ -248,6 +257,15 @@ function addon:InitializeBars()
     UnitBars:UpdateAll()
     -- Whichever of the game's own frames the player asked us to put away.
     UnitBars:SuppressStock()
+
+    -- Asked again when the cast of frames can change. Blizzard's raid
+    -- manager is built hidden and only turns up once you are in a group,
+    -- so login is too early to take hold of it; a roster change is the
+    -- moment it appears. Both calls cost nothing when nothing has
+    -- changed - SuppressStock compares the switches and the frames it has
+    -- already hooked before it touches anything.
+    self:On("GROUP_ROSTER_UPDATE",    function() UnitBars:SuppressStock() end)
+    self:On("PLAYER_ENTERING_WORLD",  function() UnitBars:SuppressStock() end)
 
     -- Edit Mode may open or close at any time, and the movers are the
     -- only thing it is ever allowed to move.

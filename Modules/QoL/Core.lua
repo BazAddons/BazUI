@@ -51,6 +51,10 @@ addon.tweaks = {}
 --   section  which group on the page
 --   order    within that group
 --   cvar     for a tweak that is only a console setting
+--   default  on before anybody has touched the switch. Absent means off,
+--            which is what nearly all of these want - see the note at the
+--            top. The windows are the exception: making one draggable
+--            changes nothing about the game until you drag it.
 --   on/off   the values that CVar takes (default "1" and "0")
 --   OnApply  for a tweak that is code, called when it is switched on or
 --            off with (enabled) - most do their work in an event handler
@@ -71,9 +75,15 @@ end
 -- Switches
 ---------------------------------------------------------------------------
 
+-- Checked against nil rather than leaned on: `saved or default` would
+-- turn every deliberate false back on, and SetEnabled writes a real false
+-- for exactly that reason.
 function addon:Enabled(key)
     local tweaks = self:GetSetting("tweaks") or {}
-    return tweaks[key] and true or false
+    local saved = tweaks[key]
+    if saved ~= nil then return saved and true or false end
+    local def = self:Tweak(key)
+    return (def and def.default) and true or false
 end
 
 function addon:SetEnabled(key, on)

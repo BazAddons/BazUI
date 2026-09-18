@@ -99,6 +99,22 @@ function BarMixin:SetFillColor(color)
     local texture = self.fill:GetStatusBarTexture()
     local def = self._screen and FillDef() or nil
 
+    -- Artwork that is not white needs the color lifting before it goes
+    -- through it. The game's HUD bars are a grey at about three quarters
+    -- brightness, and a status bar's color multiplies what is under it,
+    -- so a color handed over untouched arrives three quarters as bright -
+    -- which is how a blue mana bar came out nearly black the first time
+    -- these were used. Only applied when the atlas actually landed: a
+    -- client without it is showing the plain texture, which is white.
+    if self._fillAtlas and def and def.boost then
+        color = {
+            math.min(1, color[1] * def.boost),
+            math.min(1, color[2] * def.boost),
+            math.min(1, color[3] * def.boost),
+            alpha,
+        }
+    end
+
     -- Through the gradient either way, even when both ends are the same
     -- color. A gradient and a vertex color are the same slot on a texture,
     -- so setting one of them sometimes and the other the rest of the time
@@ -123,10 +139,37 @@ end
 
 -- The fill, and the lit edge that belongs to it. Called again whenever
 -- the choice changes, so a bar answers without a reload.
+-- A fill is a path or a name, and the newer art is only ever a name.
+--
+-- SetStatusBarTexture takes a file, so an atlas has to be put on the
+-- texture object afterwards. The file goes on first either way, so there
+-- is never a frame where the bar has nothing on it and draws the
+-- green-and-black missing grid.
+--
+-- An atlas the client does not have would draw that grid permanently, so
+-- it is only applied once the client says it exists. A texture the caller
+-- asked for by name beats the skin, and takes no atlas.
+local function ApplyFillTexture(bar, def, override)
+    bar.fill:SetStatusBarTexture(override or def.texture)
+    bar._fillAtlas = false
+
+    local atlas = not override and def.atlas
+    if not atlas then return end
+    if C_Texture and C_Texture.GetAtlasInfo and not C_Texture.GetAtlasInfo(atlas) then
+        return
+    end
+
+    local texture = bar.fill:GetStatusBarTexture()
+    if texture and texture.SetAtlas then
+        texture:SetAtlas(atlas, true)
+        bar._fillAtlas = true
+    end
+end
+
 function BarMixin:RefreshFill()
     if not self._screen then return end
     local def = FillDef()
-    self.fill:SetStatusBarTexture(self._fillTexture or def.texture)
+    ApplyFillTexture(self, def, self._fillTexture)
     if self.sheen then self.sheen:SetShown(def.sheen ~= false) end
     self:SetFillColor(self._fillColor)
     Theme.TrackFill(self, Theme.RedrawBarFill)
@@ -522,8 +565,11 @@ function BazUI.CreateStatusBar(name, parent, opts)
 
     bar.fill = CreateFrame("StatusBar", nil, bar)
     bar.fill:SetPoint("TOPLEFT", bar._inset, -bar._inset)
-    bar.fill:SetStatusBarTexture(screen and (opts.texture or FillDef().texture)
-        or "Interface\\Buttons\\WHITE8x8")
+    if screen then
+        ApplyFillTexture(bar, FillDef(), opts.texture)
+    else
+        bar.fill:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
+    end
     bar.fill:SetMinMaxValues(0, 1)
     bar.fill:SetValue(0)
 

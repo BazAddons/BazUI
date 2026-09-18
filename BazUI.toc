@@ -1,14 +1,19 @@
-## Interface: 16001, 11509
+# Forever only. Classic Era's 11509 used to be here and the packager
+# published a build for both; supporting a second client is a second client
+# to keep working, and this one is not it. The Era compatibility that is
+# already in the code stays - it costs nothing and is what makes the Forever
+# differences obvious - but nothing is shipped for that client.
+## Interface: 16001
 # A readable copy of the line above. The client does not expose
 # "Interface" through GetAddOnMetadata, but it does expose any X- field,
 # so this is how /baz sv can say whether the TOC it is running was the
 # one on disk - a TOC is only re-read when the client launches, never on
 # /reload, and a test that cannot tell those apart proves nothing.
-## X-Interface-Stamp: 16001,11509
+## X-Interface-Stamp: 16001
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 003
+## Version: 004
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
