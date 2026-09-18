@@ -78,14 +78,19 @@ local function Rounded(n)
     return math.floor(n * 10 + 0.5) / 10
 end
 
-local function NormalisePosition(pos)
+-- SetPoint offsets are in the anchored frame's own units, not UIParent's,
+-- so a bar at scale 0.7 that sits 384 points from the right edge stores
+-- -548.6. Converting to a screen anchor means going out to UIParent's
+-- space and back, and both trips have to carry the scale - without it the
+-- anchor is chosen from the wrong arithmetic and the frame lands about a
+-- seventh of the screen away from where it was left.
+local function NormalisePosition(pos, scale)
     if type(pos) ~= "table" or not pos.relPoint then return pos end
+    scale = (type(scale) == "number" and scale > 0) and scale or 1
 
-    local x, y = pos.x or 0, pos.y or 0
-
-    -- Already against a screen anchor with a sane offset: leave it alone.
     local originX, originY = AnchorOrigin(pos.relPoint)
-    local absX, absY = originX + x, originY + y
+    local absX = originX + (pos.x or 0) * scale
+    local absY = originY + (pos.y or 0) * scale
 
     local anchor = ScreenAnchor(absX, absY)
     local newOriginX, newOriginY = AnchorOrigin(anchor)
@@ -93,8 +98,8 @@ local function NormalisePosition(pos)
     return {
         point    = pos.point or "CENTER",
         relPoint = anchor,
-        x        = Rounded(absX - newOriginX),
-        y        = Rounded(absY - newOriginY),
+        x        = Rounded((absX - newOriginX) / scale),
+        y        = Rounded((absY - newOriginY) / scale),
     }
 end
 
@@ -108,12 +113,18 @@ local function Indent(depth)
     return string.rep("    ", depth)
 end
 
-local function Write(value, out, depth, key)
+-- The scale in force for the table being written. A bar carries its own;
+-- anything else inherits the module's, which is what the module applies
+-- to it. Passed down rather than looked up, because by the time a
+-- position is reached its owner is two tables back.
+local function Write(value, out, depth, key, scale)
     local t = type(value)
 
     if t == "table" then
+        if type(value.scale) == "number" then scale = value.scale end
+
         if key and POSITION_KEYS[key] then
-            value = NormalisePosition(value)
+            value = NormalisePosition(value, scale)
         end
 
         -- An empty table on one line reads better than three.
@@ -128,7 +139,7 @@ local function Write(value, out, depth, key)
         -- exports of the same layout come out identical.
         for i = 1, #value do
             out[#out + 1] = Indent(depth + 1)
-            Write(value[i], out, depth + 1)
+            Write(value[i], out, depth + 1, nil, scale)
             out[#out + 1] = ",\n"
         end
 
@@ -143,7 +154,7 @@ local function Write(value, out, depth, key)
             out[#out + 1] = name:match("^[%a_][%w_]*$")
                 and (name .. " = ")
                 or ("[\"" .. name .. "\"] = ")
-            Write(value[name], out, depth + 1, name)
+            Write(value[name], out, depth + 1, name, scale)
             out[#out + 1] = ",\n"
         end
 

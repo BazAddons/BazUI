@@ -15,9 +15,9 @@
 -- Anything tied to one player stays out: per-character bar payloads,
 -- item pins, chat history, minimap button order from other addons.
 --
--- Bags, Bars, MicroMenu and UnitFrames were arranged in game on a
--- 3840 x 2160 screen and exported with /baz export, which is also what
--- worked out their screen anchors. Chat, Drawers and Auras are still
+-- Bags, Bars, MicroMenu and UnitFrames were arranged in game and
+-- exported with /baz export, which is also what worked out their screen
+-- anchors. Chat, Drawers and Auras are still
 -- written by hand: those modules were switched off at the time, and an
 -- export only knows about what was loaded. tools/bake-starter.py does
 -- the same job straight from the saved variables, without the paste.
