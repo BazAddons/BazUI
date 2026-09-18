@@ -184,13 +184,14 @@ local function SetupLootAlertSuppression()
         end
     end
 
-    -- Catch-all: modern alert frames are pooled and anonymous (no GetName),
-    -- so hide any frame that comes through AlertFrame when suppression is on
-    if AlertFrame and AlertFrame.AddAlertFrame then
-        hooksecurefunc(AlertFrame, "AddAlertFrame", function(self, frame)
-            if GetSetting("hideLootAlerts") ~= false and type(frame) == "table" and frame.Hide then
-                frame:Hide()
-            end
+    -- Catch-all. Modern alert frames are pooled and anonymous, so there is
+    -- nothing to name; the container they all pass through is what goes
+    -- down. This used to hooksecurefunc AlertFrame:AddAlertFrame, which
+    -- writes to a frame we do not own - on Forever the write does not
+    -- survive and Blizzard's own call finds the method missing.
+    if AlertFrame then
+        BNC:HookAlertSystem(AlertFrame, function()
+            return GetSetting("hideLootAlerts") ~= false
         end)
     end
 end

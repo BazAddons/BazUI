@@ -194,45 +194,45 @@ Modules\UnitFrames\Nameplate.lua
 # Modules\Auras\Settings.lua
 # Modules\Auras\UserGuide.lua
 
-# Modules\Notifications\Namespace.lua
-# Modules\Notifications\Utils\SafeCall.lua
-# Modules\Notifications\Utils\TimeFormat.lua
-# Modules\Notifications\Utils\Anchoring.lua
-# Modules\Notifications\Core\Init.lua
-# Modules\Notifications\Core\Events.lua
-# Modules\Notifications\Core\Database.lua
-# Modules\Notifications\Core\History.lua
-# Modules\Notifications\Core\SlashCommands.lua
-# Modules\Notifications\Core\BlizzardFrames.lua
-# Modules\Notifications\Core\DoNotDisturb.lua
-# Modules\Notifications\Utils\SafeString.lua
-# Modules\Notifications\API\ModuleRegistry.lua
-# Modules\Notifications\API\Notifications.lua
-# Modules\Notifications\API\ModuleHelpers.lua
-# Modules\Notifications\UI\Colors.lua
-# Modules\Notifications\UI\Animations.lua
-# Modules\Notifications\UI\NotificationCard.lua
-# Modules\Notifications\UI\GroupHeader.lua
-# Modules\Notifications\UI\Toast.lua
-# Modules\Notifications\UI\PanelScroll.lua
-# Modules\Notifications\UI\Panel.lua
-# Modules\Notifications\UI\ToggleButton.lua
-# Modules\Notifications\Options\OptionsPanel.lua
-# Modules\Notifications\Sources\Auction.lua
-# Modules\Notifications\Sources\Group.lua
-# Modules\Notifications\Sources\Instance.lua
-# Modules\Notifications\Sources\Inventory.lua
-# Modules\Notifications\Sources\Loot.lua
-# Modules\Notifications\Sources\Mail.lua
-# Modules\Notifications\Sources\Professions.lua
-# Modules\Notifications\Sources\Quests.lua
-# Modules\Notifications\Sources\Reputation.lua
-# Modules\Notifications\Sources\Social.lua
-# Modules\Notifications\Sources\System.lua
-# Modules\Notifications\Sources\XP.lua
-# Modules\Notifications\Sources\Zones.lua
-# Modules\Notifications\Sources\Zygor.lua
-# Modules\Notifications\UserGuide.lua
+Modules\Notifications\Namespace.lua
+Modules\Notifications\Utils\SafeCall.lua
+Modules\Notifications\Utils\TimeFormat.lua
+Modules\Notifications\Utils\Anchoring.lua
+Modules\Notifications\Core\Init.lua
+Modules\Notifications\Core\Events.lua
+Modules\Notifications\Core\Database.lua
+Modules\Notifications\Core\History.lua
+Modules\Notifications\Core\SlashCommands.lua
+Modules\Notifications\Core\BlizzardFrames.lua
+Modules\Notifications\Core\DoNotDisturb.lua
+Modules\Notifications\Utils\SafeString.lua
+Modules\Notifications\API\ModuleRegistry.lua
+Modules\Notifications\API\Notifications.lua
+Modules\Notifications\API\ModuleHelpers.lua
+Modules\Notifications\UI\Colors.lua
+Modules\Notifications\UI\Animations.lua
+Modules\Notifications\UI\NotificationCard.lua
+Modules\Notifications\UI\GroupHeader.lua
+Modules\Notifications\UI\Toast.lua
+Modules\Notifications\UI\PanelScroll.lua
+Modules\Notifications\UI\Panel.lua
+Modules\Notifications\UI\ToggleButton.lua
+Modules\Notifications\Options\OptionsPanel.lua
+Modules\Notifications\Sources\Auction.lua
+Modules\Notifications\Sources\Group.lua
+Modules\Notifications\Sources\Instance.lua
+Modules\Notifications\Sources\Inventory.lua
+Modules\Notifications\Sources\Loot.lua
+Modules\Notifications\Sources\Mail.lua
+Modules\Notifications\Sources\Professions.lua
+Modules\Notifications\Sources\Quests.lua
+Modules\Notifications\Sources\Reputation.lua
+Modules\Notifications\Sources\Social.lua
+Modules\Notifications\Sources\System.lua
+Modules\Notifications\Sources\XP.lua
+Modules\Notifications\Sources\Zones.lua
+Modules\Notifications\Sources\Zygor.lua
+Modules\Notifications\UserGuide.lua
 
 Modules\MicroMenu\Core.lua
 Modules\MicroMenu\Bar.lua
