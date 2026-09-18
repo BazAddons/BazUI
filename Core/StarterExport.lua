@@ -124,23 +124,33 @@ end
 
 local POSITION_KEYS = { pos = true, position = true, targetPosition = true }
 
+-- Of those, the ones whose offsets are in a scaled frame's own units.
+--
+-- Only a bar is scaled. UnitFrames carries a `scale` setting too, but
+-- nothing reads it - UnitBars never calls SetScale, and the key is a
+-- leftover from the portrait frames the module no longer draws. Inheriting
+-- it divided every status bar's offsets by 0.8 and put the target bars a
+-- fifth of the screen from where they were left. A scale is only a scale
+-- where some frame is actually wearing it.
+local SCALED_POSITION_KEYS = { pos = true }
+
 local function Indent(depth)
     return string.rep("    ", depth)
 end
 
--- The scale in force for the table being written. A bar carries its own;
--- anything else inherits the module's, which is what the module applies
--- to it. Passed down rather than looked up, because by the time a
--- position is reached its owner is two tables back.
+-- The scale that applies to a position is the one on the table holding it,
+-- never one inherited from further up: a module's setting called "scale"
+-- has nothing to do with whether the frame under it is scaled.
 local function Write(value, out, depth, key, scale)
     local t = type(value)
 
     if t == "table" then
-        if type(value.scale) == "number" then scale = value.scale end
-
         if key and POSITION_KEYS[key] then
-            value = NormalisePosition(value, scale)
+            value = NormalisePosition(value, SCALED_POSITION_KEYS[key] and scale or 1)
         end
+
+        -- For the children: this table's own scale, if it has one.
+        scale = type(value.scale) == "number" and value.scale or 1
 
         -- An empty table on one line reads better than three.
         if next(value) == nil then

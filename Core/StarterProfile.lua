@@ -81,7 +81,7 @@ BazUI.StarterProfile = {
                 width = 240, height = 24, ticks = 0,
                 textFormat = "namePercent", textMode = "always",
                 dock = { host = "float", edge = "BOTTOM" },
-                position = { point = "CENTER", relPoint = "TOP", x = -240, y = -362 },
+                position = { point = "CENTER", relPoint = "TOP", x = -192, y = -289.6 },
             },
             {
                 id = 5, kind = "power", unit = "target", name = "Target Power 1",
