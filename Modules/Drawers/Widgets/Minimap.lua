@@ -74,10 +74,14 @@ local function AttachMinimap(parent)
     -- but here is a scale nobody asked for.
     Minimap:SetScale(MapScale())
 
-    -- Suppress Blizzard Edit Mode handling for the Minimap
+    -- The game's own Edit Mode selection overlay for the minimap, kept
+    -- down. This used to do `Selection.Show = Selection.Hide`, which
+    -- writes to the method table of a frame we do not own: on Forever the
+    -- write does not survive and Blizzard's own Show call then finds a
+    -- nil, which is exactly how the objective tracker and the nameplates
+    -- broke. SuppressFrame appends an OnShow handler and writes nothing.
     if MinimapCluster and MinimapCluster.Selection then
-        MinimapCluster.Selection:Hide()
-        MinimapCluster.Selection.Show = MinimapCluster.Selection.Hide
+        BazUI.SuppressFrame(MinimapCluster.Selection, function() return true end)
     end
 
     minimapParentedInto = parent
@@ -125,9 +129,15 @@ local function Zoom(delta)
     PlaySound(delta > 0 and SOUNDKIT.IG_MINIMAP_ZOOM_IN or SOUNDKIT.IG_MINIMAP_ZOOM_OUT)
 end
 
+-- Whether the wheel is already wired, held here rather than as a field on
+-- Blizzard's frame. A field we write onto one of their frames counts as
+-- ours from then on, and their code reading it back carries that with it -
+-- which is how hiding an action bar ended up tainting Edit Mode.
+local wheelZoomed = setmetatable({}, { __mode = "k" })
+
 local function EnableWheelZoom()
-    if not Minimap or Minimap._bazWheelZoom then return end
-    Minimap._bazWheelZoom = true
+    if not Minimap or wheelZoomed[Minimap] then return end
+    wheelZoomed[Minimap] = true
     Minimap:EnableMouseWheel(true)
     Minimap:SetScript("OnMouseWheel", function(_, delta) Zoom(delta) end)
 end

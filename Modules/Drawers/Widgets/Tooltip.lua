@@ -197,10 +197,26 @@ local function InstallHooks()
     if hookInstalled then return end
     hookInstalled = true
 
-    hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
-        if tooltip == GameTooltip then
+    -- A script hook, not a hook on GameTooltip_SetDefaultAnchor.
+    --
+    -- Hooking that global leaves it counting as tainted for every call
+    -- Blizzard makes through it afterwards, which on Forever is how a
+    -- press ends with its later actions refused - the micro menu proved
+    -- it with UpdateMicroButtons. HookScript appends a handler and writes
+    -- nothing.
+    --
+    -- The owner is what tells the two cases apart. GameTooltip_SetDefaultAnchor
+    -- sets the owner to UIParent; a tooltip pointed at a button or a bag
+    -- slot has that frame as its owner and was deliberately placed there,
+    -- so it is left alone. Deferred a frame because the owner is set after
+    -- the tooltip is shown.
+    GameTooltip:HookScript("OnShow", function(tooltip)
+        C_Timer.After(0, function()
+            if not tooltip:IsShown() then return end
+            local owner = tooltip.GetOwner and tooltip:GetOwner()
+            if owner and owner ~= UIParent then return end
             ApplyAnchorTo(tooltip)
-        end
+        end)
     end)
 
     -- Once content fills in, re-fit the scale (we may have anchored

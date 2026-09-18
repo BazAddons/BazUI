@@ -68,10 +68,8 @@ local DURABILITY_SCALE = 1.20  -- upscale the native DurabilityFrame inside our 
 
 local durabilityDocked = false
 local durabilitySuppressed = false
-local savedOnEditModeEnter, savedOnEditModeExit, savedHighlightSystem
-local savedDefaultHideSelection, savedSelectionShow
 
-local NOOP = function() end
+
 
 ---------------------------------------------------------------------------
 -- Full suppression - hide DurabilityFrame and use hooksecurefunc to
@@ -124,31 +122,23 @@ local function DockBlizzardDurability(anchor)
     end
     DurabilityFrame.ignoreFramePositionManager = true
 
-    -- Disable Blizzard's Edit Mode handling for this frame. Several layers
-    -- here so any one of them is enough:
-    --   1. `defaultHideSelection = true` - EditModeSystemMixin:OnEditModeEnter
-    --      checks this and skips the highlight if true.
-    --   2. Override OnEditModeEnter / OnEditModeExit / HighlightSystem to
-    --      no-ops in case the mixin dispatch bypasses #1.
-    --   3. Hide DurabilityFrame.Selection (the visible highlight frame)
-    --      and block its Show method from re-showing it.
-    --   4. SetMovable(false) as a final safety so drag can't start.
-    if savedOnEditModeEnter == nil then
-        savedDefaultHideSelection = DurabilityFrame.defaultHideSelection
-        savedOnEditModeEnter      = DurabilityFrame.OnEditModeEnter
-        savedOnEditModeExit       = DurabilityFrame.OnEditModeExit
-        savedHighlightSystem      = DurabilityFrame.HighlightSystem
-    end
-
-    DurabilityFrame.defaultHideSelection = true
-    DurabilityFrame.OnEditModeEnter = NOOP
-    DurabilityFrame.OnEditModeExit  = NOOP
-    DurabilityFrame.HighlightSystem = NOOP
-
+    -- Blizzard's Edit Mode handling for this frame, kept out of the way.
+    --
+    -- This used to override OnEditModeEnter, OnEditModeExit and
+    -- HighlightSystem with no-ops and replace Selection.Show with
+    -- Selection.Hide. DurabilityFrame is one of their Edit Mode systems,
+    -- and writing to the method table of one is what left MainActionBar's
+    -- snap state owned by BazUI - which surfaced four files away as their
+    -- compact party frames comparing a secret colour.
+    --
+    -- Two things do the same job without writing anything of theirs: the
+    -- highlight frame goes down through SuppressFrame, and the frame is
+    -- not movable, so a drag cannot start even if their Edit Mode does
+    -- decide to offer it.
     if DurabilityFrame.Selection then
-        savedSelectionShow = savedSelectionShow or DurabilityFrame.Selection.Show
-        DurabilityFrame.Selection:Hide()
-        DurabilityFrame.Selection.Show = DurabilityFrame.Selection.Hide
+        BazUI.SuppressFrame(DurabilityFrame.Selection, function()
+            return durabilityDocked
+        end)
     end
 
     DurabilityFrame:SetMovable(false)
@@ -169,19 +159,8 @@ local function UndockBlizzardDurability()
     DurabilityFrame:SetScale(1.0)
     DurabilityFrame:ClearAllPoints()
 
-    -- Restore all the Edit Mode handlers / flags
-    if savedOnEditModeEnter then
-        DurabilityFrame.defaultHideSelection = savedDefaultHideSelection
-        DurabilityFrame.OnEditModeEnter = savedOnEditModeEnter
-        DurabilityFrame.OnEditModeExit  = savedOnEditModeExit
-        DurabilityFrame.HighlightSystem = savedHighlightSystem
-        savedOnEditModeEnter, savedOnEditModeExit = nil, nil
-        savedHighlightSystem, savedDefaultHideSelection = nil, nil
-    end
-    if DurabilityFrame.Selection and savedSelectionShow then
-        DurabilityFrame.Selection.Show = savedSelectionShow
-        savedSelectionShow = nil
-    end
+    -- Nothing of theirs to put back: the highlight answers `durabilityDocked`,
+    -- which is about to be false, and the rest was never taken.
     DurabilityFrame:SetMovable(true)
 
     if UIParentRightManagedFrameContainer
