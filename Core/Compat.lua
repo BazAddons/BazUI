@@ -236,24 +236,64 @@ end
 -- frame is up.
 ---------------------------------------------------------------------------
 
+-- SetPropagateKeyboardInput is protected in combat, and a panel built for
+-- the first time during a fight reaches this before anything can stop it -
+-- opening the bags mid-fight put an ADDON_ACTION_BLOCKED in the log every
+-- time. Every call goes through here, and in combat none of them happen.
+--
+-- Keyboard setup missed that way is picked up once the fight ends, so a
+-- panel first opened in combat takes Escape from then on. What is lost is
+-- Escape closing that panel during the fight it was opened in, which is
+-- the game's own rule rather than a compromise: it will not let an addon
+-- take a key in combat at all.
+local combatWatcher
+local pendingKeyboard = setmetatable({}, { __mode = "k" })
+
+local function SetPropagate(frame, propagate)
+    if InCombatLockdown() then return false end
+    frame:SetPropagateKeyboardInput(propagate)
+    return true
+end
+
+local function EnableEscape(frame)
+    if InCombatLockdown() then
+        pendingKeyboard[frame] = true
+        if not combatWatcher then
+            combatWatcher = CreateFrame("Frame")
+            combatWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+            combatWatcher:SetScript("OnEvent", function()
+                for f in pairs(pendingKeyboard) do
+                    f:EnableKeyboard(true)
+                    f:SetPropagateKeyboardInput(true)
+                    pendingKeyboard[f] = nil
+                end
+            end)
+        end
+        return
+    end
+    frame:EnableKeyboard(true)
+    frame:SetPropagateKeyboardInput(true)
+end
+
 function BazUI.CloseOnEscape(frame, onEscape)
     if not (frame and frame.EnableKeyboard) then return false end
 
-    frame:EnableKeyboard(true)
-    frame:SetPropagateKeyboardInput(true)
+    EnableEscape(frame)
     frame:HookScript("OnKeyDown", function(self, key)
         if key ~= "ESCAPE" then
-            self:SetPropagateKeyboardInput(true)
+            SetPropagate(self, true)
             return
         end
-        -- Taken, so the press does not also reach the game menu.
-        self:SetPropagateKeyboardInput(false)
+        -- Taken, so the press does not also reach the game menu. If the
+        -- press cannot be taken it is left to propagate, and Escape does
+        -- whatever it would have done without us.
+        if not SetPropagate(self, false) then return end
         if onEscape then onEscape(self) else self:Hide() end
     end)
     -- Left propagating when it goes away, so a frame that is hidden
     -- while Escape is held cannot swallow the next key it sees.
     frame:HookScript("OnHide", function(self)
-        self:SetPropagateKeyboardInput(true)
+        SetPropagate(self, true)
     end)
     return true
 end
