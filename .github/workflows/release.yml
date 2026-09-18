@@ -49,4 +49,8 @@ jobs:
         with:
           name: BazUI-package
           path: .release/*.zip
-          if-no-files-found: warn
+          # .release is a dot directory, and upload-artifact skips
+          # anything hidden unless told otherwise - which is why the
+          # first run packaged fine and produced no artifact.
+          include-hidden-files: true
+          if-no-files-found: error
