@@ -10,56 +10,141 @@
 --
 -- Positions use screen anchors (BOTTOM, TOP, RIGHT ...), never absolute
 -- pixels from a corner, so the layout lands the same at any resolution
--- or UI scale. Bars store their offsets in the bar's own scaled units,
--- which is how the Bars module reads them back.
+-- or UI scale.
 --
 -- Anything tied to one player stays out: per-character bar payloads,
 -- item pins, chat history, minimap button order from other addons.
+--
+-- Bags, Bars, MicroMenu and UnitFrames were arranged in game on a
+-- 3840 x 2160 screen and exported with /baz export, which is also what
+-- worked out their screen anchors. Chat, Drawers and Auras are still
+-- written by hand: those modules were switched off at the time, and an
+-- export only knows about what was loaded. tools/bake-starter.py does
+-- the same job straight from the saved variables, without the paste.
 ---------------------------------------------------------------------------
-
-local function Bar(id, cols, scale, x, y)
-    return {
-        id = id, cols = cols, rows = 1, scale = scale, alpha = 1, spacing = 3,
-        endcaps = "off", endcapsAutoScale = false, endcapsScale = 1,
-        mouseoverFade = false, mouseoverAlpha = 0.3,
-        locked = false, rightClickSelfCast = false,
-        buttons = {},
-        pos = { point = "CENTER", relPoint = "BOTTOM", x = x, y = y },
-    }
-end
 
 BazUI.StarterProfile = {
     UnitFrames = {
         scale = 0.8,
         showValues = "hover",
-        modelLayer = "below", modelScale = 0.94, modelX = 3, modelY = 1, modelDistance = 0.86,
+        classColor = false,
+        barClicks = true,
+        showLevel = false,
+        rankGlow = true,
+        rankIcon = true,
+        rankWord = false,
+        rangeFade = true,
+        rangeAlpha = 0.5,
+        unitTooltips = true,
+        modelLayer = "below", modelScale = 0.9, modelX = 3, modelY = 1, modelDistance = 0.9,
         position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 190 },
-        targetScale = 0.75,
+        targetScale = 0.8,
         targetPortraitStyle = "flat",
         targetShowValues = "hover",
         targetPosition = { point = "CENTER", relPoint = "TOP", x = 0, y = -80 },
+
+        -- Player health and power stacked under the player frame, the cast
+        -- bar above it, and the same pair for the target. Docked rather than
+        -- placed: the host carries its followers, so moving one moves the
+        -- stack. The positions are where each lands when nothing docks it.
+        statusBars = {
+            {
+                id = 1, kind = "health", unit = "player", name = "Player Health 1",
+                width = 240, height = 24, ticks = 0,
+                textFormat = "namePercent", textMode = "always",
+                dock = { host = "bar:2", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "BOTTOM", x = -256, y = 220 },
+            },
+            {
+                id = 2, kind = "power", unit = "player", name = "Player Power 1",
+                width = 240, height = 24, ticks = 0,
+                textFormat = "current", textMode = "always",
+                dock = { host = "statusbar:1", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
+            },
+            {
+                id = 3, kind = "cast", unit = "player", name = "Player Casting 1",
+                width = 240, height = 24, ticks = 0,
+                textFormat = "current", textMode = "always",
+                dock = { host = "bar:2", edge = "TOP" },
+                position = { point = "CENTER", relPoint = "CENTER", x = -96, y = 96 },
+            },
+            {
+                id = 4, kind = "health", unit = "target", name = "Target Health 1",
+                width = 240, height = 24, ticks = 0,
+                textFormat = "namePercent", textMode = "always",
+                dock = { host = "float", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "TOP", x = 0, y = -60 },
+            },
+            {
+                id = 5, kind = "power", unit = "target", name = "Target Power 1",
+                width = 240, height = 24, ticks = 0,
+                textFormat = "current", textMode = "always",
+                dock = { host = "statusbar:4", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
+            },
+        },
     },
 
     Auras = { iconSize = 40 },
 
     Bars = {
-        -- A 14-slot main bar centered along the bottom and a 6-slot bar on
-        -- each side of the player frame. Blizzard's own bar is hidden:
-        -- BazUI's bars are the action bars, and the empty slots show
-        -- where abilities go.
+        -- A 14-slot main bar along the bottom and an 8-slot double row out
+        -- to the right, which is what the player health and cast bars dock
+        -- against. Blizzard's own bar is hidden: BazUI's bars are the action
+        -- bars, and the empty slots show where abilities go.
         hideDefaultActionBar = true,
+        hideDefaultActionBarArt = false,
+        hideStanceBar = true,
+        stockXP = false,
+        stockRep = false,
+        autoFill = true,
+        autoPlaceNew = true,
+        dragRequiresShift = false,
+        fullRangeColor = true,
+        showKeybindText = true,
+        showMacroNames = true,
+        showTooltips = true,
+        tooltipAnchor = "default",
         bars = {
-            Bar(1, 14, 0.70,    0,  64.3),
-            Bar(2,  6, 0.65, -219, 246.2),
-            Bar(3,  6, 0.65,  219, 246.2),
+            {
+                id = 1, cols = 14, rows = 1, scale = 0.7, alpha = 1, spacing = 3,
+                endcaps = "off", endcapsAutoScale = false, endcapsScale = 1,
+                mouseoverFade = false, mouseoverAlpha = 0.3,
+                locked = false, rightClickSelfCast = false,
+                buttons = {},
+                pos = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 64.3 },
+            },
+            {
+                id = 2, cols = 8, rows = 2, scale = 0.7, alpha = 1, spacing = 3,
+                endcaps = "off", endcapsAutoScale = false, endcapsScale = 1,
+                mouseoverFade = false, mouseoverAlpha = 0.3,
+                locked = false, rightClickSelfCast = false,
+                buttons = {},
+                pos = { point = "CENTER", relPoint = "RIGHT", x = -443.1, y = -103.1 },
+            },
         },
     },
 
     Bags = {
         bagMode = "categories",
         cols = 10,
+        maxRows = 15,
         hideBagBar = true,
-        position = { point = "RIGHT", relPoint = "RIGHT", x = -95, y = -47 },
+        hideEmpty = true,
+        emptyBackdrop = true,
+        perBagSections = true,
+        sellJunkButton = true,
+        titleCount = true,
+        goldOnly = false,
+        showBindType = false,
+        showItemLevel = false,
+        rarityRims = "uncommon",
+        strata = "DIALOG",
+        bgTexture = "marble",
+        bgAlpha = 1,
+        bgDarken = 0.4,
+        position = { point = "RIGHT", relPoint = "RIGHT", x = -285, y = -18 },
     },
 
     Chat = {
@@ -90,10 +175,13 @@ BazUI.StarterProfile = {
     },
 
     MicroMenu = {
+        enabled = true,
         buttonSize = 25,
         spacing = 4,
+        orientation = "horizontal",
+        hideBlizzard = true,
         mouseoverFade = true,
+        fadeAlpha = 0,
         position = { point = "TOP", relPoint = "TOP", x = 0, y = -4 },
     },
-
 }
