@@ -650,6 +650,22 @@ BazUI:QueueForLogin(function()
                     get = function() return BazUIDB.welcomeMessage end,
                     set = function(_, val) BazUIDB.welcomeMessage = val end,
                 },
+                -- Beta clients carry a draggable Issue Reporter that sits
+                -- on top of whatever is under it. Only offered where it
+                -- exists, and only ever hidden when asked: it is Blizzard's
+                -- frame and reporting bugs is the point of a beta.
+                hideIssueReporter = {
+                    order = 3,
+                    type = "toggle",
+                    name = "Hide the Issue Reporter",
+                    desc = "The beta client's draggable bug-report button.",
+                    hidden = function() return _G.PTR_IssueReporter == nil end,
+                    get = function() return BazUIDB.hideIssueReporter == true end,
+                    set = function(_, val)
+                        BazUIDB.hideIssueReporter = val and true or nil
+                        BazUI:ApplyIssueReporterVisibility()
+                    end,
+                },
                 movingHeader = {
                     order = 5,
                     type = "header",
@@ -1043,7 +1059,18 @@ function BazUI:ReportSavedVariables()
     end
 end
 
+-- The beta client's Issue Reporter, down only when asked. SuppressFrame
+-- keeps it down: theirs shows itself again on a good few events.
+function BazUI:ApplyIssueReporterVisibility()
+    local frame = _G.PTR_IssueReporter
+    if not frame then return end
+    BazUI.SuppressFrame(frame, function()
+        return _G.BazUIDB and _G.BazUIDB.hideIssueReporter == true
+    end)
+end
+
 BazUI:QueueForLogin(function()
+    BazUI:ApplyIssueReporterVisibility()
     BazUI._svTrace.atLogin = CountKeys(_G.BazUIDB)
     BazUI:ReportSavedVariables()
     BazUI:RecordModuleFlagsAtLogin()
