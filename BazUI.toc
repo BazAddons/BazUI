@@ -6,6 +6,7 @@
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
+## X-Curse-Project-ID: 1698481
 ## Category: BazUI
 ## X-Category: Interface Enhancements
 ## SavedVariables: BazUIDB
