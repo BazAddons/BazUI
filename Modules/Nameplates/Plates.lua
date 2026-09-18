@@ -45,32 +45,26 @@ BazUI:RegisterDependency({
 --
 -- Put away rather than hidden: its pieces are shown again by the game's
 -- own code whenever it updates one, so a Hide of ours lasts until the
--- next health tick. Alpha is not protected, is not read back by anything
--- that matters, and cannot be argued with.
+-- next health tick. Reapply transparency from our own visible frame's
+-- OnUpdate because the game can reset the stock frame's alpha too.
 ---------------------------------------------------------------------------
 
 local function SuppressStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
-    frame._bazSuppressed = true
     frame:SetAlpha(0)
-
-    -- Set once, and not hooked.
-    --
-    -- This used to hooksecurefunc the frame's SetAlpha to put it back at
-    -- nought whenever the game raised it. On Forever that left
-    -- CompactUnitFrame_UpdateCenterStatusIcon calling a nil SetAlpha on
-    -- the plate - alpha is one of the aspects the client now guards, and
-    -- writing to the method table of a frame we do not own is what broke
-    -- it. Blizzard raising the alpha again will show their plate through
-    -- ours, which is a blemish; an error on every nameplate is not.
 end
 
 local function RestoreStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
-    frame._bazSuppressed = nil
     frame:SetAlpha(1)
+end
+
+-- Keep the handler on our frame. Hooking the stock frame's SetAlpha
+-- previously caused errors in Blizzard's code on Forever.
+local function KeepStockSuppressed(ours)
+    SuppressStock(ours.host)
 end
 
 ---------------------------------------------------------------------------
@@ -88,6 +82,7 @@ local function Build()
 
     local plate = CreateFrame("Frame", nil, UIParent)
     plate:SetFrameStrata("BACKGROUND")
+    plate:SetScript("OnUpdate", KeepStockSuppressed)
 
     -- The suite's border and the suite's fill, the same as every other
     -- bar. It used to wear the flat one-pixel treatment instead, because
@@ -131,6 +126,7 @@ end
 
 local function Acquire(host)
     local ours = table.remove(pool) or Build()
+    ours.host = host
     ours:SetParent(host)
     ours:ClearAllPoints()
     ours:SetPoint("CENTER", host, "CENTER", 0, 0)
@@ -140,6 +136,8 @@ end
 
 local function Release(ours)
     ours:Hide()
+    RestoreStock(ours.host)
+    ours.host = nil
     ours:SetParent(UIParent)
     ours.unit = nil
     pool[#pool + 1] = ours
@@ -225,11 +223,17 @@ function Plates:ApplyAll()
     for _, ours in pairs(active) do self:Apply(ours) end
 end
 
+-- Unit events also carry aliases such as "targettarget", which this
+-- client's nameplate lookup rejects. Only look up nameplate slots.
+local function GetHost(unit)
+    if type(unit) ~= "string" or not unit:match("^nameplate%d+$") then return nil end
+    return C_NamePlate and C_NamePlate.GetNamePlateForUnit
+        and C_NamePlate.GetNamePlateForUnit(unit)
+end
+
 -- Whoever is carrying this unit right now, or nobody.
 local function Find(unit)
-    if not unit then return nil end
-    local host = C_NamePlate and C_NamePlate.GetNamePlateForUnit
-        and C_NamePlate.GetNamePlateForUnit(unit)
+    local host = GetHost(unit)
     return host and active[host] or nil
 end
 
@@ -238,11 +242,8 @@ end
 ---------------------------------------------------------------------------
 
 function Plates:Added(unit)
-    if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
-    local host = C_NamePlate.GetNamePlateForUnit(unit)
+    local host = GetHost(unit)
     if not host then return end
-
-    SuppressStock(host)
 
     local ours = active[host] or Acquire(host)
     active[host] = ours
@@ -256,6 +257,7 @@ function Plates:Added(unit)
         RestoreStock(host)
         ours:Hide()
     else
+        SuppressStock(host)
         ours:Show()
     end
 
@@ -263,8 +265,7 @@ function Plates:Added(unit)
 end
 
 function Plates:Removed(unit)
-    if not (C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return end
-    local host = C_NamePlate.GetNamePlateForUnit(unit)
+    local host = GetHost(unit)
     if not host then return end
 
     local ours = active[host]
