@@ -23,6 +23,7 @@ Core\Core.lua
 Core\Events.lua
 Core\Profiles.lua
 Core\StarterProfile.lua
+Core\StarterExport.lua
 Core\Commands.lua
 Core\UI.lua
 Core\Timers.lua

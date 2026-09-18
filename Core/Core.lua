@@ -952,6 +952,12 @@ BazUI:QueueForLogin(function()
                     BazUI:ToggleEditMode()
                 end,
             },
+            export = {
+                desc = "Print the active profile as Lua, to paste into Core/StarterProfile.lua",
+                handler = function()
+                    BazUI:ExportStarterProfile()
+                end,
+            },
             sv = {
                 desc = "Report whether the saved variables were there when BazUI started",
                 handler = function()
