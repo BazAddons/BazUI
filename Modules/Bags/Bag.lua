@@ -1810,16 +1810,39 @@ local function HookBlizzardBagToggles()
         if frame and frame:IsShown() then Bag:Hide() else Bag:Show() end
     end
 
-    -- Retail-style entry points (Open All Bags keybind, addons).
-    ToggleAllBags = Toggle
-    OpenAllBags   = Open
-    OpenBackpack  = Open
+    -- Claimed, and claimed again later.
+    --
+    -- B opened our bags but would not close them: the open arrived through
+    -- OpenBackpack, which was still ours, while ToggleBackpack had been
+    -- replaced by whatever defined it after us - so the close half of the
+    -- toggle went to the stock containers and our panel stayed up. It only
+    -- looked like it worked before because the CloseAllBags hook caught it
+    -- on the way past, and that hook is a taint source we removed.
+    --
+    -- Taking them once at file scope is not enough when another file can
+    -- define them afterwards, so the claim is renewed on every ADDON_LOADED
+    -- and once more at login. These are the overrides the module exists to
+    -- make - B must open our bags - so owning them is the point, unlike
+    -- CloseAllBags, which Blizzard reads from inside the Edit Mode path.
+    local function Claim()
+        -- Retail-style entry points (Open All Bags keybind, addons).
+        ToggleAllBags = Toggle
+        OpenAllBags   = Open
+        OpenBackpack  = Open
 
-    -- Classic entry points: B is bound to ToggleBackpack, and the bag
-    -- buttons on the micro bar call ToggleBag / OpenBag / CloseBag.
-    ToggleBackpack = Toggle
-    ToggleBag      = function() Toggle() end
-    OpenBag        = function() Open() end
+        -- Classic entry points: B is bound to ToggleBackpack, and the bag
+        -- buttons on the micro bar call ToggleBag / OpenBag.
+        ToggleBackpack = Toggle
+        ToggleBag      = function() Toggle() end
+        OpenBag        = function() Open() end
+    end
+
+    Claim()
+
+    local claimer = CreateFrame("Frame")
+    claimer:RegisterEvent("ADDON_LOADED")
+    claimer:RegisterEvent("PLAYER_LOGIN")
+    claimer:SetScript("OnEvent", Claim)
 
     -- The close paths are not touched at all.
     --
