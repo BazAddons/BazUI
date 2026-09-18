@@ -1,5 +1,4 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
-local ADDON_NAME = ...
 ---------------------------------------------------------------------------
 -- BazUI Skin: skins
 --
@@ -592,8 +591,8 @@ end
 -- before theirs and runs before theirs.
 ---------------------------------------------------------------------------
 
-if EventUtil and EventUtil.ContinueOnAddOnLoaded then
-    EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function()
+if BazUI.QueueForVariables then
+    BazUI:QueueForVariables(function()
         RegisterCustom()
         Skin.ApplySkin(Store().active or BUILT_IN.id)
         applied = true

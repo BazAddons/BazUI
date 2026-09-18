@@ -70,6 +70,37 @@ sampler:SetScript("OnUpdate", function()
     end
 end)
 
+---------------------------------------------------------------------------
+-- When the saved variables are really there
+--
+-- Not EventUtil.ContinueOnAddOnLoaded. On this client C_AddOns.IsAddOnLoaded
+-- already answers true for BazUI while BazUI's own files are still running,
+-- so that helper fires its callback at once, during file load - before the
+-- client has loaded the saved variables. Everything we set up in there was
+-- built on a BazUIDB we had just invented, and the file on disk never got a
+-- look in: positions, bar contents, ability placement and the module
+-- switches all came back to their defaults on every reload.
+--
+-- /baz sv is what settled it: "our ADDON_LOADED: absent" - BazUIDB was nil
+-- when that callback ran - against "ADDON_LOADED event:" a moment later
+-- holding the four keys the callback itself had just created.
+--
+-- A plain handler for the event is the fix, and it is the only place in the
+-- addon allowed to decide that the database exists. QueueForVariables(fn)
+-- runs fn then, or at once if the moment has passed.
+---------------------------------------------------------------------------
+
+local variablesReady = false
+local variablesQueue = {}
+
+function BazUI:QueueForVariables(fn)
+    if variablesReady then
+        fn()
+    else
+        variablesQueue[#variablesQueue + 1] = fn
+    end
+end
+
 local svProbe = CreateFrame("Frame")
 svProbe:RegisterEvent("ADDON_LOADED")
 svProbe:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -80,6 +111,10 @@ svProbe:SetScript("OnEvent", function(self, event, name)
         t.atRawEvent = CountKeys(_G.BazUIDB)
         t.namesAtRawEvent = KeyNames(_G.BazUIDB)
         self:UnregisterEvent("ADDON_LOADED")
+
+        variablesReady = true
+        for _, entry in ipairs(variablesQueue) do entry() end
+        wipe(variablesQueue)
     else
         t.atEnteringWorld = CountKeys(_G.BazUIDB)
         sampler:SetScript("OnUpdate", nil)
@@ -301,7 +336,7 @@ function BazUI:RegisterModule(name, config)
     -- Deferred init on ADDON_LOADED. Every module lives inside this one
     -- addon, so its saved variables are ready when BazUI's own
     -- ADDON_LOADED fires (immediately if we're already past it).
-    EventUtil.ContinueOnAddOnLoaded(ADDON_NAME, function()
+    BazUI:QueueForVariables(function()
         -- Initialize saved variables (for addons that still have their own SV, e.g. BNC history)
         if config.savedVariable then
             local svName = config.savedVariable
@@ -546,7 +581,7 @@ end
 ---------------------------------------------------------------------------
 
 -- Initialize unified profile structure early (before addons load)
-EventUtil.ContinueOnAddOnLoaded("BazUI", function()
+BazUI:QueueForVariables(function()
     BazUI._svTrace.atAddonLoaded = CountKeys(_G.BazUIDB)
     BazUI._svTrace.namesAtAddonLoaded = KeyNames(_G.BazUIDB)
     BazUIDB = BazUIDB or {}
