@@ -17,9 +17,9 @@
 --
 -- Bags, Bars, MicroMenu and UnitFrames were arranged in game and
 -- exported with /baz export, which is also what worked out their screen
--- anchors. Chat, Drawers and Auras are still
--- written by hand: those modules were switched off at the time, and an
--- export only knows about what was loaded. tools/bake-starter.py does
+-- anchors. Chat, Drawers and Auras are still written by hand: those
+-- modules were switched off at the time, and an export only knows about
+-- what was loaded. tools/bake-starter.py does
 -- the same job straight from the saved variables, without the paste.
 ---------------------------------------------------------------------------
 
@@ -92,8 +92,8 @@ BazUI.StarterProfile = {
     Auras = { iconSize = 40 },
 
     Bars = {
-        -- A 14-slot main bar along the bottom and an 8-slot double row out
-        -- to the right, which is what the player health and cast bars dock
+        -- A 14-slot main bar along the bottom and an 8-slot double row
+        -- above it, which is what the player health and cast bars dock
         -- against. Blizzard's own bar is hidden: BazUI's bars are the action
         -- bars, and the empty slots show where abilities go.
         hideDefaultActionBar = true,
@@ -124,7 +124,7 @@ BazUI.StarterProfile = {
                 mouseoverFade = false, mouseoverAlpha = 0.3,
                 locked = false, rightClickSelfCast = false,
                 buttons = {},
-                pos = { point = "CENTER", relPoint = "RIGHT", x = -548.6, y = -134.3 },
+                pos = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 451.4 },
             },
         },
     },
