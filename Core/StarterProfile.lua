@@ -86,6 +86,28 @@ BazUI.StarterProfile = {
                 dock = { host = "statusbar:4", edge = "BOTTOM" },
                 position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
             },
+            -- Experience and reputation along the main action bar, taking
+            -- its full width: a docked bar with takes = "full" stretches to
+            -- its host, so they line up with the buttons whatever size the
+            -- bar is. Blizzard's own pair is hidden above (stockXP, stockRep),
+            -- so these are the experience and reputation bars.
+            --
+            -- The experience bar takes itself out of the dock at maximum
+            -- level, and reputation closes the gap.
+            {
+                id = 6, kind = "xp", unit = "player", name = "Experience",
+                width = 240, height = 10, ticks = 10,
+                textFormat = "detailed", textMode = "always",
+                dock = { host = "bar:1", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 40 },
+            },
+            {
+                id = 7, kind = "rep", unit = "player", name = "Reputation",
+                width = 240, height = 10, ticks = 0,
+                textFormat = "detailed", textMode = "always",
+                dock = { host = "statusbar:6", edge = "BOTTOM" },
+                position = { point = "CENTER", relPoint = "BOTTOM", x = 0, y = 26 },
+            },
         },
     },
 
