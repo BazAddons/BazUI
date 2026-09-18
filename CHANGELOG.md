@@ -1,5 +1,10 @@
 ## 001
 
+**On the World of Warcraft: Forever beta, the chat module is not included.**
+A chat replacement has to take over DEFAULT_CHAT_FRAME, and on that client
+taking over a global the game reads breaks its Edit Mode. Everything else is
+here; the game's own chat is untouched and works as it always has.
+
 The first release of BazUI: the Baz Suite rebuilt as a single addon, with one options window, one profile system and one look across every part of it.
 
 **Your interface**
