@@ -47,6 +47,9 @@ BazUI.StarterProfile = {
         -- bar above it, and the same pair for the target. Docked rather than
         -- placed: the host carries its followers, so moving one moves the
         -- stack. The positions are where each lands when nothing docks it.
+        --
+        -- Health bars are 24 high and read as the main thing; power and cast
+        -- are 10, so a glance finds health first.
         statusBars = {
             {
                 id = 1, kind = "health", unit = "player", name = "Player Health 1",
@@ -57,14 +60,14 @@ BazUI.StarterProfile = {
             },
             {
                 id = 2, kind = "power", unit = "player", name = "Player Power 1",
-                width = 240, height = 24, ticks = 0,
+                width = 240, height = 10, ticks = 0,
                 textFormat = "current", textMode = "always",
                 dock = { host = "statusbar:1", edge = "BOTTOM" },
                 position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
             },
             {
                 id = 3, kind = "cast", unit = "player", name = "Player Casting 1",
-                width = 240, height = 24, ticks = 0,
+                width = 240, height = 10, ticks = 0,
                 textFormat = "current", textMode = "always",
                 dock = { host = "bar:2", edge = "TOP" },
                 position = { point = "CENTER", relPoint = "CENTER", x = -96, y = 96 },
@@ -78,7 +81,7 @@ BazUI.StarterProfile = {
             },
             {
                 id = 5, kind = "power", unit = "target", name = "Target Power 1",
-                width = 240, height = 24, ticks = 0,
+                width = 240, height = 10, ticks = 0,
                 textFormat = "current", textMode = "always",
                 dock = { host = "statusbar:4", edge = "BOTTOM" },
                 position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
@@ -121,7 +124,7 @@ BazUI.StarterProfile = {
                 mouseoverFade = false, mouseoverAlpha = 0.3,
                 locked = false, rightClickSelfCast = false,
                 buttons = {},
-                pos = { point = "CENTER", relPoint = "RIGHT", x = -443.1, y = -103.1 },
+                pos = { point = "CENTER", relPoint = "RIGHT", x = -548.6, y = -134.3 },
             },
         },
     },
