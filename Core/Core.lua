@@ -923,6 +923,11 @@ function BazUI:ReportSavedVariables()
     print("  at ADDON_LOADED:  " .. tostring(t.namesAtAddonLoaded))
     print("  now:              " .. KeyNames(_G.BazUIDB))
 
+    local _, build, _, iface = GetBuildInfo()
+    print(("  client build %s wants interface |cffffd700%s|r; our TOC says |cffffd700%s|r")
+        :format(tostring(build), tostring(iface),
+            tostring(C_AddOns.GetAddOnMetadata(BazUI.ADDON_NAME, "Interface") or "?")))
+
     local log = _G.BazUIDB and _G.BazUIDB.moduleSwitchLog
     if type(log) == "table" then
         print("  logins remembered: " .. #log .. " (more than one means the file is being read back)")

@@ -1,4 +1,4 @@
-## Interface: 11509
+## Interface: 16001
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
@@ -11,8 +11,10 @@
 ## SavedVariables: BazUIDB
 ## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
 
-# Interface is Classic Era (1.15.x) while development happens there. Switch
-# to the World of Warcraft: Forever client number once the beta ships.
+# 16001 is World of Warcraft: Forever 1.60.1. It was 11509 (Classic Era)
+# while development happened there, and the beta client refused to hand the
+# addon its saved variables under that number - nothing persisted across a
+# reload. /baz sv prints what the client asks for against what this says.
 
 # Core - forked from BazCore. Module registry, profiles, options window,
 # Edit Mode, popups and UI helpers.
