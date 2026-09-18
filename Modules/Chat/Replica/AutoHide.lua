@@ -55,7 +55,9 @@ end
 
 local function ScrollBarMode()
     local chrome = GetChrome()
-    return (chrome and chrome.scrollbarMode) or "always"
+    -- Matches the module defaults, so a window that has never been given
+    -- a value behaves the same as one that has.
+    return (chrome and chrome.scrollbarMode) or "onscroll"
 end
 
 -- chromeFadeMode == "off"  -> bgMode/tabsMode are independent (read as-is)
@@ -71,7 +73,7 @@ local function TabsMode()
     local unified = UnifiedMode()
     if unified then return unified end
     local chrome = GetChrome()
-    return (chrome and chrome.tabsMode) or "always"
+    return (chrome and chrome.tabsMode) or "onhover"
 end
 
 -- "Fully visible" alpha for the tab strip. User-controlled via the
@@ -88,7 +90,7 @@ local function BgMode()
     local unified = UnifiedMode()
     if unified then return unified end
     local chrome = GetChrome()
-    return (chrome and chrome.bgMode) or "always"
+    return (chrome and chrome.bgMode) or "onhover"
 end
 
 -- "Fully visible" alpha for the chrome panel. User-controlled via

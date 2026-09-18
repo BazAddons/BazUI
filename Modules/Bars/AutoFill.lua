@@ -292,11 +292,14 @@ function AutoFill:OnFirstLogin()
         return
     end
     if InCombatLockdown() then return end   -- try again next login
-    local n = self:Fill()
+    self:Fill()
     state.filled = true
-    if n > 0 then
-        addon:Print(("Your %d abilities are on the bars. Move them as you like; new spells will take the first empty slot."):format(n))
-    end
+
+    -- Nothing said about it. This used to announce how many abilities had
+    -- been placed, which read as a one-off welcome - and would be, if the
+    -- "first login" mark survived a reload. On a client that does not read
+    -- its saved variables back it is every login, and a line telling you
+    -- what you can already see on the bars in front of you is noise.
 end
 
 -- A newly learned spell. Ranks of something already placed are skipped

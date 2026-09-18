@@ -186,14 +186,14 @@ BazUI:RegisterUserGuide("UnitFrames", {
         {
             title = "Blizzard's frames",
             blocks = {
-                { type = "paragraph", text = "One switch per frame, on the General Settings page. Nothing is hidden that you did not ask to hide, and nothing replaces these but the bars you make - so turning one off hides the game's frame whether or not you have built something to take its place." },
-                { type = "table", columns = { "Frame", "Off by default?" }, rows = {
+                { type = "paragraph", text = "One switch per frame, on the General Settings page, and each one is worded as what ticking it does: ticked means hidden. All six start ticked, because BazUI is meant to be the interface rather than sit on top of the game's - untick any of them to have the game's frame back. Nothing replaces these but the bars you make, so ticking one hides the game's frame whether or not you have built something to take its place." },
+                { type = "table", columns = { "Frame", "Hidden by default?" }, rows = {
                     { "Player frame", "Yes - the starter bars replace it." },
                     { "Target frame", "Yes - the starter bars replace it." },
                     { "Casting bar", "Yes - the starter bars replace it." },
-                    { "Party frames", "No. Make party bars first, or a group will have nothing showing it at all." },
-                    { "Pet casting bar", "No." },
-                    { "Raid manager tab", "No. The tab at the left edge that slides out with target markers, group filters and ready check." },
+                    { "Party frames", "Yes - so make party bars before you group, or a group will have nothing showing it at all. Untick this to get the game's back." },
+                    { "Pet casting bar", "Yes." },
+                    { "Raid manager tab", "Yes. The tab at the left edge that slides out with target markers, group filters and ready check." },
                 } },
                 { type = "note", text = "Hiding a frame is protected by the game, so a switch thrown during a fight is answered when the fight ends. Nothing is lost; it just waits." },
             },

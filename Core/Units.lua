@@ -65,11 +65,20 @@ function BazUI.UnitColor(unit, opts)
         end, nil)
         if plain then return plain end
 
+        -- GetClassColor is one of the few the client lets a tainted caller
+        -- hand a secret to, so it can answer where the table lookup above
+        -- raised. What it gives back still has to be readable, though:
+        -- a colour whose parts are secret is accepted by every widget
+        -- setter and then drawn BLACK, with no error anywhere - which is
+        -- worse than not colouring it at all. Touched here so an
+        -- unreadable one raises in the read rather than on screen.
         if GetClassColor then
-            local secret = BazUI.Secret.Read(function()
-                return BazUI.Secret.Color(GetClassColor(class))
+            local colour = BazUI.Secret.Read(function()
+                local r, g, b = GetClassColor(class)
+                if type(r) ~= "number" then return nil end
+                return { r + 0, g + 0, b + 0, 1 }
             end, nil)
-            if secret then return secret end
+            if colour then return colour end
         end
     end
 

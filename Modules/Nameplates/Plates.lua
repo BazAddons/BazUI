@@ -42,35 +42,39 @@ BazUI:RegisterDependency({
 
 ---------------------------------------------------------------------------
 -- Blizzard's plate
---
--- Put away rather than hidden: its pieces are shown again by the game's
--- own code whenever it updates one, so a Hide of ours lasts until the
--- next health tick. Alpha is not protected, is not read back by anything
--- that matters, and cannot be argued with.
 ---------------------------------------------------------------------------
+
+-- Hidden, not faded, and through the suite's own suppression rather than
+-- a second copy of it here.
+--
+-- Alpha was the wrong tool twice over. This client guards the alpha aspect,
+-- so an addon setting it on a frame it does not own is refused and nothing
+-- happens - no error to notice, the game's plate simply stays visible on
+-- top of ours. And the frame was never protected to begin with:
+-- BaseNamePlateUnitFrameTemplate is a plain Button with disableMouse set,
+-- no protected flag and no secure template behind it, so Hide works on it
+-- at any time, fight or no fight.
+--
+-- BazUI.SuppressFrame does the rest: it hooks OnShow once and puts the
+-- frame away again every time the game shows it, which is what a pooled
+-- nameplate does on being handed to the next unit. It also refuses only
+-- where the frame really is protected, so combat does not stop it here.
+local suppressed = setmetatable({}, { __mode = "k" })
 
 local function SuppressStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
-    frame._bazSuppressed = true
-    frame:SetAlpha(0)
-
-    -- Set once, and not hooked.
-    --
-    -- This used to hooksecurefunc the frame's SetAlpha to put it back at
-    -- nought whenever the game raised it. On Forever that left
-    -- CompactUnitFrame_UpdateCenterStatusIcon calling a nil SetAlpha on
-    -- the plate - alpha is one of the aspects the client now guards, and
-    -- writing to the method table of a frame we do not own is what broke
-    -- it. Blizzard raising the alpha again will show their plate through
-    -- ours, which is a blemish; an error on every nameplate is not.
+    suppressed[frame] = true
+    BazUI.SuppressFrame(frame, function() return suppressed[frame] == true end)
 end
 
 local function RestoreStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
-    frame._bazSuppressed = nil
-    frame:SetAlpha(1)
+    suppressed[frame] = nil
+    -- Same call with the answer reversed: SuppressFrame only ever shows
+    -- again what it took down itself.
+    BazUI.SuppressFrame(frame, function() return false end)
 end
 
 ---------------------------------------------------------------------------

@@ -101,8 +101,43 @@ function BazUI:QueueForVariables(fn)
     end
 end
 
+-- The saved variables are late on this client, not missing.
+--
+-- ADDON_LOADED is where an addon is supposed to find its database, and on
+-- Forever it is empty there - which is what made it look like the file was
+-- never read at all. It is read; it just arrives later. Other authors on
+-- the WoW UI Discord found the same thing and put it plainly: "SV don't
+-- exist until PLAYER_LOGIN, SV table nil @ ADDON_LOADED". Our own /baz sv
+-- has been saying the same for a day - "ADDON_LOADED: absent, login: 7
+-- keys" - and we read it as our defaults arriving rather than the file.
+--
+-- Reading too early is worse than reading late, because what we build on
+-- the nil is then written back over the file at logout. So the queue is
+-- drained the moment BazUIDB is really there: at ADDON_LOADED on a client
+-- that has it by then, and at PLAYER_LOGIN on one that does not.
+--
+-- The TOC directive LoadSavedVariablesFirst does not help; several people
+-- tried it before we did.
+local function ReadyVariables()
+    if variablesReady then return end
+    variablesReady = true
+
+    -- Counted here rather than at a fixed event, so it counts loads rather
+    -- than how early we looked. If this climbs, the file is being read.
+    local t = BazUI._svTrace
+    _G.BazUICharDB = _G.BazUICharDB or {}
+    t.charLoads = _G.BazUICharDB.loads or 0
+    _G.BazUICharDB.loads = t.charLoads + 1
+
+    for _, entry in ipairs(variablesQueue) do entry() end
+    wipe(variablesQueue)
+end
+
+BazUI.ReadyVariables = ReadyVariables
+
 local svProbe = CreateFrame("Frame")
 svProbe:RegisterEvent("ADDON_LOADED")
+svProbe:RegisterEvent("PLAYER_LOGIN")
 svProbe:RegisterEvent("PLAYER_ENTERING_WORLD")
 svProbe:SetScript("OnEvent", function(self, event, name)
     local t = BazUI._svTrace
@@ -112,19 +147,15 @@ svProbe:SetScript("OnEvent", function(self, event, name)
         t.namesAtRawEvent = KeyNames(_G.BazUIDB)
         self:UnregisterEvent("ADDON_LOADED")
 
-        -- The account-wide file is written every time and never read
-        -- back - BugGrabber's own session counter sits at 1 across saves
-        -- too, so it is the client rather than us. This asks the same
-        -- question of a per-character file: if that one comes back, there
-        -- is a workaround; if it does not, nothing an addon saves survives
-        -- a reload on this build and it belongs in a bug report.
-        _G.BazUICharDB = _G.BazUICharDB or {}
-        t.charLoads = _G.BazUICharDB.loads or 0
-        _G.BazUICharDB.loads = t.charLoads + 1
-
-        variablesReady = true
-        for _, entry in ipairs(variablesQueue) do entry() end
-        wipe(variablesQueue)
+        -- Noted, not acted on. Whatever is in BazUIDB at this point is
+        -- either nothing or our own seed, and treating either as the file
+        -- is how the real one got thrown away. Waiting for login costs a
+        -- healthy client nothing: its saved variables are there at both
+        -- moments, and no module reads a setting before login anyway.
+    elseif event == "PLAYER_LOGIN" then
+        self:UnregisterEvent("PLAYER_LOGIN")
+        t.atLoginRaw = KeyNames(_G.BazUIDB)
+        ReadyVariables()
     else
         t.atEnteringWorld = CountKeys(_G.BazUIDB)
         sampler:SetScript("OnUpdate", nil)
@@ -155,17 +186,81 @@ end
 
 local loginReady = false
 local loginQueue = {}
-
 local lifecycleFrame = CreateFrame("Frame")
+
+-- Nothing is built while a fight is on.
+--
+-- Almost everything the addon puts on screen is a secure frame or carries
+-- one: action buttons, aura buttons, unit bars. Creating, anchoring or
+-- stamping attributes on those is refused in combat - and PLAYER_LOGIN
+-- fires during the fight if you /reload while something is hitting you.
+-- Every module then built into a wall of refusals and never tried again,
+-- which is the "reload in combat and the whole interface is gone until you
+-- reload a second time" case.
+--
+-- So the queue waits the fight out instead. The cost is an interface that
+-- arrives a few seconds late in the one case where it used to arrive
+-- broken, and a line saying why, so it does not look like a crash.
+--
+-- Drained one at a time, checking before each, because a fight can start in
+-- the middle of it. Being attacked *during* the reload is the case that
+-- actually happens:
+-- PLAYER_LOGIN arrives out of combat, the queue begins, and the wolf lands
+-- its first hit somewhere around the fourth module. Testing only at the
+-- start let everything after that point build into refusals - empty action
+-- bars, a minimap left where it was made, the game's own frames back.
+--
+-- Whatever has not run is left in the queue and picked up when the fight
+-- ends. What has already run stays run; this is about not losing the rest.
+local function DrainLogin()
+    -- Ordering, said out loud rather than left to which frame registered
+    -- PLAYER_LOGIN first: nothing is built until the database is claimed.
+    if BazUI.ReadyVariables then BazUI.ReadyVariables() end
+
+    loginReady = true
+
+    while loginQueue[1] do
+        if InCombatLockdown() then
+            lifecycleFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+            BazUI:Print("Combat started while the interface was being built - "
+                .. "finishing once the fight is over.")
+            return
+        end
+
+        -- One module failing is not allowed to strand the rest of them.
+        local entry = table.remove(loginQueue, 1)
+        local ok, err = pcall(entry)
+        if not ok then
+            BazUI._loginErrors = BazUI._loginErrors or {}
+            BazUI._loginErrors[#BazUI._loginErrors + 1] = tostring(err)
+        end
+    end
+
+    -- Said out loud rather than collected quietly. A module that fails to
+    -- start leaves a hole somebody has to notice, and a silent pcall is how
+    -- a half-built interface looks like a mystery instead of a bug.
+    local errors = BazUI._loginErrors
+    if errors and #errors > 0 and not BazUI._loginErrorsTold then
+        BazUI._loginErrorsTold = true
+        BazUI:Print(("|cffff6666%d part%s of the interface did not start.|r Type "
+            .. "|cff00ff00/baz errors|r to see why."):format(
+            #errors, #errors == 1 and "" or "s"))
+    end
+end
+
 lifecycleFrame:RegisterEvent("PLAYER_LOGIN")
 lifecycleFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
-        loginReady = true
-        for _, entry in ipairs(loginQueue) do
-            entry()
-        end
-        wipe(loginQueue)
         self:UnregisterEvent("PLAYER_LOGIN")
+        if InCombatLockdown() then
+            self:RegisterEvent("PLAYER_REGEN_ENABLED")
+            print("|cff8fd3ffBazUI|r: waiting for combat to end before building the interface.")
+            return
+        end
+        DrainLogin()
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        DrainLogin()
     end
 end)
 
@@ -901,6 +996,21 @@ BazUI:QueueForLogin(function()
                 desc = "Check everything the addon takes hold of in the game's own UI - frames, templates, console settings - and say what is missing. Worth running first on a new client build.",
                 handler = function() BazUI:PrintDependencyReport() end,
             },
+            errors = {
+                desc = "Anything that failed while the interface was being built. Empty is the normal answer.",
+                handler = function()
+                    local errors = BazUI._loginErrors
+                    if not errors or #errors == 0 then
+                        BazUI:Print("Everything started cleanly.")
+                        return
+                    end
+                    BazUI:Print(("%d part%s of the interface did not start:"):format(
+                        #errors, #errors == 1 and "" or "s"))
+                    for index, err in ipairs(errors) do
+                        print(("  |cffff6666%d.|r %s"):format(index, err))
+                    end
+                end,
+            },
             profile = {
                 desc = "Show or switch the active profile",
                 handler = function(args)
@@ -1045,6 +1155,11 @@ function BazUI:ReportSavedVariables()
         .. "  (addon already counts as loaded: " .. tostring(t.saysLoadedAtFileLoad) .. ")")
     print("  ADDON_LOADED event: " .. tostring(t.namesAtRawEvent))
     print("  our ADDON_LOADED:   " .. tostring(t.namesAtAddonLoaded))
+    -- What the table held at PLAYER_LOGIN, before anything of ours touched
+    -- it. This is the one that matters now: if the file is read late, the
+    -- saved keys are here and something of ours is discarding them; if it
+    -- says absent, the file was never read at all.
+    print("  at PLAYER_LOGIN:    " .. tostring(t.atLoginRaw))
     print("  entering world:     " .. tostring(t.atEnteringWorld) .. " keys")
     print("  now:              " .. KeyNames(_G.BazUIDB))
 

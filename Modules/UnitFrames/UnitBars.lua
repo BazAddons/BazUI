@@ -274,21 +274,21 @@ end
 UnitBars.STOCK = {
     {
         key     = "hidePlayerFrame",
-        label   = "Player frame",
+        label   = "Hide the player frame",
         desc    = "The game's own portrait frame for you.",
         default = true,
         frames  = { "PlayerFrame" },
     },
     {
         key     = "hideTargetFrame",
-        label   = "Target frame",
+        label   = "Hide the target frame",
         desc    = "The game's own portrait frame for your target.",
         default = true,
         frames  = { "TargetFrame" },
     },
     {
         key     = "hidePlayerCastBar",
-        label   = "Casting bar",
+        label   = "Hide the casting bar",
         desc    = "The game's own casting bar, under the middle of the screen.",
         default = true,
         -- Four names for one bar. PlayerCastingBarFrame is the managed
@@ -300,9 +300,10 @@ UnitBars.STOCK = {
                     "GamepadPlayerCastingBarFrame", "CastingBarFrame" },
     },
     {
-        key    = "hidePartyFrames",
-        label  = "Party frames",
-        desc   = "The portrait frames down the left in a group. Make party bars first, or a group will have nothing showing it at all.",
+        key     = "hidePartyFrames",
+        label   = "Hide the party frames",
+        desc    = "The portrait frames down the left in a group. Make party bars first, or a group will have nothing showing it at all.",
+        default = true,
         -- The container, because on this client there is nothing else to
         -- take hold of: the member frames come out of a pool on
         -- PartyFrame and are given parent keys rather than names, so the
@@ -314,15 +315,17 @@ UnitBars.STOCK = {
                    "PartyMemberFrame3", "PartyMemberFrame4" },
     },
     {
-        key    = "hidePetCastBar",
-        label  = "Pet casting bar",
-        desc   = "The casting bar for your pet.",
+        key     = "hidePetCastBar",
+        label   = "Hide the pet casting bar",
+        desc    = "The casting bar for your pet.",
+        default = true,
         frames = { "PetCastingBarFrame" },
     },
     {
-        key    = "hideRaidManager",
-        label  = "Raid manager tab",
-        desc   = "The tab at the left edge of the screen that slides out with the target markers, group filters and ready check on it. The game shows it whenever you are in a group.",
+        key     = "hideRaidManager",
+        label   = "Hide the raid manager tab",
+        desc    = "The tab at the left edge of the screen that slides out with the target markers, group filters and ready check on it. The game shows it whenever you are in a group.",
+        default = true,
         frames = { "CompactRaidFrameManager" },
     },
 

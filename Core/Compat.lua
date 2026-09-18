@@ -142,18 +142,21 @@ end
 -- being allowed to look. Anything absent raises: SetGradient, string
 -- format, indexing a table with one, and every comparison.
 --
--- Note what that costs. A color whose parts are secret can be painted but
--- not shaded, so whatever holds one has to know. Ours say so with a
--- `secret` field, and Core/StatusBar drops its gradient when it sees it.
-
--- Keep what a call handed back without looking at any of it. The number of
--- values returned is never itself secret, so it is the one thing we can
--- test - which is what makes this safe where `if r then` would raise.
-function BazUI.Secret.Color(...)
-    if select("#", ...) < 3 then return nil end
-    local r, g, b = ...
-    return { r, g, b, 1, secret = true }
-end
+-- A colour is the exception, and it is worth stating plainly.
+--
+-- There was a helper here for keeping one without reading it: GetClassColor
+-- will take a secret class from a tainted caller, so it looked like the way
+-- to colour a unit whose identity we may not have - pack what comes back
+-- without looking, hand it to the bar, let the widget deal with it.
+--
+-- It cannot. A colour whose parts are secret is accepted by every setter
+-- without complaint and then drawn BLACK, with no error to notice, so the
+-- bars went black instead of coloured. Accepting a value and rendering it
+-- are not the same thing, and the list above only promises the first.
+--
+-- Anything that reaches a widget as a colour has to be a number we were
+-- allowed to read. Where we were not allowed, the honest answer is a colour
+-- of our own choosing. See Core/Units.lua.
 
 -- Refused, which is not the same as secret
 --
@@ -273,10 +276,25 @@ function BazUI.SuppressFrame(frame, wanted)
         return false
     end
 
+    -- Combat only stops us where the frame is actually protected.
+    --
+    -- Refusing on InCombatLockdown alone was too broad, and the player's
+    -- casting bar is the frame that showed it: it appears while you are
+    -- casting, which is very often mid-fight, and it is a plain status bar
+    -- that the game re-shows through its managed-frame system. We declined
+    -- to hide it every time it mattered, so it sat under the action bars
+    -- through every fight.
+    --
+    -- IsProtected answers the real question, and answers it per frame. A
+    -- protected one is still left alone, and picked up when the fight ends.
+    local function Blocked(f)
+        return InCombatLockdown() and f:IsProtected()
+    end
+
     if suppressWanted[frame] == nil then
         frame:HookScript("OnShow", function(self)
             local test = suppressWanted[self]
-            if test and test() and not InCombatLockdown() then
+            if test and test() and not Blocked(self) then
                 suppressedByUs[self] = true
                 CallClean(self, "Hide")
             end
@@ -284,7 +302,7 @@ function BazUI.SuppressFrame(frame, wanted)
     end
     suppressWanted[frame] = wanted
 
-    if InCombatLockdown() then return true end
+    if Blocked(frame) then return true end
     if wanted() then
         suppressedByUs[frame] = true
         CallClean(frame, "Hide")
@@ -310,70 +328,98 @@ end
 -- CloseWindows -> CloseSpecialWindows, so every one of our frames on
 -- that list poisoned it.
 --
--- A keyboard handler on the frame itself touches nothing of theirs.
--- Keys propagate normally; only Escape is taken, and only while the
--- frame is up.
+-- And not by holding the keyboard either, which is what this used to do.
+-- EnableKeyboard(true) hands the frame every key, and the only way to pass
+-- the rest along is SetPropagateKeyboardInput - which this client marks
+-- HasRestrictions, so an addon calling it is refused. The propagation was
+-- never switched back on, and every panel opened with `uiSpecialFrame`
+-- silently swallowed every keybind for as long as it was up. Escape still
+-- worked, because we handled that one ourselves, which is exactly why it
+-- went unnoticed: the bags opened with B and would not close with it.
+--
+-- So take one key instead of all of them. An override binding claims
+-- Escape alone and leaves the keyboard alone, which is both narrower than
+-- what we were doing and closer to what was meant.
 ---------------------------------------------------------------------------
 
--- SetPropagateKeyboardInput is protected in combat, and a panel built for
--- the first time during a fight reaches this before anything can stop it -
--- opening the bags mid-fight put an ADDON_ACTION_BLOCKED in the log every
--- time. Every call goes through here, and in combat none of them happen.
---
--- Keyboard setup missed that way is picked up once the fight ends, so a
--- panel first opened in combat takes Escape from then on. What is lost is
--- Escape closing that panel during the fight it was opened in, which is
--- the game's own rule rather than a compromise: it will not let an addon
--- take a key in combat at all.
-local combatWatcher
-local pendingKeyboard = setmetatable({}, { __mode = "k" })
+-- Both override-binding calls are protected in combat, so a panel shown or
+-- hidden mid-fight is remembered and settled when the fight ends.
+local escapeButtons  = setmetatable({}, { __mode = "k" })
+local escapePending  = setmetatable({}, { __mode = "k" })
+local escapeWatcher
+local escapeCount    = 0
 
-local function SetPropagate(frame, propagate)
-    if InCombatLockdown() then return false end
-    frame:SetPropagateKeyboardInput(propagate)
-    return true
+local function EscapeWatcher()
+    if escapeWatcher then return end
+    escapeWatcher = CreateFrame("Frame")
+    escapeWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+    escapeWatcher:SetScript("OnEvent", function()
+        for frame, wanted in pairs(escapePending) do
+            escapePending[frame] = nil
+            if wanted and frame:IsShown() then
+                BazUI.BindEscape(frame)
+            else
+                ClearOverrideBindings(frame)
+            end
+        end
+    end)
 end
 
-local function EnableEscape(frame)
+-- The thing the binding clicks. Parented to UIParent and left shown, not
+-- parented to the panel: an override binding clicks a button by name, and a
+-- button inside a hidden panel is not there to be clicked. It is a pixel
+-- wide, transparent and takes no mouse, so nothing but the binding finds
+-- it.
+local function EscapeButton(frame, onEscape)
+    local btn = escapeButtons[frame]
+    if btn then return btn end
+
+    escapeCount = escapeCount + 1
+    btn = CreateFrame("Button", "BazUIEscapeCatcher" .. escapeCount, UIParent)
+    btn:SetSize(1, 1)
+    btn:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+    btn:SetAlpha(0)
+    btn:EnableMouse(false)
+    btn:SetScript("OnClick", function()
+        if onEscape then onEscape(frame) else frame:Hide() end
+    end)
+
+    escapeButtons[frame] = btn
+    return btn
+end
+
+function BazUI.BindEscape(frame)
+    local btn = escapeButtons[frame]
+    if not btn then return end
     if InCombatLockdown() then
-        pendingKeyboard[frame] = true
-        if not combatWatcher then
-            combatWatcher = CreateFrame("Frame")
-            combatWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
-            combatWatcher:SetScript("OnEvent", function()
-                for f in pairs(pendingKeyboard) do
-                    f:EnableKeyboard(true)
-                    f:SetPropagateKeyboardInput(true)
-                    pendingKeyboard[f] = nil
-                end
-            end)
-        end
+        escapePending[frame] = true
+        EscapeWatcher()
         return
     end
-    frame:EnableKeyboard(true)
-    frame:SetPropagateKeyboardInput(true)
+    escapePending[frame] = nil
+    SetOverrideBindingClick(frame, true, "ESCAPE", btn:GetName())
+end
+
+function BazUI.UnbindEscape(frame)
+    if InCombatLockdown() then
+        escapePending[frame] = false
+        EscapeWatcher()
+        return
+    end
+    escapePending[frame] = nil
+    ClearOverrideBindings(frame)
 end
 
 function BazUI.CloseOnEscape(frame, onEscape)
-    if not (frame and frame.EnableKeyboard) then return false end
+    if not (frame and frame.HookScript) then return false end
+    if not (SetOverrideBindingClick and ClearOverrideBindings) then return false end
 
-    EnableEscape(frame)
-    frame:HookScript("OnKeyDown", function(self, key)
-        if key ~= "ESCAPE" then
-            SetPropagate(self, true)
-            return
-        end
-        -- Taken, so the press does not also reach the game menu. If the
-        -- press cannot be taken it is left to propagate, and Escape does
-        -- whatever it would have done without us.
-        if not SetPropagate(self, false) then return end
-        if onEscape then onEscape(self) else self:Hide() end
-    end)
-    -- Left propagating when it goes away, so a frame that is hidden
-    -- while Escape is held cannot swallow the next key it sees.
-    frame:HookScript("OnHide", function(self)
-        SetPropagate(self, true)
-    end)
+    EscapeButton(frame, onEscape)
+
+    frame:HookScript("OnShow", function(self) BazUI.BindEscape(self) end)
+    frame:HookScript("OnHide", function(self) BazUI.UnbindEscape(self) end)
+
+    if frame:IsShown() then BazUI.BindEscape(frame) end
     return true
 end
 

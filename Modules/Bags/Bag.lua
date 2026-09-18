@@ -1205,11 +1205,40 @@ local function BuildBagSlotButton(parent, invSlot, isReagent)
     btn:RegisterForDrag("LeftButton")
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
+    -- What the slot is, said every time - not only when it is empty.
+    --
+    -- With a bag in it the item's own tooltip came up and nothing said
+    -- which slot you were pointing at, so the reagent slot looked like a
+    -- fifth ordinary one. A reagent bag will only take reagents, and that
+    -- is worth knowing before you drag a twenty-slot bag onto it and
+    -- wonder why your food will not go in.
     btn:SetScript("OnEnter", function(self)
+        -- Asked of the inventory, not of the tooltip.
+        --
+        -- SetInventoryItem on an empty slot does not simply answer "no
+        -- item" - it leaves the tooltip cleared, so anything written
+        -- afterwards never appeared and an empty slot had no tooltip at
+        -- all. GetInventoryItemLink decides first, and the tooltip is only
+        -- handed the slot when there is something in it to describe.
+        local label = isReagent and "Reagent bag slot" or "Bag slot"
+        local link  = GetInventoryItemLink("player", self.invSlot)
+
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        if not GameTooltip:SetInventoryItem("player", self.invSlot) then
-            GameTooltip:SetText(isReagent and (REAGENT_BAG_HELP_TEXT or "Reagent Bag")
-                                or "Bag Slot")
+
+        if link then
+            GameTooltip:SetInventoryItem("player", self.invSlot)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine(label, 1.00, 0.82, 0.00)
+        else
+            GameTooltip:ClearLines()
+            GameTooltip:AddLine(label, 1.00, 0.82, 0.00)
+            GameTooltip:AddLine("Empty.", 0.7, 0.7, 0.7)
+        end
+
+        if isReagent then
+            GameTooltip:AddLine("Takes a reagent bag only. Crafting reagents go here.",
+                1, 1, 1, true)
+        elseif not link then
             GameTooltip:AddLine("Drag a bag here to equip it.", 1, 1, 1, true)
         end
         GameTooltip:Show()
@@ -1247,8 +1276,12 @@ local function BuildBagChangePopup()
     local invSlots  = ResolveBagSlots()
     local slotCount = #invSlots
 
+    -- Extra space in front of the reagent slot, where there is one.
+    local hasReagent  = (NUM_REAGENTBAG_SLOTS or 0) > 0 and slotCount > 1
+    local REAGENT_GAP = hasReagent and 12 or 0
+
     local p = CreateFrame("Frame", "BazUIBagsBagChangePopup", frame, "BackdropTemplate")
-    p:SetSize(PAD * 2 + slotCount * POPUP_SLOT + (slotCount - 1) * SLOT_GAP,
+    p:SetSize(PAD * 2 + slotCount * POPUP_SLOT + (slotCount - 1) * SLOT_GAP + REAGENT_GAP,
               PAD * 2 + POPUP_SLOT + 18)
     p:SetFrameStrata("DIALOG")
     BazUI.Skin.Theme.ApplyFlatPanel(p)
@@ -1264,15 +1297,31 @@ local function BuildBagChangePopup()
     p.title:SetText("Bag Slots")
     p.title:SetTextColor(1.00, 0.82, 0.00)
 
-    -- Bag buttons in a row
+    -- Bag buttons in a row, with the reagent slot set apart.
+    --
+    -- It only takes reagent bags, so standing it in line with the four
+    -- ordinary ones says it is the fifth of a kind when it is not. A gap
+    -- and a divider cost nothing and make the row readable without a
+    -- tooltip; the tooltip then says which is which for certain.
     p.buttons = {}
+    local x = PAD
     for i, invSlot in ipairs(invSlots) do
         local isReagent = (i == #invSlots) and (NUM_REAGENTBAG_SLOTS or 0) > 0
+
+        if isReagent then
+            local rule = p:CreateTexture(nil, "ARTWORK")
+            rule:SetColorTexture(1.00, 0.82, 0.00, 0.35)
+            rule:SetSize(1, POPUP_SLOT)
+            rule:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", x + REAGENT_GAP / 2, PAD)
+            x = x + REAGENT_GAP
+        end
+
         local btn = BuildBagSlotButton(p, invSlot, isReagent)
         btn:SetSize(POPUP_SLOT, POPUP_SLOT)
-        btn:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT",
-            PAD + (i - 1) * (POPUP_SLOT + SLOT_GAP), PAD)
+        btn:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", x, PAD)
         p.buttons[i] = btn
+
+        x = x + POPUP_SLOT + SLOT_GAP
     end
 
     -- Refresh on inventory changes
@@ -1805,10 +1854,14 @@ local function HookBlizzardBagToggles()
     if Bag._blizzHooked then return end
     Bag._blizzHooked = true
 
+    -- Straight through to the module's own two, rather than a second
+    -- opinion written out again here. There used to be a copy of the
+    -- toggle in this block that tested `frame` directly and skipped
+    -- BuildFrame, so the panel and the keybind could disagree about
+    -- whether the bags were open - which is what "B opens the bags but
+    -- will not close them" looks like. One implementation, one answer.
     local function Open()   Bag:Show() end
-    local function Toggle()
-        if frame and frame:IsShown() then Bag:Hide() else Bag:Show() end
-    end
+    local function Toggle() Bag:Toggle() end
 
     -- Claimed, and claimed again later.
     --
@@ -1839,9 +1892,14 @@ local function HookBlizzardBagToggles()
 
     Claim()
 
+    -- Every point something else could have defined them since. An addon
+    -- loading on demand fires ADDON_LOADED, but a name taken later than
+    -- that - in a login handler of somebody else's - would beat a claim
+    -- made only at load, so entering the world counts too.
     local claimer = CreateFrame("Frame")
     claimer:RegisterEvent("ADDON_LOADED")
     claimer:RegisterEvent("PLAYER_LOGIN")
+    claimer:RegisterEvent("PLAYER_ENTERING_WORLD")
     claimer:SetScript("OnEvent", Claim)
 
     -- The close paths are not touched at all.

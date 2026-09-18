@@ -1,54 +1,53 @@
-## 002
+## 003
 
-**Settings do not stick on the World of Warcraft: Forever beta, and that is
-not BazUI.** That client writes every addon's settings when you log out and
-never reads them back when you log in, so everything starts from defaults each
-launch. It is not just this addon - it affects every addon on the beta, and
-Blizzard's own settings too. Nothing an addon can do about it. When Blizzard
-fixes the client, BazUI will simply start remembering again with no update
-needed.
+**Settings still do not stick on the World of Warcraft: Forever beta, and it
+is not BazUI.** That client does not read an addon's settings back when you
+log in, so everything starts from the built-in layout each launch. It is not
+just this addon - it affects addons across the board, and the game's own
+settings too. There is an open bug report for it and nothing an addon can do
+in the meantime. When Blizzard fixes the client, BazUI will start remembering
+again on its own, with no update needed.
 
-Until then, what you get on every launch is the built-in starting layout, which
-has been rebuilt this release to be a real arrangement rather than a stub:
-action bars along the bottom, health and power under them, target frames up
-top, buffs and debuffs sharing a line above the main bar, bags on the right,
-and the minimap and quest tracker in the drawer.
-
-**Chat is back on Forever.** It was held out of the first release over a
-conflict with the game's Edit Mode. That turned out to be narrower than
-feared, and chat now loads on both clients again - tabs, channels, history,
-timestamps, copy and the combat log tab.
+Until then you get the built-in starting layout: action bars along the bottom,
+health and power under them, target frames up top, buffs and debuffs sharing a
+line above the main bar, bags on the right, minimap and quest tracker in the
+drawer.
 
 ### Fixed
 
-- **Health and power bars no longer flick to black.** On the beta the game
-  sometimes will not tell an addon what class someone is. Bars now get the
-  right colour anyway instead of turning black for a few seconds.
-- **Auras work again on the beta.** Buff and debuff rows could not be built at
-  all on that client. They are rebuilt on BazUI's own rows now, and
-  right-clicking a buff still cancels it.
-- **The quest tracker shows your quests.** It was switched on but always
-  empty on the beta. It now also handles scenarios, dungeon timers, bonus
-  objectives, world quests, achievements and tracked recipes where the client
-  has them.
-- **No more errors while fighting** from the nameplates, which tripped over
-  units like your target's target.
-- **Bars stop erroring when you close the editor mid-fight.** Closing BazUI's
-  edit mode while something was attacking you could fail; the change is now
-  applied the moment combat ends.
+- **Health and power bars no longer go black.** They could turn black and stay
+  that way until you moved the mouse over them.
+- **The game's own nameplates no longer show through ours** when you are
+  fighting.
+- **The game's own casting bar is hidden properly.** It kept coming back the
+  moment you cast anything, which is most of the time.
+- **Bags close with the same key that opens them.** More than that: while any
+  BazUI panel was open it quietly swallowed every keybind you pressed. Bags,
+  options, Codex - all of them. That is gone.
+- **Reloading during a fight no longer breaks the interface** until you reload
+  a second time. It now waits for the fight to finish and then builds
+  normally, and says so.
+- **Nameplates no longer throw errors** when you attack something.
+- **Edit mode no longer errors** if you close it while something is hitting
+  you.
+
+### Changed
+
+- **The game's own frames are all hidden by default** - player, target,
+  casting bar, party frames, pet casting bar and the raid manager tab. Each
+  switch now says what ticking it does, because "Player frame" with a tick
+  next to it could mean either. Untick any of them to have the game's frame
+  back. If you group up, make party bars first: Edit Mode's Create menu makes
+  all eight in one go.
+- **Chat hides its own chrome by default.** Background and tabs appear when
+  you point at the window, the scrollbar when you scroll.
+- **The reagent bag slot is set apart** from the ordinary four, and every bag
+  slot has a tooltip saying which one it is - including the empty ones.
+- **One fewer message at login.** The note about abilities being placed on
+  your bars was meant to appear once and appeared every time.
 
 ### New
 
-- **Aura rows can take half the width of what they are docked to**, so two
-  rows share one line - buffs on the left of your action bar and debuffs on
-  the right. Set it under Takes, with a Space beside slider for the gap.
-- **Settings that do not apply right now are greyed out instead of
-  disappearing.** A row that vanishes leaves you wondering whether the setting
-  exists at all; now it stays put and tells you something else has to change
-  first.
-- **More of the game's windows can be made draggable** - the quest log,
-  professions and the auction house were missing on the beta because they go
-  by different names there.
-- **`/baz check`** lists everything BazUI takes hold of in the game's own
-  interface and says what is missing. Worth running first on a new client
-  build.
+- **`/baz errors`** lists anything that failed while the interface was being
+  built, and a line at login tells you when there is something to see. Empty
+  is the normal answer.

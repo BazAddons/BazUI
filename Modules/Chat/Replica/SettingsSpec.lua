@@ -180,7 +180,7 @@ local SPEC = {
               if s and s.chromeFadeMode and s.chromeFadeMode ~= "off" then
                   return s.chromeFadeMode
               end
-              return (s and s.bgMode) or "always"
+              return (s and s.bgMode) or "onhover"
           end,
           set = function(_, v) local s = W() if s then s.bgMode = v end; ApplyAll() end,
           disabled = function()
@@ -204,7 +204,7 @@ local SPEC = {
               if s and s.chromeFadeMode and s.chromeFadeMode ~= "off" then
                   return s.chromeFadeMode
               end
-              return (s and s.tabsMode) or "always"
+              return (s and s.tabsMode) or "onhover"
           end,
           set = function(_, v) local s = W() if s then s.tabsMode = v end; ApplyAll() end,
           disabled = function()
@@ -225,7 +225,7 @@ local SPEC = {
           },
           get = function()
               local s = W()
-              return (s and s.scrollbarMode) or "always"
+              return (s and s.scrollbarMode) or "onscroll"
           end,
           set = function(_, v) local s = W() if s then s.scrollbarMode = v end; ApplyAll() end },
 

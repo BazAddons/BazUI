@@ -99,24 +99,6 @@ function BarMixin:SetFillColor(color)
     local texture = self.fill:GetStatusBarTexture()
     local def = self._screen and FillDef() or nil
 
-    -- A colour we are not allowed to read, from a unit whose identity is
-    -- restricted. It can still be painted - SetStatusBarColor is one of the
-    -- setters the client lets a tainted caller hand a secret to - but not
-    -- shaded, because working out a lighter top and a darker bottom means
-    -- arithmetic on the parts, and SetGradient will not take them either.
-    --
-    -- So this one goes on flat. The gradient is levelled off first, since a
-    -- texture keeps the last one it was given and a reused bar would
-    -- otherwise wear the previous unit's shading over this unit's colour.
-    if color.secret then
-        if texture and texture.SetGradient and CreateColor then
-            texture:SetGradient("VERTICAL",
-                CreateColor(1, 1, 1, alpha), CreateColor(1, 1, 1, alpha))
-        end
-        self.fill:SetStatusBarColor(color[1], color[2], color[3], alpha)
-        return
-    end
-
     -- Through the gradient either way, even when both ends are the same
     -- color. A gradient and a vertex color are the same slot on a texture,
     -- so setting one of them sometimes and the other the rest of the time

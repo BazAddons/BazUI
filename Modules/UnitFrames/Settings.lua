@@ -153,11 +153,13 @@ local SPEC = {
           text = "Bars are made and arranged on the Bars page, or in Edit Mode: "
               .. "drag one near the edge of an action bar or another bar to dock "
               .. "it there." },
+        -- Said the wrong way round until now: ticked is hidden, so it is
+        -- turning one ON that takes the game's frame away.
         { key = "stockHelp", type = "note", section = "blizzard", order = 90, style = "info",
-          text = "Nothing replaces these but the bars you make. Turning one off "
-              .. "hides the game's frame whether or not you have made a bar to "
-              .. "take its place, so party frames are best turned off once your "
-              .. "party bars exist." },
+          text = "Ticked means hidden. Nothing replaces these but the bars you "
+              .. "make, and ticking one hides the game's frame whether or not "
+              .. "you have made a bar to take its place - so leave party frames "
+              .. "showing until your party bars exist." },
     },
 }
 
