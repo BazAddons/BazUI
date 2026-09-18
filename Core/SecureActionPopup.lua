@@ -163,16 +163,30 @@ local function CreateCell(popup, index)
     -- body hides on the up-click unless this click is a drop (PreClick
     -- marks those, out of combat only) or hideOnCast is off. The header
     -- is the popup's secure toggle proxy, which carries the popup ref.
-    SecureHandlerWrapScript(btn, "OnClick", GetOrCreateProxy(popup), [[
-        return nil, "click"
-    ]], [[
-        if down then return end
-        if self:GetAttribute("bazDropPending") then return end
-        local popup = owner:GetFrameRef("bazPopup")
-        if popup and popup:IsShown() and popup:GetAttribute("bazHideOnCast") then
-            popup:Hide()
-        end
-    ]])
+    if BazUI.SecureSnippetsUsable() then
+        SecureHandlerWrapScript(btn, "OnClick", GetOrCreateProxy(popup), [[
+            return nil, "click"
+        ]], [[
+            if down then return end
+            if self:GetAttribute("bazDropPending") then return end
+            local popup = owner:GetFrameRef("bazPopup")
+            if popup and popup:IsShown() and popup:GetAttribute("bazHideOnCast") then
+                popup:Hide()
+            end
+        ]])
+    else
+        -- No snippets on this client. Out of combat the popup is an
+        -- ordinary frame and can be hidden from a plain handler; in
+        -- combat it parents secure cells and cannot, so it stays up
+        -- until the cursor leaves it.
+        btn:HookScript("PostClick", function(self, _, down)
+            if down or InCombatLockdown() then return end
+            if self:GetAttribute("bazDropPending") then return end
+            if popup:IsShown() and popup:GetAttribute("bazHideOnCast") then
+                popup:Hide()
+            end
+        end)
+    end
 
     btn.icon = btn:CreateTexture(nil, "BACKGROUND")
     btn.icon:SetAllPoints()
@@ -465,6 +479,21 @@ local function WireSecureToggle(popup)
     if not parent then return end
     if not opts.toggleButton then return end
     if not parent.SetAttribute then return end
+
+    -- Without snippets the proxy is useless: clicking it raises inside
+    -- Blizzard's compiler. The trigger is our own button, so a plain
+    -- PostClick does the toggle out of combat, which is when the popup
+    -- can legally be shown anyway.
+    if not BazUI.SecureSnippetsUsable() then
+        if parent._bazPopupToggleHooked then return end
+        parent._bazPopupToggleHooked = true
+        local wanted = opts.toggleButton
+        parent:HookScript("PostClick", function(self, button, down)
+            if down or button ~= wanted or InCombatLockdown() then return end
+            if popup:IsShown() then popup:Hide() else popup:Show() end
+        end)
+        return
+    end
 
     local proxy = GetOrCreateProxy(popup)
     proxy:SetFrameRef("bazPopup", popup)

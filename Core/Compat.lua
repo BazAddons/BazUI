@@ -119,6 +119,33 @@ function BazUI.Secret.Read(fn, fallback)
 end
 
 ---------------------------------------------------------------------------
+-- Can this client run a secure handler snippet?
+--
+-- Snippets are strings compiled inside the restricted environment, which
+-- Blizzard's RestrictedExecution.lua does with `loadstring_untainted`. On
+-- Forever build 69893 that file captures the global at load and gets nil,
+-- so every snippet dies with "attempt to call a nil value" the first time
+-- it runs - inside their code, from a click, with nothing to catch it.
+--
+-- Nothing an addon can fix, and nothing an addon can survive either: the
+-- failure happens at click time, not when the snippet is installed, so
+-- there is no pcall to put around it. The only sound response is not to
+-- install one, and to do the job insecurely instead where that is
+-- possible at all.
+--
+-- Asked once and remembered, because it cannot change within a session.
+---------------------------------------------------------------------------
+
+local snippetsUsable
+
+function BazUI.SecureSnippetsUsable()
+    if snippetsUsable == nil then
+        snippetsUsable = (_G.loadstring_untainted ~= nil)
+    end
+    return snippetsUsable
+end
+
+---------------------------------------------------------------------------
 -- Keeping one of Blizzard's frames out of the way
 --
 -- Not by replacing its Show, and not by replacing its OnShow. Both write
