@@ -579,6 +579,8 @@ function QT.Init()
     pcall(f.RegisterEvent, f, "QUEST_REMOVED")
     pcall(f.RegisterEvent, f, "QUEST_AUTOCOMPLETE")
     pcall(f.RegisterEvent, f, "PLAYER_ENTERING_WORLD")
+    pcall(f.RegisterEvent, f, "ADDON_LOADED")
+    pcall(f.RegisterEvent, f, "PLAYER_REGEN_ENABLED")
     pcall(f.RegisterEvent, f, "SUPER_TRACKING_CHANGED")
     pcall(f.RegisterEvent, f, "TRACKED_ACHIEVEMENT_UPDATE")
     pcall(f.RegisterEvent, f, "TRACKED_ACHIEVEMENT_LIST_CHANGED")
@@ -618,11 +620,16 @@ function QT.Init()
     -- multiple events in the same frame set a pending flag and we run
     -- exactly one Refresh at end-of-frame.
     local refreshPending = false
+    local visibilityPending = false
     local refreshFlush = CreateFrame("Frame")
     refreshFlush:Hide()
     refreshFlush:SetScript("OnUpdate", function(self)
         self:Hide()
         refreshPending = false
+        if visibilityPending then
+            visibilityPending = false
+            QT.ApplyBlizzardTrackerVisibility()
+        end
         QT.Refresh()
     end)
     local function QueueRefresh()
@@ -634,6 +641,12 @@ function QT.Init()
     QT.QueueRefresh = QueueRefresh
 
     f:HookScript("OnEvent", function(_, event)
+        -- The default tracker may load after this widget. Suppression also
+        -- skips protected frames in combat, so retry when combat ends.
+        if event == "ADDON_LOADED" or event == "PLAYER_ENTERING_WORLD"
+            or event == "PLAYER_REGEN_ENABLED" then
+            visibilityPending = true
+        end
         if event == "SUPER_TRACKING_CHANGED" then
             QT.OnSuperTrackChanged()
             QueueRefresh()
@@ -646,6 +659,7 @@ function QT.Init()
     end)
 
     C_Timer.After(0.5, function()
+        QT.ApplyBlizzardTrackerVisibility()
         QT.Refresh()
         QT.OnSuperTrackChanged()
     end)
