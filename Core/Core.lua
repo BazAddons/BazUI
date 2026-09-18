@@ -38,7 +38,31 @@ local function KeyNames(t)
     return #names > 0 and table.concat(names, ", ") or "none"
 end
 
-BazUI._svTrace = { atFileLoad = CountKeys(_G.BazUIDB), namesAtFileLoad = KeyNames(_G.BazUIDB) }
+BazUI._svTrace = {
+    atFileLoad      = CountKeys(_G.BazUIDB),
+    namesAtFileLoad = KeyNames(_G.BazUIDB),
+    -- EventUtil.ContinueOnAddOnLoaded runs its callback immediately when the
+    -- addon already counts as loaded, and its queue is not ours to order, so
+    -- the reading taken there is not necessarily the event itself. This frame
+    -- is: a plain handler, registered before anything else in the addon runs.
+    saysLoadedAtFileLoad = C_AddOns.IsAddOnLoaded(ADDON_NAME) and "yes" or "no",
+}
+
+local svProbe = CreateFrame("Frame")
+svProbe:RegisterEvent("ADDON_LOADED")
+svProbe:RegisterEvent("PLAYER_ENTERING_WORLD")
+svProbe:SetScript("OnEvent", function(self, event, name)
+    local t = BazUI._svTrace
+    if event == "ADDON_LOADED" then
+        if name ~= ADDON_NAME then return end
+        t.atRawEvent = CountKeys(_G.BazUIDB)
+        t.namesAtRawEvent = KeyNames(_G.BazUIDB)
+        self:UnregisterEvent("ADDON_LOADED")
+    else
+        t.atEnteringWorld = CountKeys(_G.BazUIDB)
+        self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    end
+end)
 
 ---------------------------------------------------------------------------
 -- Addon Object Prototype
@@ -919,8 +943,11 @@ function BazUI:ReportSavedVariables()
     BazUI:Print(("Saved variables - Core.lua ran: %s, ADDON_LOADED: %s, login: %s, now: %s"):format(
         Say(t.atFileLoad), Say(t.atAddonLoaded), Say(t.atLogin), Say(CountKeys(_G.BazUIDB))))
 
-    print("  when Core.lua ran: " .. tostring(t.namesAtFileLoad))
-    print("  at ADDON_LOADED:  " .. tostring(t.namesAtAddonLoaded))
+    print("  when Core.lua ran: " .. tostring(t.namesAtFileLoad)
+        .. "  (addon already counts as loaded: " .. tostring(t.saysLoadedAtFileLoad) .. ")")
+    print("  ADDON_LOADED event: " .. tostring(t.namesAtRawEvent))
+    print("  our ADDON_LOADED:   " .. tostring(t.namesAtAddonLoaded))
+    print("  entering world:     " .. tostring(t.atEnteringWorld) .. " keys")
     print("  now:              " .. KeyNames(_G.BazUIDB))
 
     local _, build, _, iface = GetBuildInfo()
