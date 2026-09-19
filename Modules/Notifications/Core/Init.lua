@@ -150,6 +150,34 @@ BazUI:RegisterModule("Notifications", {
 })
 
 ---------------------------------------------------------------------------
+-- Reading the profile again
+--
+-- Called when the profile underneath changes, which is every one of these
+-- at once. This module keeps its display settings on an event bus - each
+-- one has a SETTING_CHANGED_<key> that whatever draws it listens for - so
+-- the honest way to re-apply them is to say they all changed, rather than
+-- to reach into the panel and the toasts from here and set them by hand.
+--
+-- The keys are the ones something actually listens for. A key nobody
+-- listens for would fire into nothing, and one that is missed here shows
+-- up as a part of the screen still wearing the old profile.
+---------------------------------------------------------------------------
+
+local PROFILE_KEYS = { "position", "scale", "toastScale", "panelOpacity" }
+
+function addon:ApplySettings()
+    if not addon.db then return end
+
+    -- The bell first: its position is the anchor the panel and the toasts
+    -- are placed from, so moving it after them would leave them behind.
+    if addon.ApplyButtonPosition then addon.ApplyButtonPosition() end
+
+    for _, key in ipairs(PROFILE_KEYS) do
+        addon.Events:Trigger("SETTING_CHANGED_" .. key, addon.db[key])
+    end
+end
+
+---------------------------------------------------------------------------
 -- TomTom integration
 ---------------------------------------------------------------------------
 

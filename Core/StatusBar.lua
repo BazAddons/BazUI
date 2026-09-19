@@ -141,29 +141,44 @@ end
 -- the choice changes, so a bar answers without a reload.
 -- A fill is a path or a name, and the newer art is only ever a name.
 --
--- SetStatusBarTexture takes a file, so an atlas has to be put on the
--- texture object afterwards. The file goes on first either way, so there
--- is never a frame where the bar has nothing on it and draws the
--- green-and-black missing grid.
+-- The name goes straight to SetStatusBarTexture, which takes an atlas as
+-- readily as a file - it is how Blizzard's own power bars are drawn.
 --
--- An atlas the client does not have would draw that grid permanently, so
--- it is only applied once the client says it exists. A texture the caller
--- asked for by name beats the skin, and takes no atlas.
+-- It used to set the file and then call SetAtlas on the texture
+-- underneath, passing the argument that gives the texture the artwork's
+-- own size - 124 by 20 - while the status bar was sizing that same
+-- texture itself. Two things deciding one size is worth removing on its
+-- own account, and this is the tidier call regardless.
+--
+-- It was not, however, what made bars black. That was SetBarSize sending
+-- the value back the wrong way after a resize; see _Resend below. Said
+-- here because this comment claimed the credit for a while and a wrong
+-- explanation left in the source is worse than none.
+--
+-- An atlas the client does not have would draw the green-and-black
+-- missing grid, so it is only used once the client says it exists, and
+-- the plain texture is what a bar wears otherwise. A texture the caller
+-- asked for by name beats the skin and takes no atlas.
 local function ApplyFillTexture(bar, def, override)
-    bar.fill:SetStatusBarTexture(override or def.texture)
     bar._fillAtlas = false
 
     local atlas = not override and def.atlas
-    if not atlas then return end
-    if C_Texture and C_Texture.GetAtlasInfo and not C_Texture.GetAtlasInfo(atlas) then
-        return
+    if atlas and C_Texture and C_Texture.GetAtlasInfo
+        and not C_Texture.GetAtlasInfo(atlas) then
+        atlas = nil
     end
 
-    local texture = bar.fill:GetStatusBarTexture()
-    if texture and texture.SetAtlas then
-        texture:SetAtlas(atlas, true)
-        bar._fillAtlas = true
+    if atlas then
+        -- A false back means the client would not take it. Older ones
+        -- return nothing at all, which is not a refusal.
+        local taken = bar.fill:SetStatusBarTexture(atlas)
+        if taken ~= false then
+            bar._fillAtlas = true
+            return
+        end
     end
+
+    bar.fill:SetStatusBarTexture(override or def.texture)
 end
 
 function BarMixin:RefreshFill()
@@ -198,11 +213,7 @@ end
 function BarMixin:SetFillDirection(from)
     self._reversed = (from == "RIGHT")
     self.fill:SetReverseFill(self._reversed)
-    if self._rawMax ~= nil then
-        self:SetValue(self._rawValue, self._rawMax)
-    else
-        self:SetValue(self._value or 0)
-    end
+    self:_Resend()
 end
 
 -- One value, given one of two ways.
@@ -252,6 +263,29 @@ function BarMixin:SetValue(fraction, maximum)
         end
     end
     self:_LayoutOverlay()
+end
+
+-- Put the value back, whichever way it was given.
+--
+-- Anything that re-lays the bar has to do this, because a StatusBar loses
+-- its fill when it is resized. What it must not do is assume there is a
+-- fraction. A bar on the secret path has none - it was handed a value and
+-- a maximum it may not look at, and the widget does the measuring - so
+-- `SetValue(self._value or 0)` on one of those sends nought, sets the
+-- range back to 0 and 1, and clears the very pair that would have been
+-- needed to put the real value back.
+--
+-- That was the black bar. Health and power carry secret values, so every
+-- resize emptied them, and they stayed empty until something happened to
+-- update them again - a new target, a point of damage, or the mouse
+-- passing over. Experience and the cast bar carry ordinary numbers and
+-- were never affected, which is why only some bars were ever black.
+function BarMixin:_Resend()
+    if self._rawMax ~= nil then
+        self:SetValue(self._rawValue, self._rawMax)
+    else
+        self:SetValue(self._value or 0)
+    end
 end
 
 -- The fraction this bar is showing, or nil when it was given a value it
@@ -509,7 +543,7 @@ function BarMixin:SetBarSize(width, height)
     end
 
     self:SetTicks(self._tickCount or 0)
-    self:SetValue(self._value or 0)
+    self:_Resend()
 end
 
 -- Sized by its box instead, for a caller with a space to fill rather than

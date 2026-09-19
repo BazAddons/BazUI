@@ -45,12 +45,13 @@ BazUI:RegisterUserGuide("Auras", {
                 { type = "paragraph", text = "Drag a row in Edit Mode and drop it near the edge of a bar or an action bar to dock it there, or set it on the row's page." },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Dock to", "Floating, or the name of a bar or action bar. Docked, it follows its host and hides when the host hides." },
-                    { "On the", "Above or below the host." },
+                    { "On the", "Which side of the host: above, below, left of or right of it." },
                     { "Takes", "How much of its host's width the row uses. All of it spans the whole thing and sizes the icons to suit, so icons per row decides how big they come out. Half of it does the same across half the width, which is how two rows share one line - buffs on the left of an action bar and debuffs on the right, aligned to opposite ends. Its own width keeps the icons the size you chose." },
-                    { "Aligned", "Which end of its host the row starts from: left, center or right." },
+                    { "Aligned", "Which end of its host the row starts from: left, center or right above and below it, top, middle or bottom beside it." },
                     { "Gap", "Pixels between this row and what it is docked to." },
                 } },
                 { type = "note", text = "A centered row stays centered as icons come and go, including in combat, because what moves is the row's frame rather than anything the game protects." },
+                { type = "note", text = "A row docked to the left or right of something always keeps its own width. A row works its icon size out from its width, and a side has only height to give it - so Takes is greyed out there rather than offering a choice the row would ignore." },
             },
         },
 

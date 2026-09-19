@@ -61,6 +61,18 @@ local NINE_SLICE_PIECES = {
 local function DockRole(frame)
     local Dock = BazUI.Dock
     if not Dock then return "free" end
+
+    -- Asked about the thing itself, not the handle standing over it.
+    --
+    -- Dock:CreateMover registers the HANDLE with Edit Mode, so this is
+    -- handed a mover for everything that has one - and the dock has never
+    -- heard of a mover. IsDocked came back false and GetFollowers came
+    -- back nil for every one of them, so every bar read as free and got
+    -- the plain tint. The gold and blue were only ever right for frames
+    -- registered directly.
+    frame = frame and frame.target or frame
+    if not frame then return "free" end
+
     if Dock.IsDocked and Dock:IsDocked(frame) then return "follower" end
     local followers = Dock.GetFollowers and Dock:GetFollowers(frame)
     if followers and #followers > 0 then return "host" end
@@ -335,6 +347,18 @@ end
 -- Overlay Creation (Nine-Slice with label and mouse interaction)
 ---------------------------------------------------------------------------
 
+-- No label on the overlay.
+--
+-- There was one, added today, and it was the wrong answer: it meant the
+-- selected frame said its name in white on a plate while every other frame
+-- said it in yellow on its handle, so selecting something changed how it
+-- was written. The handle's label in Core/DockMover.lua does all the
+-- naming now, for selected and unselected alike, and it sits above this
+-- overlay so it reads.
+--
+-- The tooltip on hover still gives the full name, which is what the
+-- overlay's "Click to Edit" hint was mostly doing.
+
 local function CreateEditOverlay(frame, config)
     local overlay = CreateFrame("Frame", nil, frame, "NineSliceCodeTemplate")
     overlay:SetAllPoints(frame)
@@ -342,12 +366,6 @@ local function CreateEditOverlay(frame, config)
     overlay.isSelected = false
 
     ApplyOverlayLook(frame, overlay)
-
-    local label = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightHuge")
-    label:SetPoint("CENTER")
-    label:SetText("")
-    label:Hide()
-    overlay.label = label
 
     overlay:EnableMouse(true)
     overlay:RegisterForDrag("LeftButton")
@@ -381,19 +399,12 @@ local function CreateEditOverlay(frame, config)
     end)
 
     overlay:SetScript("OnEnter", function(self)
-        if not self.isSelected then
-            self.label:SetText("Click to Edit")
-            self.label:Show()
-        end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(config.label or "Frame", 1, 1, 1)
         GameTooltip:Show()
     end)
 
-    overlay:SetScript("OnLeave", function(self)
-        if not self.isSelected then
-            self.label:Hide()
-        end
+    overlay:SetScript("OnLeave", function()
         GameTooltip_Hide()
     end)
 
@@ -433,6 +444,11 @@ local INSPECTOR_BOTTOM = 42
 -- get out of the way of whatever is selected, and a pin overrides both.
 local inspectorSide   = "RIGHT"
 local inspectorPinned = nil
+
+-- Declared here, defined further down with the rest of the docking. The
+-- inspector's own buttons are built before it and need to call it, and a
+-- local is only visible to code written after it.
+local DockInspector
 local LABEL_WIDTH = 100
 local SLIDER_WIDTH = 140
 local ROW_HEIGHT = 32
@@ -1055,16 +1071,77 @@ local function BuildPopup()
 
     -- Pins the panel to the side it is on, so it stops moving out of the
     -- way. Pressing it again hands the decision back.
+    --
+    -- It says so on hover, which it did not: a dash and an equals sign in
+    -- an eighteen pixel button is not a thing anybody can read, and a
+    -- control nobody can name is a control nobody uses. The glyph carries
+    -- the state and the tooltip carries the meaning.
+    local function PinTooltip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(inspectorPinned and "Unpin this panel" or "Pin this panel", 1, 1, 1)
+        GameTooltip:AddLine(inspectorPinned
+            and "It stays on this edge. Unpin it and it moves out of the way of whatever you select."
+            or  "It moves to the other edge when what you select would be underneath it. Pin it to keep it here.",
+            nil, nil, nil, true)
+        GameTooltip:Show()
+    end
+
     local pin = Theme.CreateButton(f, {
         width = 24, height = 18, text = "|cffffd700-|r",
         onClick = function(self)
-            inspectorPinned = inspectorPinned and nil or inspectorSide
+            -- Spelled out, not `inspectorPinned and nil or inspectorSide`.
+            -- That reads like a toggle and is not one: `x and nil` is
+            -- always nil, so the `or` always wins and the pin could only
+            -- ever go on. Any ternary whose middle term is nil or false
+            -- has this hole in it.
+            if inspectorPinned then
+                inspectorPinned = nil
+            else
+                inspectorPinned = inspectorSide
+            end
             BazUI:RefreshInspectorSide()
-            self:SetText(inspectorPinned and "|cffffd700=|r" or "|cffffd700-|r")
+            -- Redrawn while the cursor is still on it, so the words match
+            -- the glyph that just changed.
+            PinTooltip(self)
         end,
     })
+    pin:SetScript("OnEnter", PinTooltip)
+    pin:SetScript("OnLeave", GameTooltip_Hide)
     pin:SetPoint("TOPLEFT", 10, -10)
     f.pin = pin
+
+    -- Put it on the other edge.
+    --
+    -- The pin on its own could only hold the panel wherever it happened to
+    -- land, which is half a control: you could stop it moving but not say
+    -- where to stop it. This is the other half.
+    --
+    -- A swap while pinned moves the pin with it, or the next selection
+    -- would drag the panel straight back to the side you just left.
+    local function SwapTooltip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(inspectorSide == "LEFT"
+            and "Move to the right" or "Move to the left", 1, 1, 1)
+        GameTooltip:AddLine(inspectorPinned
+            and "It is pinned, so it stays on the new edge."
+            or  "It may move back on its own when you select something. Pin it to keep it put.",
+            nil, nil, nil, true)
+        GameTooltip:Show()
+    end
+
+    local swap = Theme.CreateButton(f, {
+        width = 24, height = 18, text = "|cffffd700<|r",
+        onClick = function(self)
+            local other = (inspectorSide == "LEFT") and "RIGHT" or "LEFT"
+            if inspectorPinned then inspectorPinned = other end
+            DockInspector(other)
+            SwapTooltip(self)
+        end,
+    })
+    swap:SetScript("OnEnter", SwapTooltip)
+    swap:SetScript("OnLeave", GameTooltip_Hide)
+    swap:SetPoint("LEFT", pin, "RIGHT", 4, 0)
+    f.swap = swap
 
     local close = Theme.CreateCloseButton(f)
     close:SetPoint("TOPRIGHT", 0, 0)
@@ -1200,9 +1277,22 @@ local function SideForFrame(frame)
     return cx > (UIParent:GetWidth() / 2) and "LEFT" or "RIGHT"
 end
 
-local function DockInspector(side)
+-- The two glyphs, kept true wherever the state was changed from. The side
+-- moves on its own when you select something, so neither button can be
+-- left saying what it said last time.
+local function RefreshInspectorButtons(f)
+    if f.pin then
+        f.pin:SetText(inspectorPinned and "|cffffd700=|r" or "|cffffd700-|r")
+    end
+    if f.swap then
+        f.swap:SetText(inspectorSide == "LEFT" and "|cffffd700>|r" or "|cffffd700<|r")
+    end
+end
+
+function DockInspector(side)
     local f = GetOrCreatePopup()
     inspectorSide = side or inspectorSide
+    RefreshInspectorButtons(f)
 
     -- Anchored top and bottom rather than given a height, so it fills the
     -- screen however tall that is.
@@ -1489,8 +1579,6 @@ function BazUI:SelectEditFrame(frame)
     if overlay then
         overlay.isSelected = true
         ApplyOverlayLook(frame, overlay)
-        overlay.label:SetText(config.label or "")
-        overlay.label:Show()
     end
 
     selectedFrame = frame
@@ -1512,7 +1600,6 @@ function BazUI:DeselectEditFrame(frame)
     if overlay then
         overlay.isSelected = false
         ApplyOverlayLook(frame, overlay)
-        overlay.label:Hide()
     end
 
     if selectedFrame == frame then
@@ -1541,7 +1628,6 @@ local function EnterEditMode()
         if not frame._bazEditOverlay then
             CreateEditOverlay(frame, config)
         end
-        frame._bazEditOverlay.label:SetText("")
         frame._bazEditOverlay:Show()
 
         if config.onEnter then
@@ -1656,10 +1742,9 @@ function BazUI:UpdateEditModeLabel(frame, newLabel)
     if config then
         config.label = newLabel
     end
-    local overlay = frame._bazEditOverlay
-    if overlay and overlay.isSelected then
-        overlay.label:SetText(newLabel or "")
-    end
+    -- The handle carries the name, so that is what a rename has to reach.
+    local mover = frame.label and frame or frame._bazMover
+    if mover and mover.SetLabel then mover:SetLabel(newLabel or "") end
     if settingsPopup and settingsPopup:IsShown() and selectedFrame == frame then
         settingsPopup.title:SetText(newLabel or "Settings")
     end
@@ -1730,22 +1815,91 @@ local function AddGameMenuButton()
     local menu = _G.GameMenuFrame
     if not (menu and menu.AddButton) then return end
 
+    -- Closed through the panel manager, not by hiding it.
+    --
+    -- GameMenuFrame is a managed panel - UIPanelWindows puts it in the
+    -- "center" slot - and calling Hide on one of those takes the frame off
+    -- screen without telling the manager, so the slot stays occupied by a
+    -- frame that is not there. Escape then does nothing at all, for the
+    -- rest of the session: ToggleGameMenu sees GameMenuFrame:IsShown() is
+    -- false, falls through to showing it, and ShowUIPanel finds it is
+    -- already the centre panel and has nothing to do.
+    --
+    -- That is what "Escape stopped working after leaving Edit Mode" was,
+    -- and /baz escdebug named it in one line: "GameMenu: false" beside
+    -- "UI panel center: GameMenuFrame".
+    --
+    -- HideUIPanel is what Blizzard's own menu buttons call. Through
+    -- securecallfunction because it is their code doing their bookkeeping,
+    -- and a store made under our taint is a store that belongs to us.
     local function OnClick()
         local ok = BazUI:EnterEditMode()
-        if ok and menu.Hide then
+        if not ok then return end
+        if HideUIPanel then
+            securecallfunction(HideUIPanel, menu)
+        elseif menu.Hide then
             securecallfunction(menu.Hide, menu)
         end
     end
 
-    menu:HookScript("OnShow", function(self)
-        if securecallfunction then
-            if self.AddSection then securecallfunction(self.AddSection, self) end
-            securecallfunction(self.AddButton, self, "BazUI Edit", OnClick)
-        else
-            if self.AddSection then self:AddSection() end
-            self:AddButton("BazUI Edit", OnClick)
+    -- Where Blizzard's own Edit Mode button sits, so ours can sit under it.
+    --
+    -- These buttons are laid out by layoutIndex, and AddButton simply takes
+    -- the next one - which is why ours landed at the very bottom, under
+    -- Return to Game, where it read as an afterthought rather than as the
+    -- other way to arrange your interface.
+    --
+    -- Found by its text rather than by counting: how many buttons come
+    -- before it depends on whether the shop, the splash screen, macros and
+    -- the ratings menu are showing, and that changes between clients and
+    -- between characters.
+    local function EditModeLayoutIndex(self)
+        local pool = self.buttonPool
+        if not (pool and pool.EnumerateActive and HUD_EDIT_MODE_MENU) then return nil end
+        for button in pool:EnumerateActive() do
+            if button.GetText and button:GetText() == HUD_EDIT_MODE_MENU then
+                return button.layoutIndex
+            end
         end
-        if self.Layout then self:Layout() end
+        return nil
+    end
+
+    menu:HookScript("OnShow", function(self)
+        local after = EditModeLayoutIndex(self)
+
+        -- No section break when it is going next to Edit Mode: the two
+        -- belong together and a gap would say they do not. Only the
+        -- fallback position at the bottom gets one.
+        if not after then
+            if securecallfunction then
+                if self.AddSection then securecallfunction(self.AddSection, self) end
+            elseif self.AddSection then
+                self:AddSection()
+            end
+        end
+
+        local button
+        if securecallfunction then
+            button = securecallfunction(self.AddButton, self, "BazUI Edit", OnClick)
+        else
+            button = self:AddButton("BazUI Edit", OnClick)
+        end
+
+        -- Half an index, so it lands between Edit Mode and whatever was
+        -- next without renumbering anything. The layout sorts on this
+        -- number; it has never needed to be a whole one.
+        if button and after then
+            button.layoutIndex = after + 0.5
+            button.topPadding  = nil
+        end
+
+        if self.Layout then
+            if securecallfunction then
+                securecallfunction(self.Layout, self)
+            else
+                self:Layout()
+            end
+        end
     end)
 end
 

@@ -21,6 +21,12 @@
 --       check  = function() return BazUI.Has.Member(C_NamePlate, "GetNamePlateForUnit") end,
 --   }
 --
+--   Optional fields:
+--     when      whether the question applies at all. Use it for a hold on
+--               another addon: without this, an integration for something
+--               that is not installed reads as broken.
+--     whenNote  what to say instead, when it does not apply.
+--
 -- Declared beside the code rather than in a list here, because a list
 -- somewhere else is a list that goes stale the first time somebody
 -- changes the code without remembering it exists.
@@ -410,6 +416,35 @@ function BazUI.UnbindEscape(frame)
     ClearOverrideBindings(frame)
 end
 
+-- What the Escape system currently holds, for /baz escdebug.
+--
+-- Escape is an override binding here, and an override binding that is not
+-- cleared swallows Escape for the whole game - so when Escape stops
+-- working the first question is which of our frames still has it, and
+-- whether that frame is even on screen.
+function BazUI.EscapeReport()
+    local lines = {}
+
+    local bound = GetBindingAction and GetBindingAction("ESCAPE")
+    lines[#lines + 1] = ("ESCAPE currently runs: %s"):format(
+        (bound and bound ~= "" ) and bound or "nothing bound")
+
+    local n = 0
+    for frame, btn in pairs(escapeButtons) do
+        n = n + 1
+        lines[#lines + 1] = ("  %s  shown %s  pending %s"):format(
+            (frame.GetName and frame:GetName()) or tostring(frame),
+            tostring(frame:IsShown() and true or false),
+            tostring(escapePending[frame]))
+        if bound == btn:GetName() then
+            lines[#lines] = lines[#lines] .. "   |cffffd700<- this one has Escape|r"
+        end
+    end
+    if n == 0 then lines[#lines + 1] = "  nothing has asked for Escape" end
+    lines[#lines + 1] = ("in combat: %s"):format(tostring(InCombatLockdown()))
+    return lines
+end
+
 function BazUI.CloseOnEscape(frame, onEscape)
     if not (frame and frame.HookScript) then return false end
     if not (SetOverrideBindingClick and ClearOverrideBindings) then return false end
@@ -489,22 +524,75 @@ function BazUI:RegisterDependency(def)
     dependencies[#dependencies + 1] = def
 end
 
+-- One hold that several names could satisfy.
+--
+-- A frame the game renamed between clients is still one thing we are
+-- taking hold of, and registering each spelling separately makes the
+-- report cry wolf: PartyMemberFrame1 through 4 are absent on any client
+-- that pools its party frames, which is normal and not worth a line
+-- saying MISSING. Six of thirteen on the first retail run were this, and
+-- a report you learn to read past is no report at all.
+--
+-- So: any one of them counts, and it fails only when none is there, which
+-- is the case that actually matters. The label names every spelling
+-- tried, so a real failure is still diagnosable.
+--
+--   names  the spellings, in the order they are worth trying
+--   has    what to ask of each. BazUI.Has.Frame by default
+function BazUI:RegisterAnyDependency(def)
+    if not (def and def.label and def.names and def.names[1]) then return end
+    local names = def.names
+    local has = def.has or BazUI.Has.Frame
+    self:RegisterDependency({
+        module = def.module,
+        label  = def.label,
+        why    = def.why,
+        check  = function()
+            for _, name in ipairs(names) do
+                if has(name) then return true end
+            end
+            return false
+        end,
+    })
+end
+
 -- Every declared hold, asked now. Returns the list and how many failed,
 -- so something other than the slash command could show this later.
 function BazUI:CheckDependencies()
     local results, missing = {}, 0
 
     for _, def in ipairs(dependencies) do
+        -- Some holds are only holds when something else is installed.
+        -- Zygor's notification centre is four of them, and on a machine
+        -- without Zygor they reported MISSING every time - which is not a
+        -- fault, it is an addon that is not there. Four red lines nobody
+        -- can act on teaches you to read past the colour, which is the
+        -- one thing this report must not do.
+        --
+        -- `when` says whether the question applies at all. A hold that
+        -- does not apply is reported as such and counts toward nothing.
+        local applies = true
+        if def.when then
+            local okWhen, wanted = pcall(def.when)
+            applies = okWhen and wanted and true or false
+        end
+
         -- A check that errors is a check that failed: whatever it was
         -- reaching for was not there to be reached.
-        local ok, present = pcall(def.check)
-        present = ok and present and true or false
-        if not present then missing = missing + 1 end
+        local present = false
+        if applies then
+            local ok, found = pcall(def.check)
+            present = ok and found and true or false
+            if not present then missing = missing + 1 end
+        end
+
         results[#results + 1] = {
             module  = def.module or "BazUI",
             label   = def.label,
             why     = def.why,
             present = present,
+            applies = applies,
+            note    = def.whenNote,
         }
     end
 
@@ -532,7 +620,10 @@ function BazUI:PrintDependencyReport()
             lastModule = entry.module
             print("  |cffffd700" .. entry.module .. "|r")
         end
-        if entry.present then
+        if not entry.applies then
+            print("    |cff888888n/a|r     " .. entry.label
+                .. (entry.note and ("  - " .. entry.note) or ""))
+        elseif entry.present then
             print("    |cff44ff44ok|r      " .. entry.label)
         else
             print("    |cffff4444MISSING|r " .. entry.label

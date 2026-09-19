@@ -350,23 +350,28 @@ end
 
 -- The game's own frames, by name. See Core/Compat.lua: a renamed frame
 -- here means a switch that quietly stops working.
+-- One entry, not one name. Several of these list alternative spellings on
+-- purpose - four names for the casting bar, the pooled party frames that
+-- only older clients gave globals to - and asking after each separately
+-- reported half of them missing on a client where the switch works
+-- perfectly. The switch works if any one of its frames is there.
 for _, entry in ipairs(UnitBars.STOCK) do
-    for _, frameName in ipairs(entry.frames) do
-        BazUI:RegisterDependency({
-            module = "Unit Frames",
-            label  = frameName,
-            why    = "Hidden by the " .. entry.label .. " switch.",
-            check  = function() return BazUI.Has.Frame(frameName) end,
-        })
-    end
+    BazUI:RegisterAnyDependency({
+        module = "Unit Frames",
+        label  = table.concat(entry.frames, " or "),
+        why    = "Hidden by the " .. entry.label .. " switch.",
+        names  = entry.frames,
+    })
 end
 
-BazUI:RegisterDependency({
-    module = "Unit Frames",
-    label  = "SECURE_ACTIONS.togglemenu",
-    why    = "The right-click menu on a bar picks itself; without it we fall back to our own guess.",
-    check  = function() return BazUI.Has.Member(_G.SECURE_ACTIONS, "togglemenu") end,
-})
+-- No dependency is declared for the right-click menu.
+--
+-- There was one, on SECURE_ACTIONS.togglemenu, and it reported missing on
+-- every client because SECURE_ACTIONS is a file local in Blizzard's
+-- SecureTemplates.lua and never a global. A check that cannot pass
+-- anywhere is worse than no check: it trains you to read past the word
+-- MISSING. What the attribute does is only observable from inside the
+-- secure environment, so there is nothing here to honestly ask.
 
 -- Which of the game's frames are meant to be down, held here rather than
 -- on their frames. They used to be reparented to a hidden carrier, with
@@ -440,6 +445,100 @@ function UnitBars:SuppressStock()
     end
 
     if found then suppressKey = key end
+end
+
+---------------------------------------------------------------------------
+-- Why is that bar black
+--
+-- A bar draws nothing when it has no color, when it has no value, or when
+-- it has no texture, and all three look identical on screen: the dark
+-- track showing through. Guessing between them has cost two wrong fixes,
+-- so this asks the bar.
+--
+-- Everything is read through pcall, twice over, and the second one is the
+-- one that matters.
+--
+-- A value handed to a widget may be one of Forever's secret numbers,
+-- which this code may pass along and may not look at. Calling the getter
+-- does not raise - it hands back the secret quite happily. Neither does
+-- tostring, which returns a *secret string*. What raises is the first
+-- thing that tries to make ordinary text of it, which here is the concat
+-- at the end - so the concat is what has to be guarded. The first version
+-- of this guarded the tostring instead and the secret walked straight
+-- through it.
+--
+-- "secret" is an answer worth printing. A bar holding a secret value has
+-- been given a value; the question is only whether it can draw it.
+---------------------------------------------------------------------------
+
+local function Safe(fn, ...)
+    local packed = { pcall(fn, ...) }
+    if not packed[1] then return "refused" end
+    if #packed == 1 then return "nil" end
+
+    local ok, text = pcall(function()
+        local out = {}
+        for index = 2, #packed do
+            out[#out + 1] = tostring(packed[index]) .. ""
+        end
+        return table.concat(out, ", ")
+    end)
+    return ok and text or "secret"
+end
+
+function UnitBars:PaintReport()
+    local lines = {}
+    for _, bar in pairs(self.bars or {}) do
+        local def   = bar.def
+        local frame = bar.frame
+        local fill  = frame and frame.fill
+        if fill then
+            lines[#lines + 1] = ("|cffffd100%s %s|r  shown %s  alpha %s"):format(
+                tostring(def.kind), tostring(def.unit),
+                tostring(frame:IsShown()), Safe(frame.GetAlpha, frame))
+
+            lines[#lines + 1] = ("    value %s of %s"):format(
+                Safe(fill.GetValue, fill), Safe(fill.GetMinMaxValues, fill))
+
+            local asked = "nothing yet"
+            if frame._fillColor then
+                asked = Safe(function(c)
+                    return c[1], c[2], c[3]
+                end, frame._fillColor)
+            end
+            lines[#lines + 1] = ("    bar color %s   asked for %s"):format(
+                Safe(fill.GetStatusBarColor, fill), asked)
+
+            local texture = fill:GetStatusBarTexture()
+            if not texture then
+                lines[#lines + 1] = "    |cffff6666no status bar texture at all|r"
+            else
+                lines[#lines + 1] = ("    texture %s  atlas %s  vertex %s"):format(
+                    Safe(texture.GetTexture, texture),
+                    texture.GetAtlas and Safe(texture.GetAtlas, texture) or "n/a",
+                    Safe(texture.GetVertexColor, texture))
+                lines[#lines + 1] = ("    texture size %s x %s  shown %s"):format(
+                    Safe(texture.GetWidth, texture), Safe(texture.GetHeight, texture),
+                    Safe(texture.IsShown, texture))
+            end
+
+            -- Which of the two SetValue paths last ran. A raw pair means
+            -- the secret path - value and maximum handed to the widget
+            -- untouched. A fraction means the ordinary one. A bar that
+            -- took the fraction path with nothing to measure sits at
+            -- zero, which looks exactly like a bar with no color.
+            lines[#lines + 1] = ("    last set: raw %s / %s   fraction %s"):format(
+                Safe(function() return frame._rawValue end),
+                Safe(function() return frame._rawMax end),
+                Safe(function() return frame._value end))
+
+            lines[#lines + 1] = ("    atlas fill %s   fill size %s x %s"):format(
+                tostring(frame._fillAtlas and true or false),
+                Safe(fill.GetWidth, fill), Safe(fill.GetHeight, fill))
+        end
+    end
+    if #lines == 0 then lines[1] = "No bars." end
+    return lines
 end
 
 -- What actually happened to each of Blizzard's frames, for /bazframes
@@ -755,12 +854,29 @@ local function RestIcon(frame)
     return icon
 end
 
--- Only the player's health bar wears it: resting is a fact about you, and
--- saying it twice on two bars says nothing more.
+-- Whether this bar wears the mark, which is the bar's own answer once
+-- somebody has given it one and the module's until then.
+--
+-- Per bar because two health bars for yourself is a normal thing to have
+-- - one small one docked under an action bar, one big one somewhere you
+-- can see it - and the zZ belongs on whichever of them you look at, not
+-- on both. Checked against nil rather than leaned on: `or setting` would
+-- turn a bar you deliberately switched off back on.
+function UnitBars:RestIconWanted(def)
+    if def and def.restIcon ~= nil then return def.restIcon and true or false end
+    return addon:GetSetting("restIcon") ~= false
+end
+
+-- Only a player health bar wears it: resting is a fact about you, and a
+-- target's bar saying it would be saying it about the wrong person.
+function UnitBars:CanWearRestIcon(def)
+    return def and def.kind == "health" and def.unit == "player" or false
+end
+
 local function ApplyRestIcon(bar, unit)
-    local wanted = bar.def.kind == "health"
+    local wanted = UnitBars:CanWearRestIcon(bar.def)
         and unit == "player"
-        and addon:GetSetting("restIcon") ~= false
+        and UnitBars:RestIconWanted(bar.def)
         and IsResting and IsResting() and true or false
 
     local icon = restIcons[bar.frame]
@@ -1241,11 +1357,21 @@ function UnitBars:Build(def)
 
         -- SecureUnitButton_OnLoad hands the right button to a function of
         -- ours; hand it back to the game instead, where it picks the menu
-        -- that suits the unit. The function above stays as the answer for
-        -- a client without it.
-        if _G.SECURE_ACTIONS and _G.SECURE_ACTIONS.togglemenu then
-            frame:SetAttribute("*type2", "togglemenu")
-        end
+        -- that suits the unit.
+        --
+        -- Set unconditionally, and that is the fix rather than the risk.
+        -- This used to be guarded by `if _G.SECURE_ACTIONS` - but
+        -- SECURE_ACTIONS is a file local inside Blizzard's
+        -- SecureTemplates.lua on every client, never a global, so the
+        -- guard was always false and the attribute was never set. Right
+        -- clicking a bar has been falling back to the menu below this
+        -- whole time.
+        --
+        -- We do not need to see it. The attribute is read inside the
+        -- secure environment, where it is in scope; asking from out here
+        -- was the mistake. A client that does not understand the
+        -- attribute ignores it, and the fallback menu is still attached.
+        frame:SetAttribute("*type2", "togglemenu")
         frame:RegisterForClicks("AnyUp")
         -- The game shows and hides it as the unit comes and goes, in the
         -- secure environment, so it keeps working during a fight.
@@ -1452,15 +1578,35 @@ local function FormatOptions(kind)
     end
     return ValuesArray(without)
 end
-local EDGES = { BOTTOM = "Below", TOP = "Above" }
+local EDGES = {
+    BOTTOM = "Below", TOP = "Above", LEFT = "Left of", RIGHT = "Right of",
+}
 
 -- How much of its host a docked bar takes, and where it sits across it.
+--
+-- Three choices either way; only the words change. Below an action bar a
+-- bar takes the host's width and sits left, center or right along it.
+-- Beside one it takes the host's height and sits top, middle or bottom
+-- down it - the same thing turned ninety degrees, and "Left" is not a
+-- place to be on a line that runs up and down.
+--
+-- Relabeled rather than swapped in and out: nothing appears or
+-- disappears as you move a bar from one edge to another, so the row you
+-- were about to click is still there.
 local TAKES = {
-    full = "The whole width",
-    half = "Half the width",
-    own  = "Its own width",
+    V = { full = "The whole width",  half = "Half the width",  own = "Its own width"  },
+    H = { full = "The whole height", half = "Half the height", own = "Its own height" },
 }
-local ALIGNS = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+local ALIGNS = {
+    V = { LEFT = "Left", CENTER = "Center", RIGHT  = "Right"  },
+    H = { TOP  = "Top",  MIDDLE = "Middle", BOTTOM = "Bottom" },
+}
+
+-- Which set this bar is using right now. A bar that floats has no edge
+-- and never shows these rows, so the fallback only has to be harmless.
+local function DockAxis(def)
+    return BazUI.Dock:EdgeAxis(def.dock and def.dock.edge or "BOTTOM")
+end
 local FILL_FROM = { LEFT = "The left", RIGHT = "The right" }
 
 function UnitBars:EditSettings(bar)
@@ -1498,6 +1644,9 @@ function UnitBars:EditSettings(bar)
           set = function(value)
               def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
               Refresh()
+              -- Takes and Aligned are named after the edge, so their
+              -- wording has just changed under the player.
+              UnitBars:RefreshEditSettings()
           end },
 
         { type = "slider", section = "Size", label = "Width",
@@ -1545,13 +1694,18 @@ function UnitBars:EditSettings(bar)
         })
         table.insert(widgets, 3, {
             type = "dropdown", section = "Docking", label = "Aligned",
-            options = ValuesArray(ALIGNS),
-            get = function() return def.align or "LEFT" end,
+            options = ValuesArray(ALIGNS[DockAxis(def)]),
+            -- Through the dock, so a bar aligned left and then moved to
+            -- a side reads as aligned top rather than as nothing at all.
+            get = function()
+                return BazUI.Dock:AlignOnEdge(
+                    def.dock and def.dock.edge, def.align)
+            end,
             set = function(value) def.align = value Refresh() end,
         })
         table.insert(widgets, 3, {
             type = "dropdown", section = "Docking", label = "Takes",
-            options = ValuesArray(TAKES),
+            options = ValuesArray(TAKES[DockAxis(def)]),
             get = function() return def.takes or "full" end,
             set = function(value)
                 def.takes = value
@@ -1592,6 +1746,21 @@ function UnitBars:EditSettings(bar)
             end,
         })
     end
+
+    -- Offered on every bar and greyed out where it cannot apply, rather
+    -- than appearing on one bar and not another: a switch you cannot find
+    -- is worse than one you can see is not for this bar.
+    table.insert(widgets, #widgets, {
+        type = "checkbox", section = "Visibility",
+        label = "Resting mark",
+        disabled = function() return not UnitBars:CanWearRestIcon(def) end,
+        get = function() return UnitBars:RestIconWanted(def) end,
+        set = function(value)
+            def.restIcon = value and true or false
+            Refresh()
+            UnitBars:Update(bar)
+        end,
+    })
 
     if def.kind == "xp" then
         table.insert(widgets, #widgets, {

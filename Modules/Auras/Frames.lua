@@ -652,13 +652,28 @@ local UNITS   = {
 
 addon.ROW_FILTERS = FILTERS
 addon.ROW_UNITS   = UNITS
-addon.ROW_ALIGNS  = { LEFT = "Left", CENTER = "Center", RIGHT = "Right" }
+-- Three places along a line, named for the way the line runs. See
+-- Core\Dock.lua: a row aligned LEFT and then moved onto a side edge means
+-- the near end either way, so the value carries over and only the word
+-- changes.
+addon.ROW_ALIGNS  = {
+    V = { LEFT = "Left", CENTER = "Center", RIGHT  = "Right"  },
+    H = { TOP  = "Top",  MIDDLE = "Middle", BOTTOM = "Bottom" },
+}
 addon.ROW_TAKES   = { full = "All of it", half = "Half of it", own = "Its own width" }
 addon.ROW_GROWTH  = { RIGHT = "Left to right", LEFT = "Right to left" }
 addon.ROW_STACK   = { AUTO = "Away from the dock", DOWN = "Downward", UP = "Upward" }
 addon.ROW_SORTS   = { INDEX = "Order applied", TIME = "Time remaining", NAME = "Name" }
 addon.ROW_SORT_DIRECTIONS = { ["+"] = "Ascending", ["-"] = "Descending" }
-addon.ROW_EDGES   = { BOTTOM = "Below", TOP = "Above" }
+addon.ROW_EDGES   = {
+    BOTTOM = "Below", TOP = "Above", LEFT = "Left of", RIGHT = "Right of",
+}
+
+-- Which way this row's edge runs, for the settings that are named after
+-- it. Asked of the dock so there is one answer rather than two.
+function addon:RowAxis(def)
+    return BazUI.Dock:EdgeAxis(def and def.dock and def.dock.edge or "BOTTOM")
+end
 
 local UNIT_ORDER   = {
     "player", "target", "pet",
@@ -726,7 +741,18 @@ local fillSizes = {}
 -- third choice existed still carry it. True meant all of it; false meant
 -- its own width. Read through here rather than anywhere else so those keep
 -- working without being rewritten.
+-- On a side edge a row always keeps its own size, whatever is saved.
+--
+-- The dock measures a follower across the line, which on a side is its
+-- height - and a row works its icon size out from its width, so filling
+-- the host would set the one number the row does not read and leave the
+-- icons sized from whatever width they happened to have. "Half of it"
+-- has the same hole in it.
+--
+-- Answered here rather than at each call site so the dropdown, the
+-- attach and RowMeasured cannot disagree about it.
 function addon:RowTakes(def)
+    if self:RowAxis(def) == "H" then return "own" end
     if def.takes then return def.takes end
     return def.fill and "full" or "own"
 end
@@ -1270,6 +1296,9 @@ function addon:RowEditSettings(def)
     -- width, because there is then something to sit beside.
     local function Floating() return not (def.dock and def.dock.host and def.dock.host ~= "float") end
     local function NotBeside() return Floating() or addon:RowTakes(def) == "full" end
+    -- A row on a side keeps its own size - see RowTakes - so the choice
+    -- is greyed out there rather than offering something it will ignore.
+    local function OnASide() return Floating() or addon:RowAxis(def) == "H" end
 
     widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
         options = Values(addon.ROW_EDGES),
@@ -1278,10 +1307,13 @@ function addon:RowEditSettings(def)
         set = function(value)
             def.dock = { host = (def.dock and def.dock.host) or "float", edge = value }
             Refresh()
+            -- Takes and Aligned are named after the edge and answer
+            -- differently on a side.
+            addon:RefreshRowEditSettings()
         end }
     widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Takes",
         options = Values(addon.ROW_TAKES),
-        disabled = Floating,
+        disabled = OnASide,
         get = function() return addon:RowTakes(def) end,
         set = function(value)
             def.takes = value
@@ -1291,9 +1323,13 @@ function addon:RowEditSettings(def)
             Refresh()
         end }
     widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "Aligned",
-        options = Values(addon.ROW_ALIGNS),
-        disabled = NotBeside,
-        get = function() return def.align or "LEFT" end,
+        options = Values(addon.ROW_ALIGNS[addon:RowAxis(def)]),
+        -- Beside something, or on a side edge where a row always keeps
+        -- its own size and so always has somewhere to sit.
+        disabled = function() return NotBeside() and addon:RowAxis(def) ~= "H" end,
+        get = function()
+            return BazUI.Dock:AlignOnEdge(def.dock and def.dock.edge, def.align)
+        end,
         set = function(value) def.align = value Refresh() end }
     widgets[#widgets + 1] = { type = "slider", section = "Docking", label = "Space beside",
         min = 0, max = 40, step = 1,

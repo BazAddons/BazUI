@@ -183,8 +183,12 @@ local function BuildHeader(host)
     -- The box adds rather than filters, so Enter is the commit and the
     -- field empties itself ready for the next one.
     header.box:SetScript("OnEnterPressed", function(self)
-        local ok, err = Add(self:GetText())
-        message = ok and nil or err
+        local _, err = Add(self:GetText())
+        -- Just the error. `ok and nil or err` says the same thing here
+        -- only because Add returns a nil error on success, so the
+        -- `and nil` half never does anything. See Core/EditMode.lua,
+        -- where that shape was a real bug.
+        message = err
         self:SetText("")
         self:ClearFocus()
         Codex.Panel:QueueRefresh()
@@ -195,8 +199,8 @@ local function BuildHeader(host)
         local text = self:GetText() or ""
         self.placeholder:SetShown(text == "")
         if text:find("item:%d+") then
-            local ok, err = Add(text)
-            message = ok and nil or err
+            local _, err = Add(text)
+            message = err
             self:SetText("")
             Codex.Panel:QueueRefresh()
         end

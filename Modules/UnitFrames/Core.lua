@@ -57,6 +57,15 @@ addon = BazUI:RegisterModule("UnitFrames", {
             desc = "Print every bar and row with what it is docked to",
             handler = function() addon:PrintStacks() end,
         },
+        paint = {
+            desc = "Print why a bar is drawing the way it is: its color, its value and its texture, which are the three ways a bar ends up black.",
+            handler = function()
+                addon:Print("Bars:")
+                for _, line in ipairs(addon.UnitBars:PaintReport()) do
+                    print("  " .. line)
+                end
+            end,
+        },
         stock = {
             desc = "Print what happened to each of the game's own frames the Blizzard's Frames switches cover",
             handler = function()

@@ -224,12 +224,23 @@ local ZYGOR_HOLDS = {
       end },
 }
 
+-- Only asked when Zygor is actually loaded. Without that these four read
+-- as MISSING on every machine that does not have it, which is most of
+-- them - and a report with four permanent red lines in it is a report
+-- people stop reading.
+local function ZygorLoaded()
+    local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+    return loaded and loaded("ZygorGuidesViewer") and true or false
+end
+
 for _, hold in ipairs(ZYGOR_HOLDS) do
     BazUI:RegisterDependency({
-        module = "Notifications (Zygor)",
-        label  = hold.label,
-        why    = hold.why,
-        check  = hold.check,
+        module   = "Notifications (Zygor)",
+        label    = hold.label,
+        why      = hold.why,
+        check    = hold.check,
+        when     = ZygorLoaded,
+        whenNote = "Zygor is not loaded, so nothing here applies.",
     })
 end
 

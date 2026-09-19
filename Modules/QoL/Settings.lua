@@ -27,6 +27,13 @@ local function BuildSpec()
             type    = "toggle",
             section = SECTIONS[def.section] and def.section or "other",
             order   = def.order or 100,
+            -- A tweak that is only a console setting needs that setting to
+            -- exist. instantQuestText is gone from retail, so the switch
+            -- greys out there rather than sitting on and doing nothing -
+            -- which is the worse of the two, because it reads as working.
+            disabled = def.cvar and function()
+                return not (GetCVar and GetCVar(def.cvar) ~= nil)
+            end or nil,
             get     = function() return addon:Enabled(def.key) end,
             set     = function(_, value) addon:SetEnabled(def.key, value) end,
         }

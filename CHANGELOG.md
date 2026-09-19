@@ -1,36 +1,61 @@
-## 004
+## 005
 
-**Settings still do not stick on the World of Warcraft: Forever beta, and it
-is not BazUI.** That client does not read an addon's settings back when you
-log in, so everything starts from the built-in layout each launch. It affects
-addons across the board, and the game's own settings too. There is an open bug
-report for it and nothing an addon can do in the meantime. When Blizzard fix
-the client, BazUI will start remembering again on its own, with no update
-needed.
+**BazUI runs on retail now, as well as on World of Warcraft: Forever.** One
+addon, one download, the same interface on both. Nothing about the Forever
+build changes because of it.
 
-### New
-
-- **Bars are drawn with the game's own artwork now**, and that is what a fresh
-  install starts with. It is the same bar the player frame uses - soft top and
-  bottom edges, the shape you already know - coloured by BazUI rather than
-  fixed, so class colours, mana, rage and energy all still read as themselves.
-  It is on the Skin page as **HUD**, with a flatter **HUD Party** cut beside it
-  that suits thin bars. Every fill that was there before still is; pick one of
-  those to go back.
+**Settings still do not stick on Forever, and it is not BazUI.** That client
+does not read an addon's settings back when you log in, so everything starts
+from the built-in layout each launch. It affects addons across the board, and
+the game's own settings too. There is an open bug report and nothing an addon
+can do in the meantime. On retail your settings save normally.
 
 ### Fixed
 
-- **The raid manager tab hides when you tell it to.** The switch for it had
-  never worked: that tab only exists once you are in a group, and BazUI stopped
-  looking for the game's frames before you ever joined one. It looks again when
-  the group changes now.
+- **Health and power bars are coloured from the first frame.** They came up
+  black and only found their colour when you moved the mouse over one. A bar
+  loses its fill when it is resized, and putting the value back used the one
+  way that cannot work for health and power - so every resize emptied them.
+- **Escape works after leaving Edit Mode.** Opening BazUI Edit from the Game
+  Menu closed that menu the wrong way, and Escape did nothing at all for the
+  rest of the session.
+- **Quick Keybind Mode no longer swallows your keys.** After one use it took
+  every keypress, including Escape, until you logged out.
+- **Right-clicking a unit bar gives the game's own menu** - the one that knows
+  about inviting, promoting and the rest. It had been falling back to a
+  shortened guess since the feature was written.
+
+### New
+
+- **Nameplates can be set up per kind of unit.** Friendly players, friendly
+  NPCs, neutral, hostile players, hostile NPCs, and mobs somebody else has
+  tagged are six separate things now, each with its own switches for the
+  health bar, name, level, rare and elite mark and class colour. Turn the bar
+  off on friendly NPCs and a capital city becomes readable again. There is a
+  new **Unit Kinds** page for it.
+- **Bars and aura rows dock to the sides of things**, not just above and
+  below. Dock your health to the left of a two-row action bar and your
+  target's to the right, and each pair fills the height of the bar beside it.
+- **Profiles can be exported and imported** as a string, to send to somebody
+  else. An imported profile arrives as a new one; nothing you have is
+  replaced.
 
 ### Changed
 
-- **Draggable windows start on.** All of them - character sheet, quest log,
-  vendor, bank, the options window itself. Everything else on the Quality of
-  Life page starts off on purpose, because those change how the game behaves;
-  making a window draggable does nothing at all until you drag it. Switch off
-  any you would rather the game kept placing.
-- **This is a Forever addon.** Earlier versions also published a Classic Era
-  build. That has stopped - one client, properly, rather than two halfway.
+- **The Profiles page has been rebuilt.** It is grouped by what you came to do
+  rather than by what kind of control each row is, the buttons say what they
+  do instead of what they are, and the auto-assign switches show what they are
+  set to - previously you could only find out by logging in as that character.
+- **Edit Mode reads properly.** Every frame shows its name over the blue,
+  sized to fit rather than spilling over its neighbours, and the frame that
+  carries a stack is gold while the things it carries are blue. The panel has
+  a button to move it to the other edge, and the pin beside it now actually
+  unpins.
+- **BazUI Edit sits under Edit Mode in the Game Menu**, rather than at the
+  bottom under Return to Game.
+- **The micro menu shows every button the game has.** On retail that is
+  thirteen, including Professions, Achievements, Housing, the group finder,
+  Collections, the adventure guide and the shop. The leftover square behind
+  each round button is gone.
+- **Party bars come with the starting layout**, so grouping up shows something
+  without having to make them first.

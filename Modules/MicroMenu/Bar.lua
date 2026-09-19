@@ -15,21 +15,58 @@ local Theme = BazUI.Skin.Theme
 
 -- Vanilla's micro menu, in Blizzard's order. The character button shows
 -- the player's portrait, like the unit frame, instead of a fixed icon.
+-- Every micro button either client has, in the order they read best.
+--
+-- One list, not one per game. A frame that is not there is simply never
+-- adopted, so the entries for the other client cost nothing - the same
+-- rule the Blizzard-frame switches in Unit Frames use.
+--
+-- The clients overlap less than you would think. Only Character, Quest
+-- Log, Guild, Game Menu and Help are called the same thing on both.
+-- Retail split the spellbook into PlayerSpells and Profession, dropped
+-- Socials into the communities frame and the world map onto a keybind,
+-- and added Achievements, Housing, the dungeon finder, Collections, the
+-- adventure guide and the store. Listing only Forever's nine left retail
+-- showing five buttons.
+--
+-- Icons are file paths rather than the buttons' own art: theirs is atlas
+-- artwork cut for a rounded square, and these sit in a circle. Each one
+-- was checked against the client's own icon files rather than
+-- remembered.
 local DEFS = {
-    { key = "character", frame = "CharacterMicroButton", label = "Character", portrait = true },
-    { key = "spellbook", frame = "SpellbookMicroButton", label = "Spellbook", icon = "Interface\\Icons\\INV_Misc_Book_09" },
-    { key = "talents",   frame = "TalentMicroButton",    label = "Talents",   icon = "Interface\\Icons\\Ability_Marksmanship" },
-    { key = "quests",    frame = "QuestLogMicroButton",  label = "Quest Log", icon = "Interface\\Icons\\INV_Misc_Note_01" },
-    { key = "social",    frame = "SocialsMicroButton",   label = "Social",    icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing" },
-    { key = "guild",     frame = "GuildMicroButton",     label = "Guild",     icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01" },
-    { key = "map",       frame = "WorldMapMicroButton",  label = "World Map", icon = "Interface\\Icons\\INV_Misc_Map_01" },
-    { key = "menu",      frame = "MainMenuMicroButton",  label = "Game Menu", icon = "Interface\\Icons\\INV_Misc_Gear_01" },
-    { key = "help",      frame = "HelpMicroButton",      label = "Help",      icon = "Interface\\Icons\\INV_Misc_QuestionMark" },
+    { key = "character",   frame = "CharacterMicroButton",    label = "Character",      portrait = true },
+    -- Forever keeps spells and talents in two buttons; retail has one
+    -- PlayerSpells button for both, and a separate one for professions.
+    { key = "spellbook",   frame = "SpellbookMicroButton",    label = "Spellbook",      icon = "Interface\\Icons\\INV_Misc_Book_09" },
+    { key = "spells",      frame = "PlayerSpellsMicroButton", label = "Spells",         icon = "Interface\\Icons\\INV_Misc_Book_09" },
+    { key = "professions", frame = "ProfessionMicroButton",   label = "Professions",    icon = "Interface\\Icons\\Trade_BlackSmithing" },
+    { key = "talents",     frame = "TalentMicroButton",       label = "Talents",        icon = "Interface\\Icons\\Ability_Marksmanship" },
+    { key = "achievements",frame = "AchievementMicroButton",  label = "Achievements",   icon = "Interface\\Icons\\Achievement_General" },
+    { key = "quests",      frame = "QuestLogMicroButton",     label = "Quest Log",      icon = "Interface\\Icons\\INV_Misc_Note_01" },
+    { key = "housing",     frame = "HousingMicroButton",      label = "Housing",        icon = "Interface\\Icons\\Garrison_Building_Barracks" },
+    { key = "social",      frame = "SocialsMicroButton",      label = "Social",         icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing" },
+    { key = "guild",       frame = "GuildMicroButton",        label = "Guild",          icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01" },
+    { key = "finder",      frame = "LFDMicroButton",          label = "Group Finder",   icon = "Interface\\Icons\\INV_Misc_GroupLooking" },
+    { key = "collections", frame = "CollectionsMicroButton",  label = "Collections",    icon = "Interface\\Icons\\INV_Box_04" },
+    { key = "journal",     frame = "EJMicroButton",           label = "Adventure Guide",icon = "Interface\\Icons\\INV_Misc_Book_17" },
+    { key = "map",         frame = "WorldMapMicroButton",     label = "World Map",      icon = "Interface\\Icons\\INV_Misc_Map_01" },
+    { key = "store",       frame = "StoreMicroButton",        label = "Shop",           icon = "Interface\\Icons\\INV_Misc_Coin_01" },
+    { key = "menu",        frame = "MainMenuMicroButton",     label = "Game Menu",      icon = "Interface\\Icons\\INV_Misc_Gear_01" },
+    { key = "help",        frame = "HelpMicroButton",         label = "Help",           icon = "Interface\\Icons\\INV_Misc_QuestionMark" },
 }
 addon.DEFS = DEFS
 
--- Stock art on the buttons that our icon and ring replace.
-local CHROME_KEYS = { "Flash", "PerformanceIndicator", "NotificationOverlay", "texture" }
+-- Stock furniture that is a child FRAME rather than a region, so
+-- GetRegions in CollectChrome does not return it and it has to be named.
+-- Both clients' names are here; one that does not exist costs nothing.
+local CHROME_KEYS = {
+    -- Forever and the Classic family
+    "Flash", "PerformanceIndicator", "texture",
+    -- Retail
+    "MainMenuBarPerformanceBar",
+    -- Both
+    "NotificationOverlay",
+}
 -- Blizzard's container, its legacy art strip, and the latency bar that
 -- hides behind the main menu bar art (and pops out once that art goes).
 local BLIZZARD_FRAMES = { "MicroMenuContainer", "MicroButtonAndBagsBar", "MainMenuBarPerformanceBarFrame" }
@@ -56,11 +93,33 @@ end
 local function CollectChrome(entry)
     local b = entry.button
     entry.regions = {}
+
+    -- Everything the button draws, asked of the button rather than listed
+    -- by name.
+    --
+    -- It was a list of four names, and those four were Forever's. The
+    -- same buttons on retail carry a dozen regions called something else
+    -- entirely - Background, PushedBackground, Shadow, PushedShadow,
+    -- Emblem, HighlightEmblem and the rest - so Blizzard's rounded plate
+    -- stayed on screen behind our round button. A ghost of the old shape,
+    -- which is precisely what it was.
+    --
+    -- GetRegions answers for whichever client is running, so there is no
+    -- list to keep in step with two games. It is called before our own
+    -- icon, ring and disc are made, so everything it returns is theirs.
+    for _, region in ipairs({ b:GetRegions() }) do Stash(entry, region) end
+
+    -- The state textures as well. They are usually in GetRegions, and
+    -- stashing one twice costs nothing - Stash keeps the first parent it
+    -- was told and ignores the rest.
     Stash(entry, b:GetNormalTexture())
     Stash(entry, b:GetPushedTexture())
     Stash(entry, b:GetHighlightTexture())
     Stash(entry, b:GetDisabledTexture())
+
     for _, key in ipairs(CHROME_KEYS) do Stash(entry, b[key]) end
+    -- Classic keeps the character portrait in a global of its own; retail
+    -- keeps it on the button, where GetRegions already found it.
     if entry.def.portrait then Stash(entry, _G.MicroButtonPortrait) end
 end
 

@@ -436,6 +436,47 @@ local core = BazUI:RegisterModule(addonName, {
     end,
 })
 
+---------------------------------------------------------------------------
+-- Reading the profile again
+--
+-- Called when the profile underneath changes. Window:ApplyAll is the same
+-- call the options page makes when you change a chat setting, so this is
+-- the existing path rather than a second one - it walks every window and
+-- re-reads everything that window is told.
+--
+-- The tab strip is separate, because which tabs exist is not one of a
+-- window's own settings: a profile can carry a different set of windows
+-- entirely, and the strip has to be rebuilt before the windows in it are
+-- worth applying anything to.
+---------------------------------------------------------------------------
+
+function core:ApplySettings()
+    addon.db = self.db
+
+    -- The windows first. ApplyAll walks every one of them and re-reads
+    -- everything that window is told, which is the same call the options
+    -- page makes when you change a chat setting.
+    if addon.Window and addon.Window.ApplyAll then
+        addon.Window:ApplyAll()
+    end
+
+    -- Then which tabs are showing. That is not a window's own setting -
+    -- the Trade tab appears only in a city, the Guild tab only with a
+    -- guild - so it is asked separately and after, once the windows it
+    -- describes have been brought up to date.
+    if addon.Tabs and addon.Tabs.UpdateVisibility then
+        addon.Tabs:UpdateVisibility()
+    end
+
+    -- AutoHide is per window and takes the frame, so it is driven from
+    -- the window list rather than called bare.
+    if addon.AutoHide and addon.AutoHide.SyncWindow and addon.Window then
+        for _, f in pairs(addon.Window.list or {}) do
+            addon.AutoHide:SyncWindow(f)
+        end
+    end
+end
+
 -- Stash the module object early so other Chat files can reach
 -- :GetSetting / :Print / :db before onReady fires.
 addon.core = core

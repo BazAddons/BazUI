@@ -975,6 +975,112 @@ BazUI:QueueForLogin(function()
 end)
 
 ---------------------------------------------------------------------------
+-- Looking at an atlas
+--
+-- The client keeps its artwork in packed sheets, and an atlas is a named
+-- rectangle inside one. Nothing on disk says which rectangle: the sheets
+-- are readable but the coordinates live in a database the game does not
+-- expose, so the only way to know what a name actually looks like is to
+-- put it on screen.
+--
+-- Worth having as a command rather than a one-off, because guessing at
+-- this has cost real time. The bar fills wear these, a wrong one draws
+-- black or draws nothing, and neither says why.
+--
+-- Two copies of each: stretched to the shape a bar would give it, which
+-- is how it will really be seen, and at its own size, which is how it was
+-- drawn. A name the client does not have says so rather than showing the
+-- missing-texture grid.
+---------------------------------------------------------------------------
+
+local atlasWindow
+
+local function AtlasPreview(names)
+    if not atlasWindow then
+        atlasWindow = CreateFrame("Frame", "BazUIAtlasPreview", UIParent,
+            BackdropTemplateMixin and "BackdropTemplate" or nil)
+        atlasWindow:SetFrameStrata("DIALOG")
+        atlasWindow:SetPoint("CENTER")
+        atlasWindow:SetMovable(true)
+        atlasWindow:EnableMouse(true)
+        atlasWindow:RegisterForDrag("LeftButton")
+        atlasWindow:SetScript("OnDragStart", atlasWindow.StartMoving)
+        atlasWindow:SetScript("OnDragStop", atlasWindow.StopMovingOrSizing)
+
+        atlasWindow.bg = atlasWindow:CreateTexture(nil, "BACKGROUND")
+        atlasWindow.bg:SetAllPoints()
+        atlasWindow.bg:SetColorTexture(0.05, 0.05, 0.06, 0.95)
+
+        atlasWindow.rows = {}
+
+        local close = CreateFrame("Button", nil, atlasWindow, "UIPanelCloseButton")
+        close:SetPoint("TOPRIGHT", 0, 0)
+        -- CloseOnEscape, not BindEscape: BindEscape only re-arms a binding
+        -- for a frame that already has an escape button, and takes no
+        -- handler. Called the way it was here it did nothing at all, so
+        -- the window could not be closed with Escape.
+        BazUI.CloseOnEscape(atlasWindow, function() atlasWindow:Hide() end)
+    end
+
+    for _, row in ipairs(atlasWindow.rows) do row:Hide() end
+
+    local y = -28
+    for index, name in ipairs(names) do
+        local row = atlasWindow.rows[index]
+        if not row then
+            row = CreateFrame("Frame", nil, atlasWindow)
+            row:SetSize(560, 74)
+            row.label = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontNormalSmall")
+            row.label:SetPoint("TOPLEFT", 8, 0)
+            row.label:SetJustifyH("LEFT")
+
+            -- A mid grey behind each, so art that is mostly transparent
+            -- reads as transparent rather than as black.
+            row.mat = row:CreateTexture(nil, "BACKGROUND")
+            row.mat:SetPoint("TOPLEFT", 8, -14)
+            row.mat:SetSize(300, 26)
+            row.mat:SetColorTexture(0.45, 0.45, 0.45, 1)
+
+            row.stretched = row:CreateTexture(nil, "ARTWORK")
+            row.stretched:SetAllPoints(row.mat)
+
+            row.native = row:CreateTexture(nil, "ARTWORK")
+            row.native:SetPoint("TOPLEFT", row.mat, "TOPRIGHT", 12, 0)
+
+            row.note = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontDisableSmall")
+            row.note:SetPoint("TOPLEFT", 8, -44)
+            row.note:SetJustifyH("LEFT")
+            atlasWindow.rows[index] = row
+        end
+
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", atlasWindow, "TOPLEFT", 0, y)
+        row.label:SetText(name)
+
+        local info = C_Texture and C_Texture.GetAtlasInfo
+            and C_Texture.GetAtlasInfo(name)
+        if info then
+            row.stretched:SetAtlas(name)
+            row.stretched:Show()
+            row.native:SetAtlas(name, true)
+            row.native:Show()
+            row.note:SetText(("%d x %d, file %s"):format(
+                info.width or 0, info.height or 0, tostring(info.file)))
+        else
+            row.stretched:Hide()
+            row.native:Hide()
+            row.note:SetText("|cffff6666this client has no such atlas|r")
+        end
+
+        row:Show()
+        y = y - 82
+    end
+
+    atlasWindow:SetSize(600, 36 + #names * 82)
+    atlasWindow:Show()
+end
+
+---------------------------------------------------------------------------
 -- BazUI's own slash commands
 -- /baz (or /bazui, /bui) opens BazUI in the Options > AddOns panel. Sub-commands cover the most
 -- common day-to-day actions: profile switching and default-profile setup.
@@ -1011,6 +1117,24 @@ BazUI:QueueForLogin(function()
                     end
                 end,
             },
+            atlas = {
+                desc = "Show what one of the game's atlas images actually looks like. A name, or nothing for the ones the bar fills use.",
+                handler = function(args)
+                    local names = {}
+                    for word in tostring(args or ""):gmatch("[^%s]+") do
+                        names[#names + 1] = word
+                    end
+                    if #names == 0 then
+                        names = {
+                            "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health",
+                            "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status",
+                            "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana-Status",
+                            "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Status",
+                        }
+                    end
+                    AtlasPreview(names)
+                end,
+            },
             profile = {
                 desc = "Show or switch the active profile",
                 handler = function(args)
@@ -1030,6 +1154,15 @@ BazUI:QueueForLogin(function()
                 handler = function()
                     local function shown(f) return f and f.IsShown and f:IsShown() and true or false end
                     BazUI:Print("Escape chain check:")
+                    -- Our own override bindings first. Escape is bound
+                    -- through SetOverrideBindingClick here, and one left
+                    -- behind eats Escape for the whole game - which looks
+                    -- exactly like Escape being broken.
+                    if BazUI.EscapeReport then
+                        for _, line in ipairs(BazUI.EscapeReport()) do
+                            print("  " .. line)
+                        end
+                    end
                     print("  target exists:", UnitExists("target"), " charmed:", UnitIsCharmed("player"), " spell targeting:", _G.SpellIsTargeting())
                     local casting = _G.UnitCastingInfo and _G.UnitCastingInfo("player")
                     local channel = _G.UnitChannelInfo and _G.UnitChannelInfo("player")

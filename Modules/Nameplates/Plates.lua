@@ -153,9 +153,26 @@ end
 -- What a plate says
 ---------------------------------------------------------------------------
 
+-- Everything a plate is allowed to show, answered once for the unit
+-- standing there. See Kinds.lua: a friendly NPC and a hostile one are
+-- different kinds and can be told apart here.
+local function Wants(unit)
+    return {
+        bar        = addon:UnitWants(unit, "showBar"),
+        name       = addon:UnitWants(unit, "showName"),
+        level      = addon:UnitWants(unit, "showLevel"),
+        rank       = addon:UnitWants(unit, "showRank"),
+        classColor = addon:UnitWants(unit, "classColor"),
+    }
+end
+
 function Plates:UpdateHealth(ours)
     local unit = ours and ours.unit
     if not (unit and UnitExists(unit)) then return end
+    local wants = Wants(unit)
+
+    ours.health:SetShown(wants.bar)
+    if not wants.bar then return end
 
     -- Value and maximum, handed straight to the bar rather than divided
     -- into a fraction here. Unit health is a secret value on clients that
@@ -163,7 +180,7 @@ function Plates:UpdateHealth(ours)
     -- divide - so the widget does the measuring. See Core\StatusBar.lua.
     ours.health:SetValue(UnitHealth(unit), UnitHealthMax(unit))
     ours.health:SetFillColor(BazUI.UnitColor(unit, {
-        classColor = Setting("classColor") ~= false,
+        classColor = wants.classColor,
         reaction   = true,
     }))
 end
@@ -171,10 +188,12 @@ end
 function Plates:UpdateName(ours)
     local unit = ours and ours.unit
     if not (unit and UnitExists(unit)) then return end
+    local wants = Wants(unit)
 
+    ours.name:SetShown(wants.name)
     ours.name:SetText(UnitName(unit) or "")
     ours.name:SetTextColor(unpack(BazUI.UnitColor(unit, {
-        classColor = Setting("classColor") ~= false,
+        classColor = wants.classColor,
         reaction   = true,
     })))
 
@@ -182,8 +201,8 @@ function Plates:UpdateName(ours)
     -- unit bars write them - a plate and a target bar looking at the
     -- same mob should not disagree about what it is.
     local text = BazUI.UnitLevelText(unit, {
-        level = Setting("showLevel") ~= false,
-        rank  = Setting("showRank")  ~= false,
+        level = wants.level,
+        rank  = wants.rank,
     })
     ours.level:SetShown(text and true or false)
     if text then
@@ -194,9 +213,51 @@ end
 
 function Plates:UpdateTarget(ours)
     local unit = ours and ours.unit
+    -- The mark is drawn around the health bar, so a kind showing only a
+    -- name has nothing to put it around. Its name still takes the target
+    -- colour from the theme, which is what marks it there.
     local wanted = Setting("targetMark") ~= false
         and unit and UnitIsUnit(unit, "target")
+        and addon:UnitWants(unit, "showBar")
     ours.mark:SetShown(wanted and true or false)
+end
+
+-- Whose plate shows: ours, the game's, or neither.
+--
+-- Three answers rather than two, and the order matters.
+--
+--   A kind switched off gets nothing. The game's plate stays suppressed
+--   and ours stays hidden, so the unit is silent whichever of the two
+--   would otherwise have drawn it.
+--
+--   A friendly unit with "Replace friendly plates" off gets the game's
+--   back, which is what that switch has always meant.
+--
+--   Everything else gets ours.
+--
+-- The host is read off the plate rather than looked up, because
+-- C_NamePlate.GetNamePlateForUnit raises on some unit tokens - see Find,
+-- below - and the parent is the same frame the game handed us.
+function Plates:Decide(ours)
+    local unit = ours and ours.unit
+    local host = ours and ours:GetParent()
+    if not (unit and host) then return end
+
+    if not addon:UnitWants(unit, "showPlate") then
+        SuppressStock(host)
+        ours:Hide()
+        return
+    end
+
+    local friendly = UnitReaction and (UnitReaction("player", unit) or 0) > 4
+    if friendly and Setting("showFriendly") == false then
+        RestoreStock(host)
+        ours:Hide()
+        return
+    end
+
+    SuppressStock(host)
+    ours:Show()
 end
 
 -- Size and every reading, for one plate.
@@ -204,13 +265,42 @@ function Plates:Apply(ours)
     local width  = tonumber(Setting("width"))  or 110
     local height = tonumber(Setting("height")) or 10
 
+    local unit = ours.unit
+    local hasBar = unit and addon:UnitWants(unit, "showBar") or false
+
+    -- Whether this unit gets a plate from us at all, which its kind can
+    -- refuse. Decided here rather than when the plate arrived, because a
+    -- unit changes kind in ordinary play: somebody else tags the mob you
+    -- were fighting, a player flags for PvP. The plate has to answer
+    -- again each time it is painted or it keeps the old unit's answer.
+    self:Decide(ours)
+
     -- The width and height are the health bar's, the way every other bar
     -- in the suite reads them: what is set is the fill, and the border is
     -- added around it. The plate is sized to hold that, plus room above
     -- for the name.
+    --
+    -- A kind with its bar switched off is a name and nothing else, so the
+    -- plate shrinks to the name rather than leaving a bar-shaped hole
+    -- where the bar would have been. The name and the level move down
+    -- onto the plate itself, since there is no longer a bar for them to
+    -- sit above and inside.
     local chrome = ours.health:GetInset() * 2
-    ours:SetSize(width + chrome, height + chrome + NAME_ROOM)
-    ours.health:SetBarSize(width, height)
+    if hasBar then
+        ours:SetSize(width + chrome, height + chrome + NAME_ROOM)
+        ours.health:SetBarSize(width, height)
+        ours.name:ClearAllPoints()
+        ours.name:SetPoint("BOTTOM", ours.health, "TOP", 0, 2)
+        ours.level:ClearAllPoints()
+        ours.level:SetPoint("RIGHT", ours.health.fill, "RIGHT", -3, 0)
+    else
+        ours:SetSize(width + chrome, NAME_ROOM)
+        ours.name:ClearAllPoints()
+        ours.name:SetPoint("CENTER")
+        -- Beside the name rather than inside a bar that is not there.
+        ours.level:ClearAllPoints()
+        ours.level:SetPoint("LEFT", ours.name, "RIGHT", 3, 0)
+    end
 
     -- Painted on every apply rather than once when the plate was built,
     -- so a change of palette reaches plates already pooled.
@@ -270,17 +360,7 @@ function Plates:Added(unit)
     ours.unit = unit
     byUnit[unit] = ours
 
-    -- A plate the game shows for a friendly unit can be left to the game
-    -- by turning this off; it is still the game that decides whether
-    -- there is a plate at all.
-    local friendly = UnitReaction and (UnitReaction("player", unit) or 0) > 4
-    if friendly and Setting("showFriendly") == false then
-        RestoreStock(host)
-        ours:Hide()
-    else
-        ours:Show()
-    end
-
+    -- Whose plate shows is worked out in one place, and Apply asks it.
     self:Apply(ours)
 end
 
@@ -315,9 +395,17 @@ function Plates:Initialize()
     end)
     -- A unit that changes its mind about you changes colour, and the
     -- level only arrives once the game has looked the unit up.
+    -- Both of these can move a unit from one kind to another - a player
+    -- flagging for PvP, a mob being tagged by somebody else - and a kind
+    -- decides whether there is a plate at all, so the whole plate is
+    -- re-applied rather than just repainted.
     addon:On("UNIT_FACTION", function(_, unit)
         local ours = Find(unit)
-        if ours then self:UpdateHealth(ours) self:UpdateName(ours) end
+        if ours then self:Apply(ours) end
+    end)
+    addon:On("UNIT_FLAGS", function(_, unit)
+        local ours = Find(unit)
+        if ours then self:Apply(ours) end
     end)
 
     addon:On("PLAYER_TARGET_CHANGED", function()

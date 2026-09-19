@@ -303,23 +303,35 @@ local function CreateKeybindFrame()
         Keybinds:ExitMode()
     end)
 
-    -- Use the dialog frame itself as the key listener
+    -- The dialog frame is the key listener, and the keyboard goes on only
+    -- while the dialog is up.
+    --
+    -- SetPropagateKeyboardInput is protected on this client: an addon can
+    -- turn propagation OFF and cannot turn it back ON. This used to set it
+    -- false on the first key and never restore it - which it could not -
+    -- so after one use the dialog swallowed every key including Escape,
+    -- and stayed that way for the session. It is the same trap that had
+    -- every BazUI panel eating keybinds while open.
+    --
+    -- So it is never turned off. A frame with the keyboard enabled and
+    -- propagation left alone still sees every key through OnKeyDown, which
+    -- is all this needs; what it does not do is take them away from the
+    -- rest of the game. The keyboard itself goes off with the dialog,
+    -- which is the honest way to stop listening.
     f:EnableKeyboard(true)
-    f:SetPropagateKeyboardInput(true)
+
+    f:SetScript("OnHide", function(self) self:EnableKeyboard(false) end)
+    f:SetScript("OnShow", function(self) self:EnableKeyboard(true) end)
 
     f:SetScript("OnKeyDown", function(self, key)
         if MODIFIER_KEYS[key] then return end
         if not hoveredButton then
-            -- If not hovering a button, let ESC close the dialog
+            -- Not hovering anything: Escape closes the dialog.
             if key == "ESCAPE" then
-                self:SetPropagateKeyboardInput(false)
                 Keybinds:ExitMode()
             end
             return
         end
-
-        -- Don't propagate this key press
-        self:SetPropagateKeyboardInput(false)
 
         -- Build chord with modifiers
         local chord = ""
@@ -337,9 +349,10 @@ local function CreateKeybindFrame()
         Keybinds:SetBinding(hoveredButton:GetName(), chord)
     end)
 
-    f:SetScript("OnKeyUp", function(self)
-        self:SetPropagateKeyboardInput(true)
-    end)
+    -- No OnKeyUp. It existed to put propagation back after OnKeyDown took
+    -- it away, and neither half works: turning it back on is the protected
+    -- direction, so the restore silently failed while the take-away
+    -- succeeded. Nothing turns it off now, so there is nothing to restore.
 
     -- Mouse button binding (middle mouse, mouse4, mouse5, etc.).
     -- OnKeyDown only fires for keyboard keys - mouse buttons need

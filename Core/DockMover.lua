@@ -91,7 +91,8 @@ end
 -- Docking below a host means this frame's top meeting the host's bottom,
 -- so the comparison is edge to edge. Measuring from the middle of the
 -- dragged thing, as this first did, is half its height out before
--- anything else goes wrong.
+-- anything else goes wrong. The sides work the same way: docking to the
+-- left means this frame's right meeting the host's left.
 function Dock:NearestSnap(frame, ignore)
     -- One gate, because everything that snaps asks this: the landing line
     -- drawn while you drag and the drop that acts on it are the same
@@ -120,20 +121,40 @@ function Dock:NearestSnap(frame, ignore)
             and not (ignore and self:Follows(hostFrame, ignore)) then
 
             local hLeft, hRight, hTop, hBottom = ScreenEdges(hostFrame)
-            -- Any horizontal overlap at all is enough. Requiring the
-            -- centers to line up meant a wide action bar and a narrow
-            -- bar rarely agreed.
-            if hLeft and left < hRight and right > hLeft then
-                local candidates = {
-                    { edge = "BOTTOM", distance = math.abs(hBottom - top) },
-                    { edge = "TOP",    distance = math.abs(hTop - bottom) },
-                }
-                for _, candidate in ipairs(candidates) do
-                    if candidate.distance < SNAP_DISTANCE
-                        and (not bestDistance or candidate.distance < bestDistance) then
-                        best = { host = host.id, edge = candidate.edge }
-                        bestDistance = candidate.distance
-                    end
+
+            -- Any overlap at all is enough. Requiring the centers to
+            -- line up meant a wide action bar and a narrow bar rarely
+            -- agreed.
+            --
+            -- The overlap has to be on the other axis from the edge, and
+            -- that is what keeps a corner from being a coin toss: near
+            -- the top left of a host, above is only offered while you
+            -- still overlap it horizontally, and to the left only while
+            -- you still overlap it vertically. Let both through on
+            -- distance alone and a drop near the corner lands wherever
+            -- the arithmetic happened to be a pixel kinder.
+            local overlapsX = hLeft and left < hRight and right > hLeft
+            local overlapsY = hTop  and bottom < hTop and top > hBottom
+
+            local candidates = {}
+            if overlapsX then
+                candidates[#candidates + 1] =
+                    { edge = "BOTTOM", distance = math.abs(hBottom - top) }
+                candidates[#candidates + 1] =
+                    { edge = "TOP",    distance = math.abs(hTop - bottom) }
+            end
+            if overlapsY then
+                candidates[#candidates + 1] =
+                    { edge = "LEFT",   distance = math.abs(hLeft - right) }
+                candidates[#candidates + 1] =
+                    { edge = "RIGHT",  distance = math.abs(hRight - left) }
+            end
+
+            for _, candidate in ipairs(candidates) do
+                if candidate.distance < SNAP_DISTANCE
+                    and (not bestDistance or candidate.distance < bestDistance) then
+                    best = { host = host.id, edge = candidate.edge }
+                    bestDistance = candidate.distance
                 end
             end
         end
@@ -163,16 +184,33 @@ local function SnapLine()
     snapLine.bar:SetAllPoints()
     snapLine.bar:SetColorTexture(0.35, 1, 0.45, 0.95)
 
+    -- Anchored when the line is placed rather than here: the soft part
+    -- has to spread away from the line, and which way that is depends on
+    -- whether the line is lying down or standing up.
     snapLine.glow = snapLine:CreateTexture(nil, "ARTWORK")
-    snapLine.glow:SetPoint("TOPLEFT", -2, 6)
-    snapLine.glow:SetPoint("BOTTOMRIGHT", 2, -6)
     snapLine.glow:SetColorTexture(0.35, 1, 0.45, 0.25)
 
     snapLine.text = BazUI.Skin.Theme.FontString(snapLine, "OVERLAY", "GameFontNormal")
-    snapLine.text:SetPoint("BOTTOM", snapLine, "TOP", 0, 4)
     snapLine.text:SetTextColor(0.5, 1, 0.55)
     return snapLine
 end
+
+-- Which way round the line is drawn, and what it says.
+--
+--   along      the two sides the line is stretched between
+--   near/far   the follower's edge meeting the host's
+--   spread     how far the soft glow reaches either way, as x and y
+--   label      what the drop will do, in the player's words
+local SNAP_LOOK = {
+    BOTTOM = { along = { "LEFT", "RIGHT" }, near = "TOP",   far = "BOTTOM",
+               nudge = 1,  spread = { 2, 6 }, label = "Below " },
+    TOP    = { along = { "LEFT", "RIGHT" }, near = "BOTTOM", far = "TOP",
+               nudge = -1, spread = { 2, 6 }, label = "Above " },
+    LEFT   = { along = { "TOP", "BOTTOM" }, near = "RIGHT", far = "LEFT",
+               nudge = 1,  spread = { 6, 2 }, label = "Left of " },
+    RIGHT  = { along = { "TOP", "BOTTOM" }, near = "LEFT",  far = "RIGHT",
+               nudge = -1, spread = { 6, 2 }, label = "Right of " },
+}
 
 function Dock:ShowSnapLine(snap)
     if not snap then
@@ -197,16 +235,34 @@ function Dock:ShowSnapLine(snap)
         if entry.id == snap.host then label = entry.label break end
     end
 
+    local look = SNAP_LOOK[snap.edge] or SNAP_LOOK.BOTTOM
+    local sideways = (snap.edge == "LEFT" or snap.edge == "RIGHT")
+
     line:ClearAllPoints()
-    line:SetPoint("LEFT", host, "LEFT", 0, 0)
-    line:SetPoint("RIGHT", host, "RIGHT", 0, 0)
-    line:SetHeight(3)
-    if snap.edge == "BOTTOM" then
-        line:SetPoint("TOP", host, "BOTTOM", 0, 1)
+    line:SetPoint(look.along[1], host, look.along[1], 0, 0)
+    line:SetPoint(look.along[2], host, look.along[2], 0, 0)
+    if sideways then
+        line:SetWidth(3)
+        line:SetPoint(look.near, host, look.far, look.nudge, 0)
     else
-        line:SetPoint("BOTTOM", host, "TOP", 0, -1)
+        line:SetHeight(3)
+        line:SetPoint(look.near, host, look.far, 0, look.nudge)
     end
-    line.text:SetText((snap.edge == "BOTTOM" and "Below " or "Above ") .. (label or "here"))
+
+    line.glow:ClearAllPoints()
+    line.glow:SetPoint("TOPLEFT", -look.spread[1], look.spread[2])
+    line.glow:SetPoint("BOTTOMRIGHT", look.spread[1], -look.spread[2])
+
+    -- The label goes above a line lying down and beside one standing up,
+    -- so it never sits on top of the host it is naming.
+    line.text:ClearAllPoints()
+    if sideways then
+        line.text:SetPoint(look.near, line, look.far, look.nudge * 4, 0)
+    else
+        line.text:SetPoint("BOTTOM", line, "TOP", 0, 4)
+    end
+
+    line.text:SetText(look.label .. (label or "here"))
     line:Show()
 end
 
@@ -252,14 +308,69 @@ function Dock:CreateMover(target, opts)
     tint:SetColorTexture(0.15, 0.5, 0.8, 0.35)
     mover.tint = tint
 
-    local label = BazUI.Skin.Theme.FontString(mover, "OVERLAY", "GameFontNormalSmall")
+    -- The name sits on a frame of its own, above everything drawn on the
+    -- handle.
+    --
+    -- Draw layers only order regions inside one frame. Edit Mode puts its
+    -- selection overlay on the handle as a CHILD at ten frame levels up,
+    -- and a child frame draws over every region of its parent whatever
+    -- layer that region is on - so the label was under the blue, however
+    -- high its layer went. Twenty levels up is above the overlay, and the
+    -- name reads.
+    local labelHost = CreateFrame("Frame", nil, mover)
+    labelHost:SetAllPoints(mover)
+    labelHost:SetFrameLevel((mover:GetFrameLevel() or 0) + 20)
+    mover.labelHost = labelHost
+
+    local label = BazUI.Skin.Theme.FontString(labelHost, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("CENTER")
-    label:SetText(opts.label or "")
     mover.label = label
+
+    -- As big as it can be and still fit.
+    --
+    -- A fixed size cannot work here: the handles are whatever size the
+    -- things they stand for are, from a two-pixel power bar to a full
+    -- width action bar, and the names are whatever the player called them.
+    -- One size either swims in the big ones or hangs off the small ones.
+    --
+    -- So it is measured rather than assumed. Start at whatever the height
+    -- allows and step down until the text fits the width, which is the
+    -- only way to get the largest size that does - GetStringWidth answers
+    -- for the font as it is set, so it has to be asked once per size.
+    --
+    -- Nothing is truncated and no width is set: a name cut off mid-word is
+    -- no use for telling two party bars apart, which is the whole job.
+    -- Below the floor it is allowed to overhang instead, which is rare and
+    -- still readable.
+    local LABEL_MIN, LABEL_MAX = 10, 18
+
+    function mover:FitLabel()
+        local text = self.label:GetText() or ""
+        if text == "" then return end
+
+        local font = BazUI.Skin.Theme.FontFile()
+        if not font then return end
+
+        local room = (self:GetWidth() or 0) - 10
+        local tall = math.floor((self:GetHeight() or 0) - 4)
+
+        local size = math.min(LABEL_MAX, math.max(LABEL_MIN, tall))
+        while size > LABEL_MIN do
+            self.label:SetFont(font, size, "OUTLINE")
+            if (self.label:GetStringWidth() or 0) <= room then break end
+            size = size - 1
+        end
+        if size <= LABEL_MIN then
+            self.label:SetFont(font, LABEL_MIN, "OUTLINE")
+        end
+    end
 
     function mover:SetLabel(text)
         self.label:SetText(text or "")
+        self:FitLabel()
     end
+
+    mover:SetLabel(opts.label or "")
 
     -- Size and place the handle over what it stands for. Never while a
     -- drag is running: mid-drag the target is anchored to the handle, so
@@ -285,6 +396,11 @@ function Dock:CreateMover(target, opts)
         local point = Dock:FollowerPoint(target) or "CENTER"
         self:ClearAllPoints()
         self:SetPoint(point, target, point, 0, 0)
+        -- The handle has just taken the target's size, and the label is
+        -- measured against that - so it is refitted here rather than only
+        -- when the text changes. A bar resized while the handle is up
+        -- would otherwise keep the size it was first fitted for.
+        self:FitLabel()
     end
 
     function mover:ShowForEdit()
@@ -298,8 +414,14 @@ function Dock:CreateMover(target, opts)
         Dock:ShowSnapLine(snap)
     end
 
-    -- So anything drawing over the target can find what stands for it.
+    -- Both directions. The target points at its handle so anything drawing
+    -- over the target can find it - and the handle points back, because
+    -- Edit Mode registers the HANDLE, so everything asked about "this
+    -- frame" from in there is asked about the wrong object unless it can
+    -- get to the target. The overlay tint was reading as free on every
+    -- docked bar for exactly that reason.
     target._bazMover = mover
+    mover.target = target
 
     -- The handle is a picture of its target, so it follows the target's
     -- size rather than waiting to be told. Something resized by its host

@@ -22,6 +22,27 @@ BazUI:RegisterUserGuide("Nameplates", {
         },
 
         {
+            title = "One kind of unit at a time",
+            blocks = {
+                { type = "paragraph", text = "A city guard and something trying to kill you are not the same thing, and they do not have to look the same. The module sorts every plate into one of six kinds and each kind has its own switches." },
+                { type = "table", columns = { "Kind", "What lands in it" }, rows = {
+                    { "Tapped by someone else", "A mob somebody else got to first. Tested before the hostile kinds, because knowing it is not yours is the more useful fact." },
+                    { "Friendly players", "Other players on your side." },
+                    { "Hostile players", "Players you can attack." },
+                    { "Friendly NPCs", "Guards, vendors, quest givers." },
+                    { "Neutral NPCs", "Mobs that leave you alone until you start something." },
+                    { "Hostile NPCs", "Anything that will attack you on sight, and anything the other five could not place." },
+                } },
+                { type = "paragraph", text = "Each kind can turn its nameplate, health bar, name, level, rare and elite mark and class color on or off by itself. A kind with no health bar is a name and nothing else, and the plate shrinks to suit rather than leaving a gap where the bar was. A kind with its nameplate off shows nothing at all - not ours and not the game's." },
+                { type = "paragraph", text = "That last one is worth a word, because it looks like a second answer to a question the game already answers. It is not. The game cannot split this as finely: Interface Options has a single switch for all enemies, so hostile players and hostile NPCs go together there, and it has nothing whatever for mobs somebody else has tagged. Here they are separate." },
+                { type = "note", text = "These switches only ever take plates away. If the game is not offering a unit a plate, there is nothing here to hide - so a plate you cannot find is always explained by one page or the other, and with everything on here the game is as much in charge as it ever was." },
+                { type = "note", text = "A crowded capital is what this is for: names on the friendly NPCs, bars on everything else, and you can still read the place." },
+                { type = "paragraph", text = "Every kind starts as whatever the General and Size and Text switches say and keeps its own answer from the moment you touch it, so nothing changes until you want it to. Class color is greyed out on the NPC kinds and the rare and elite mark on the player kinds, because neither applies - the switch stays visible so you are not left hunting for one that moved." },
+                { type = "paragraph", text = "Pets, guardians, totems and minions are not kinds of their own. The game treats them as a visibility category and colors them by whose side they are on, and so do we: a hostile warlock's felhunter is a hostile NPC. A kind that outranked friendly and hostile both would read wrong the first time one attacked you." },
+            },
+        },
+
+        {
             title = "What this module does not decide",
             blocks = {
                 { type = "paragraph", text = "This is worth reading before you go looking for a setting that is not here." },

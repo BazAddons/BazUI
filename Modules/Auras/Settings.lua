@@ -205,7 +205,7 @@ local function RowArgs(def, index)
             },
             dockEdge = {
                 order = 12, type = "select", name = "On the",
-                values = { BOTTOM = "Below", TOP = "Above" },
+                values = addon.ROW_EDGES,
                 disabled = function() return not Docked() end,
                 get = function() return (def.dock and def.dock.edge) or "BOTTOM" end,
                 set = function(_, value)
@@ -215,9 +215,12 @@ local function RowArgs(def, index)
             },
             takes = {
                 order = 13, type = "select", name = "Takes",
-                desc = "How much of its host's width the row uses. All of it spans the whole thing and sizes the icons to suit, so icons per row decides how big they are. Half of it does the same across half, which lets two rows share one line: buffs on the left of an action bar and debuffs on the right. Its own width keeps the icons the size you chose and sits the row at one end.",
+                desc = "How much of its host's width the row uses. All of it spans the whole thing and sizes the icons to suit, so icons per row decides how big they are. Half of it does the same across half, which lets two rows share one line: buffs on the left of an action bar and debuffs on the right. Its own width keeps the icons the size you chose and sits the row at one end."
+                    .. "|n|nA row docked to the left or right of something always keeps its own width, because a row works its icon size out from its width and a side has only height to give it.",
                 values = addon.ROW_TAKES,
-                disabled = function() return not Docked() end,
+                disabled = function()
+                    return not Docked() or addon:RowAxis(def) == "H"
+                end,
                 get = function() return addon:RowTakes(def) end,
                 set = function(_, value)
                     def.takes = value
@@ -229,10 +232,18 @@ local function RowArgs(def, index)
             },
             align = {
                 order = 14, type = "select", name = "Aligned",
-                desc = "Which end of its host the row starts from. Two rows sharing a line want opposite ends.",
-                values = addon.ROW_ALIGNS,
-                disabled = function() return not Docked() or addon:RowTakes(def) == "full" end,
-                get = getAlign, set = setAlign,
+                desc = "Which end of its host the row starts from. Two rows sharing a line want opposite ends. On a side edge the line runs up and down, so the choice is top, middle or bottom instead.",
+                values = function() return addon.ROW_ALIGNS[addon:RowAxis(def)] end,
+                disabled = function()
+                    if not Docked() then return true end
+                    if addon:RowAxis(def) == "H" then return false end
+                    return addon:RowTakes(def) == "full"
+                end,
+                get = function(info)
+                    return BazUI.Dock:AlignOnEdge(
+                        def.dock and def.dock.edge, getAlign(info))
+                end,
+                set = setAlign,
             },
             gutter = {
                 order = 14.5, type = "range", name = "Space beside",

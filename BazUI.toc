@@ -1,19 +1,29 @@
-# Forever only. Classic Era's 11509 used to be here and the packager
-# published a build for both; supporting a second client is a second client
-# to keep working, and this one is not it. The Era compatibility that is
-# already in the code stays - it costs nothing and is what makes the Forever
-# differences obvious - but nothing is shipped for that client.
-## Interface: 16001
+# Forever and retail. Classic Era's 11509 is deliberately absent: the Era
+# compatibility in the code stays, because it costs nothing and is what makes
+# the differences on the other two legible, but nothing is shipped for it.
+#
+# Retail earned its place rather than being assumed into it. Both clients are
+# on the 12.0 codebase, so they share the parts that were expensive to get
+# right - secret values, restricted aspects, the taint rules. An audit of
+# every Blizzard name BazUI references against what each client actually
+# loads found nothing present on one and missing from the other:
+# tools/client-diff-audit.py, which is also where Blizzard's load model is
+# written down.
+#
+# What that audit cannot see is behaviour, and that is where the real
+# differences will be. A name existing is not the same as it doing the same
+# thing.
+## Interface: 16001, 120100
 # A readable copy of the line above. The client does not expose
 # "Interface" through GetAddOnMetadata, but it does expose any X- field,
 # so this is how /baz sv can say whether the TOC it is running was the
 # one on disk - a TOC is only re-read when the client launches, never on
 # /reload, and a test that cannot tell those apart proves nothing.
-## X-Interface-Stamp: 16001
+## X-Interface-Stamp: 16001,120100
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 004
+## Version: 005
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -51,6 +61,7 @@ Core\Seed.lua
 Core\Core.lua
 Core\Events.lua
 Core\Profiles.lua
+Core\ProfilesPage.lua
 Core\StarterProfile.lua
 Core\StarterExport.lua
 Core\Commands.lua
@@ -214,6 +225,7 @@ Modules\UnitFrames\Nameplate.lua
 # Name plates - the bar over a unit's head. Unrelated to
 # Skin\Nameplate.lua, which is a panel with a name on it.
 Modules\Nameplates\Core.lua
+Modules\Nameplates\Kinds.lua
 Modules\Nameplates\Plates.lua
 Modules\Nameplates\Settings.lua
 Modules\Nameplates\UserGuide.lua

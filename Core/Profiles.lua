@@ -67,12 +67,17 @@ local function DeepMerge(dst, src)
     end
 end
 
-local function ApplyStarter(addonName, section)
-    local starter = BazUI.StarterProfile and BazUI.StarterProfile[addonName]
+-- The layout to lay over a fresh section, which is the shipped one unless
+-- a preset was named. A preset is the same shape as BazUI.StarterProfile -
+-- module name to settings - because it is the same thing with a label on
+-- it, baked from an arrangement made in game by the same exporter.
+local function ApplyStarter(addonName, section, source)
+    local starter = (source or BazUI.StarterProfile)
+    starter = starter and starter[addonName]
     if starter then DeepMerge(section, starter) end
 end
 
-local function FillAllAddonDefaults(profile)
+local function FillAllAddonDefaults(profile, source)
     for addonName, config in pairs(BazUI.addons) do
         if config.profiles and config.defaults then
             local fresh = profile[addonName] == nil
@@ -80,9 +85,79 @@ local function FillAllAddonDefaults(profile)
                 profile[addonName] = {}
             end
             FillAddonDefaults(profile[addonName], config.defaults)
-            if fresh then ApplyStarter(addonName, profile[addonName]) end
+            if fresh then ApplyStarter(addonName, profile[addonName], source) end
         end
     end
+end
+
+---------------------------------------------------------------------------
+-- Shipped layouts
+--
+-- A few arrangements that come with the addon, so somebody installing it
+-- has something to choose between rather than one look to accept or
+-- rebuild from nothing.
+--
+-- Each is a profile-shaped table, registered from its own file under
+-- Core/Presets and written by tools/bake-starter.py from a layout made in
+-- game - the same route the shipped starter takes, because it is the same
+-- kind of thing.
+--
+-- Applying one never overwrites what you have. It makes a new profile and
+-- switches to it, so a preset is somewhere to start rather than something
+-- that can cost you an afternoon's arranging.
+---------------------------------------------------------------------------
+
+local presets, presetOrder = {}, {}
+
+function BazUI:RegisterPreset(def)
+    if type(def) ~= "table" or type(def.id) ~= "string" then return end
+    if type(def.profile) ~= "table" then return end
+    if not presets[def.id] then presetOrder[#presetOrder + 1] = def.id end
+    presets[def.id] = {
+        id          = def.id,
+        name        = def.name or def.id,
+        description = def.description,
+        profile     = def.profile,
+    }
+    return def.id
+end
+
+function BazUI:GetPreset(id) return presets[id] end
+
+function BazUI:GetPresets()
+    local out = {}
+    for _, id in ipairs(presetOrder) do out[#out + 1] = presets[id] end
+    return out
+end
+
+-- Make a profile from a preset and switch to it.
+--
+-- The name is the preset's unless one is given, with a number added
+-- rather than replacing a profile that already has that name. Picking
+-- "Compact" twice gives you "Compact 2", not a lost afternoon.
+function BazUI:CreateProfileFromPreset(presetId, profileName)
+    local preset = presets[presetId]
+    if not preset then return nil end
+
+    local sv = BazUIDB
+    if not sv then return nil end
+    sv.profiles = sv.profiles or {}
+
+    local name = profileName or preset.name
+    if sv.profiles[name] then
+        local n = 2
+        while sv.profiles[name .. " " .. n] do n = n + 1 end
+        name = name .. " " .. n
+    end
+
+    -- Built empty and filled from the preset, rather than copied from the
+    -- profile you are on: a preset is meant to be what it says, not what
+    -- you happened to have plus what it mentions.
+    sv.profiles[name] = {}
+    FillAllAddonDefaults(sv.profiles[name], preset.profile)
+
+    self:SetActiveProfile(name)
+    return name
 end
 
 ---------------------------------------------------------------------------
@@ -476,6 +551,30 @@ end
 -- Profile Assignment (unified)
 ---------------------------------------------------------------------------
 
+-- Which profile a scope is pinned to, or nil.
+--
+-- The page needs this to show the auto-assign switches as switches. They
+-- used to be three buttons you pressed and got no answer from, so there
+-- was no way to see what a character was already pinned to except by
+-- logging in as it.
+function BazUI:GetAssignment(scope)
+    local sv = BazUIDB
+    if not (sv and sv.assignments) then return nil end
+    local key = scope == "character" and GetCharacterKey()
+             or scope == "class"     and GetClassKey()
+             or scope == "spec"      and GetSpecKey()
+    return key and sv.assignments[key] or nil
+end
+
+-- What that scope is called on this character, for the switch's label:
+-- "This class" says less than "Mage" when you are deciding.
+function BazUI:GetAssignmentLabel(scope)
+    if scope == "character" then return GetCharacterKey() end
+    if scope == "class"     then return GetClassKey() end
+    if scope == "spec"      then return GetSpecKey() end
+    return nil
+end
+
 function BazUI:AssignProfile(scope, profileName)
     local sv = BazUIDB
     if not sv then return false end
@@ -514,6 +613,37 @@ function BazUI:FireProfileChanged(addonName, newProfile, oldProfile)
             fn(newProfile, oldProfile)
         end
     end
+
+    -- And the module's own ApplySettings, whether or not it remembered to
+    -- ask for it.
+    --
+    -- Every module that draws anything needs to redraw when the profile
+    -- underneath it changes, so wiring that up by hand in each onReady is
+    -- a step that can be forgotten - and had been, by three of the twelve.
+    -- Chat, Drawers and Notifications kept showing the old profile until
+    -- somebody reloaded, which is the sort of thing that reads as the
+    -- switch not working.
+    --
+    -- Deferred by a frame. A profile change is a pile of settings landing
+    -- at once, and a module that rebuilds itself partway through that
+    -- reads some of the new values and some of the old.
+    --
+    -- Called after the callbacks, not instead of them: a module that asked
+    -- for OnProfileChanged is relying on the order it set up, and this is
+    -- an extra pass on top rather than a replacement. ApplySettings has to
+    -- be safe to call twice, which is what it means for a thing to be
+    -- named ApplySettings.
+    local addonObj = BazUI.GetModule and BazUI:GetModule(addonName)
+    if addonObj and type(addonObj.ApplySettings) == "function" then
+        C_Timer.After(0, function()
+            local ok, err = pcall(addonObj.ApplySettings, addonObj)
+            if not ok then
+                BazUI:Print(("|cffff4444%s could not redraw for the new profile:|r %s")
+                    :format(tostring(addonName), tostring(err)))
+            end
+        end)
+    end
+
     BazUI:Fire("BAZ_PROFILE_CHANGED", addonName, newProfile, oldProfile)
 end
 
@@ -563,262 +693,6 @@ function AddonMixin:OnProfileChanged(handler)
     table.insert(profileCallbacks[self.name], handler)
 end
 
----------------------------------------------------------------------------
--- Auto-Generated Profile Options Table
--- Unified - one Profiles page in BazUI settings for all addons
----------------------------------------------------------------------------
-
-function BazUI:GetProfileOptionsTable()
-    local function RefreshProfilesPanel()
-        -- Re-render the standalone Options window's Profiles
-        -- subcategory if it's currently visible. Uses BazUI's
-        -- public RefreshOptions API rather than poking at the
-        -- internal optionsTables.canvas field (that field was never
-        -- populated, so the old direct-poke path silently no-op'd).
-        if BazUI.RefreshOptions then
-            BazUI:RefreshOptions("BazUI-Profiles")
-        end
-    end
-
-    local function BuildProfileArgs()
-        local profileList = BazUI:ListProfiles()
-        local profileGroups = {}
-
-        for i, profileName in ipairs(profileList) do
-            local isActive    = (profileName == BazUI:GetActiveProfile())
-            local isBuiltin   = (profileName == DEFAULT_PROFILE)
-            local isDefault   = (profileName == BazUI:GetDefaultProfile())
-
-            local nameLabel = profileName
-            if isActive  then nameLabel = nameLabel .. " |cff00ff00(active)|r"  end
-            if isBuiltin then nameLabel = nameLabel .. " |cffffd700(default)|r" end
-
-            profileGroups["profile_" .. i] = {
-                order = i,
-                type = "group",
-                name = nameLabel,
-                args = {
-                    statusHeader = {
-                        order = 1,
-                        type = "header",
-                        name = "Profile: " .. profileName,
-                    },
-                    rename = {
-                        order = 1.5,
-                        type = "input",
-                        name = isBuiltin and "Profile Name (cannot rename Default)" or "Profile Name",
-                        desc = isBuiltin and "" or "Type a new name and press Enter to rename",
-                        get = function() return profileName end,
-                        set = function(_, val)
-                            if isBuiltin then
-                                BazUI:Print("Cannot rename the Default profile.")
-                                return
-                            end
-                            if val and val ~= "" and val ~= profileName then
-                                if BazUI:RenameProfile(profileName, val) then
-                                    BazUI:Print("Renamed '" .. profileName .. "' to '" .. val .. "'")
-                                    RefreshProfilesPanel()
-                                else
-                                    BazUI:Print("Could not rename: name may already exist.")
-                                end
-                            end
-                        end,
-                    },
-                    activate = {
-                        order = 2,
-                        type = "execute",
-                        name = isActive and "|cff00ff00Active Profile|r" or "Switch to This Profile",
-                        desc = isActive and "This is the current profile" or "Activate this profile for all Baz Suite addons",
-                        func = function()
-                            if not isActive then
-                                BazUI:SetActiveProfile(profileName)
-                                BazUI:Print("Switched to profile: " .. profileName)
-                                RefreshProfilesPanel()
-                            end
-                        end,
-                    },
-                    setDefault = {
-                        order = 3,
-                        type = "execute",
-                        name = isDefault and "|cffffd700Default for New Characters|r" or "Set as Default for New Characters",
-                        desc = isDefault
-                            and "New characters automatically attach to this profile."
-                            or "Make this the profile new characters automatically use on first login. Existing characters are not affected.",
-                        func = function()
-                            if isDefault then
-                                BazUI:Print("'" .. profileName .. "' is already the default for new characters.")
-                            else
-                                if BazUI:SetDefaultProfile(profileName) then
-                                    BazUI:Print("'" .. profileName .. "' set as the default for new characters.")
-                                    RefreshProfilesPanel()
-                                end
-                            end
-                        end,
-                    },
-                    copyHeader = {
-                        order = 10,
-                        type = "header",
-                        name = "Actions",
-                    },
-                    copyFrom = {
-                        order = 11,
-                        type = "select",
-                        name = "Copy Settings From",
-                        desc = "Overwrite this profile with settings from another (all addons)",
-                        values = function()
-                            local vals = {}
-                            for _, name in ipairs(BazUI:ListProfiles()) do
-                                if name ~= profileName then
-                                    vals[name] = name
-                                end
-                            end
-                            return vals
-                        end,
-                        get = function() return "" end,
-                        set = function(_, val)
-                            if BazUI:CopyProfile(val, profileName) then
-                                BazUI:Print("Copied '" .. val .. "' into '" .. profileName .. "'")
-                                if isActive then
-                                    for addonName, config in pairs(BazUI.addons) do
-                                        if config.profiles then
-                                            BazUI:FireProfileChanged(addonName, profileName, profileName)
-                                        end
-                                    end
-                                end
-                            end
-                        end,
-                    },
-                    resetProfile = {
-                        order = 12,
-                        type = "execute",
-                        name = "Reset to Defaults",
-                        desc = "Reset all addon settings in this profile to defaults",
-                        confirm = true,
-                        confirmText = "Reset '" .. profileName .. "' to defaults for all addons?",
-                        func = function()
-                            BazUI:ResetProfile(profileName)
-                            BazUI:Print("'" .. profileName .. "' reset to defaults.")
-                        end,
-                    },
-                    deleteProfile = {
-                        order = 20,
-                        type = "execute",
-                        name = "|cffff4444Delete This Profile|r",
-                        desc = isBuiltin and "Cannot delete Default profile" or (isActive and "Cannot delete the active profile" or "Permanently delete this profile"),
-                        confirm = not (isBuiltin or isActive),
-                        confirmText = "Delete profile '" .. profileName .. "'? This cannot be undone.",
-                        func = function()
-                            if isBuiltin then
-                                BazUI:Print("Cannot delete the Default profile.")
-                            elseif isActive then
-                                BazUI:Print("Cannot delete the active profile. Switch first.")
-                            else
-                                BazUI:DeleteProfile(profileName)
-                                BazUI:Print("Deleted profile: " .. profileName)
-                                RefreshProfilesPanel()
-                            end
-                        end,
-                    },
-                    assignHeader = {
-                        order = 30,
-                        type = "header",
-                        name = "Auto-Assignment",
-                    },
-                    assignDesc = {
-                        order = 31,
-                        type = "description",
-                        name = "Automatically use this profile for:",
-                    },
-                    assignChar = {
-                        order = 32,
-                        type = "execute",
-                        name = "This Character",
-                        func = function()
-                            BazUI:AssignProfile("character", profileName)
-                            BazUI:Print("'" .. profileName .. "' assigned to this character.")
-                        end,
-                    },
-                    assignClass = {
-                        order = 33,
-                        type = "execute",
-                        name = "This Class",
-                        func = function()
-                            BazUI:AssignProfile("class", profileName)
-                            BazUI:Print("'" .. profileName .. "' assigned to this class.")
-                        end,
-                    },
-                    assignSpec = {
-                        order = 34,
-                        type = "execute",
-                        name = "This Spec",
-                        func = function()
-                            if BazUI:AssignProfile("spec", profileName) then
-                                BazUI:Print("'" .. profileName .. "' assigned to this spec.")
-                            else
-                                BazUI:Print("Could not determine current spec.")
-                            end
-                        end,
-                    },
-                },
-            }
-        end
-
-        return profileGroups
-    end
-
-    local activeProfile  = BazUI:GetActiveProfile()
-    local defaultProfile = BazUI:GetDefaultProfile()
-
-    return {
-        name = "Profiles",
-        subtitle = "Baz Suite profile management",
-        type = "group",
-        args = {
-            intro = {
-                order = 0.1,
-                type = "lead",
-                text = "Profiles control settings for all Baz Suite addons at once. Switching profiles changes every addon's configuration together.",
-            },
-            statusNote = {
-                order = 0.2,
-                type = "note",
-                style = "info",
-                text = "Active profile: |cff00ff00" .. activeProfile .. "|r" ..
-                       "    \194\183    Default for new characters: |cffffd700" .. defaultProfile .. "|r" ..
-                       "\n\nNew characters auto-attach to the default profile on first login. Mark any profile as default with the |cffffd700Set as Default|r button on its page.",
-            },
-            newProfile = {
-                order = 2,
-                type = "execute",
-                name = "Create New Profile",
-                desc = "Create a new profile for all Baz Suite addons",
-                func = function()
-                    local profiles = BazUI:ListProfiles()
-                    local name = "New Profile"
-                    local num = 1
-                    local nameExists = true
-                    while nameExists do
-                        nameExists = false
-                        for _, p in ipairs(profiles) do
-                            if p == name then
-                                nameExists = true
-                                num = num + 1
-                                name = "New Profile " .. num
-                                break
-                            end
-                        end
-                    end
-                    BazUI:CreateProfile(name)
-                    BazUI:Print("Created profile: " .. name)
-                    RefreshProfilesPanel()
-                end,
-            },
-            profiles = {
-                order = 10,
-                type = "group",
-                name = "Profiles",
-                args = BuildProfileArgs(),
-            },
-        },
-    }
-end
+-- The Profiles page itself lives in Core/ProfilesPage.lua. This file is
+-- the profile system; a page about it is a different thing, and by the
+-- end the page was two thirds of the file.

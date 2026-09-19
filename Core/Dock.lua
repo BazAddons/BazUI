@@ -7,11 +7,15 @@
 -- a block of auras sits above one of them, aligned to an edge or centered.
 -- Anything can also float, which is just being docked to nothing.
 --
+-- Any of a host's four sides. Below and above take the host's width;
+-- left and right take its height. Same engine either way - see The four
+-- edges, further down.
+--
 -- Two behaviors against a host, declared by the follower:
 --
---   "stretch"  take the host's width and sit on its edge. Bars.
---   "align"    keep your own width and sit left, right or center within
---              the host's. Aura blocks.
+--   "stretch"  fill the host across the line and sit on its edge. Bars.
+--   "align"    keep your own size and sit at the near end, the middle or
+--              the far end of the line. Aura blocks.
 --
 -- Rules the suite settled on:
 --
@@ -51,9 +55,13 @@ local settingShown = false
 ---------------------------------------------------------------------------
 
 -- opts:
---   edge     "TOP" or "BOTTOM", which side of the host to sit on
+--   edge     "TOP", "BOTTOM", "LEFT" or "RIGHT" - which side of the
+--            host to sit on
 --   mode     "stretch" (default) or "align"
---   align    for "align": "LEFT", "RIGHT" or "CENTER"
+--   align    for "align": "LEFT", "CENTER" or "RIGHT" on a top or bottom
+--            edge, "TOP", "MIDDLE" or "BOTTOM" on a side. Either set is
+--            accepted on either edge and means the matching place, so a
+--            follower moved from one to the other keeps its arrangement.
 --   order    lower sits nearer the host
 --   gap      pixels between this and whatever it follows
 --   offset   { x, y } nudged off where the dock would otherwise put it
@@ -82,8 +90,9 @@ function Dock:Attach(frame, host, opts)
         align   = opts.align or "LEFT",
         order   = opts.order or 100,
         gap     = gap,
-        -- How much of the host's width an aligned follower takes: 1 for
-        -- all of it, 2 for half. Nothing means keep your own width.
+        -- How much of the host an aligned follower takes across the
+        -- line: 1 for all of it, 2 for half. Nothing means keep your own
+        -- size. Width on a top or bottom edge, height on a side.
         share   = opts.share,
         -- Space left between the things sharing a line. One number for
         -- the line, so whoever asks for the most gets it.
@@ -439,16 +448,95 @@ local function SortedFollowers(host, edge)
     return out
 end
 
+---------------------------------------------------------------------------
+-- The four edges
+--
+-- TOP and BOTTOM stack their lines up and down the screen and share each
+-- line left to right. LEFT and RIGHT are the same thing with the two axes
+-- swapped: lines march sideways, and the things on one line sit above and
+-- below each other.
+--
+-- That is why there is one layout pass rather than two. A second copy of
+-- it for the sides would be the same arithmetic with the words changed,
+-- and the first bug found in one of them would live on in the other.
+--
+--   stack  which way lines march away from the host, V or H
+--   away   +1 or -1 along that axis, outward from the host's edge
+--   near   the side of the follower that touches the host
+--
+-- The host's own anchor side is the edge itself, so it needs no entry.
+---------------------------------------------------------------------------
+
+local EDGES = {
+    BOTTOM = { stack = "V", away = -1, near = "TOP"    },
+    TOP    = { stack = "V", away =  1, near = "BOTTOM" },
+    LEFT   = { stack = "H", away = -1, near = "RIGHT"  },
+    RIGHT  = { stack = "H", away =  1, near = "LEFT"   },
+}
+
+local EDGE_ORDER = { "BOTTOM", "TOP", "LEFT", "RIGHT" }
+
+-- What an alignment means on each axis.
+--
+-- There are only ever three places on a line - the near end, the middle,
+-- the far end - and each axis has its own words for them. A follower
+-- saved as aligned LEFT and then moved onto a side edge still means the
+-- near end of its line, so it is translated here rather than being left
+-- holding a value that axis has never heard of. Nothing saved needs
+-- changing, and moving a bar from the bottom to the side keeps the
+-- arrangement you had.
+local ALIGN = {
+    V = { LEFT = "LEFT", CENTER = "CENTER", RIGHT  = "RIGHT",
+          TOP  = "LEFT", MIDDLE = "CENTER", BOTTOM = "RIGHT" },
+    H = { TOP  = "TOP",  MIDDLE = "MIDDLE", BOTTOM = "BOTTOM",
+          LEFT = "TOP",  CENTER = "MIDDLE", RIGHT  = "BOTTOM" },
+}
+
+-- The corner or side of a frame that an alignment picks out. The middle
+-- of a line has no corner - it anchors by the middle of the near side -
+-- and the two orders are only because WoW names its corners top first.
+local function Anchor(geo, align, side)
+    if align == "CENTER" or align == "MIDDLE" then return side end
+    if geo.stack == "V" then return side .. align end
+    return align .. side
+end
+
+-- Which way an edge runs, and what an alignment is called on it. Both
+-- are asked by the settings panels, so the words on a dropdown and the
+-- arithmetic that places the bar come from the same table rather than
+-- from two that have to be kept in step.
+function Dock:EdgeAxis(edge)
+    local geo = EDGES[edge or "BOTTOM"] or EDGES.BOTTOM
+    return geo.stack
+end
+
+function Dock:AlignOnEdge(edge, align)
+    local axis = self:EdgeAxis(edge)
+    return ALIGN[axis][align or "LEFT"] or (axis == "V" and "LEFT" or "TOP")
+end
+
 local function PlaceOneEdge(host, edge)
+    local geo = EDGES[edge]
+    if not geo then return end
+
     local list = SortedFollowers(host, edge)
     if #list == 0 then return end
 
-    -- A frame reports its width in its own scale, so copying the number
+    local vertical = (geo.stack == "V")
+    local function AlignOf(link)
+        return ALIGN[geo.stack][link.align or "LEFT"]
+            or (vertical and "LEFT" or "TOP")
+    end
+
+    -- How much room the host offers across a line: its width on the top
+    -- and bottom edges, its height on the sides.
+    --
+    -- A frame reports its size in its own scale, so copying the number
     -- straight across makes a follower the wrong size whenever the host
     -- has been scaled: an action bar at 130% would leave its bars short.
     -- Convert through screen pixels, which is the space they share.
-    local hostWidth = (host:GetWidth() or 0) * (host:GetEffectiveScale() or 1)
-    local down = (edge == "BOTTOM")
+    local across = ((vertical and host:GetWidth() or host:GetHeight()) or 0)
+        * (host:GetEffectiveScale() or 1)
 
     -- Which followers share which line.
     --
@@ -478,7 +566,7 @@ local function PlaceOneEdge(host, edge)
         -- A follower that is hidden and not holding its place is skipped
         -- entirely, and the next one moves up into its space.
         if visible or link.reserve then
-            local slot = (link.mode ~= "stretch") and (link.align or "LEFT") or nil
+            local slot = (link.mode ~= "stretch") and AlignOf(link) or nil
             if not current or not slot or taken[slot] then
                 current = { gap = link.gap, gutter = 0, members = {} }
                 lines[#lines + 1] = current
@@ -498,59 +586,63 @@ local function PlaceOneEdge(host, edge)
 
     for _, line in ipairs(lines) do
         offset = offset + line.gap
-        local height = 0
+        local depth = 0     -- how thick this line turned out to be
 
         for _, frame in ipairs(line.members) do
             local link = links[frame]
             local scale = frame:GetEffectiveScale() or 1
             frame:ClearAllPoints()
 
-            local function Resize(width)
-                -- By its box: what has to match the host is the bar's
-                -- outside, not the fill inside it.
+            -- Across the line, never along it: a bar docked below keeps
+            -- its height and a bar docked to the side keeps its width.
+            --
+            -- By its box, too - what has to match the host is the bar's
+            -- outside, not the fill inside it.
+            local function Resize(extent)
                 if frame.SetOuterSize then
-                    frame:SetOuterSize(width)
+                    if vertical then
+                        frame:SetOuterSize(extent)
+                    else
+                        frame:SetOuterSize(nil, extent)
+                    end
+                elseif vertical then
+                    frame:SetWidth(extent)
                 else
-                    frame:SetWidth(width)
+                    frame:SetHeight(extent)
                 end
             end
 
+            local point, hostPoint
             if link.mode == "stretch" then
-                Resize(hostWidth / scale)
-                local point = down and "TOP" or "BOTTOM"
-                link.point = point
-                frame:SetPoint(point, host, down and "BOTTOM" or "TOP",
-                    link.offsetX or 0,
-                    (down and -offset or offset) + (link.offsetY or 0))
+                Resize(across / scale)
+                point, hostPoint = geo.near, edge
             else
                 -- An aligned follower can still be measured from its
                 -- host: half of an action bar is what two bars sharing
                 -- one line want, and neither should have to be told the
                 -- number. The line's gutter comes out of the host's
-                -- width first, so two halves leave exactly that much
+                -- room first, so two halves leave exactly that much
                 -- between them.
                 if link.share then
-                    Resize((hostWidth - line.gutter) / link.share / scale)
+                    Resize((across - line.gutter) / link.share / scale)
                 end
 
-                local point, hostPoint
-                if link.align == "CENTER" then
-                    point     = down and "TOP" or "BOTTOM"
-                    hostPoint = down and "BOTTOM" or "TOP"
-                else
-                    point     = (down and "TOP" or "BOTTOM") .. link.align
-                    hostPoint = (down and "BOTTOM" or "TOP") .. link.align
-                end
-                link.point = point
-                frame:SetPoint(point, host, hostPoint,
-                    link.offsetX or 0,
-                    (down and -offset or offset) + (link.offsetY or 0))
+                local align = AlignOf(link)
+                point     = Anchor(geo, align, geo.near)
+                hostPoint = Anchor(geo, align, edge)
             end
 
-            height = math.max(height, frame:GetHeight() or 0)
+            link.point = point
+            local slide = geo.away * offset
+            frame:SetPoint(point, host, hostPoint,
+                (vertical and 0 or slide) + (link.offsetX or 0),
+                (vertical and slide or 0) + (link.offsetY or 0))
+
+            depth = math.max(depth,
+                ((vertical and frame:GetHeight() or frame:GetWidth()) or 0))
         end
 
-        offset = offset + height
+        offset = offset + depth
     end
 
     -- Whatever hangs off any of them moves with it.
@@ -564,14 +656,12 @@ function Dock:Relayout(host)
     if InCombatLockdown() then return end
 
     if host then
-        PlaceOneEdge(host, "BOTTOM")
-        PlaceOneEdge(host, "TOP")
+        for _, edge in ipairs(EDGE_ORDER) do PlaceOneEdge(host, edge) end
         return
     end
 
     for h in pairs(followers) do
-        PlaceOneEdge(h, "BOTTOM")
-        PlaceOneEdge(h, "TOP")
+        for _, edge in ipairs(EDGE_ORDER) do PlaceOneEdge(h, edge) end
     end
 end
 

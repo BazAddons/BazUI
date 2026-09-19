@@ -41,17 +41,18 @@ BazUI:RegisterUserGuide("UnitFrames", {
         {
             title = "Docking",
             blocks = {
-                { type = "paragraph", text = "A floating bar stays where you put it. A docked bar attaches to something else and takes its width, which is how a row of bars stays a row when you resize the thing above it." },
+                { type = "paragraph", text = "A floating bar stays where you put it. A docked bar attaches to something else and takes its size from it, which is how a row of bars stays a row when you resize the thing above it. Above or below, a bar takes its host's width; to the left or right, its height." },
                 { type = "paragraph", text = "Drag a bar near the edge of an action bar or another bar in Edit Mode and it docks there. Or set it on the bar's page:" },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Dock to", "Floating, or the name of an action bar or another bar." },
-                    { "On the", "Above or below its host." },
-                    { "Takes", "The whole width, half the width, or its own width. Half lets two bars share one line." },
-                    { "Aligned", "Which end of its host it sits at - only asked when it is not taking the whole width." },
+                    { "On the", "Which side of its host: above, below, left of or right of it." },
+                    { "Takes", "The whole of its host across the line, half of it, or its own size. Half lets two bars share one line. Reads as width above and below its host, height to the side." },
+                    { "Aligned", "Which end of its host it sits at: left, center or right above and below, top, middle or bottom to the side. Only asked when it is not taking the whole of it." },
                     { "Space beside", "Pixels between two bars sharing a line. One number for the line, so setting it on either of the two is enough." },
                     { "Gap", "Pixels between this bar and the one it is docked to. Each bar owns the space above it, so a chain is spaced by setting each bar in turn." },
                 } },
                 { type = "note", text = "A health bar aligned left and a power bar aligned right, both taking half the width of the same action bar, is the arrangement most people end up with. It is two bars, not a special mode." },
+                { type = "note", text = "The same trick sideways: dock your health to the left of a two-row action bar and your target's to the right, both taking half of it, and each pair fills the height of the bar it is beside." },
                 { type = "paragraph", text = "Delete a bar and anything docked to it goes back to floating rather than disappearing with it." },
             },
         },

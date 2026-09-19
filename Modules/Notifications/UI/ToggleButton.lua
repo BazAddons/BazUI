@@ -119,7 +119,12 @@ local function RecomputeDerivedPosition()
     end
 end
 
-local function ApplyButtonPosition()
+-- Exposed as well as local, so the module's ApplySettings can put the
+-- bell back where the new profile says it goes. See Core/Init.lua.
+local ApplyButtonPosition
+function addon.ApplyButtonPosition() return ApplyButtonPosition() end
+
+function ApplyButtonPosition()
     if not button or not addon.db then return end
 
     button:ClearAllPoints()

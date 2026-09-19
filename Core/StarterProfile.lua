@@ -17,7 +17,7 @@
 --
 -- Written by tools/bake-starter.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 1920 x 1080 screen, 2026-09-18 06:22:42.
+-- Arranged on a 2100.5 x 1181.5 screen, 2026-09-19 09:11:07.
 ---------------------------------------------------------------------------
 
 BazUI.StarterProfile = {
@@ -338,10 +338,827 @@ BazUI.StarterProfile = {
         stockXP = false,
         tooltipAnchor = "default",
     },
+    Chat = {
+        channelNames = {
+            enabled = true,
+            shortNames = {
+                BATTLEGROUND = "bg",
+                BATTLEGROUND_LEADER = "bgl",
+                EMOTE = "e",
+                GUILD = "g",
+                INSTANCE_CHAT = "i",
+                INSTANCE_CHAT_LEADER = "il",
+                OFFICER = "o",
+                PARTY = "p",
+                PARTY_LEADER = "pl",
+                RAID = "r",
+                RAID_LEADER = "rl",
+                RAID_WARNING = "rw",
+                SAY = "s",
+                WHISPER = "w",
+                WHISPER_INFORM = "to",
+                YELL = "y",
+            },
+            stripChannelNumbers = true,
+        },
+        copyChat = {
+            enabled = true,
+            iconSize = 16,
+        },
+        docks = {
+            dock = {
+                height = 151,
+                locked = true,
+                width = 444,
+            },
+        },
+        enabled = true,
+        loadBlizzardCombatLog = false,
+        timestamps = {
+            color = {
+                0.6,
+                0.6,
+                0.6,
+                1,
+            },
+            enabled = true,
+            format = "%I:%M %p",
+            hoverTooltip = true,
+            separator = "-",
+        },
+        typedHistory = {
+            "/reload",
+            "/baz check",
+            "/reloasd",
+            "/reload",
+            "/baz check",
+            "/reload",
+            "/baz export",
+            "/reload",
+            "/baz export",
+        },
+        windows = {
+            {
+                alpha = 1,
+                autoShow = "always",
+                bgAlpha = 0.8,
+                bgMode = "onhover",
+                channels = {
+                    battleground = true,
+                    bgLeader = true,
+                    bnWhisper = true,
+                    channel = true,
+                    emote = true,
+                    errors = true,
+                    instance = true,
+                    instanceLeader = true,
+                    party = true,
+                    partyLeader = true,
+                    raid = true,
+                    raidLeader = true,
+                    raidWarning = true,
+                    say = true,
+                    system = true,
+                    targetIcons = true,
+                    whisper = true,
+                    yell = true,
+                },
+                chromeFadeMode = "onhover",
+                customFont = true,
+                dockID = "dock",
+                eventGroup = "GENERAL",
+                fadeDuration = 0.5,
+                fading = true,
+                fontScale = 1,
+                history = {
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789822781,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789822781,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789822781,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789822866,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789822866,
+                    },
+                    {
+                        text = "|cff3399ffBars|r: Removed 3 abilities this character doesn't know from the bars.",
+                        time = 1789822866,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789822866,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Remember to act responsibly, protect your personal information, and report anything offensive. View our In-Game Code of Conduct on |HurlIndex:64|h|cnVISITABLE_URL_DEFAULT_CHAT_LINK_COLOR:https://support.blizzard.com/article/42673|r|h for more information.",
+                        time = 1789822915,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789822915,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789822915,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789822917,
+                    },
+                    {
+                        b = 1,
+                        g = 0.8,
+                        r = 0.5,
+                        text = "|TInterface\\FriendsFrame\\UI-Toast-ToastIcons.tga:16:16:0:0:128:64:2:29:34:61|t|HBNplayer:|Ks30|k:41:46:BN_INLINE_TOAST_ALERT:0|h[|Ks30|k] (|T-144869:10:10:0:0:32:32:0:32:0:32|t OmeDeltaTTV)|h has come online.",
+                        time = 1789822955,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: Checking 44 things the addon takes hold of in the game's own UI:",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Bags|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ContainerFrameItemButtonTemplate",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r SecureActionButtonTemplate + SECURE_ACTIONS.item  - Using an item from a bag. Without it every use is refused as a protected call.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      UI-ActionButton-Border",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700BazUI|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-CopperIcon",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-GoldIcon",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-SilverIcon",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      MenuUtil.CreateContextMenu returns its menu",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Minimap|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      MinimapBackdrop",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Nameplates|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      C_NamePlate.GetNamePlateForUnit",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Notifications (Zygor)|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:AddEntry  - Hooked to hear a notification being raised.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:GetEntry and .Entries  - Finding the entry again, so clicking ours does what clicking theirs did.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:ShowOne  - Replaced to hold Zygor's own popup back.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r ZGV.NotificationCenter  - Everything else here hangs off it.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Quality of Life|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CVar cameraDistanceMaxZoomFactor",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r CVar instantQuestText  - Instant quest text sets it.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CanMerchantRepair()",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CancelDuel()",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      RepairAllItems()",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Screenshot()",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Skin|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ColorPickerFrame:SetupColorPickerAndShow",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Texture:SetGradient",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Tooltip|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ContainerFrameItemButton_CalculateItemTooltipAnchors",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipHeaderText",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipText",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipTextSmall",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "  |cffffd700Unit Frames|r",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r CastingBarFrame  - Hidden by the Hide the casting bar switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CompactRaidFrameManager",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r GamepadPlayerCastingBarFrame  - Hidden by the Hide the casting bar switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      OverlayPlayerCastingBarFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PartyFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r PartyMemberFrame1  - Hidden by the Hide the party frames switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r PartyMemberFrame2  - Hidden by the Hide the party frames switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r PartyMemberFrame3  - Hidden by the Hide the party frames switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r PartyMemberFrame4  - Hidden by the Hide the party frames switch.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PetCastingBarFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PlayerCastingBarFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PlayerFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r SECURE_ACTIONS.togglemenu  - The right-click menu on a bar picks itself; without it we fall back to our own guess.",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\bossIcon.png",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteIcon.png",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteRareIcon.png",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\rareIcon.png",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      TargetFrame",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ToggleCharacter()",
+                        time = 1789822995,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: |cffff444413 missing.|r Anything above marked MISSING will fail quietly rather than error, so start there.",
+                        time = 1789822995,
+                    },
+                    {
+                        b = 0.6,
+                        g = 1,
+                        r = 1,
+                        text = "Silvermoon Noble says: The threat departed, yet the scholars remained.",
+                        time = 1789823057,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Type '/help' for a listing of a few commands.",
+                        time = 1789823094,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789823099,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789823099,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789823099,
+                    },
+                    {
+                        text = "|cff3399ffUnit Frames|r: Created Party 1 Health 1",
+                        time = 1789823168,
+                    },
+                    {
+                        text = "|cff3399ffUnit Frames|r: Created Party 1 Power 1",
+                        time = 1789823177,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789823231,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789823231,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789823233,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: Checking 36 things the addon takes hold of in the game's own UI:",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Bags|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ContainerFrameItemButtonTemplate",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      SecureActionButtonTemplate",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      UI-ActionButton-Border",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700BazUI|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-CopperIcon",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-GoldIcon",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-SilverIcon",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      MenuUtil.CreateContextMenu returns its menu",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Minimap|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      MinimapBackdrop",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Nameplates|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      C_NamePlate.GetNamePlateForUnit",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Notifications (Zygor)|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:AddEntry  - Hooked to hear a notification being raised.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:GetEntry and .Entries  - Finding the entry again, so clicking ours does what clicking theirs did.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r NotificationCenter:ShowOne  - Replaced to hold Zygor's own popup back.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r ZGV.NotificationCenter  - Everything else here hangs off it.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Quality of Life|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CVar cameraDistanceMaxZoomFactor",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cffff4444MISSING|r CVar instantQuestText  - Instant quest text sets it.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CanMerchantRepair()",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CancelDuel()",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      RepairAllItems()",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Screenshot()",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Skin|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ColorPickerFrame:SetupColorPickerAndShow",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Texture:SetGradient",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Tooltip|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ContainerFrameItemButton_CalculateItemTooltipAnchors",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipHeaderText",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipText",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      GameTooltipTextSmall",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "  |cffffd700Unit Frames|r",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      CompactRaidFrameManager",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PartyFrame or PartyMemberFrame1 or PartyMemberFrame2 or PartyMemberFrame3 or PartyMemberFrame4",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PetCastingBarFrame",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PlayerCastingBarFrame or OverlayPlayerCastingBarFrame or GamepadPlayerCastingBarFrame or CastingBarFrame",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      PlayerFrame",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\bossIcon.png",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteIcon.png",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteRareIcon.png",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      Skin\\Assets\\rareIcon.png",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      TargetFrame",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "    |cff44ff44ok|r      ToggleCharacter()",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: |cffff44445 missing.|r Anything above marked MISSING will fail quietly rather than error, so start there.",
+                        time = 1789823234,
+                    },
+                    {
+                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 2.",
+                        time = 1789823275,
+                    },
+                    {
+                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 3.",
+                        time = 1789823280,
+                    },
+                    {
+                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 4.",
+                        time = 1789823285,
+                    },
+                    {
+                        b = 0.6,
+                        g = 1,
+                        r = 1,
+                        text = "Silvermoon Resident says: This sudden peace feels too convenient...",
+                        time = 1789823369,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789823403,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789823403,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789823403,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789823438,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789823438,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789823438,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: Layout written to the saved variables. |cffffd700/reload|r puts it on disk.",
+                        time = 1789823442,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: |cffff8800Copy dialog kept 0 of 54845 characters.|r",
+                        time = 1789823442,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: Layout written to the saved variables. |cffffd700/reload|r puts it on disk.",
+                        time = 1789823448,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r: |cffff8800Copy dialog kept 0 of 55255 characters.|r",
+                        time = 1789823448,
+                    },
+                    {
+                        b = 0,
+                        g = 1,
+                        r = 1,
+                        text = "Loot Specialization set to: Arcane",
+                        time = 1789823462,
+                    },
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789823462,
+                    },
+                    {
+                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
+                        time = 1789823462,
+                    },
+                },
+                indentedWordWrap = true,
+                label = "General",
+                maxLines = 500,
+                messageSpacing = 3,
+                scale = 1,
+                scrollbarMode = "onscroll",
+                tabsAlpha = 1,
+                tabsMode = "onhover",
+                timeVisible = 120,
+            },
+            {
+                alpha = 1,
+                autoShow = "guild",
+                bgMode = "onhover",
+                channels = {
+                    guild = true,
+                    officer = true,
+                },
+                chromeFadeMode = "onhover",
+                dockID = "dock",
+                eventGroup = "GUILD",
+                fadeDuration = 0.5,
+                fading = true,
+                history = {
+                    {
+                        b = 0.3,
+                        g = 1,
+                        r = 0.3,
+                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
+                        time = 1789822915,
+                    },
+                },
+                indentedWordWrap = true,
+                label = "Guild",
+                maxLines = 500,
+                messageSpacing = 3,
+                scale = 1,
+                scrollbarMode = "onscroll",
+                tabsAlpha = 1,
+                tabsMode = "onhover",
+                timeVisible = 120,
+            },
+            {
+                alpha = 1,
+                autoShow = "city",
+                bgMode = "onhover",
+                channels = {
+                    channel = true,
+                    loot = true,
+                },
+                chromeFadeMode = "onhover",
+                dockID = "dock",
+                eventGroup = "LOOT",
+                fadeDuration = 0.5,
+                fading = true,
+                indentedWordWrap = true,
+                label = "Trade",
+                maxLines = 500,
+                messageSpacing = 3,
+                scale = 1,
+                scrollbarMode = "onscroll",
+                tabsAlpha = 1,
+                tabsMode = "onhover",
+                timeVisible = 120,
+            },
+            {
+                alpha = 1,
+                autoShow = "always",
+                bgMode = "onhover",
+                channels = {
+                    combat = true,
+                    skill = true,
+                },
+                chromeFadeMode = "onhover",
+                dockID = "dock",
+                eventGroup = "LOG",
+                fadeDuration = 0.5,
+                fading = true,
+                indentedWordWrap = true,
+                label = "Log",
+                maxLines = 500,
+                messageSpacing = 3,
+                scale = 1,
+                scrollbarMode = "onscroll",
+                tabsAlpha = 1,
+                tabsMode = "onhover",
+                timeVisible = 120,
+            },
+        },
+    },
     Codex = {
         indexItems = true,
         itemCategory = "all",
         opacity = 1,
+        position = {
+            point = "CENTER",
+            relPoint = "CENTER",
+            x = -46.5,
+            y = 83.7,
+        },
         scale = 1,
     },
     Core = {
@@ -387,7 +1204,14 @@ BazUI.StarterProfile = {
             bazdrawer_minimap_infobar = false,
         },
         widgetFloating = {},
-        widgetGlobalOverrides = {},
+        widgetGlobalOverrides = {
+            fadeBackground = {
+                enabled = false,
+            },
+            fadeTitleBar = {
+                enabled = false,
+            },
+        },
         widgetPositions = {},
         widgetSettings = {
             bazdrawer_minimap = {
@@ -420,9 +1244,23 @@ BazUI.StarterProfile = {
     Nameplates = {
         classColor = true,
         height = 10,
+        kinds = {
+            friendlyNpc = {
+                showBar = false,
+            },
+            friendlyPlayer = {
+                showBar = false,
+            },
+            tapped = {
+                showBar = true,
+            },
+        },
         nameSize = 9,
+        showBar = true,
         showFriendly = true,
         showLevel = true,
+        showName = true,
+        showPlate = true,
         showRank = true,
         targetMark = true,
         width = 110,
@@ -456,6 +1294,7 @@ BazUI.StarterProfile = {
     QoL = {
         restores = {},
         tweaks = {},
+        windowPositions = {},
     },
     Tooltip = {
         anchor = "default",
@@ -619,6 +1458,174 @@ BazUI.StarterProfile = {
                 textMode = "hover",
                 ticks = 10,
                 unit = "player",
+                width = 240,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "float",
+                },
+                height = 24,
+                id = 7,
+                kind = "health",
+                name = "Party 1 Health 1",
+                position = {
+                    point = "CENTER",
+                    relPoint = "TOPLEFT",
+                    x = 90.3,
+                    y = -270.8,
+                },
+                textFormat = "namePercent",
+                textMode = "always",
+                ticks = 0,
+                unit = "party1",
+                width = 120,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "statusbar:7",
+                },
+                height = 11,
+                id = 8,
+                kind = "power",
+                name = "Party 1 Power 1",
+                position = {
+                    point = "CENTER",
+                    relPoint = "CENTER",
+                    x = 0,
+                    y = -160,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "party1",
+                width = 240,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "float",
+                },
+                height = 24,
+                id = 9,
+                kind = "health",
+                name = "Party 2 Health 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "TOPLEFT",
+                    x = 90.3,
+                    y = -339.8,
+                },
+                textFormat = "namePercent",
+                textMode = "always",
+                ticks = 0,
+                unit = "party2",
+                width = 120,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "statusbar:9",
+                },
+                height = 11,
+                id = 10,
+                kind = "power",
+                name = "Party 2 Power 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "CENTER",
+                    x = 0,
+                    y = -160,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "party2",
+                width = 240,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "float",
+                },
+                height = 24,
+                id = 11,
+                kind = "health",
+                name = "Party 3 Health 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "LEFT",
+                    x = 90.3,
+                    y = 182,
+                },
+                textFormat = "namePercent",
+                textMode = "always",
+                ticks = 0,
+                unit = "party3",
+                width = 120,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "statusbar:11",
+                },
+                height = 11,
+                id = 12,
+                kind = "power",
+                name = "Party 3 Power 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "CENTER",
+                    x = 0,
+                    y = -160,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "party3",
+                width = 240,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "float",
+                },
+                height = 24,
+                id = 13,
+                kind = "health",
+                name = "Party 4 Health 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "LEFT",
+                    x = 90.3,
+                    y = 113,
+                },
+                textFormat = "namePercent",
+                textMode = "always",
+                ticks = 0,
+                unit = "party4",
+                width = 120,
+            },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "statusbar:13",
+                },
+                height = 11,
+                id = 14,
+                kind = "power",
+                name = "Party 4 Power 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "CENTER",
+                    x = 0,
+                    y = -160,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "party4",
                 width = 240,
             },
         },

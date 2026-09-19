@@ -54,9 +54,16 @@ local entries = {
 }
 
 -- One toggle per button, in bar order.
+--
+-- Every button either client has, including the ones this one does not.
+-- A switch for a button that is not here greys out rather than
+-- disappearing, so the list is the same shape wherever you read it and
+-- nobody goes looking for a row that moved.
 for i, def in ipairs(addon.DEFS) do
     entries[#entries + 1] = {
         key = "btn_" .. def.key, label = def.label, type = "toggle", section = "buttons", order = i,
+        desc = "Whether this button is on the bar.",
+        disabled = function() return _G[def.frame] == nil end,
         get = function()
             local prefs = addon:GetSetting("buttons")
             return not prefs or prefs[def.key] ~= false

@@ -120,9 +120,12 @@ Skin.RegisterFill({ id = "flat", name = "Flat",
 -- Taking that one and coloring it ourselves means every color works, and
 -- a health bar keeps its class color instead of being forced to green.
 --
--- The body of that art sits at 188 of 255, so a color put through it
--- arrives at about three quarters strength. BOOST lifts it back; it is
--- measured off the texture rather than guessed.
+-- The body of that art sits at 201 of 255, so a color put through it
+-- arrives at about four fifths strength. BOOST lifts it back. Measured
+-- off the texture at the atlas's real coordinates, which came from the
+-- client's own atlas database rather than from picking the rectangle out
+-- of the sheet by eye - the first measurement was taken off the wrong
+-- rectangle and read 188.
 --
 -- No sheen and no gradient: the art has its own soft top and bottom
 -- edges, and the suite's highlight on top of those makes a bar look wet.
@@ -136,8 +139,8 @@ Skin.RegisterFill({ id = "flat", name = "Flat",
 -- for our shape rather than theirs.
 ---------------------------------------------------------------------------
 
--- 255 / 188, the brightness of the artwork's body.
-local HUD_BOOST = 1.36
+-- 255 / 201, the brightness of the artwork's body.
+local HUD_BOOST = 1.27
 
 Skin.RegisterFill({ id = "hud", name = "HUD",
     atlas   = "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Health-Status",

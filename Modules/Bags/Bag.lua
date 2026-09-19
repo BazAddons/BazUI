@@ -131,14 +131,17 @@ BazUI:RegisterDependency({
     why    = "Every bag slot is one of these.",
     check  = function() return BazUI.Has.Template(SLOT_TEMPLATE) end,
 })
+-- The template only. The other half of this used to ask for
+-- SECURE_ACTIONS.item as well, and reported missing on every client -
+-- SECURE_ACTIONS is a file local inside Blizzard's SecureTemplates.lua
+-- and never a global, so no addon can see it. What the "item" action does
+-- is only observable from inside the secure environment; the template
+-- being there is the part we can honestly ask about.
 BazUI:RegisterDependency({
     module = "Bags",
-    label  = "SecureActionButtonTemplate + SECURE_ACTIONS.item",
+    label  = "SecureActionButtonTemplate",
     why    = "Using an item from a bag. Without it every use is refused as a protected call.",
-    check  = function()
-        return BazUI.Has.Template("SecureActionButtonTemplate")
-            and BazUI.Has.Member(_G.SECURE_ACTIONS, "item")
-    end,
+    check  = function() return BazUI.Has.Template("SecureActionButtonTemplate") end,
 })
 
 -- The slot template is a Button on Classic clients and an ItemButton on

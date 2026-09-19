@@ -218,6 +218,41 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     end,
 })
 
+-- Everything the drawer reads from the profile, read again.
+--
+-- Called by the profile switch, which is when every one of these can have
+-- changed at once. Each piece already existed - the settings page calls
+-- them one at a time as you change things - so this is the same set
+-- gathered rather than a second way of applying them.
+--
+-- Drawer:Build is not among them on purpose: it returns early when the
+-- frame exists, because rebuilding would throw away every widget and make
+-- them again. What changes on a profile switch is what the frame is told,
+-- not the frame.
+function addon:ApplySettings()
+    local drawer = self.Drawer
+    if not (drawer and drawer.frame) then return end
+
+    -- Side, width and where it sits.
+    drawer:ApplySide()
+    if drawer.ApplyEdgeHotZone then drawer:ApplyEdgeHotZone() end
+
+    -- Which drawers there are, and which widgets are in this one.
+    if drawer.RefreshTabs then drawer:RefreshTabs() end
+    if self.WidgetHost and self.WidgetHost.Reflow then
+        self.WidgetHost:Reflow()
+    end
+
+    -- Open or shut, which is the active drawer's own answer.
+    local def = self.GetActiveDrawerDef and self:GetActiveDrawerDef()
+    if def and def.collapsed then drawer:Collapse() else drawer:Expand() end
+
+    if drawer.ApplyLockUI then drawer:ApplyLockUI() end
+    -- Last, and forced: the fade controller owns the background and border
+    -- opacity, so nothing above has really landed until this runs.
+    if drawer.EvaluateFade then drawer:EvaluateFade(true) end
+end
+
 function addon:SetupDrawer()
     if not self.Drawer then return end
     self.Drawer:Build()

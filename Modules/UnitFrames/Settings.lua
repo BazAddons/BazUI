@@ -99,7 +99,7 @@ local SPEC = {
           end },
         { key = "restIcon", label = "Resting mark", type = "toggle",
           section = "general", order = 3.4,
-          desc = "The game's animated zZ, on your own health bar, while you are somewhere that rests you. The mark is the game's own art; where the client has no such art, the setting does nothing.",
+          desc = "The game's animated zZ, on your own health bar, while you are somewhere that rests you. This is the answer for every player health bar that has not been told otherwise - each bar has its own switch under Visibility in Edit Mode, so with two of them on screen you can have the mark on one. The mark is the game's own art; where the client has no such art, the setting does nothing.",
           get = function() return addon:GetSetting("restIcon") ~= false end,
           set = function(_, value)
               addon:SetSetting("restIcon", value and true or false)

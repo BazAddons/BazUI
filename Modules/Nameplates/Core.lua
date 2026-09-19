@@ -33,6 +33,11 @@ addon = BazUI:RegisterModule("Nameplates", {
         -- the unit bars say it.
         showRank     = true,
         classColor   = true,
+        -- The answer for a kind that has not been given its own. See
+        -- Kinds.lua.
+        showPlate    = true,
+        showBar      = true,
+        showName     = true,
         -- Every unit that gets a plate from the game gets one of ours.
         -- Which units those are is the game's own setting, not ours:
         -- there are checkboxes for it in Interface Options and CVars
