@@ -57,6 +57,10 @@ local PLATE_W       = 197  -- the heading plate's own size
 local PLATE_H       = 40
 local CARD_PAD      = 10
 local CARD_GAP      = 12
+-- How much of the page a column may be short by and still stretch its
+-- last block to the foot. Beyond this the page is simply not full, and
+-- stretching would make a hollow box rather than a tidy one.
+local SLACK_SHARE   = 0.28
 local TILE_H        = 58
 local TILE_GAP      = 8
 
@@ -768,7 +772,7 @@ function Panel:Refresh()
 
     -- Two columns; each block goes to whichever is shorter.
     local colW = math.floor((width - CARD_GAP * (COLUMNS - 1)) / COLUMNS)
-    local colY = {}
+    local colY, colLast = {}, {}
     for c = 1, COLUMNS do colY[c] = top end
 
     for _, def in ipairs(Codex:GetSections(tab)) do
@@ -905,6 +909,7 @@ function Panel:Refresh()
 
         card:Show()
         liveCards[#liveCards + 1] = card
+        colLast[col] = card
         colY[col] = y + card:GetHeight() + CARD_GAP
     end
 
@@ -914,6 +919,29 @@ function Panel:Refresh()
     local tallest = 1
     for c = 1, COLUMNS do tallest = math.max(tallest, colY[c] - CARD_GAP) end
     tallest = math.max(tallest, 1)
+
+    -- A column that stops a little short of the foot of the page has
+    -- its last block take up the slack, so the two columns end level
+    -- with each other and with the window. Only a little short: a page
+    -- that is half empty would rather have two ordinary blocks than
+    -- two tall hollow ones.
+    if tallest <= viewport then
+        local slack = viewport * SLACK_SHARE
+        for c = 1, COLUMNS do
+            local card = colLast[c]
+            local gap = viewport - (colY[c] - CARD_GAP)
+            if card and gap > 1 and gap <= slack then
+                card:SetHeight(card:GetHeight() + gap)
+                if card.scroll and card.scroll:IsShown() then
+                    card.scroll:SetHeight((card.scroll:GetHeight() or 0) + gap)
+                    Panel.UpdateScrollHint(card.scroll)
+                end
+                colY[c] = colY[c] + gap
+            end
+        end
+        tallest = math.max(tallest, 1)
+    end
+
     content:SetHeight(tallest)
     scroll.bazContentH = tallest
     Panel.UpdateScrollHint()
