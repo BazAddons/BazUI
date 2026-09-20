@@ -419,7 +419,7 @@ function Bar:RegisterEditMode(frame, barData)
                   { label = "In Combat", value = "[combat] show; hide" },
                   { label = "Out of Combat", value = "[nocombat] show; hide" },
                   { label = "With Target", value = "[exists] show; hide" },
-                  { label = "On Mouseover", value = "[mod:shift] show; hide" },
+                  { label = "While Shift is held", value = "[mod:shift] show; hide" },
               },
               get = function() return bd.visibilityMacro or "" end,
               set = function(v)

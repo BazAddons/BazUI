@@ -33,6 +33,31 @@ function BazUI:RegisterCommands(addonName, config)
         end
     end
 
+    -- Second names for a command.
+    --
+    -- `aliases` is a list on the command itself, and the help line is
+    -- built from it, so the two can never disagree. They used to: the
+    -- `usage` field was carrying "dup, copy" purely so the help would
+    -- print it, and nothing dispatched those names - /bb help advertised
+    -- three commands that answered "Unknown command".
+    --
+    -- Resolved at registration rather than at dispatch: one table lookup
+    -- either way, and the alias table is the answer to "what can I
+    -- type", which is a question the help asks too.
+    local aliasOf = {}
+    for name, def in pairs(commands) do
+        for _, alias in ipairs((type(def) == "table" and def.aliases) or {}) do
+            alias = strlower(alias)
+            if commands[alias] then
+                print(("|cffff4444BazUI:|r %s aliases '%s' to '%s', but that"
+                    .. " is a command of its own. The alias is ignored."):format(
+                    addonName, alias, name))
+            else
+                aliasOf[alias] = name
+            end
+        end
+    end
+
     -- Build the slash handler
     local function HandleSlash(msg)
         local cmd, args = strmatch(msg, "^(%S+)%s*(.*)")
@@ -64,7 +89,7 @@ function BazUI:RegisterCommands(addonName, config)
         end
 
         -- User-defined commands
-        local cmdDef = commands[cmd]
+        local cmdDef = commands[cmd] or commands[aliasOf[cmd] or ""]
         if cmdDef and cmdDef.handler then
             cmdDef.handler(args)
             return
@@ -105,6 +130,9 @@ function BazUI:PrintCommandHelp(addonName, config)
 
     for _, entry in ipairs(sorted) do
         local usage = entry.def.usage and (" " .. entry.def.usage) or ""
+        if entry.def.aliases and #entry.def.aliases > 0 then
+            usage = usage .. " (or " .. table.concat(entry.def.aliases, ", ") .. ")"
+        end
         local desc = entry.def.desc or ""
         print(string.format(
             "  |cff%s%s %s%s|r - %s",

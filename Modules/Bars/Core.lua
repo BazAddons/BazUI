@@ -102,7 +102,7 @@ addon = BazUI:RegisterModule("Bars", {
         },
         duplicate = {
             desc = "Duplicate a bar: /bb duplicate <id>",
-            usage = "dup, copy",
+            aliases = { "dup", "copy" },
             handler = function(args)
                 local id = tonumber(args:match("(%d+)"))
                 if id then
@@ -117,7 +117,7 @@ addon = BazUI:RegisterModule("Bars", {
         },
         delete = {
             desc = "Delete a bar: /bb delete <id>",
-            usage = "remove",
+            aliases = { "remove" },
             handler = function(args)
                 local id = tonumber(args:match("(%d+)"))
                 if id then
@@ -149,7 +149,7 @@ addon = BazUI:RegisterModule("Bars", {
         },
         padding = {
             desc = "Set button spacing: /bb padding <id> <pixels>",
-            usage = "spacing",
+            aliases = { "spacing" },
             handler = function(args)
                 local parts = {}
                 for word in args:gmatch("%S+") do parts[#parts + 1] = word end
