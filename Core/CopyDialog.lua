@@ -165,6 +165,18 @@ local function CreateDialog()
             self:HighlightText()
         end
     end)
+    -- Read-only is not disabled. A disabled EditBox cannot hold focus,
+    -- and a box with no focus never sees Ctrl+C - the keystroke falls
+    -- through to the game, and C opens the character sheet. So a
+    -- read-only box stays live and simply puts back what it was given
+    -- whenever a keystroke changes it.
+    editBox:SetScript("OnTextChanged", function(self, userInput)
+        if userInput and currentOpts and currentOpts._readOnly
+            and self:GetText() ~= (currentOpts.content or "") then
+            self:SetText(currentOpts.content or "")
+            self:HighlightText()
+        end
+    end)
     f.editBox = editBox
 
     -- Bottom buttons + status row
@@ -258,11 +270,10 @@ function BazUI:OpenCopyDialog(opts)
     dialog.title:SetText(opts.title or "Copy / Paste")
     dialog.subtitle:SetText(opts.subtitle or "")
 
-    -- Editability BEFORE the content, not after. A disabled EditBox
-    -- refuses SetText and says nothing about it, so setting the text
-    -- first and the state second meant the text could be thrown away by
-    -- a line that ran after it.
-    dialog.editBox:SetEnabled(opts.editable ~= false)
+    -- Always enabled, so it can be focused and copied from; read-only is
+    -- enforced by the OnTextChanged handler putting the content back.
+    dialog.editBox:SetEnabled(true)
+    opts._readOnly = (opts.editable == false)
 
     -- A font of our own rather than the chat's ChatFontNormal. A core
     -- dialog should not depend on a font object another module owns and

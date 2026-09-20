@@ -80,10 +80,12 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                     local ok, d = pcall(ask, id)
                     if ok and d and d.name and d.name ~= "" then
                         found = found + 1
-                        lines[#lines + 1] = string.format("%d\t%s%s%s", id, d.name,
-                            d.isHeader and "\t[header]" or "",
+                        -- Spaces, not tabs: the game's fonts draw a tab
+                        -- as a box.
+                        lines[#lines + 1] = string.format("%d  %s%s%s", id, d.name,
+                            d.isHeader and "  [header]" or "",
                             (d.reaction and d.reaction > 0 and (d.currentStanding or 0) ~= 0)
-                                and "\t[met]" or "")
+                                and "  [met]" or "")
                     end
                 end
                 BazUI:OpenCopyDialog({
