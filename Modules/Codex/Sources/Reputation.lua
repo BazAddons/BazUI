@@ -22,6 +22,7 @@ local TAB      = "reputation"
 local TAB_ICON = "Interface\\Icons\\Achievement_Reputation_01"
 local PREFIX   = "rep."
 local EXALTED  = 8
+local COMMON   = { tab = TAB, tabLabel = "Reputation", tabOrder = 27, tabIcon = TAB_ICON }
 
 ---------------------------------------------------------------------------
 -- Words and colours
@@ -163,99 +164,64 @@ local function Summary(group)
     elseif top then
         text = text .. ("  |  furthest with %s"):format(top.name)
     end
-    return { label = nil, text = text }
+    return { text = text }
+end
+
+-- The rail counts the whole page once.
+local function Highlight()
+    local exalted, total = 0, 0
+    for _, g in ipairs(groupsNow) do
+        for _, f in ipairs(g.factions) do
+            total = total + 1
+            if f.standing >= EXALTED then exalted = exalted + 1 end
+        end
+    end
+    return {
+        value = exalted,
+        label = ("exalted of %d"):format(total),
+        color = exalted > 0 and Codex.STATE_COLOR.done or nil,
+    }
 end
 
 local function Sync()
     groupsNow, collapsedNow = Scan()
 
-    local wanted = {}
-    for index, group in ipairs(groupsNow) do
-        local id = PREFIX .. group.header
-        wanted[id] = true
-        local existing = Codex.sections[id]
-        if existing then
-            existing._group = group
-            existing.order = index * 10
-        else
-            local def
-            def = Codex:RegisterSection({
-                id       = id,
-                tab      = TAB,
-                tabLabel = "Reputation",
-                tabOrder = 27,
-                tabIcon  = TAB_ICON,
-                title    = group.header,
-                order    = index * 10,
-                empty    = "Nothing here yet.",
-                GetRows  = function() return Rows(def._group) end,
-                GetBar   = function() return Summary(def._group) end,
-                -- The rail counts the whole page once, from the first block.
-                GetHighlight = function()
-                    if groupsNow[1] ~= def._group then return nil end
-                    local exalted, total = 0, 0
-                    for _, g in ipairs(groupsNow) do
-                        for _, f in ipairs(g.factions) do
-                            total = total + 1
-                            if f.standing >= EXALTED then exalted = exalted + 1 end
-                        end
-                    end
-                    return {
-                        value = exalted,
-                        label = ("exalted of %d"):format(total),
-                        color = exalted > 0 and Codex.STATE_COLOR.done or nil,
-                    }
-                end,
-            })
-            def._group = group
-        end
+    local blocks = {}
+    for index, g in ipairs(groupsNow) do
+        blocks[#blocks + 1] = {
+            key   = g.header,
+            title = g.header,
+            empty = "Nothing here yet.",
+            GetRows = function() return Rows(g) end,
+            GetBar  = function() return Summary(g) end,
+            GetHighlight = index == 1 and Highlight or nil,
+        }
     end
 
-    -- Groups that have gone (renamed, or the list reordered) take their
-    -- blocks with them.
-    for id in pairs(Codex.sections) do
-        if id:sub(1, #PREFIX) == PREFIX and not wanted[id] then
-            Codex.sections[id] = nil
-        end
-    end
-
-    -- Somewhere to say that the game's pane is hiding some.
-    local noteID = PREFIX .. "_collapsed"
-    if collapsedNow > 0 then
-        if not Codex.sections[noteID] then
-            Codex:RegisterSection({
-                id    = noteID,
-                tab   = TAB,
-                tabLabel = "Reputation",
-                tabOrder = 27,
-                tabIcon  = TAB_ICON,
-                title = "Not shown",
-                order = 10000,
-                GetRows = function()
-                    return { {
-                        label = ("%d group%s collapsed in the game's reputation pane."):format(
-                            collapsedNow, collapsedNow == 1 and "" or "s"),
-                        detail = "expand them there to see them here",
-                        muted = true,
-                    } }
-                end,
-            })
-        end
-    else
-        Codex.sections[noteID] = nil
-    end
-
-    -- The page exists even before anyone has been met, so the tab does.
-    if #groupsNow == 0 and not Codex.sections[PREFIX .. "_none"] then
-        Codex:RegisterSection({
-            id = PREFIX .. "_none", tab = TAB, tabLabel = "Reputation", tabOrder = 27,
-            tabIcon = TAB_ICON, title = "Reputation", order = 1,
+    if #blocks == 0 then
+        blocks[1] = {
+            key = "_none", title = "Reputation",
             empty = "No standing with anyone yet.",
             GetRows = function() return {} end,
-        })
-    elseif #groupsNow > 0 then
-        Codex.sections[PREFIX .. "_none"] = nil
+        }
     end
+
+    if collapsedNow > 0 then
+        blocks[#blocks + 1] = {
+            key   = "_collapsed",
+            title = "Not shown",
+            GetRows = function()
+                return { {
+                    label = ("%d group%s collapsed in the game's reputation pane."):format(
+                        collapsedNow, collapsedNow == 1 and "" or "s"),
+                    detail = "expand them there to see them here",
+                    muted = true,
+                } }
+            end,
+        }
+    end
+
+    Codex:SyncGroupSections(PREFIX, COMMON, blocks)
 end
 
 ---------------------------------------------------------------------------

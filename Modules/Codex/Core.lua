@@ -138,6 +138,46 @@ function Codex:RegisterSection(def)
     return def
 end
 
+-- Blocks made from what the client lists rather than written down here:
+-- faction groups, currency groups, whatever the game chooses to group.
+-- Called again whenever the list changes. Each block keeps the id of
+-- its key so one you folded stays folded; blocks whose key has gone are
+-- dropped; the functions are swapped in fresh each time so they see the
+-- latest reading.
+--
+--   Codex:SyncGroupSections("rep.", { tab = ..., tabLabel = ..., tabOrder = ..., tabIcon = ... }, {
+--       { key = "Alliance", title = "Alliance", GetRows = fn, GetBar = fn, GetHighlight = fn, empty = "..." },
+--   })
+function Codex:SyncGroupSections(prefix, common, blocks)
+    local wanted = {}
+    for index, block in ipairs(blocks) do
+        local id = prefix .. block.key
+        wanted[id] = true
+        local def = self.sections[id]
+        if not def then
+            def = self:RegisterSection({
+                id       = id,
+                tab      = common.tab,
+                tabLabel = common.tabLabel,
+                tabOrder = common.tabOrder,
+                tabIcon  = common.tabIcon,
+                title    = block.title,
+            })
+        end
+        def.title        = block.title
+        def.order        = block.order or index * 10
+        def.empty        = block.empty or common.empty
+        def.GetRows      = block.GetRows
+        def.GetBar       = block.GetBar
+        def.GetHighlight = block.GetHighlight
+    end
+    for id in pairs(self.sections) do
+        if id:sub(1, #prefix) == prefix and not wanted[id] then
+            self.sections[id] = nil
+        end
+    end
+end
+
 -- Sections on one tab, in order.
 function Codex:GetSections(tab)
     local out = {}
