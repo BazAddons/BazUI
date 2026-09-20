@@ -1123,7 +1123,9 @@ local function BuildHero(parent)
     cal:SetPoint("RIGHT", hero.section, "LEFT", -14, 0)
     cal.icon = cal:CreateTexture(nil, "ARTWORK")
     cal.icon:SetAllPoints()
-    cal.icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
+    -- The Events page's own painting is a calendar, which is what this
+    -- button opens. It wore the pocket watch before, which is Today's.
+    cal.icon:SetTexture(TabIcon("events"))
     cal.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     cal.icon:SetAlpha(0.7)
     cal:SetScript("OnEnter", function(self)
