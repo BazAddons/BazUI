@@ -36,7 +36,7 @@ end
 
 Codex:RegisterSection({
     id     = "titles",
-    tab    = "achieved",
+    tab    = "progress",
     title  = "Titles",
     order  = 10,
     empty = "No titles earned yet.",
@@ -97,23 +97,58 @@ local function CompanionCount(kind)
     return (ok and count) or 0
 end
 
+-- The mount journal knows every mount there is, not only the ones you
+-- have, so where it exists the block can say how far through the
+-- collection you are. Clients without it fall back to the companion
+-- list, which only knows what you own.
+local function JournalMounts()
+    if not (C_MountJournal and C_MountJournal.GetMountIDs and C_MountJournal.GetMountInfoByID) then
+        return nil
+    end
+    local ok, ids = pcall(C_MountJournal.GetMountIDs)
+    if not ok or type(ids) ~= "table" then return nil end
+    local owned, total = {}, 0
+    for _, id in ipairs(ids) do
+        local ok2, name, _, icon, _, _, _, _, _, _, hidden, collected = pcall(C_MountJournal.GetMountInfoByID, id)
+        if ok2 and name and not hidden then
+            total = total + 1
+            if collected then owned[#owned + 1] = { label = name, icon = icon, state = "done" } end
+        end
+    end
+    table.sort(owned, function(a, b) return a.label < b.label end)
+    return owned, total
+end
+
 Codex:RegisterSection({
     id     = "mounts",
-    tab    = "achieved",
+    tab    = "progress",
     title  = "Mounts",
     order  = 20,
     empty = "No mounts yet.",
-    events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
+    events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "NEW_MOUNT_ADDED",
+               "MOUNT_JOURNAL_USABILITY_CHANGED", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
-        local n = CompanionCount("MOUNT")
-        return { value = n, label = n == 1 and "mount" or "mounts" }
+        local owned, total = JournalMounts()
+        local n = owned and #owned or CompanionCount("MOUNT")
+        return {
+            value = n,
+            label = total and ("mounts of %d"):format(total) or (n == 1 and "mount" or "mounts"),
+        }
     end,
-    GetRows = function() return CompanionRows("MOUNT") end,
+    GetBar = function()
+        local owned, total = JournalMounts()
+        if not owned or not total or total == 0 then return nil end
+        return { text = ("%d of %d collected"):format(#owned, total), color = DONE }
+    end,
+    GetRows = function()
+        local owned = JournalMounts()
+        return owned or CompanionRows("MOUNT")
+    end,
 })
 
 Codex:RegisterSection({
     id     = "pets",
-    tab    = "achieved",
+    tab    = "progress",
     title  = "Pets",
     order  = 30,
     empty = "No pets yet.",

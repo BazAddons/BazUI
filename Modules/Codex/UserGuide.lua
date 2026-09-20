@@ -12,7 +12,7 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "Overview",
             blocks = {
-                { type = "lead", text = "The codex gathers the answers scattered across the game's own windows into one page. Today holds what is still open to you this week; Achieved holds what you have collected. Items looks anything up, and the Wishlist keeps the things you are playing towards." },
+                { type = "lead", text = "The codex gathers the answers scattered across the game's own windows into one page. Today holds what is still open to you this week; Progress holds what you have collected. Items looks anything up, and the Wishlist keeps the things you are playing towards." },
                 { type = "h2", text = "Opening it" },
                 { type = "list", items = {
                     "Type |cffffd700/codex|r or |cffffd700/bazcodex|r",
@@ -45,7 +45,7 @@ BazUI:RegisterUserGuide("Codex", {
             },
         },
         {
-            title = "Achieved",
+            title = "Progress",
             blocks = {
                 { type = "paragraph", text = "What you have already put your name to." },
                 { type = "table",

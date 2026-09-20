@@ -83,7 +83,7 @@ Codex.STATE_COLOR = STATE_COLOR
 local TAB_ICONS = {
     today    = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     reputation = "Interface\\Icons\\Achievement_Reputation_01",
-    achieved = "Interface\\Icons\\Achievement_General",
+    progress = "Interface\\Icons\\Achievement_General",
     items    = "Interface\\Icons\\inv_misc_bag_08",
     wishlist = "Interface\\Icons\\INV_Misc_Note_01",
 }
@@ -767,7 +767,7 @@ function Panel:RebuildTabs()
     -- The two questions the codex exists to answer come first, always,
     -- even before anything has registered against them.
     Want("today",    "Today",    10)
-    Want("achieved", "Achieved", 20)
+    Want("progress", "Progress", 20)
     for _, def in pairs(Codex.sections) do
         Want(def.tab, def.tabLabel or def.tab:gsub("^%l", string.upper), def.tabOrder, def.tabIcon)
     end
@@ -780,12 +780,19 @@ function Panel:RebuildTabs()
     end)
 
     local active = addon:GetSetting("activeTab") or "today"
-    local activeID
+    local activeID, todayID
     for _, entry in ipairs(order) do
         local id = tabs:AddTab(entry.label, entry.icon)
         Codex.tabKeys[id] = entry.key
         Codex.tabLabels[entry.key] = entry.label
         if entry.key == active then activeID = id end
+        if entry.key == "today" then todayID = id end
+    end
+    -- A remembered page that no longer exists (renamed, or its module
+    -- off) falls back to Today rather than to a blank window.
+    if not activeID and todayID then
+        activeID = todayID
+        addon:SetSetting("activeTab", "today")
     end
     tabs:SetTabSelectedCallback(function(tabID, isUserAction)
         local key = Codex.tabKeys[tabID]

@@ -116,7 +116,7 @@ Codex:RegisterSection({
 
 Codex:RegisterSection({
     id     = "goalsDone",
-    tab    = "achieved",
+    tab    = "progress",
     title  = "Goals",
     order  = 5,
     empty  = "Nothing finished yet.",

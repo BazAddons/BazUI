@@ -311,7 +311,7 @@ Modules\Codex\Sources\Today.lua
 Modules\Codex\Sources\Quests.lua
 Modules\Codex\Sources\Access.lua
 Modules\Codex\Sources\Goals.lua
-Modules\Codex\Sources\Achieved.lua
+Modules\Codex\Sources\Progress.lua
 Modules\Codex\Sources\Items.lua
 Modules\Codex\Sources\Wishlist.lua
 Modules\Codex\Sources\Equipment.lua

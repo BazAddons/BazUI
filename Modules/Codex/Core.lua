@@ -136,7 +136,7 @@ Codex.addon = addon
 --
 --   BazUI.Codex:RegisterSection({
 --       id     = "lockouts",          -- unique
---       tab    = "today",             -- "today" or "achieved", mostly
+--       tab    = "today",             -- "today" or "progress", mostly
 --       title  = "Raid lockouts",
 --       order  = 10,
 --       empty  = "Nothing saved.",    -- shown when GetRows returns none
