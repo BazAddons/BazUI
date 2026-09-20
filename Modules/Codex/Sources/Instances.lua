@@ -96,24 +96,39 @@ end
 
 -- Bosses down and bosses up, where the client will say; the catalogue's
 -- list otherwise.
+-- The bosses, one per line, marked off where the client will say which
+-- are down. A list of fifteen names run together is not a list anyone
+-- reads.
 local function BossLines(entry, lock)
+    local killed = nil
     if lock and GetSavedInstanceEncounterInfo and lock.encounters > 0 then
-        local down, up = {}, {}
+        killed = {}
         for e = 1, lock.encounters do
-            local ok, boss, _, killed = pcall(GetSavedInstanceEncounterInfo, lock.index, e)
-            if ok and boss then
-                if killed then down[#down + 1] = boss else up[#up + 1] = boss end
-            end
+            local ok, boss, _, down = pcall(GetSavedInstanceEncounterInfo, lock.index, e)
+            if ok and boss then killed[boss] = down and true or false end
         end
-        local lines = {}
-        if #down > 0 then lines[#lines + 1] = "|cff73c773Down:|r " .. table.concat(down, ", ") end
-        if #up > 0 then lines[#lines + 1] = "|cffffd700Still up:|r " .. table.concat(up, ", ") end
-        if #lines > 0 then return table.concat(lines, "|n") end
     end
-    if entry and entry.bosses and #entry.bosses > 0 then
-        return "|cff888888Bosses:|r " .. table.concat(entry.bosses, ", ")
+
+    local names = entry and entry.bosses or nil
+    if not names and killed then
+        names = {}
+        for boss in pairs(killed) do names[#names + 1] = boss end
+        table.sort(names)
     end
-    return nil
+    if not names or #names == 0 then return nil end
+
+    local lines = { "", "|cffffd700Bosses|r" }
+    for _, boss in ipairs(names) do
+        local state = killed and killed[boss]
+        if state == true then
+            lines[#lines + 1] = "|cff73c773+|r  |cff888888" .. boss .. "|r"
+        elseif state == false then
+            lines[#lines + 1] = "|cffffd700-|r  " .. boss
+        else
+            lines[#lines + 1] = "   " .. boss
+        end
+    end
+    return table.concat(lines, "|n")
 end
 
 local function StepLines(access, state)
@@ -122,7 +137,9 @@ local function StepLines(access, state)
     local lines = {}
     for _, step in ipairs(access.steps or {}) do
         local name = step.label or step.name or step.kind or "?"
-        lines[#lines + 1] = ((not missing[name]) and "|cff73c773+|r " or "|cff888888-|r ") .. name
+        local done = not missing[name]
+        lines[#lines + 1] = (done and "|cff73c773+|r  |cff888888" or "|cffffd700-|r  ")
+            .. name .. (done and "|r" or "")
     end
     return #lines > 0 and table.concat(lines, "|n") or nil
 end
@@ -141,15 +158,18 @@ local function Read(entry, locks)
     local steps = access and #(access.steps or {}) or 0
     local tuned = entry.level
 
+    -- Title, then the facts as pairs, then a section per thing worth
+    -- saying. Tabs make a pair; an empty line makes a gap.
     local row = { label = entry.name }
-    local tip = entry.name
-    local meta = {}
-    if tuned then meta[#meta + 1] = ("level %d"):format(tuned) end
-    if entry.players and entry.players > 0 then meta[#meta + 1] = ("%d players"):format(entry.players) end
-    if entry.wings and #entry.wings > 0 then meta[#meta + 1] = table.concat(entry.wings, ", ") end
-    if #meta > 0 then tip = tip .. "  |cff888888" .. table.concat(meta, "  |  ") .. "|r" end
+    local lines = { entry.name }
+    local function Pair(key, value) lines[#lines + 1] = key .. "\t" .. value end
+    local function Gap() lines[#lines + 1] = "" end
 
-    local word
+    if tuned then Pair("Level", tostring(tuned)) end
+    if entry.players and entry.players > 0 then Pair("Party", ("%d players"):format(entry.players)) end
+    if entry.wings and #entry.wings > 0 then Pair("Wings", table.concat(entry.wings, ", ")) end
+
+    local word, verdict
     if lock then
         word = "saved"
         row.state = "locked"
@@ -158,43 +178,53 @@ local function Read(entry, locks)
         else
             row.detail = "saved   |   resets in " .. Duration(lock.reset)
         end
-        tip = tip .. "|nSaved to this one."
+        Pair("Resets in", Duration(lock.reset))
+        verdict = "|cffffd700You are saved to this one.|r"
     elseif tuned and level < tuned - BAND_BELOW then
         word = "low"
         row.muted = true
         row.detail = ("level %d"):format(tuned)
-        if steps > 0 and state and not state.complete then
-            tip = tip .. ("|nAttunement: %d of %d step%s done."):format(state.done or 0, steps, steps == 1 and "" or "s")
-            local lines = StepLines(access, state)
-            if lines then tip = tip .. "|n" .. lines end
-        end
+        verdict = ("|cff888888For level %d - come back later.|r"):format(tuned)
     elseif steps > 0 and state and not state.complete then
         word = "gated"
         row.state = "open"
         row.detail = ("%d of %d step%s"):format(state.done or 0, steps, steps == 1 and "" or "s")
-        tip = tip .. "|nNot yet attuned."
-        local lines = StepLines(access, state)
-        if lines then tip = tip .. "|n" .. lines end
+        verdict = "|cffffd700Not yet attuned.|r"
     elseif tuned and entry.kind == "dungeon" and level > tuned + BAND_ABOVE then
         word = "outgrown"
         row.muted = true
         row.detail = ("level %d"):format(tuned)
-        tip = tip .. "|nBelow your level now."
+        verdict = "|cff888888Below your level now.|r"
     elseif tuned and entry.kind == "dungeon" and level >= tuned - BAND_BELOW and level <= tuned + BAND_ABOVE then
         word = "yours"
         row.state = "done"
         row.detail = "for your level"
-        tip = tip .. "|nTuned for where you are."
+        verdict = "|cff73c773Tuned for where you are.|r"
     else
         word = "open"
         row.state = "done"
         row.detail = "open"
-        tip = tip .. (steps > 0 and "|nAttuned, at level, and not saved." or "|nOpen to you.")
+        verdict = "|cff73c773Open to you.|r"
+    end
+
+    if verdict then
+        Gap()
+        lines[#lines + 1] = verdict
+    end
+
+    -- The attunement, wherever it stands, under its own heading.
+    if steps > 0 and state then
+        Gap()
+        lines[#lines + 1] = ("|cffffd700Attunement|r  |cff888888%d of %d|r"):format(
+            state.done or 0, steps)
+        local stepLines = StepLines(access, state)
+        if stepLines then lines[#lines + 1] = stepLines end
     end
 
     local bosses = BossLines(entry, lock)
-    if bosses then tip = tip .. "|n" .. bosses end
-    row.tip = tip
+    if bosses then lines[#lines + 1] = bosses end
+
+    row.tip = table.concat(lines, "|n")
     return row, word
 end
 
@@ -291,7 +321,8 @@ local function Blocks()
                             and ("%d/%d down   |   resets in %s"):format(lock.defeated, lock.encounters, Duration(lock.reset))
                             or ("resets in " .. Duration(lock.reset)),
                         state  = "locked",
-                        tip    = BossLines(nil, lock),
+                        tip    = lock.name .. "|nSaved to this one."
+                            .. (BossLines(nil, lock) or ""),
                     }
                 end
                 return rows

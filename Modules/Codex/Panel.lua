@@ -294,14 +294,23 @@ end
 -- A tooltip written as lines. The first is the title; the rest wrap,
 -- because SetText alone never does and a list of twenty bosses came out
 -- as one line across the whole screen.
+-- A line of "  " on its own is a gap; a line of "key\tvalue" is a pair,
+-- set out left and right the way the game sets out an item's stats.
 function Panel.SetTooltipText(tooltip, text)
     local first = true
     -- Split on the literal "|n" only; a colour code has a bar in it too.
     for line in (tostring(text or "") .. "|n"):gmatch("(.-)|n") do
-        if line ~= "" then
-            if first then
-                tooltip:SetText(line, unpack(Theme.colors.text))
-                first = false
+        if line == "" then
+            -- A blank line between sections, which is the whole point of
+            -- there being sections.
+            if not first then tooltip:AddLine(" ") end
+        elseif first then
+            tooltip:SetText(line, unpack(Theme.colors.text))
+            first = false
+        else
+            local left, right = line:match("^(.-)\t(.*)$")
+            if left then
+                tooltip:AddDoubleLine(left, right, 0.75, 0.72, 0.62, 1, 1, 1)
             else
                 tooltip:AddLine(line, 0.9, 0.9, 0.9, true)
             end
