@@ -345,44 +345,44 @@ function O.RenderListRows(listContent, rows, opts)
         -- without ordering (User Manual tree, source headers) skip
         -- the arrows entirely so the right edge stays clean.
         --
-        -- Style: custom 32x32 PNGs (one set per direction) under
-        -- Textures/Sort_Arrows/. Each direction has Normal/Hover/Pressed
-        -- variants; disabled state is the Normal texture grayed via
-        -- vertex color. Drawing both directions explicitly (instead of
-        -- rotating one) keeps any baked-in gloss / shading naturally
-        -- oriented and avoids the asymmetry-under-rotation issues we
-        -- had with common-dropdown-a-button.
-        local SORT_ARROW_PATH = "Interface\\AddOns\\BazUI\\Textures\\Sort_Arrows\\"
+        -- Style: the same arrow every other arrow in BazUI uses, through
+        -- BazUI.SetArrowTexture. These rows used to draw a set of custom
+        -- PNGs under Textures/Sort_Arrows/ that were never made, so the
+        -- reorder buttons on every list - bag categories, drawer widgets,
+        -- minimap buttons - were invisible while still being clickable.
+        -- One arrow for the whole addon also means a skin that changes it
+        -- changes it everywhere rather than in three places out of four.
         local rightInset = 4
         if spec.moveUp ~= nil or spec.moveDown ~= nil then
             local function MakeArrow(direction, callback, anchorRight)
                 local btn = CreateFrame("Button", nil, row)
                 btn:SetSize(22, 22)
                 btn:SetPoint("RIGHT", -anchorRight, 0)
-                local prefix = SORT_ARROW_PATH .. direction .. "_"
+
                 local tex = btn:CreateTexture(nil, "ARTWORK")
-                tex:SetAllPoints()
-                tex:SetTexture(prefix .. "Normal.png")
+                tex:SetPoint("CENTER")
+                BazUI.SetArrowTexture(tex, direction, 14)
                 btn.tex = tex
-                btn._prefix = prefix
+
                 if callback then
                     btn:RegisterForClicks("LeftButtonUp")
                     btn:SetScript("OnClick", function() callback() end)
                     btn:SetScript("OnEnter", function(self)
-                        self.tex:SetTexture(self._prefix .. "Hover.png")
+                        self.tex:SetVertexColor(unpack(O.GOLD))
                     end)
                     btn:SetScript("OnLeave", function(self)
-                        self.tex:SetTexture(self._prefix .. "Normal.png")
+                        self.tex:SetVertexColor(1, 1, 1)
+                        self.tex:SetPoint("CENTER", 0, 0)
                     end)
                     btn:SetScript("OnMouseDown", function(self)
-                        self.tex:SetTexture(self._prefix .. "Pressed.png")
+                        self.tex:SetPoint("CENTER", 0, -1)
                     end)
                     btn:SetScript("OnMouseUp", function(self)
-                        self.tex:SetTexture(self._prefix
-                            .. (self:IsMouseOver() and "Hover" or "Normal")
-                            .. ".png")
+                        self.tex:SetPoint("CENTER", 0, 0)
                     end)
                 else
+                    -- At the end of the list: still drawn, so the row
+                    -- keeps its shape, and plainly not for pressing.
                     btn:EnableMouse(false)
                     tex:SetVertexColor(0.4, 0.4, 0.4, 0.55)
                 end
