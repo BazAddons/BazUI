@@ -651,14 +651,28 @@ function MinimapButtonsWidget:LayoutButtons()
     if not f then layoutInProgress = false return end
     if not self.slots then self:BuildSlots() end
 
-    -- Collect + sort visible buttons. The custom `buttonOrder` list
-    -- drives primary ordering; anything not listed falls back to an
-    -- alphabetical sort at the end. Filter is AND-based so a button
-    -- the user has hidden via LibDBIcon (which calls :Hide()) doesn't
-    -- count toward the grid height.
+    -- Collect + sort the buttons that want to be here. The custom
+    -- `buttonOrder` list drives primary ordering; anything not listed
+    -- falls back to an alphabetical sort at the end.
+    --
+    -- Asked of the button itself - IsShown and its own alpha - and not
+    -- of IsVisible, which folds in every parent above it. Every parent
+    -- above it is ours, so IsVisible was really asking "is this widget
+    -- collapsed", and collapsing it made every button answer no.
+    --
+    -- That was enough to lose them for good. Collapsing hides the
+    -- content frame, which fires OnHide on each adopted button, which
+    -- schedules this; this then found nothing visible and hid every
+    -- slot. Expanding shows the content frame again - but the buttons
+    -- live in those hidden slots, so they stayed hidden, never fired
+    -- OnShow, and nothing asked for another layout. Only a reload,
+    -- which builds the lot again, brought them back.
+    --
+    -- IsShown is the honest question: it is the button's own flag, and
+    -- it is what LibDBIcon sets when somebody switches a button off.
     local list = {}
     for btn in pairs(adopted) do
-        if btn:IsShown() and btn:IsVisible() and (btn:GetAlpha() or 1) > 0 then
+        if btn:IsShown() and (btn:GetAlpha() or 1) > 0 then
             table.insert(list, btn)
         end
     end
@@ -1031,6 +1045,12 @@ function MinimapButtonsWidget:Init()
     for _, ev in ipairs(QUEUE_EYE_EVENTS) do
         pcall(f.RegisterEvent, f, ev)
     end
+    -- Whatever else may have left the slots out of step with the
+    -- buttons, being shown again is the moment to put it right.
+    f:HookScript("OnShow", function()
+        C_Timer.After(0, function() MinimapButtonsWidget:LayoutButtons() end)
+    end)
+
     f:HookScript("OnEvent", function()
         -- Blizzard toggles the queue eye's Shown state asynchronously
         -- on these events, so defer the relayout by a frame.

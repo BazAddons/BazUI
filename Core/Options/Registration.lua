@@ -268,11 +268,15 @@ end
 -- Canvases: one frame per module, pages as tabs across the top
 ---------------------------------------------------------------------------
 
+-- Whether a page is being drawn right now. See RefreshOptions.
+local rendering = false
+
 local function RenderPage(canvas, key)
     if not key then return end
     local entry = optionsTables[key]
     if not entry then return end
     canvas.activeKey = key
+    rendering = true
 
     local tabID = canvas.tabIDs and canvas.tabIDs[key]
     if tabID and canvas.tabStrip.selectedTabID ~= tabID then
@@ -286,6 +290,7 @@ local function RenderPage(canvas, key)
     -- tree layout does this).
     if type(entry.customRender) == "function" then
         entry.customRender(canvas.content)
+        rendering = false
         return
     end
 
@@ -294,6 +299,7 @@ local function RenderPage(canvas, key)
     if tbl then
         RenderIntoCanvas(canvas.content, tbl)
     end
+    rendering = false
 end
 
 local function RebuildTabs(canvas)
@@ -521,11 +527,28 @@ function BazUI:RefreshVisibleOptions()
 end
 
 -- Re-render a page if it is the one currently on screen.
+-- Draw this page again, once whatever is drawing has finished.
+--
+-- A button's own handler asking for a redraw is a redraw inside the
+-- render that drew the button. Done there and then, the new page is
+-- built and placed - and then the outer render carries on from where it
+-- was interrupted, finishing its pass with the frames and the options
+-- table it captured before the click. The stale pass is the one left on
+-- screen, and everything the handler just did appears not to have
+-- happened: a new drawer is made, the page redrawn around it, and then
+-- painted over by the page as it was a moment earlier.
+--
+-- So a refresh asked for mid-render waits a frame. By then the outer
+-- pass has finished and there is nothing left to overwrite it.
 function BazUI:RefreshOptions(key)
     local entry = optionsTables[key]
     if not entry then return end
     local canvas = canvases[entry.parent or key]
-    if canvas and canvas:IsShown() and canvas.activeKey == key then
-        RenderPage(canvas, key)
+    if not (canvas and canvas:IsShown() and canvas.activeKey == key) then return end
+
+    if rendering then
+        C_Timer.After(0, function() BazUI:RefreshOptions(key) end)
+        return
     end
+    RenderPage(canvas, key)
 end

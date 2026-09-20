@@ -307,6 +307,18 @@ end
 -- Bar Options
 ---------------------------------------------------------------------------
 
+-- The bar the picker should open on its next render, set by whatever
+-- just made one. See pickerSelect in Core/Options/ListDetail.
+local pendingBar
+
+local function TakePendingBar()
+    return pendingBar
+end
+
+local function TakePendingBarTaken()
+    pendingBar = nil
+end
+
 local function BarLabel(id, bd)
     local name = bd.customName or ("Bar " .. id)
     return string.format("%s  (%d x %d)", name, bd.cols or 0, bd.rows or 0)
@@ -542,7 +554,12 @@ local function GetBarsOptionsTable()
                         return
                     end
                     local id = addon:CreateNewBar()
-                    if id then addon:Print("Created Bar " .. id) end
+                    if id then
+                        -- Open on the one just made. See pickerSelect in
+                        -- Core/Options/ListDetail.
+                        pendingBar = "bar" .. id
+                        addon:Print("Created Bar " .. id)
+                    end
                 end,
             },
             bars = {
@@ -550,12 +567,17 @@ local function GetBarsOptionsTable()
                 type = "group",
                 name = "",
                 pickerLabel = "Bar",
+                pickerSelect = TakePendingBar,
+                pickerSelectTaken = TakePendingBarTaken,
                 emptyText = "No bars yet. Click New bar to make one.",
                 args = bars,
                 itemActions = {
                     {
                         name = "Duplicate",
-                        func = function(item) addon:DuplicateBar(item._barId) end,
+                        func = function(item)
+                            local id = addon:DuplicateBar(item._barId)
+                            if id then pendingBar = "bar" .. id end
+                        end,
                     },
                     {
                         name = "Delete", style = "danger",

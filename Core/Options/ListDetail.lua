@@ -22,7 +22,11 @@
 -- group may carry `itemActions`, a list of execute-shaped entries whose
 -- `func` receives the selected item (Duplicate, Delete ...); they render
 -- as buttons after the page's own actions. `confirmText` and
--- `disabled` may be functions of the item.
+-- `disabled` may be functions of the item. `pickerSelect` returns the
+-- args key of an item to open - what a New button uses to leave its new
+-- item in front of the player - and is read without being consumed;
+-- `pickerSelectTaken` is called once the item has actually been found
+-- and opened, so a request outlives any render that cannot yet meet it.
 ---------------------------------------------------------------------------
 
 local O = BazUI._Options
@@ -59,6 +63,29 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
             if ItemKey(c) == key then return c end
         end
     end
+    -- A page may ask for a particular item to be open: the one it has
+    -- just made. Without this a New button added something and left the
+    -- form showing whatever was already open, so the thing that had just
+    -- appeared had to be found in the dropdown before it could be named
+    -- or filled in.
+    --
+    -- The request stands until it can be met, which is the whole point
+    -- of asking rather than setting. A page can be drawn more than once
+    -- for one click, and a pass that does not yet know about the new
+    -- item would otherwise swallow the request and then fall back to the
+    -- first item in the list - leaving the thing just made sitting in
+    -- the dropdown, unselected, exactly as if nothing had been asked.
+    --
+    -- So it is read without being taken, and only acknowledged once the
+    -- item is really there to open.
+    if groupOpt.pickerSelect then
+        local wanted = groupOpt.pickerSelect()
+        if wanted and FindByKey(wanted) then
+            state.selected = wanted
+            if groupOpt.pickerSelectTaken then groupOpt.pickerSelectTaken() end
+        end
+    end
+
     local selected = FindByKey(state.selected) or children[1]
     state.selected = selected and ItemKey(selected) or nil
 

@@ -492,6 +492,68 @@ end
 -- texture when no fallback is given). Returns true when the atlas was used.
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- An arrow, pointing wherever it is asked to
+--
+-- One corner of the game's flyout button sheet, which is the only arrow
+-- in the client that is a plain shape rather than a framed button. The
+-- action bars have drawn their flyout arrows with it since the start;
+-- this is that, made lendable, because a second place wanted the same
+-- arrow and a second copy of the corner numbers would be a second place
+-- to get them wrong.
+--
+-- Turning it is done by handing SetTexCoord the four corners rather than
+-- by SetRotation. Rotation happens in the texture's own space and only
+-- comes out true on a square, which is what stretched the sideways
+-- arrows; naming the corners maps the art onto the frame directly, so a
+-- quarter turn keeps its proportions.
+--
+-- Corner order is upper-left, lower-left, upper-right, lower-right.
+---------------------------------------------------------------------------
+
+local ARROW_FILE = "Interface\\Buttons\\ActionBarFlyoutButton"
+
+-- The arrow's corner of the sheet, pointing up.
+local AL, AR = 0.625, 0.984375
+local AT, AB = 0.7421875, 0.828125
+
+local ARROW_COORDS = {
+    UP    = { AL, AT, AL, AB, AR, AT, AR, AB },
+    DOWN  = { AL, AB, AL, AT, AR, AB, AR, AT },
+    LEFT  = { AR, AT, AL, AT, AR, AB, AL, AB },
+    RIGHT = { AL, AB, AR, AB, AL, AT, AR, AT },
+}
+
+-- Twice as wide as it is deep, which is the shape the art is drawn in.
+BazUI.ARROW_LENGTH = 26
+
+-- Point a texture, and size it to match. Hands back the width and height
+-- it took, for a caller that has to make room for it.
+function BazUI.SetArrowTexture(tex, direction, length)
+    if not tex then return 0, 0 end
+
+    -- Named in any case the caller likes. A direction that does not
+    -- match falls back to up, which used to happen silently and drew two
+    -- up arrows where an up and a down were wanted.
+    direction = type(direction) == "string" and direction:upper() or "UP"
+    direction = ARROW_COORDS[direction] and direction or "UP"
+    length = length or BazUI.ARROW_LENGTH
+    local depth = length / 2
+
+    local sideways = (direction == "LEFT" or direction == "RIGHT")
+    local w, h = length, depth
+    if sideways then w, h = depth, length end
+
+    tex:SetTexture(ARROW_FILE)
+    tex:SetTexCoord(unpack(ARROW_COORDS[direction]))
+    -- The art is already the colour it should be; tinting it only ever
+    -- made it darker, since a texture's colour multiplies its vertex
+    -- colour and grey art cannot be brightened into gold.
+    tex:SetVertexColor(1, 1, 1)
+    tex:SetSize(w, h)
+    return w, h
+end
+
 function BazUI.SetAtlasOrTexture(tex, atlas, fallbackFile, useAtlasSize)
     if not tex then return false end
     if atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then

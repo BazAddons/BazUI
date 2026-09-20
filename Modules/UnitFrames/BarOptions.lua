@@ -12,6 +12,18 @@
 local addon = BazUI:GetModule("UnitFrames")
 
 local Options = {}
+
+-- The bar the picker should open on its next render, set by the button
+-- that just made one. See pickerSelect in Core/Options/ListDetail.
+local pendingBar
+
+local function TakePendingBar()
+    return pendingBar
+end
+
+local function TakePendingBarTaken()
+    pendingBar = nil
+end
 addon.BarOptions = Options
 
 local TEXT_MODES = { always = "Always", hover = "On Hover", never = "Never" }
@@ -259,12 +271,19 @@ function Options:Build()
                         return
                     end
                     local def = UnitBars:Add("health", "player")
-                    if def then addon:Print("Created " .. (def.name or "a bar")) end
+                    if def then
+                        -- Open on the one just made. See pickerSelect in
+                        -- Core/Options/ListDetail.
+                        pendingBar = "bar" .. def.id
+                        addon:Print("Created " .. (def.name or "a bar"))
+                    end
                 end,
             },
             bars = {
                 order = 10, type = "group", name = "",
                 pickerLabel = "Bar",
+                pickerSelect = TakePendingBar,
+                pickerSelectTaken = TakePendingBarTaken,
                 emptyText = "No bars yet. Click New bar to make one.",
                 args = bars,
                 itemActions = {

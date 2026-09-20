@@ -270,31 +270,13 @@ end
 -- Blizzard's own flyout arrow, which is bright gold art. That matters:
 -- a texture's color multiplies its vertex color, so gray art can only
 -- ever be made into dark gold, however bright a color you ask for.
-local FLYOUT_ARROW = "Interface\\Buttons\\ActionBarFlyoutButton"
-
--- The arrow's corner of the sheet, pointing up.
-local AL, AR = 0.625, 0.984375
-local AT, AB = 0.7421875, 0.828125
-
--- Turning it is done by handing SetTexCoord the four corners rather
--- than by SetRotation. Rotation happens in the texture's own space and
--- only comes out true on a square, which is what stretched the sideways
--- arrows; naming the corners maps the art onto the frame directly, so a
--- quarter turn keeps its proportions. The sideways pair swap width and
--- height to match.
---
--- Corner order is upper-left, lower-left, upper-right, lower-right.
-local LONG, SHORT = 26, 13
-
+-- Where the arrow sits for each direction. The art itself, and turning
+-- it, is BazUI.SetArrowTexture - the widget titles borrow the same one.
 local FLYOUT_ARROW_LOOK = {
-    UP    = { point = "TOP",    x =  0, y =  5, w = LONG,  h = SHORT,
-              coords = { AL, AT, AL, AB, AR, AT, AR, AB } },
-    DOWN  = { point = "BOTTOM", x =  0, y = -5, w = LONG,  h = SHORT,
-              coords = { AL, AB, AL, AT, AR, AB, AR, AT } },
-    LEFT  = { point = "LEFT",   x = -5, y =  0, w = SHORT, h = LONG,
-              coords = { AR, AT, AL, AT, AR, AB, AL, AB } },
-    RIGHT = { point = "RIGHT",  x =  5, y =  0, w = SHORT, h = LONG,
-              coords = { AL, AB, AR, AB, AL, AT, AR, AT } },
+    UP    = { point = "TOP",    x =  0, y =  5 },
+    DOWN  = { point = "BOTTOM", x =  0, y = -5 },
+    LEFT  = { point = "LEFT",   x = -5, y =  0 },
+    RIGHT = { point = "RIGHT",  x =  5, y =  0 },
 }
 
 function Button:UpdateFlyoutArrow(btn)
@@ -304,22 +286,17 @@ function Button:UpdateFlyoutArrow(btn)
         return
     end
 
-    local look = FLYOUT_ARROW_LOOK[btn.action.data and btn.action.data.direction or "UP"]
-        or FLYOUT_ARROW_LOOK.UP
+    local direction = btn.action.data and btn.action.data.direction or "UP"
+    local look = FLYOUT_ARROW_LOOK[direction] or FLYOUT_ARROW_LOOK.UP
 
     local arrow = btn.bbFlyoutArrow
     if not arrow then
         arrow = btn:CreateTexture(nil, "OVERLAY")
-        arrow:SetTexture(FLYOUT_ARROW)
         btn.bbFlyoutArrow = arrow
     end
     -- Set on every update rather than at creation, so changing any of
     -- this takes effect without rebuilding the bars.
-    arrow:SetSize(look.w, look.h)
-    arrow:SetTexCoord(unpack(look.coords))
-    -- The art is already the color it should be; tinting it only ever
-    -- made it darker.
-    arrow:SetVertexColor(1, 1, 1)
+    BazUI.SetArrowTexture(arrow, direction)
     arrow:ClearAllPoints()
     arrow:SetPoint(look.point, btn, look.point, look.x, look.y)
     arrow:Show()

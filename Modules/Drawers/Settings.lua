@@ -546,6 +546,18 @@ local function BuildDrawerGroup(drawerDef, drawerId, index)
     }
 end
 
+-- The drawer the picker should open on its next render, set by the
+-- button that just made one. See pickerSelect in Core/Options/ListDetail.
+local pendingDrawer
+
+local function TakePendingDrawer()
+    return pendingDrawer
+end
+
+local function TakePendingDrawerTaken()
+    pendingDrawer = nil
+end
+
 local function DrawerCount()
     local n = 0
     for _ in pairs(addon:GetSetting("drawers") or {}) do n = n + 1 end
@@ -571,7 +583,12 @@ local function GetDrawersOptionsTable()
                 func = function()
                     local id = "drawer_" .. time()
                     addon:CreateDrawer(id, "New Drawer")
-                    addon:SetActiveDrawer(id)
+                    -- The options panel opens on it; the drawer on
+                    -- screen is left alone. Making one is setting it
+                    -- up, not going to it, and swapping what is on
+                    -- screen out from under somebody mid-edit is a
+                    -- change they did not ask for.
+                    pendingDrawer = "drawer_" .. id
                     Refresh(PAGE_DRAWERS)
                 end,
             },
@@ -580,6 +597,8 @@ local function GetDrawersOptionsTable()
                 type = "group",
                 name = "",
                 pickerLabel = "Drawer",
+                pickerSelect = TakePendingDrawer,
+                pickerSelectTaken = TakePendingDrawerTaken,
                 emptyText = "No drawers yet. Click New drawer to make one.",
                 args = drawerArgs,
                 itemActions = {

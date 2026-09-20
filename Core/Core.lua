@@ -819,7 +819,10 @@ BazUI:QueueForLogin(function()
                         .. "gave it. The rest are the game's own.\n\nThe list is what "
                         .. "this client actually has: a Russian client is offered the "
                         .. "Cyrillic cuts and not BazUI's own face, which has no "
-                        .. "Cyrillic in it.",
+                        .. "Cyrillic in it.\n\nYour own font can go in the addon's "
+                        .. "Fonts folder as Custom.ttf - there is a note in there "
+                        .. "explaining it. The game only reads fonts when it starts, "
+                        .. "so it appears in this list after a restart, not a reload.",
                     values = function()
                         local out = {}
                         for _, face in ipairs(BazUI.Skin.Theme.FontFaces()) do
@@ -1147,6 +1150,10 @@ BazUI:QueueForLogin(function()
             check = {
                 desc = "Check everything the addon takes hold of in the game's own UI - frames, templates, console settings - and say what is missing. Worth running first on a new client build.",
                 handler = function() BazUI:PrintDependencyReport() end,
+            },
+            fonts = {
+                desc = "Sample text in several alphabets, drawn in BazUI's face and in the game's side by side. Says whether the addon would turn this client's own language into boxes.",
+                handler = function() BazUI:ShowFontTest() end,
             },
             audit = {
                 desc = "Where every module's settings live, and which of them really follow the profile. Add a module name to see one of them key by key.",

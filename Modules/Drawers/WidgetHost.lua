@@ -36,6 +36,14 @@ addon.WidgetHost = WidgetHost
 
 local DEFAULT_SLOT_SPACING = 6        -- vertical gap between docked widgets; the widgetSpacing setting overrides it
 local WIDGET_SIDE_INSET = 4           -- breathing room on each side of the widget inside its slot
+-- Long edge of the reorder arrows on a title bar. The art is twice as
+-- wide as it is deep, so this is a 16 by 8 arrow in a 16 square button.
+local ARROW_SIZE = 16
+local ARROW_ALPHA_IDLE, ARROW_ALPHA_OFF = 0.75, 0.25
+
+-- The game's own red cross, which the bag already marks junk with.
+local REMOVE_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+local REMOVE_SIZE = 12
 local TITLE_HEIGHT = 20
 local TITLE_CONTENT_GAP = 2
 local DEFAULT_DESIGN_WIDTH = 200
@@ -146,16 +154,138 @@ function WidgetHost:CreateSlot(widget)
     title.label:SetText(widget.label or widget.id or "")
     title.label:SetTextColor(1, 0.82, 0)
 
+    -- Shown with the buttons rather than always: a widget that is
+    -- collapsed already looks collapsed, so this mark was repeating what
+    -- the empty space under it had already said.
     title.chevron = title:CreateTexture(nil, "OVERLAY")
     title.chevron:SetSize(16, 16)
-    title.chevron:SetPoint("RIGHT", -6, 0)
+    title.chevron:Hide()
     BazUI.SetAtlasOrTexture(title.chevron, "ui-questtrackerbutton-secondary-collapse",
         "Interface\\Buttons\\UI-MinusButton-Up")
 
     title.status = BazUI.Skin.Theme.FontString(title, "OVERLAY", "GameFontHighlightSmall")
-    title.status:SetPoint("RIGHT", title.chevron, "LEFT", -6, 0)
+    -- Against the bar's own edge, because what used to hold it in from
+    -- there - the chevron - is not there most of the time now.
+    title.status:SetPoint("RIGHT", title, "RIGHT", -6, 0)
     title.status:SetJustifyH("RIGHT")
     title.status:SetText("")
+
+    -- Two arrows, in the space the status text was using.
+    --
+    -- Hold-then-drag works, but nothing about a title bar says it can be
+    -- held, and a gesture that needs to be known about before it can be
+    -- found is not a way to reorder anything. A pair of arrows under the
+    -- cursor is.
+    --
+    -- They take the status text's place rather than sitting beside it:
+    -- pointing at a title bar is wanting to do something to the widget,
+    -- not wanting to read how many quests it is tracking, and reserving
+    -- room for both would cost every widget the width of two buttons it
+    -- only needs while the mouse is on it.
+    title.controls = {}
+
+    -- Everything shared by the buttons that appear on hover: the size,
+    -- the icon, and knowing to put the whole set away when the cursor
+    -- leaves. Each one adds what it does and when it can do it.
+    local function MakeControl()
+        local btn = CreateFrame("Button", nil, title)
+        btn:SetSize(ARROW_SIZE, ARROW_SIZE)
+        btn:Hide()
+
+        btn.icon = btn:CreateTexture(nil, "OVERLAY")
+        btn.icon:SetPoint("CENTER")
+
+        btn:SetScript("OnLeave", function(self)
+            if self:IsEnabled() then self.icon:SetAlpha(ARROW_ALPHA_IDLE) end
+            GameTooltip:Hide()
+            title:HideControls()
+        end)
+
+        title.controls[#title.controls + 1] = btn
+        return btn
+    end
+
+    -- Alpha rather than a tint, for the arrows at least: the art is grey
+    -- and a vertex colour multiplies, so it can only ever be made darker.
+    local function Lit(self)
+        if self:IsEnabled() then self.icon:SetAlpha(1) end
+    end
+
+    local function MakeArrow(direction, delta)
+        local btn = MakeControl()
+        BazUI.SetArrowTexture(btn.icon, direction, ARROW_SIZE)
+        btn.Available = function()
+            return WidgetHost:MoveInStack(title._widgetId, delta, true)
+        end
+        btn:SetScript("OnClick", function()
+            WidgetHost:MoveInStack(title._widgetId, delta)
+        end)
+        btn:SetScript("OnEnter", Lit)
+        return btn
+    end
+
+    -- Taking a widget off the drawer, which is not the same as switching
+    -- it off: it stays enabled and keeps its settings, and it is still on
+    -- any other drawer it was put on. Reversible from the options, which
+    -- the tooltip says, because a cross usually means something is gone
+    -- for good and this one does not.
+    local function MakeRemove()
+        local btn = MakeControl()
+        btn.icon:SetTexture(REMOVE_TEXTURE)
+        btn.icon:SetSize(REMOVE_SIZE, REMOVE_SIZE)
+        btn.Available = function() return not InCombatLockdown() end
+        btn:SetScript("OnClick", function()
+            addon:RemoveWidgetFromDrawer(addon:GetActiveDrawerId(), title._widgetId)
+        end)
+        btn:SetScript("OnEnter", function(self)
+            Lit(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText("Take this off the drawer", 1, 1, 1)
+            GameTooltip:AddLine("It keeps its settings. Settings, Drawers puts it back.",
+                0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+        end)
+        return btn
+    end
+
+    title.moveUp   = MakeArrow("UP", -1)
+    title.moveDown = MakeArrow("DOWN", 1)
+    title.remove   = MakeRemove()
+
+    -- Right to left: the cross, the collapse mark, then the two arrows.
+    -- Closing sits furthest out, where a window's close button lives.
+    title.remove:SetPoint("RIGHT", title, "RIGHT", -6, 0)
+    title.chevron:SetPoint("RIGHT", title.remove, "LEFT", -6, 0)
+    title.moveDown:SetPoint("RIGHT", title.chevron, "LEFT", -6, 0)
+    title.moveUp:SetPoint("RIGHT", title.moveDown, "LEFT", -2, 0)
+
+    -- Shown together, each greyed unless it has something to do. An
+    -- arrow at the end of the stack is drawn faint and does nothing,
+    -- which reads better than one that vanishes and leaves the other
+    -- somewhere else.
+    function title:ShowControls()
+        if addon:GetSetting("locked") then return end
+        for _, btn in ipairs(self.controls) do
+            local can = btn.Available and btn.Available() and true or false
+            btn:SetEnabled(can)
+            btn.icon:SetAlpha(can and ARROW_ALPHA_IDLE or ARROW_ALPHA_OFF)
+            btn:Show()
+        end
+        self.chevron:Show()
+        self.status:Hide()
+    end
+
+    -- The cursor moving onto one of the buttons takes it off the title
+    -- bar, so none of them can decide this alone.
+    function title:HideControls()
+        if self:IsMouseOver() then return end
+        for _, btn in ipairs(self.controls) do
+            if btn:IsMouseOver() then return end
+        end
+        for _, btn in ipairs(self.controls) do btn:Hide() end
+        self.chevron:Hide()
+        self.status:Show()
+    end
 
     -- Drag-to-reorder: hold the title bar for DRAG_HOLD_TIME seconds
     -- to activate drag mode (bar turns green). Then drag to reorder.
@@ -208,6 +338,7 @@ function WidgetHost:CreateSlot(widget)
         if not self._dragReady then
             self.bg:SetColorTexture(unpack(TITLE_BG_HOVER))
         end
+        self:ShowControls()
     end)
     title:SetScript("OnLeave", function(self)
         if self._holdTimer then
@@ -218,6 +349,7 @@ function WidgetHost:CreateSlot(widget)
         if not self._dragReady then
             self.bg:SetColorTexture(unpack(TITLE_BG_IDLE))
         end
+        self:HideControls()
     end)
 
     slot.titleBar = title
@@ -718,12 +850,55 @@ function WidgetHost:StopDrag()
     end
 end
 
+-- Put two widgets in each other's places.
+--
+-- Worked out from the whole drawer's order rather than by trading the
+-- two numbers, which is what this did and why dragging appeared to do
+-- nothing: a widget nobody has ever reordered has no number, both sides
+-- read as the same stand-in value, and swapping one for itself leaves
+-- the list exactly as it was. The bar turned green, the drag ran, and
+-- every frame it swapped nothing.
+--
+-- The positions come from the sorted list of everything, not from the
+-- stack the drag walks: a widget that is floating or switched off still
+-- sits between two that are not, and the order being saved is the order
+-- of the lot.
 function WidgetHost:SwapWidgetOrder(idA, idB)
-    local orderA = addon:GetWidgetOrder(idA) or 10000
-    local orderB = addon:GetWidgetOrder(idB) or 10000
-    addon:SetWidgetOrder(idA, orderB)
-    addon:SetWidgetOrder(idB, orderA)
-    self:Reflow()
+    local sorted = addon:GetSortedWidgets() or {}
+    local ia, ib
+    for i, w in ipairs(sorted) do
+        if w.id == idA then ia = i end
+        if w.id == idB then ib = i end
+    end
+    if not (ia and ib) then return end
+
+    sorted[ia], sorted[ib] = sorted[ib], sorted[ia]
+    addon:ApplyWidgetOrder(sorted)
+end
+
+-- Move a widget one place up or down its own stack.
+--
+-- What the arrows on a title bar do, and the same neighbour the drag
+-- would have found. Answers whether it could, so a button at the end of
+-- the stack can grey itself out rather than be a control that does
+-- nothing when pressed.
+function WidgetHost:MoveInStack(widgetId, delta, testOnly)
+    if not widgetId then return false end
+    if InCombatLockdown() then return false end
+
+    local order = self:StackOrder(widgetId)
+    local index
+    for i, id in ipairs(order) do
+        if id == widgetId then index = i break end
+    end
+    if not index then return false end
+
+    local other = order[index + delta]
+    if not other then return false end
+    if testOnly then return true end
+
+    self:SwapWidgetOrder(widgetId, other)
+    return true
 end
 
 ---------------------------------------------------------------------------

@@ -380,12 +380,22 @@ local faceList
 -- Whether the client can actually read the file. Fixed for the session.
 -- Whether the client has this file and will draw with it.
 --
--- A Font object's SetFont reports nothing, so the face is read back: a
--- path the client cannot load leaves the old one in place.
+-- Whether this client has that file and will draw with it.
+--
+-- Two ways it can say no, and both have to be caught. A file that is
+-- simply missing *raises* - "Invalid font asset ... file not found" -
+-- rather than reporting failure, so the call is guarded: asking whether
+-- something is there should never be able to throw, and the whole point
+-- of the custom font folder is that most people will not have put
+-- anything in it. A file that exists but cannot be read leaves the probe
+-- wearing its old face instead, which is what reading the face back
+-- catches.
 local function Loadable(path)
     if type(path) ~= "string" or path == "" then return false end
     fontProbe = fontProbe or CreateFont("BazUIFontProbe")
-    fontProbe:SetFont(path, 12, "")
+    if not pcall(fontProbe.SetFont, fontProbe, path, 12, "") then
+        return false
+    end
     local applied = fontProbe:GetFont()
     return (applied and applied:lower() == path:lower()) or false
 end
@@ -446,7 +456,20 @@ end
 -- both. Morpheus and Skurri have a separate Cyrillic cut, and neither
 -- has anything for CJK - those clients are offered the roles only, which
 -- is honest, because that is all the game has for them either.
+-- A font the player put there themselves.
+--
+-- One fixed name rather than a setting to type a name into: the folder
+-- has a note in it saying what to call the file, and a path that is
+-- always the same is one less thing to get wrong in a language the
+-- person asking cannot necessarily read.
+--
+-- It is only offered if the client loaded it, which also means it will
+-- not appear until the game has been restarted - fonts are read at
+-- startup and a reload does not go back for them. The note says so.
+local CUSTOM_FONT = "Interface\\AddOns\\BazUI\\Fonts\\Custom.ttf"
+
 local FACES = {
+    { key = "custom", label = "Your own font", file = CUSTOM_FONT },
     { key = "baz",    label = "BazUI",        ours = true },
     { key = "game",   label = "Game default", role = "STANDARD_TEXT_FONT" },
     { key = "name",   label = "Unit names",   role = "UNIT_NAME_FONT" },
@@ -467,8 +490,15 @@ local function FacePath(face)
     if face.ours then
         return Theme.IsLocaleDrawable() and Theme.FONT_FILE or nil
     end
+    if face.file then return face.file end
     if face.role then return _G[face.role] end
     return face[Alphabet()]
+end
+
+-- Whether the player's own font is there and loaded, for the font check
+-- panel and for the fallback below.
+function Theme.CustomFontFile()
+    return Loadable(CUSTOM_FONT) and CUSTOM_FONT or nil
 end
 
 -- The faces this client can actually draw with, in order.
@@ -669,6 +699,90 @@ function Theme.IsFontFallbackEnabled()
     return not BazUIDB or BazUIDB.fontFallback ~= false
 end
 
+---------------------------------------------------------------------------
+-- Borrowing a face that can actually spell it
+--
+-- "Use the game's font" is not one answer, because the game has no one
+-- font. FRIZQT__.TTF on an English client has no Cyrillic in it: a
+-- Russian name in an English client draws as boxes in Blizzard's own
+-- face, which is exactly what it does in ours. Falling back to the body
+-- font therefore fixed nothing for the case the fallback exists for.
+--
+-- The client does ship faces that cover those alphabets - they are what
+-- it uses when it is *in* that language - so the file is chosen by what
+-- the text is written in. Each candidate is probed before it is used, so
+-- a client that has not got one simply moves down the list.
+--
+-- Checked on Forever enUS with /baz fonts: the right hand column of that
+-- panel is this decision, and it was boxes for Cyrillic, Greek, Hangul
+-- and CJK before this existed.
+---------------------------------------------------------------------------
+
+local SCRIPT_FACES = {
+    cyrillic = {
+        "Fonts\\FRIZQT___CYR.TTF", "Fonts\\MORPHEUS_CYR.TTF",
+        "Fonts\\skurri_CYR.ttf", "Fonts\\ARIALN.TTF",
+    },
+    -- Arial Narrow is the only face the client ships that carries
+    -- Greek, and it may not on every build - if it does not, this
+    -- draws the same boxes the body font did, which is no worse.
+    greek = { "Fonts\\ARIALN.TTF" },
+
+    -- Korean, then the two Chinese cuts: all of them carry the CJK
+    -- ideographs, and Hangul only lives in the first.
+    hangul = { "Fonts\\2002.TTF", "Fonts\\2002B.TTF" },
+    cjk    = {
+        "Fonts\\ARKai_T.ttf", "Fonts\\ARHei.ttf",
+        "Fonts\\blei00d.TTF", "Fonts\\2002.TTF",
+    },
+}
+
+-- Which alphabet a string is in, judged by the first character our own
+-- face cannot draw - that being the character the fallback exists for.
+local function ScriptOf(text)
+    return BazUI.Secret.Read(function()
+        if type(text) ~= "string" then return nil end
+        local i = 1
+        while true do
+            local cp, nextI = CodepointAt(text, i)
+            if not cp then return nil end
+            if not Covered(cp) then
+                if cp >= 0x0400 and cp <= 0x052F then return "cyrillic" end
+                if cp >= 0x0370 and cp <= 0x03FF then return "greek" end
+                if cp >= 0x1100 and cp <= 0x11FF then return "hangul" end
+                if cp >= 0xAC00 and cp <= 0xD7AF then return "hangul" end
+                if cp >= 0x3040 and cp <= 0x30FF then return "cjk" end
+                if cp >= 0x3400 then return "cjk" end
+                return nil
+            end
+            i = nextI
+        end
+    end, nil)
+end
+
+local scriptFaceCache = {}
+
+-- The best face this client has for that alphabet, or nil to leave the
+-- decision to the body font.
+local function ScriptFace(script)
+    if not script then return nil end
+    local cached = scriptFaceCache[script]
+    if cached ~= nil then return cached or nil end
+
+    local found = false
+    for _, file in ipairs(SCRIPT_FACES[script] or {}) do
+        if Loadable(file) then found = file break end
+    end
+    scriptFaceCache[script] = found
+    return found or nil
+end
+
+-- What this client would use for a string in that alphabet, or nil for
+-- "nothing better than the body font". For the font check panel.
+function Theme.ScriptFaceFor(text)
+    return ScriptFace(ScriptOf(text))
+end
+
 -- The game's face to use where ours is not used: because the player
 -- picked another, because our face cannot spell the string, or because
 -- it cannot spell the language.
@@ -685,7 +799,15 @@ function Theme.FaceFor(text)
     local ours = Theme.FontFile()
     if not Theme.IsFontFallbackEnabled() then return ours end
     if Theme.CanDraw(text) then return ours end
-    return Theme.FallbackFontFile()
+
+    -- Somebody who went to the trouble of supplying a font supplied it
+    -- for the alphabet they read, so it is asked before the client's
+    -- own - unless it is already the face in use, in which case it has
+    -- just failed to draw this and there is no sense asking twice.
+    local custom = Theme.CustomFontFile()
+    if custom and custom ~= ours then return custom end
+
+    return ScriptFace(ScriptOf(text)) or Theme.FallbackFontFile()
 end
 
 -- Set a string's text in a face that can draw it.
@@ -717,7 +839,7 @@ function Theme.EnsureFace(fontString, text)
     if not Theme.CanDraw(text) and Theme.IsFontFallbackEnabled() then
         if not fontString._bazFaceBefore then
             fontString._bazFaceBefore = have
-            fontString:SetFont(Theme.FallbackFontFile(), size, flags)
+            fontString:SetFont(Theme.FaceFor(text), size, flags)
         end
     elseif fontString._bazFaceBefore then
         fontString:SetFont(fontString._bazFaceBefore, size, flags)

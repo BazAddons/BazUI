@@ -23,7 +23,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 010
+## Version: 011
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -106,6 +106,7 @@ Core\Popup.lua
 Core\SecureActionPopup.lua
 Core\AddonListButton.lua
 Core\IconPicker.lua
+Core\FontTest.lua
 
 # Modules
 Modules\Drawers\Core.lua

@@ -500,13 +500,18 @@ function addon:GetSortedWidgets()
     return copy
 end
 
--- Swap `id` with its neighbor in the sorted list and persist the new order.
-local function ApplyReorder(sorted)
+-- Write an order out, numbered from one, and redraw.
+--
+-- Numbered from one every time rather than nudged, because until someone
+-- reorders something nothing has a number at all: GetWidgetOrder answers
+-- nil for a widget nobody has moved, and arithmetic on nil positions is
+-- how two widgets ended up agreeing they were both tenth.
+function addon:ApplyWidgetOrder(sorted)
     for i, w in ipairs(sorted) do
-        addon:SetWidgetOrder(w.id, i)
+        self:SetWidgetOrder(w.id, i)
     end
-    if addon.WidgetHost and addon.WidgetHost.Reflow then
-        addon.WidgetHost:Reflow()
+    if self.WidgetHost and self.WidgetHost.Reflow then
+        self.WidgetHost:Reflow()
     end
 end
 
@@ -515,7 +520,7 @@ function addon:MoveWidgetUp(id)
     for i, w in ipairs(sorted) do
         if w.id == id and i > 1 then
             sorted[i], sorted[i - 1] = sorted[i - 1], sorted[i]
-            ApplyReorder(sorted)
+            self:ApplyWidgetOrder(sorted)
             return
         end
     end
@@ -526,7 +531,7 @@ function addon:MoveWidgetDown(id)
     for i, w in ipairs(sorted) do
         if w.id == id and i < #sorted then
             sorted[i], sorted[i + 1] = sorted[i + 1], sorted[i]
-            ApplyReorder(sorted)
+            self:ApplyWidgetOrder(sorted)
             return
         end
     end
