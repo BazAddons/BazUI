@@ -76,6 +76,10 @@ function Panel.Create(strip)
 
     tab.Text = Theme.FontString(tab, "OVERLAY", strip.tabFont or "GameFontNormal")
     tab.Text:SetPoint("CENTER", 0, -1)
+    -- A label longer than its plate is cut short, not let run into the
+    -- next plate: "Empty Reagent Slo" over "Empty Keyring Slots" was
+    -- what it looked like when the plate was clamped and the text not.
+    tab.Text:SetWordWrap(false)
 
     tab:HookScript("OnEnter", function(self)
         if not self.isSelected then self.Text:SetTextColor(unpack(Theme.colors.gold)) end
@@ -87,10 +91,14 @@ function Panel.Create(strip)
 end
 
 function Panel.Init(tab, text, strip)
+    tab.Text:SetWidth(0)
     tab.Text:SetText(text or "")
-    local w = (tab.Text:GetStringWidth() or 0) + (strip.textPad or PANEL_TEXT_PAD)
-    tab:SetWidth(math.max(strip.minTabWidth or 60, math.min(strip.maxTabWidth or 120, w)))
+    local pad = strip.textPad or PANEL_TEXT_PAD
+    local w = (tab.Text:GetStringWidth() or 0) + pad
+    local width = math.max(strip.minTabWidth or 60, math.min(strip.maxTabWidth or 120, w))
+    tab:SetWidth(width)
     tab:SetHeight(strip.tabHeight or 26)
+    tab.Text:SetWidth(width - math.min(pad, 12))
 end
 
 function Panel.SetSelected(tab, selected)

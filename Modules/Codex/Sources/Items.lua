@@ -147,7 +147,16 @@ local function BagCategories()
     local cats = BagsCategories()
     if not (cats and cats.GetAll) then return {} end
     local ok, list = pcall(cats.GetAll)
-    return (ok and list) or {}
+    if not (ok and list) then return {} end
+    -- The bag has categories for its empty slots. An item lookup has no
+    -- empty slots to look up.
+    local out = {}
+    for _, cat in ipairs(list) do
+        if not (type(cat.key) == "string" and cat.key:find("^empty")) then
+            out[#out + 1] = cat
+        end
+    end
+    return out
 end
 
 local function CategoryOf(itemID)

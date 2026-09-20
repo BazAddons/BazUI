@@ -108,6 +108,10 @@ local function EntryRow(entry, locks)
     local tip = entry.name
     if entry.level then tip = tip .. ("  |cff888888level %d|r"):format(entry.level) end
 
+    -- Being under level is the first thing to say about a place; a
+    -- level twelve does not need every raid to read "0 of 1 step". The
+    -- steps stay in the tooltip for anyone who wants a head start.
+    local lines = (steps > 0) and StepLines(entry, state) or nil
     if lock then
         row.state = "locked"
         if lock.encounters > 0 then
@@ -117,15 +121,20 @@ local function EntryRow(entry, locks)
         end
         local bosses = BossLines(lock)
         tip = tip .. "|nSaved to this one." .. (bosses and ("|n" .. bosses) or "")
-    elseif steps > 0 and not state.complete then
-        row.state = "open"
-        row.detail = ("%d of %d step%s"):format(done, steps, steps == 1 and "" or "s")
-        local lines = StepLines(entry, state)
-        tip = tip .. "|nNot yet attuned." .. (lines and ("|n" .. lines) or "")
     elseif entry.level and level < entry.level then
         row.muted = true
         row.detail = ("level %d"):format(entry.level)
-        tip = tip .. ("|nOpen to you at level %d."):format(entry.level)
+        tip = tip .. ("|nFor level %d."):format(entry.level)
+        if steps > 0 and not state.complete then
+            tip = tip .. ("|nAttunement: %d of %d step%s done."):format(done, steps, steps == 1 and "" or "s")
+                .. (lines and ("|n" .. lines) or "")
+        elseif steps > 0 then
+            tip = tip .. "|nAlready attuned."
+        end
+    elseif steps > 0 and not state.complete then
+        row.state = "open"
+        row.detail = ("%d of %d step%s"):format(done, steps, steps == 1 and "" or "s")
+        tip = tip .. "|nNot yet attuned." .. (lines and ("|n" .. lines) or "")
     else
         row.state = "done"
         row.detail = "open"
