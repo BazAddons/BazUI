@@ -340,12 +340,7 @@ local function Build(parent)
     local statScroll = CreateFrame("ScrollFrame", nil, page.stats)
     statScroll:SetPoint("TOPLEFT", 6, -8)
     statScroll:SetPoint("BOTTOMRIGHT", -6, 8)
-    statScroll:EnableMouseWheel(true)
-    statScroll:SetScript("OnMouseWheel", function(self, delta)
-        local most = math.max(0, (self.bazContentH or 0) - self:GetHeight())
-        local to = math.max(0, math.min(most, (self:GetVerticalScroll() or 0) - delta * 44))
-        self:SetVerticalScroll(to)
-    end)
+    Codex.Panel.MakeScrollable(statScroll, page.stats, STAT_ROW_H * 2)
     local body = CreateFrame("Frame", nil, statScroll)
     body:SetSize(1, 1)
     statScroll:SetScrollChild(body)
@@ -503,9 +498,7 @@ local function FillStats(box, width)
 
     box.body:SetSize(width, math.max(y, 1))
     box.scroll.bazContentH = y
-    if (box.scroll:GetVerticalScroll() or 0) > math.max(0, y - box.scroll:GetHeight()) then
-        box.scroll:SetVerticalScroll(0)
-    end
+    Codex.Panel.UpdateScrollHint(box.scroll)
 end
 
 local function Percent(fraction)

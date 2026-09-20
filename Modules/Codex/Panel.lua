@@ -88,16 +88,40 @@ local TAB_ICONS = {
 }
 local TAB_ICON_DEFAULT = "Interface\\Icons\\INV_Misc_Book_09"
 
--- Show the arrow while there is page below the fold, and keep the view
--- honest when a page shrinks under a scroll that has run past its end.
-function Panel.UpdateScrollHint()
-    if not scroll then return end
-    local viewport = scroll:GetHeight() or 0
-    local most = math.max(0, (scroll.bazContentH or 0) - viewport)
-    if (scroll:GetVerticalScroll() or 0) > most then
-        scroll:SetVerticalScroll(most)
+-- The arrow that says there is more below, and the wheel that gets you
+-- there. Any scroll frame in the codex asks for these rather than
+-- growing its own: the page, a card whose list outruns it, the stats
+-- column on the equipment page.
+--
+-- hintParent is where the arrow hangs, for a scroll frame whose own
+-- bottom edge is not where the eye looks for it.
+function Panel.MakeScrollable(f, hintParent, step)
+    f:EnableMouseWheel(true)
+    f:SetScript("OnMouseWheel", function(self, delta)
+        local most = math.max(0, (self.bazContentH or 0) - (self:GetHeight() or 0))
+        local to = math.max(0, math.min(most, (self:GetVerticalScroll() or 0) - delta * (step or 48)))
+        self:SetVerticalScroll(to)
+        Panel.UpdateScrollHint(self)
+    end)
+    f.hint = (hintParent or f):CreateTexture(nil, "OVERLAY")
+    f.hint:SetPoint("BOTTOM", hintParent or f, "BOTTOM", 0, 4)
+    BazUI.SetArrowTexture(f.hint, "DOWN", 20)
+    f.hint:SetAlpha(0.45)
+    f.hint:Hide()
+    return f
+end
+
+-- Show the arrow while there is more below the fold, and keep the view
+-- honest when the content shrinks under a scroll that has run past its
+-- end. Called with nothing, it means the page.
+function Panel.UpdateScrollHint(f)
+    f = f or scroll
+    if not (f and f.hint) then return end
+    local most = math.max(0, (f.bazContentH or 0) - (f:GetHeight() or 0))
+    if (f:GetVerticalScroll() or 0) > most then
+        f:SetVerticalScroll(most)
     end
-    scroll.hint:SetShown(most > 1 and (scroll:GetVerticalScroll() or 0) < most - 1)
+    f.hint:SetShown(most > 1 and (f:GetVerticalScroll() or 0) < most - 1)
 end
 
 local function ContentWidth()
@@ -532,6 +556,24 @@ local function CardIcon(card)
     return card.iconTex
 end
 
+-- A block long enough to run past the foot of the page keeps its list
+-- inside itself and scrolls there, rather than pushing the page down
+-- and taking the block beside it out of sight with it. Made on the
+-- first card that needs one.
+local CARD_SCROLL_MIN = 150   -- below this there is no room worth scrolling
+
+local function CardScroll(card)
+    if card.scroll then return card.scroll end
+    local f = CreateFrame("ScrollFrame", nil, card)
+    local body = CreateFrame("Frame", nil, f)
+    body:SetSize(1, 1)
+    f:SetScrollChild(body)
+    f.body = body
+    Panel.MakeScrollable(f, nil, ROW_H * 2)
+    card.scroll = f
+    return f
+end
+
 local function ReleaseAll()
     for _, card in ipairs(liveCards) do
         for _, row in ipairs(card.rows) do
@@ -722,6 +764,7 @@ function Panel:Refresh()
     end
 
     local top = DrawStrip(tab, width)
+    local viewport = scroll:GetHeight() or 0
 
     -- Two columns; each block goes to whichever is shorter.
     local colW = math.floor((width - CARD_GAP * (COLUMNS - 1)) / COLUMNS)
@@ -806,25 +849,55 @@ function Panel:Refresh()
             local inner = headH + 8
 
             local rows = (def.GetRows and def.GetRows()) or {}
-            if #rows == 0 and def.rowless then
-                inner = inner - 4
-            elseif #rows == 0 then
-                local row = AcquireRow(card)
-                inner = inner + DrawRow(row, {
+            local shown = #rows > 0 and rows or nil
+
+            -- Would the whole block fit between here and the foot of the
+            -- page? If not, and there is room worth scrolling in, the
+            -- list goes inside the card and scrolls there.
+            local listH = ((shown and #shown or 1) * ROW_H) + CARD_PAD
+            local room  = math.max(0, viewport - y) - inner - CARD_PAD
+            local owns  = (listH > room) and (room >= CARD_SCROLL_MIN)
+
+            local body, bodyY = card, inner
+            if owns then
+                local sf = CardScroll(card)
+                sf:ClearAllPoints()
+                sf:SetPoint("TOPLEFT", 0, -inner)
+                sf:SetPoint("TOPRIGHT", 0, -inner)
+                sf:SetHeight(room)
+                sf.body:SetSize(colW, listH)
+                sf.bazContentH = listH
+                sf:Show()
+                body, bodyY = sf.body, 0
+            elseif card.scroll then
+                card.scroll:Hide()
+            end
+
+            local used = bodyY
+            if not shown and def.rowless then
+                used = used - 4
+            elseif not shown then
+                local row = AcquireRow(body)
+                used = used + DrawRow(row, {
                     label = def.empty or "Nothing to show.",
                     muted = true,
-                }, inner, 1)
+                }, used, 1)
                 card.rows[#card.rows + 1] = row
             else
-                for i, data in ipairs(rows) do
-                    local row = AcquireRow(card)
-                    inner = inner + DrawRow(row, data, inner, i)
+                for i, data in ipairs(shown) do
+                    local row = AcquireRow(body)
+                    used = used + DrawRow(row, data, used, i)
                     card.rows[#card.rows + 1] = row
                 end
             end
 
             card.count:SetText(#rows > 0 and tostring(#rows) or "")
-            card:SetHeight(inner + CARD_PAD)
+            if owns then
+                card:SetHeight(inner + room + CARD_PAD)
+                Panel.UpdateScrollHint(card.scroll)
+            else
+                card:SetHeight(used + CARD_PAD)
+            end
         end
 
         card:Show()
@@ -938,21 +1011,7 @@ local function Build()
     scroll = CreateFrame("ScrollFrame", nil, inset)
     scroll:SetPoint("TOPLEFT", headerHost, "BOTTOMLEFT", 0, 0)
     scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -INNER, INNER)
-    scroll:EnableMouseWheel(true)
-    scroll:SetScript("OnMouseWheel", function(self, delta)
-        local most = math.max(0, (self.bazContentH or 0) - (self:GetHeight() or 0))
-        local to = math.max(0, math.min(most, (self:GetVerticalScroll() or 0) - delta * 48))
-        self:SetVerticalScroll(to)
-        Panel.UpdateScrollHint()
-    end)
-
-    -- What a scroll bar was really for: knowing there is more. One
-    -- arrow at the foot of the page, only while there is.
-    scroll.hint = scroll:CreateTexture(nil, "OVERLAY")
-    scroll.hint:SetPoint("BOTTOM", inset, "BOTTOM", 0, 4)
-    BazUI.SetArrowTexture(scroll.hint, "DOWN", 20)
-    scroll.hint:SetAlpha(0.45)
-    scroll.hint:Hide()
+    Panel.MakeScrollable(scroll, inset)
 
     content = CreateFrame("Frame", nil, scroll)
     content:SetWidth(ContentWidth())
