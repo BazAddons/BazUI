@@ -307,6 +307,7 @@ Modules\Codex\Panel.lua
 Modules\Codex\Data\Gates.lua
 Modules\Codex\Data\Access.lua
 Modules\Codex\Data\Goals.lua
+Modules\Codex\Data\Factions.lua
 Modules\Codex\Sources\Today.lua
 Modules\Codex\Sources\Quests.lua
 Modules\Codex\Sources\Access.lua

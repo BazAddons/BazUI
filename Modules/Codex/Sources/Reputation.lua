@@ -75,11 +75,69 @@ local function ReadFaction(i)
     return nil
 end
 
+-- The factions written down that the client has not listed: the ones
+-- you have not met. Each goes under the header its met neighbours sit
+-- under, or under its own group's word where none of them has been met
+-- yet, greyed and read live by id. See Data/Factions.lua.
+local function MergeUnmet(groups, byName, listed)
+    local data = Codex.Factions
+    if not (data and data.entries and data.Confirm) then return end
+
+    -- Which header the client uses for each of our group words, learned
+    -- from the members already met.
+    local headerFor = {}
+    for _, entry in ipairs(data.entries) do
+        local g = listed[entry.id]
+        if g and not headerFor[entry.group] then headerFor[entry.group] = g end
+    end
+
+    for _, entry in ipairs(data.entries) do
+        if not listed[entry.id] then
+            local d = data.Confirm(entry)
+            if d then
+                local g = headerFor[entry.group]
+                if not g then
+                    g = byName[entry.group]
+                    if not g then
+                        g = { header = entry.group, factions = {} }
+                        byName[entry.group] = g
+                        groups[#groups + 1] = g
+                    end
+                    headerFor[entry.group] = g
+                end
+                local min, max = d.currentReactionThreshold or 0, d.nextReactionThreshold or 0
+                local span = math.max(0, max - min)
+                local f = {
+                    name = d.name, standing = d.reaction or 4, factionID = entry.id,
+                    into = math.max(0, (d.currentStanding or 0) - min), span = span,
+                    fraction = (d.reaction or 4) >= EXALTED and 1
+                        or (span > 0 and math.max(0, (d.currentStanding or 0) - min) / span or 0),
+                    unmet = true,
+                }
+                g.factions[#g.factions + 1] = f
+            end
+        end
+    end
+
+    -- The unmet sit after the met, alphabetically, so a group reads as
+    -- what you have and then what is left.
+    for _, g in ipairs(groups) do
+        local met, rest = {}, {}
+        for _, f in ipairs(g.factions) do
+            if f.unmet then rest[#rest + 1] = f else met[#met + 1] = f end
+        end
+        table.sort(rest, function(a, b) return a.name < b.name end)
+        for _, f in ipairs(rest) do met[#met + 1] = f end
+        g.factions = met
+    end
+end
+
 -- Groups in the game's order, each with its factions in the game's
 -- order. The count of collapsed groups comes back so a block can say
 -- where its missing rows went.
 local function Scan()
     local groups, byName, collapsed = {}, {}, 0
+    local listed = {}   -- factionID -> the group the client put it in
     local count = (C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetNumFactions())
         or (GetNumFactions and GetNumFactions()) or 0
 
@@ -105,6 +163,7 @@ local function Scan()
                 local g = current or Group("Other")
                 local min, max = f.min or 0, f.max or 0
                 local span = math.max(0, max - min)
+                if f.factionID then listed[f.factionID] = g end
                 g.factions[#g.factions + 1] = {
                     name = f.name, standing = f.standing, factionID = f.factionID,
                     into = math.max(0, (f.value or 0) - min), span = span,
@@ -114,6 +173,7 @@ local function Scan()
             end
         end
     end
+    MergeUnmet(groups, byName, listed)
     return groups, collapsed
 end
 
@@ -133,10 +193,12 @@ local function Rows(group)
         local done = f.standing >= EXALTED
         rows[#rows + 1] = {
             label  = f.name,
-            detail = done and StandingName(f.standing)
+            detail = f.unmet and (StandingName(f.standing) .. "   |   not yet met")
+                or done and StandingName(f.standing)
                 or ("%s   %s / %s"):format(StandingName(f.standing),
                     BazUI:FormatNumber(f.into), BazUI:FormatNumber(f.span)),
-            state  = done and "done" or "open",
+            state  = f.unmet and nil or (done and "done" or "open"),
+            muted  = f.unmet or nil,
             progress = {
                 bar   = true,
                 value = done and 1 or f.into,
@@ -152,13 +214,17 @@ local function Summary(group)
     local exalted, top = 0, nil
     for _, f in ipairs(group.factions) do
         if f.standing >= EXALTED then exalted = exalted + 1 end
-        if not top or f.standing > top.standing
-            or (f.standing == top.standing and f.fraction > top.fraction) then
+        if not f.unmet and (not top or f.standing > top.standing
+            or (f.standing == top.standing and f.fraction > top.fraction)) then
             top = f
         end
     end
-    local n = #group.factions
+    local n, unmet = 0, 0
+    for _, f in ipairs(group.factions) do
+        if f.unmet then unmet = unmet + 1 else n = n + 1 end
+    end
     local text = ("%d faction%s"):format(n, n == 1 and "" or "s")
+    if unmet > 0 then text = text .. ("  |  %d not yet met"):format(unmet) end
     if exalted > 0 then
         text = text .. ("  |  %d exalted"):format(exalted)
     elseif top then
@@ -172,13 +238,15 @@ local function Highlight()
     local exalted, total = 0, 0
     for _, g in ipairs(groupsNow) do
         for _, f in ipairs(g.factions) do
-            total = total + 1
-            if f.standing >= EXALTED then exalted = exalted + 1 end
+            if not f.unmet then
+                total = total + 1
+                if f.standing >= EXALTED then exalted = exalted + 1 end
+            end
         end
     end
     return {
         value = exalted,
-        label = ("exalted of %d"):format(total),
+        label = ("exalted of %d met"):format(total),
         color = exalted > 0 and Codex.STATE_COLOR.done or nil,
     }
 end
