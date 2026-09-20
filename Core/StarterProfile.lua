@@ -18,7 +18,7 @@
 --
 -- Written by tools/bake-profiles.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:00:06.
+-- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:31:13.
 ---------------------------------------------------------------------------
 
 BazUI.StarterProfile = {
@@ -81,10 +81,10 @@ BazUI.StarterProfile = {
                 align = "LEFT",
                 dock = {
                     edge = "BOTTOM",
-                    host = "statusbar:15",
+                    host = "statusbar:5",
                 },
-                dockSeq = 48,
-                dockedAs = "statusbar:15|BOTTOM",
+                dockSeq = 50,
+                dockedAs = "statusbar:5|BOTTOM",
                 filter = "HELPFUL",
                 gap = 4,
                 id = 3,
@@ -104,10 +104,10 @@ BazUI.StarterProfile = {
                 align = "RIGHT",
                 dock = {
                     edge = "BOTTOM",
-                    host = "statusbar:15",
+                    host = "statusbar:5",
                 },
-                dockSeq = 47,
-                dockedAs = "statusbar:15|BOTTOM",
+                dockSeq = 49,
+                dockedAs = "statusbar:5|BOTTOM",
                 filter = "HARMFUL",
                 gap = 4,
                 id = 4,
@@ -1026,29 +1026,6 @@ BazUI.StarterProfile = {
                 textMode = "always",
                 ticks = 0,
                 unit = "party4",
-                width = 240,
-            },
-            {
-                dock = {
-                    edge = "BOTTOM",
-                    host = "statusbar:4",
-                },
-                dockSeq = 46,
-                dockedAs = "statusbar:4|BOTTOM",
-                height = 24,
-                id = 15,
-                kind = "power",
-                name = "Target Power 2",
-                position = {
-                    point = "CENTER",
-                    relPoint = "CENTER",
-                    x = 0,
-                    y = -160,
-                },
-                textFormat = "current",
-                textMode = "always",
-                ticks = 0,
-                unit = "target",
                 width = 240,
             },
         },

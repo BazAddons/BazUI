@@ -284,12 +284,28 @@ function BazUI:BuildOptionsTableFromSpec(addonName, opts)
         order = order + 1
     end
 
+    -- `opts.only` and `opts.skip` choose which sections a page carries,
+    -- so one spec can feed more than one page.
+    --
+    -- A section that has grown big enough to deserve a tab of its own
+    -- should not force the module to be split into two specs to get one.
+    -- The spec stays the whole truth about what a module can be set to,
+    -- and a page is a view of it - which also means a setting cannot go
+    -- missing by being left out of both views, because the audit and the
+    -- Edit Mode panel still read the spec entire.
+    --
+    -- `opts.headers = false` drops the section headings, for a page
+    -- carrying one section whose name the tab is already wearing.
+    local only, skip = opts.only, opts.skip
+
     local sections = GetSortedSections(spec)
     for _, sec in ipairs(sections) do
-        local entries = GetEntriesFor(spec, sec.key, "options")
+        local wanted = (only == nil or only[sec.key])
+            and not (skip and skip[sec.key])
+        local entries = wanted and GetEntriesFor(spec, sec.key, "options") or {}
         if #entries > 0 then
             -- Section header (skip when section has no label - "_default")
-            if sec.label and sec.label ~= "" then
+            if opts.headers ~= false and sec.label and sec.label ~= "" then
                 args["_hdr_" .. sec.key] = {
                     type = "header", name = sec.label, order = order,
                 }

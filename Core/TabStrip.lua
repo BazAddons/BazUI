@@ -111,6 +111,11 @@ function Underline.Create(strip)
 
     tab.Text = Theme.FontString(tab, "OVERLAY", strip.tabFont or "GameFontNormal")
     tab.Text:SetAllPoints()
+    -- A label too long even for the cap is cut short rather than folded.
+    -- A tab strip is one row of words; a label that wraps does not just
+    -- look wrong, it doubles the strip's height and pushes everything
+    -- below it down.
+    tab.Text:SetWordWrap(false)
 
     tab.underline = tab:CreateTexture(nil, "ARTWORK")
     tab.underline:SetHeight(UNDERLINE_H)
@@ -142,6 +147,19 @@ function Underline.SetSelected(tab, selected)
 end
 
 local STYLES = { panel = Panel, underline = Underline }
+
+-- How wide a tab of each style may be before it is clamped.
+--
+-- Only the ceiling differs. A plate tab is one of a row of matching
+-- plates, and a cap keeps a long word from making one plate twice its
+-- neighbours; an underline tab is a word with a rule under it, where the
+-- cap has nothing to protect and only wraps the word. The floor is the
+-- same for both, because a tab too narrow to click is no better looking
+-- than a wide one.
+local STYLE_WIDTHS = {
+    panel     = { min = 60, max = 120 },
+    underline = { min = 60, max = 400 },
+}
 
 ---------------------------------------------------------------------------
 -- Tabs
@@ -357,8 +375,13 @@ function BazUI.CreateTabStrip(name, parent, opts)
     strip.tabs           = {}
     strip._pool          = {}
     strip.tabStyle       = opts.style or "panel"
-    strip.minTabWidth    = opts.minTabWidth or 60
-    strip.maxTabWidth    = opts.maxTabWidth or 120
+    -- Per style: see STYLE_WIDTHS. One pair of numbers served both until
+    -- now, which capped every underline tab at the plate width, so
+    -- "Draggable Windows" was clamped to 120 pixels, wrapped onto a
+    -- second line and stood the whole strip up to two rows.
+    local limits = STYLE_WIDTHS[strip.tabStyle] or STYLE_WIDTHS.panel
+    strip.minTabWidth    = opts.minTabWidth or limits.min
+    strip.maxTabWidth    = opts.maxTabWidth or limits.max
     strip.tabHeight      = opts.tabHeight
     -- A tab shrinks in three ways and all three have to move together:
     -- the plate's height, the face it is lettered in, and the padding

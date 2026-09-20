@@ -52,6 +52,9 @@ addon = BazUI:RegisterModule("Bars", {
         -- Buttons can be dragged only while Shift is held, so a slip
         -- never pulls an ability off a bar. Dropping onto a bar still works.
         dragRequiresShift = false,
+        -- Letting go of a spell over the world makes a bar there rather
+        -- than putting it back. See Modules/Bars/DropToCreate.lua.
+        dropCreatesBar = true,
     },
 
     -- Slash commands

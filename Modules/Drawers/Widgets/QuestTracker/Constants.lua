@@ -18,7 +18,15 @@ C.WIDGET_ID    = "bazdrawer_questtracker"
 
 -- Layout
 C.DESIGN_WIDTH       = 260
-C.MAX_HEIGHT_DEFAULT = 400
+-- The cap, not the height: the tracker is only ever as tall as what it
+-- holds, and this is the point past which it stops growing and starts
+-- scrolling. Four hundred was cutting most people off at three or four
+-- quests, which is the one thing a quest tracker must not do.
+--
+-- The same number as the slider's ceiling, deliberately. There is no
+-- useful setting above "as tall as it needs to be", and anyone who wants
+-- it shorter has the whole range below.
+C.MAX_HEIGHT_DEFAULT = 900
 C.PAD                = 8
 C.BLOCK_SPACING      = 10
 C.HEADER_AFTER_GAP   = 8

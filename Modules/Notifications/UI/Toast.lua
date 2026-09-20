@@ -118,9 +118,36 @@ local toastPool = BazUI:CreateObjectPool(CreateToast, ResetToast)
 
 local function ReanchorToasts()
     if not addon.db then return end
-    local anchorData = addon.GetAnchorData(addon.db.position)
+
+    -- Toasts hang off the bell, not off the corner of the screen.
+    --
+    -- Which corner of a toast meets the bell is the quadrant the bell is
+    -- in: near the top they fall away downward, near the bottom they rise,
+    -- and they line up with whichever side of the bell faces the nearer
+    -- screen edge, so they always grow into the middle rather than off
+    -- the side. Corner to corner, so the stack and the bell share an edge
+    -- and read as one thing.
+    --
+    -- Anchored to the bell itself rather than to that corner of the
+    -- screen, which is what this did before. The two agree only while the
+    -- bell happens to be sitting in a corner; drag it anywhere else and
+    -- the toasts stayed behind, piling up in a corner they had nothing to
+    -- do with any more.
+    local bell = addon.GetToggleButton and addon.GetToggleButton()
+    local corner = (bell and addon.DerivePositionForFrame(bell))
+        or addon.db.position
+    local anchorData = addon.GetAnchorData(corner)
     local margin = 10
-    local buttonOffset = 32  -- space for the toggle button
+
+    -- How far past the bell the first toast starts: the bell's own span
+    -- plus a gap. Measured rather than assumed, because the bell is
+    -- scaled by a setting of its own.
+    local gap = 6
+    local buttonOffset = 32
+    if bell then
+        local span = (bell:GetHeight() or 0) * (bell:GetScale() or 1)
+        if span > 0 then buttonOffset = span + gap end
+    end
 
     -- If the panel is open, stack toasts below/above the panel instead
     local panelOffset = 0
@@ -144,10 +171,19 @@ local function ReanchorToasts()
         toast:ClearAllPoints()
 
         local yOff = cumulativeHeight + (buttonOffset + panelOffset) / scale
-        local xBase = (margin / scale) * anchorData.xDir
-        local yBase = (margin / scale + yOff) * anchorData.yDir
 
-        toast:SetPoint(anchorData.point, UIParent, anchorData.relPoint, xBase, yBase)
+        if bell then
+            -- The same corner on both, so the two share an edge. The only
+            -- offset is along the stack.
+            toast:SetPoint(anchorData.point, bell, anchorData.point,
+                0, yOff * anchorData.yDir)
+        else
+            -- Before the bell exists, which is only during start-up.
+            local xBase = (margin / scale) * anchorData.xDir
+            local yBase = (margin / scale + yOff) * anchorData.yDir
+            toast:SetPoint(anchorData.point, UIParent, anchorData.relPoint,
+                xBase, yBase)
+        end
         cumulativeHeight = cumulativeHeight + toast:GetHeight() + TOAST_SPACING
     end
 end

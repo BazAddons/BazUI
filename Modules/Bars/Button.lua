@@ -375,6 +375,11 @@ function Button:StartDrag(btn)
         handler.pickup(btn.action.data)
     end
     Button:ClearAction(btn)
+
+    -- Say where this drag began. Dropping it on the world is how a slot
+    -- gets cleared, so DropToCreate has to leave that alone rather than
+    -- answer it with a new bar. See Modules/Bars/DropToCreate.lua.
+    if addon.NoteDragFromButton then addon:NoteDragFromButton() end
 end
 
 -- Put whatever's currently on the button onto the cursor (for swaps).
@@ -558,16 +563,60 @@ local function FlyoutShapeItems(btn, data)
     }
 end
 
+-- Getting rid of the whole bar, under a rule of its own.
+--
+-- Below a divider because it is a different size of decision from
+-- everything above it: those change one slot, this takes the bar and
+-- every slot on it. Behind a confirmation for the same reason - the menu
+-- is reached by a gesture people use often, and the entry sits where a
+-- slip of the mouse could find it.
+--
+-- Offered on an empty slot as well as a filled one. A bar you want rid of
+-- is very often a bar with nothing in it, and having to fill a slot
+-- before you can delete the bar would be a silly thing to ask.
+local function DeleteBarItems(btn)
+    local barID = btn and btn.bbBarID
+    if not barID or not addon.DeleteBar then return {} end
+
+    return {
+        { divider = true },
+        {
+            label = "Delete this bar",
+            onClick = function()
+                if InCombatLockdown() then
+                    addon:Print("Bars cannot be deleted during combat.")
+                    return
+                end
+
+                if not BazUI.Confirm then
+                    addon:DeleteBar(barID)
+                    return
+                end
+                -- The question and nothing else. What deleting a bar does
+                -- is not in doubt, and a paragraph explaining it reads as
+                -- though it might be.
+                BazUI:Confirm({
+                    title       = "Are you sure you want to delete this bar?",
+                    acceptLabel = "Delete it",
+                    acceptStyle = "destructive",
+                    onAccept    = function() addon:DeleteBar(barID) end,
+                })
+            end,
+        },
+    }
+end
+
 local function GetBarSlotSection(ctx)
     if not ctx or not ctx.button then return end
     local btn = ctx.button
     local Flyout = addon.FlyoutHandler
 
-    -- An empty slot has one useful thing to offer.
+    local items = {}
+
     if not ctx.action then
-        if not Flyout then return end
-        return {
-            {
+        -- An empty slot has one useful thing to offer.
+        if Flyout then
+            items[#items + 1] = {
                 label = "Create a flyout here",
                 onClick = function()
                     if InCombatLockdown() then return end
@@ -579,25 +628,33 @@ local function GetBarSlotSection(ctx)
                     local popup = btn._bazFlyoutPopup
                     if popup then popup:Show() end
                 end,
-            },
+            }
+        end
+    else
+        if ctx.action.type == "flyout" and Flyout then
+            for _, item in ipairs(FlyoutShapeItems(btn, ctx.action.data)) do
+                items[#items + 1] = item
+            end
+            items[#items + 1] = { divider = true }
+        end
+
+        items[#items + 1] = {
+            label = "Clear button",
+            onClick = function()
+                if InCombatLockdown() then return end
+                Button:ClearAction(btn)
+            end,
         }
     end
 
-    local items = {}
-    if ctx.action.type == "flyout" and Flyout then
-        for _, item in ipairs(FlyoutShapeItems(btn, ctx.action.data)) do
-            items[#items + 1] = item
-        end
-        items[#items + 1] = { divider = true }
+    for _, item in ipairs(DeleteBarItems(btn)) do
+        items[#items + 1] = item
     end
 
-    items[#items + 1] = {
-        label = "Clear button",
-        onClick = function()
-            if InCombatLockdown() then return end
-            Button:ClearAction(btn)
-        end,
-    }
+    -- A divider with nothing above it is a line across the top of the
+    -- menu, so an empty slot on a client with no flyouts drops it.
+    if items[1] and items[1].divider then table.remove(items, 1) end
+
     return items
 end
 

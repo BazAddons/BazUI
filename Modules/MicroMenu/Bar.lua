@@ -41,6 +41,8 @@ local DEFS = {
     { key = "spells",      frame = "PlayerSpellsMicroButton", label = "Spells",         icon = "Interface\\Icons\\INV_Misc_Book_09" },
     { key = "professions", frame = "ProfessionMicroButton",   label = "Professions",    icon = "Interface\\Icons\\Trade_BlackSmithing" },
     { key = "talents",     frame = "TalentMicroButton",       label = "Talents",        icon = "Interface\\Icons\\Ability_Marksmanship" },
+    -- Forever's own, and on no other client: the legacy adventure tree.
+    { key = "legacy",      frame = "LegacyMicroButton",       label = "Legacy",         icon = "Interface\\Icons\\Achievement_Legacy_Classic_01" },
     { key = "achievements",frame = "AchievementMicroButton",  label = "Achievements",   icon = "Interface\\Icons\\Achievement_General" },
     { key = "quests",      frame = "QuestLogMicroButton",     label = "Quest Log",      icon = "Interface\\Icons\\INV_Misc_Note_01" },
     { key = "housing",     frame = "HousingMicroButton",      label = "Housing",        icon = "Interface\\Icons\\Garrison_Building_Barracks" },
@@ -153,6 +155,60 @@ local function UpdatePortrait(entry)
     end
 end
 
+-- Which buttons this client actually uses, and in what order.
+--
+-- Both clients define every button either of them has - Forever ships
+-- Mainline's micro menu code, so Achievements and the retail spellbook
+-- exist there as frames whether or not the game has any use for them.
+-- Testing whether the frame exists therefore answers "does this client
+-- have the code", not "does this client have the button", which is why a
+-- Forever bar came up wearing retail's arrangement.
+--
+-- The client already works out the real answer for itself.
+-- MicroMenuMixin:InitializeButtons asks an override - there is one per
+-- game type - for the list, drops whichever the game rules have turned
+-- off, and stamps a layoutIndex on each survivor as it adds it. So a
+-- button wearing a layoutIndex is one this client decided to show, and
+-- the number is where it goes. Asking that is better than a list of our
+-- own for the same reason it is better than a client check: Blizzard
+-- changes the set, and then ours is wrong and theirs is not.
+--
+-- The stamp survives us taking the button, because it is a field on the
+-- frame rather than something recomputed from its parent.
+local function ClientOrder(def)
+    local button = _G[def.frame]
+    return button and tonumber(button.layoutIndex) or nil
+end
+
+-- Whether the client has said anything at all yet.
+--
+-- If the micro menu has not loaded, nothing is stamped, and a bar of no
+-- buttons is a worse answer than the old one. In that case every button
+-- that exists is taken, which is what this did before.
+local function ClientHasSpoken()
+    for _, def in ipairs(DEFS) do
+        if ClientOrder(def) then return true end
+    end
+    return false
+end
+
+-- The buttons to put on the bar, in the client's own order.
+function addon:Buttons()
+    local known = ClientHasSpoken()
+    local out = {}
+    for index, def in ipairs(DEFS) do
+        local order = ClientOrder(def)
+        if order or (not known and _G[def.frame]) then
+            out[#out + 1] = { def = def, order = order or (100 + index) }
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.def.key < b.def.key
+    end)
+    return out
+end
+
 local function Adopt(def)
     local button = _G[def.frame]
     if not button or adopted[def.key] then return end
@@ -224,7 +280,8 @@ function addon:Layout()
     local prefs      = self:GetSetting("buttons") or {}
 
     local n = 0
-    for _, def in ipairs(DEFS) do
+    for _, listed in ipairs(addon:Buttons()) do
+        local def = listed.def
         local entry = adopted[def.key]
         if entry and entry.active then
             local b = entry.button
@@ -406,9 +463,15 @@ function addon:ApplySettings()
         return
     end
 
+    -- Only the buttons this client uses. One that exists but has no place
+    -- here is handed back rather than dressed up and left nowhere: a
+    -- button we never lay out is one the player cannot see and cannot
+    -- get to, which is worse than not taking it at all.
+    local wanted = {}
+    for _, listed in ipairs(self:Buttons()) do wanted[listed.def.key] = true end
     for _, def in ipairs(DEFS) do
         local entry = adopted[def.key]
-        if entry then SetActive(entry, true, size) end
+        if entry then SetActive(entry, wanted[def.key] == true, size) end
     end
     bar:Show()
     self:Layout()

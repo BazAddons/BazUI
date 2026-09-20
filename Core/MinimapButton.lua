@@ -4,24 +4,26 @@
 --
 -- One button on the minimap for the whole suite. Left-click opens the
 -- codex, right-click opens the settings, and that is the whole of it.
--- Modules still register an entry to say they want the button to exist;
--- the button wears the icon of whichever module owns the left click.
+-- Modules still register to say they want the button to exist.
+--
+-- It wears the suite's own icon rather than the icon of whichever module
+-- the left click happens to open. Borrowing that one meant the button
+-- changed its face when the click changed hands, and a book sitting in a
+-- ring of other addons' buttons says "a book" rather than "BazUI".
 ---------------------------------------------------------------------------
 
 local BUTTON_SIZE = 31
 local BUTTON_RADIUS_OFFSET = 10  -- extra pixels beyond minimap edge
 local DEFAULT_ANGLE = 225
 
--- The module the button opens, and so the module whose icon it wears.
-local PRIMARY = "Codex"
-local FALLBACK_ICON = "Interface\\Icons\\INV_Gizmo_GoblingTonkController"
+-- The suite's face on the minimap. A remote control, which is what the
+-- button is: one press and something else opens.
+local BUTTON_ICON = "Interface\\Icons\\INV_Gizmo_GoblingTonkController"
 
-local minimapEntries = {} -- { addonName = { label, icon, onClick } }
 local button = nil
 
 local function ButtonIcon()
-    local primary = minimapEntries[PRIMARY]
-    return (primary and primary.icon) or FALLBACK_ICON
+    return BUTTON_ICON
 end
 
 ---------------------------------------------------------------------------
@@ -156,14 +158,13 @@ end
 -- Public API
 ---------------------------------------------------------------------------
 
-function BazUI:RegisterMinimapEntry(addonName, minimapConfig)
-    minimapEntries[addonName] = minimapConfig
-
-    -- The button wears the icon of whatever it opens, so a module that
-    -- registers after the button exists still lands on the art.
-    if button and button.icon then button.icon:SetTexture(ButtonIcon()) end
-
-    -- Create button on first registration, defer to PLAYER_LOGIN
+-- A module says it wants the minimap button to exist. Nothing about the
+-- module is kept: the icon is the suite's and both clicks are fixed, so
+-- the only thing being asked for is the button itself. It still has to
+-- be asked for, so that a build with every module switched off has no
+-- button rather than one that opens nothing.
+function BazUI:RegisterMinimapEntry()
+    -- Created on the first ask, deferred to PLAYER_LOGIN.
     if not button then
         BazUI:QueueForLogin(function()
             CreateButton()

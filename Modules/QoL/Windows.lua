@@ -38,6 +38,16 @@ local WINDOWS = {
     -- client actually has wins - see Resolve below.
     { key = "dragQuestLog",   label = "Quest log",     frame = { "QuestMapFrame", "QuestLogFrame" } },
     { key = "dragSocial",     label = "Social",        frame = "FriendsFrame"      },
+    -- Talking to somebody. Two frames rather than one entry with two
+    -- names: those alternatives are for the same window under different
+    -- names on different clients, and these are two windows that both
+    -- exist. A quest offer and a list of what an NPC can talk about are
+    -- not the same panel, and somebody who wants one moved may well not
+    -- want the other.
+    { key = "dragQuest",      label = "Quest dialogue", frame = "QuestFrame",
+      desc = "The window an NPC offers and hands in quests through." },
+    { key = "dragGossip",     label = "NPC chat",       frame = "GossipFrame",
+      desc = "The list of what an NPC has to say, and what else they can do for you." },
     { key = "dragMap",        label = "World map",     frame = "WorldMapFrame",
       windowed = true,
       desc = "Drag the map where you want it. Only while it is windowed - full screen has nowhere to be dragged to." },

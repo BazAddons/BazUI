@@ -15,11 +15,12 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     profiles      = true,
     defaults = {
         -- Layout
-        cols          = 12,    -- columns wide; 4..20 via the slider - 12 fits a typical bag in 2-3 rows
+        cols          = 12,    -- the narrowest the panel goes; it widens on its own when content
+                                -- would otherwise run past maxRows. 4..20 via the slider.
         hideEmpty     = true,  -- skip empty slots by default - most first-time users prefer the compact view
-        maxRows       = 15,    -- soft cap on the panel's content area in rows of slots; content past
-                                -- this scrolls. Set to ~30 to effectively disable the cap and let
-                                -- the panel grow with content.
+        maxRows       = 15,    -- how tall the content may get before the panel takes another column
+                                -- instead. Bags do not scroll; a higher number means a taller,
+                                -- narrower bag and a lower one means a shorter, wider bag.
         -- Which qualities get a coloured edge on their slot. Classic
         -- colours nothing on its own, so this is entirely ours.
         rarityRims    = "uncommon",
@@ -36,6 +37,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
         -- The coin button at a merchant.
         sellJunkButton = true,
+        markCheapestJunk = true,  -- ring the cheapest grey stack once the bags are full
 
         showItemLevel = false,
         showBindType  = false,
@@ -178,11 +180,38 @@ function addon.GetKeyringBagID()
     return nil
 end
 
+-- The reagent bag, when one is actually carried.
+--
+-- NUM_REAGENTBAG_SLOTS says the client has the feature, not that this
+-- character has the bag - it is 1 on an empty slot just as it is on a
+-- full one. Asked the same way the keyring is: a bag with no slots is a
+-- bag that is not there.
 function addon.GetReagentBagID()
-    if (NUM_REAGENTBAG_SLOTS or 0) > 0 then
-        return Enum.BagIndex.ReagentBag
+    local id = Enum.BagIndex and Enum.BagIndex.ReagentBag
+    if id and (C_Container.GetContainerNumSlots(id) or 0) > 0 then
+        return id
     end
     return nil
+end
+
+-- Bags that will take anything, which is not all of them.
+--
+-- A reagent bag holds reagents and a keyring holds keys. Their slots are
+-- real slots and they belong on screen, but they are no use to the
+-- question "can I pick this up", so anything answering that has to ask
+-- for these rather than for every bag.
+function addon.IsRestrictedBag(bagID)
+    if bagID == nil then return false end
+    return bagID == addon.GetReagentBagID()
+        or bagID == addon.GetKeyringBagID()
+end
+
+function addon.GetGeneralBagIDs()
+    local ids = {}
+    for _, id in ipairs(addon.GetAllBagIDs()) do
+        if not addon.IsRestrictedBag(id) then ids[#ids + 1] = id end
+    end
+    return ids
 end
 
 -- Every bag the panel shows, in display order.
@@ -293,12 +322,17 @@ local function GetSettingsPage()
             layoutHeader = { order = 10, type = "header", name = "Layout" },
             cols = {
                 order = 11, type = "range", name = "Columns",
+                desc = "The narrowest the bag goes. It takes more columns on its own "
+                    .. "when the contents would otherwise run past the row limit below.",
                 min = 4, max = 20, step = 1,
                 get = function() return addon:GetSetting("cols") or 8 end,
                 set = function(_, val) addon:SetSetting("cols", val); Refresh() end,
             },
             maxRows = {
-                order = 12, type = "range", name = "Rows before scrolling",
+                order = 12, type = "range", name = "Rows before widening",
+                desc = "How tall the bag may get before it takes another column instead. "
+                    .. "Bags never scroll: a higher number gives a taller, narrower bag "
+                    .. "and a lower one gives a shorter, wider bag.",
                 min = 3, max = 30, step = 1,
                 get = function() return addon:GetSetting("maxRows") or 15 end,
                 set = function(_, val) addon:SetSetting("maxRows", val); Refresh() end,
@@ -386,6 +420,16 @@ local function GetSettingsPage()
                 desc = "A coin button on the title bar while a merchant is open, which sells every grey that has a price. It is only there when there is something to sell.",
                 get = function() return addon:GetSetting("sellJunkButton") ~= false end,
                 set = function(_, val) addon:SetSetting("sellJunkButton", val and true or false); Refresh() end,
+            },
+
+            markCheapestJunk = {
+                order = 23.52, type = "toggle", name = "Mark what to drop first",
+                desc = "When your bags are full, ring the grey stack worth the least "
+                    .. "of anything you are carrying, so there is no hunting for "
+                    .. "something to make room with. Nothing with no sale value is "
+                    .. "ever picked - that is usually the one thing you must keep.",
+                get = function() return addon:GetSetting("markCheapestJunk") ~= false end,
+                set = function(_, val) addon:SetSetting("markCheapestJunk", val and true or false); Refresh() end,
             },
 
             titleCount = {

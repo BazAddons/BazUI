@@ -276,12 +276,16 @@ function Bag:DumpRims()
     if shown == 0 then print("  no slot has a rim texture at all") end
 end
 
-local function ApplyRim(btn, quality)
+-- `override` is a colour that wins over the quality rim, for the one
+-- slot the panel wants to point at. Only ever one at a time, so there is
+-- no chance of it reading as a second quality scheme.
+local function ApplyRim(btn, quality, override)
     local floor = RIM_FLOOR[addon:GetSetting("rarityRims") or "uncommon"]
     local r, g, b = nil, nil, nil
     if floor and quality and quality >= floor then
         r, g, b = QualityColor(quality)
     end
+    if override then r, g, b = override[1], override[2], override[3] end
 
     if not r then
         if btn._bazRim then btn._bazRim:Hide() end
@@ -404,6 +408,74 @@ local function ApplyBackdrop(btn, occupied)
     art:Show()
 end
 
+---------------------------------------------------------------------------
+-- What a right click means
+--
+-- Away from a vendor it means "use this", and the secure environment does
+-- it: the button carries type2 = "item", and the game uses what is in the
+-- slot. That is the only way a click from an addon's button can use an
+-- item at all, so it has to stay.
+--
+-- At a vendor the same click means "sell this", and the two are not the
+-- same verb. Handed to the secure handler, a sword is equipped instead of
+-- sold - which is what it was told to do, and the wrong thing entirely.
+--
+-- The secure environment has no notion of "sell", so the action comes off
+-- the button while a merchant is open and the sale is made in the click
+-- handler instead, by the same call the sell-junk button makes. It is not
+-- a protected call; what is protected is *using* an item, which is why
+-- that half has to stay secure and this half does not.
+--
+-- Safe to swap because a merchant cannot open in combat, which is the
+-- only time an attribute cannot be set. The regen guard is there for the
+-- odd case of a fight starting with the window still up.
+---------------------------------------------------------------------------
+
+local function AtVendor()
+    return (MerchantFrame and MerchantFrame:IsShown()) and true or false
+end
+
+local function SlotUseAction()
+    return AtVendor() and nil or "item"
+end
+
+-- Whether a spell is waiting to be pointed at something.
+local function Targeting()
+    return (SpellIsTargeting and SpellIsTargeting()) and true or false
+end
+
+-- What a left click means, which is usually nothing of ours.
+--
+-- Picking a stack up is the ordinary answer and the click handler does
+-- that. The exception is a spell waiting for a target - casting
+-- Comprehend Scroll and then clicking the scroll. Applying a spell to a
+-- bag slot goes through a protected call, and it is refused down an
+-- addon's code path however politely we ask: the game's own bag manages
+-- it because the click arrives in their code, not ours.
+--
+-- A macro is the way through. The secure environment runs it, "/use bag
+-- slot" reaches the same protected call from Blizzard's side, and the
+-- pending spell lands on the item. Only while one is pending, because
+-- the same macro on an ordinary click would use the item when the player
+-- meant to pick it up.
+local function SlotClickAction(bagID, slotID)
+    if not Targeting() then return nil, nil end
+    return "macro", "/use " .. bagID .. " " .. slotID
+end
+
+local function ApplySlotActions()
+    if InCombatLockdown() then return end
+    local action = SlotUseAction()
+    for bagID, slots in pairs(slotButtons) do
+        for slotID, btn in pairs(slots) do
+            btn:SetAttribute("type2", action)
+            local clickType, macro = SlotClickAction(bagID, slotID)
+            btn:SetAttribute("type1", clickType)
+            btn:SetAttribute("macrotext1", macro)
+        end
+    end
+end
+
 local function GetOrCreateSlotButton(bagID, slotID)
     slotButtons[bagID] = slotButtons[bagID] or {}
     if slotButtons[bagID][slotID] then return slotButtons[bagID][slotID] end
@@ -432,7 +504,10 @@ local function GetOrCreateSlotButton(bagID, slotID)
     -- slot does - picking up, dropping, linking, splitting - is
     -- unprotected and stays with Blizzard's handler, called from PreClick
     -- below because inheriting the secure template replaced it.
-    btn:SetAttribute("type2", "item")
+    btn:SetAttribute("type2", SlotUseAction())
+    local clickType, macro = SlotClickAction(bagID, slotID)
+    btn:SetAttribute("type1", clickType)
+    btn:SetAttribute("macrotext1", macro)
     btn:SetAttribute("item", bagID .. " " .. slotID)
     btn:RegisterForClicks("AnyUp")
 
@@ -458,10 +533,25 @@ local function GetOrCreateSlotButton(bagID, slotID)
         end
 
         -- What the slot template's own OnClick used to do, for the
-        -- clicks the secure handler is not answering. A plain right
-        -- click is the one it does answer, and doing it here as well
-        -- would be asking twice for the same thing - once refused.
-        if mouseBtn == "RightButton" and not IsModifiedClick() then return end
+        -- clicks the secure handler is not answering.
+        --
+        -- A plain right click is normally its business, and doing it here
+        -- as well would be asking twice for the same thing - once
+        -- refused. At a vendor it is not its business: the action has
+        -- been taken off the button, and the sale is made here.
+        if mouseBtn == "RightButton" and not IsModifiedClick() then
+            if AtVendor() and C_Container and C_Container.UseContainerItem then
+                C_Container.UseContainerItem(bagID, slotID)
+            end
+            return
+        end
+
+        -- A spell waiting for a target is the secure environment's to
+        -- answer, by the macro on the button. Blizzard's handler would
+        -- reach for the protected call from our code and be refused,
+        -- which is where "BazUI tried to call UseContainerItem" came
+        -- from - the click still worked in their bag and threw here.
+        if Targeting() then return end
 
         if IsModifiedClick() then
             if _G.ContainerFrameItemButton_OnModifiedClick then
@@ -483,8 +573,63 @@ local function GetOrCreateSlotButton(bagID, slotID)
         end
     end)
 
+    -- Why this one is ringed, when it is. The slot template has already
+    -- put the item's own tooltip up by the time this runs, so this adds a
+    -- line to it rather than replacing it. Asked of Bag rather than read
+    -- from a local, because the answer is worked out further down the
+    -- file than this closure is written.
+    btn:HookScript("OnEnter", function(self)
+        local cheapBag, cheapSlot, worth = Bag:CheapestJunk()
+        if not (cheapBag == bagID and cheapSlot == slotID) then return end
+        if not (GameTooltip and GameTooltip:IsShown()) then return end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Least worth keeping", 1, 0.82, 0)
+        if worth then
+            GameTooltip:AddLine("Your bags are full, and this stack is worth the"
+                .. " least of anything in them: " .. BazUI:FormatMoney(worth),
+                0.8, 0.8, 0.8, true)
+        end
+        GameTooltip:Show()
+    end)
+
     slotButtons[bagID][slotID] = btn
     return btn
+end
+
+---------------------------------------------------------------------------
+-- Having the slots ready before the fight
+--
+-- A slot button is a secure frame, because clicking one has to be able to
+-- use what is in it, and the game will not let an addon create a secure
+-- frame in combat. Built on demand, as they were, that meant a bag first
+-- opened during a fight had no buttons to open with - and nothing put
+-- them there until the fight ended.
+--
+-- So they are made ahead of time, while there is no fight on: at login,
+-- whenever the bags change, and again on the way out of combat for
+-- anything that turned up meanwhile. Making one is cheap and making them
+-- twice is free, since the maker hands back the one it already made.
+--
+-- This does not make the panel rearrange itself in combat - moving a
+-- secure frame is refused just as firmly as making one, so a bag that
+-- needs to reflow waits. What it does mean is that the bag you open
+-- mid-fight is the bag you left, and every slot in it works.
+---------------------------------------------------------------------------
+
+local BuildFrame
+
+local function PrimeSlots()
+    if InCombatLockdown() then return end
+    -- The buttons hang off the panel's scroll child, so the panel has to
+    -- exist first. Building it does not show it.
+    BuildFrame()
+
+    for _, bagID in ipairs(addon.GetAllBagIDs()) do
+        local n = C_Container.GetContainerNumSlots(bagID) or 0
+        for slotID = 1, n do
+            GetOrCreateSlotButton(bagID, slotID)
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -640,6 +785,28 @@ local function EnsureMark(btn, key, point, x, y, font)
     return fs
 end
 
+-- Whether this is a piece of gear.
+--
+-- Asked of the client rather than worked out from the slot name. The test
+-- used to be "the slot is not the empty string", which reads as though
+-- anything not equippable has no slot - and this client says
+-- INVTYPE_NON_EQUIP_IGNORE instead, so every potion, scroll and stack of
+-- thread passed it and wore an item level.
+--
+-- Bags are equippable and are still not gear: an item level on a
+-- container tells you nothing, and the number you want from a bag is how
+-- many slots it has.
+local function Equippable(link, equipLoc)
+    if equipLoc == "INVTYPE_BAG" then return false end
+    if C_Item and C_Item.IsEquippableItem then
+        return C_Item.IsEquippableItem(link) and true or false
+    end
+    -- Older clients, where the slot really is empty for everything else.
+    return equipLoc ~= nil and equipLoc ~= ""
+        and equipLoc ~= "INVTYPE_NON_EQUIP"
+        and equipLoc ~= "INVTYPE_NON_EQUIP_IGNORE"
+end
+
 local function ApplyMarks(btn, link)
     local wantLevel = addon:GetSetting("showItemLevel")
     local wantBind  = addon:GetSetting("showBindType")
@@ -653,8 +820,7 @@ local function ApplyMarks(btn, link)
 
     -- Only gear carries a meaningful item level; a stack of cloth has one
     -- and it means nothing.
-    local equippable = equipLoc and equipLoc ~= "" and equipLoc ~= "INVTYPE_BAG"
-    if wantLevel and ilvl and equippable then
+    if wantLevel and ilvl and Equippable(link, equipLoc) then
         local fs = EnsureMark(btn, "_bazIlvl", "TOPLEFT", 2, -2, "NumberFontNormalSmall")
         fs:SetText(tostring(ilvl))
         fs:SetTextColor(unpack(BazUI.Skin.Theme.colors.textSoft))
@@ -682,11 +848,18 @@ local NEW_ITEM_FALLBACK_ATLAS = "bags-glow-white"
 -- "Bags  22/80" - free over total. The number people open the bag to
 -- find out, in the one place that is always visible whatever is
 -- collapsed or scrolled past.
+--
+-- Over the bags that will take anything, which is not all of them. A
+-- reagent bag's slots and a keyring's are real slots, but neither will
+-- hold the thing you are about to loot - counting them made the bag
+-- report room it did not have, and you found that out by failing to pick
+-- something up. The restricted bags are still drawn and still have their
+-- own headings; they are simply not part of this answer.
 ---------------------------------------------------------------------------
 
 local function SlotCounts()
     local free, total = 0, 0
-    for _, bagID in ipairs(addon.GetAllBagIDs()) do
+    for _, bagID in ipairs(addon.GetGeneralBagIDs()) do
         local n = C_Container.GetContainerNumSlots(bagID) or 0
         total = total + n
         for slotID = 1, n do
@@ -738,6 +911,83 @@ local function JunkValue()
         end
     end
     return count, value
+end
+
+---------------------------------------------------------------------------
+-- What to throw away first
+--
+-- Full bags and something on the ground you want. The question is never
+-- "what is junk" - the Junk category already answers that - it is "which
+-- single thing costs me least to lose", and that is not the cheapest
+-- item, it is the cheapest *stack*: deleting one slot frees one slot
+-- whether it held one grey or twenty, so what matters is the whole pile's
+-- worth.
+--
+-- Poor quality with a price, by the same rule the sell button uses:
+-- quality alone, nothing reading which category a thing was filed under,
+-- so renaming Junk or pinning a grey elsewhere changes nothing here. An
+-- item with no value at all is skipped - a quest leftover cannot be sold
+-- and is usually the one thing you must not delete.
+--
+-- Only offered when the bags are actually full. A hint you cannot act on
+-- is noise, and there is nothing to decide while there is still room.
+---------------------------------------------------------------------------
+
+-- The mark itself: a cross over the whole slot rather than a badge in a
+-- corner.
+--
+-- It started as a fourteen-pixel glyph tucked by the stack count and was
+-- missed twice by the person who asked for it, which is the only test
+-- that matters. One slot in forty-four is a needle; a corner mark makes
+-- you find the needle before it can tell you anything. Across the icon
+-- there is nothing to find.
+--
+-- Drawn over the icon but under the counts, and at two thirds alpha, so
+-- what is being crossed out is still recognisable - the point is to say
+-- "this one", not to hide which one.
+local TOSS_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+
+local function EnsureTossMark(btn)
+    if btn._bazTossMark then return btn._bazTossMark end
+    local mark = btn:CreateTexture(nil, "OVERLAY", nil, 1)
+    mark:SetPoint("TOPLEFT", btn, "TOPLEFT", 1, -1)
+    mark:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -1, 1)
+    mark:SetTexture(TOSS_TEXTURE)
+    mark:SetAlpha(0.65)
+    btn._bazTossMark = mark
+    return mark
+end
+
+local cheapestBag, cheapestSlot, cheapestWorth, cheapestName
+
+local function FindCheapestJunk(freeSlots)
+    cheapestBag, cheapestSlot, cheapestWorth, cheapestName = nil, nil, nil, nil
+    if (freeSlots or 0) > 0 then return end
+    if addon:GetSetting("markCheapestJunk") == false then return end
+
+    for _, bagID in ipairs(addon.GetGeneralBagIDs()) do
+        for slotID = 1, (C_Container.GetContainerNumSlots(bagID) or 0) do
+            local info = C_Container.GetContainerItemInfo(bagID, slotID)
+            if info and info.quality == 0 and not info.hasNoValue then
+                local itemName, _, _, _, _, _, _, _, _, _, price =
+                    C_Item.GetItemInfo(info.hyperlink or 0)
+                if price and price > 0 then
+                    local worth = price * (info.stackCount or 1)
+                    -- Ties go to the first one found, which keeps the
+                    -- mark still between refreshes instead of hopping
+                    -- between two identical stacks.
+                    if not cheapestWorth or worth < cheapestWorth then
+                        cheapestBag, cheapestSlot = bagID, slotID
+                        cheapestWorth, cheapestName = worth, itemName
+                    end
+                end
+            end
+        end
+    end
+end
+
+function Bag:CheapestJunk()
+    return cheapestBag, cheapestSlot, cheapestWorth, cheapestName
 end
 
 local function SellJunk()
@@ -843,7 +1093,19 @@ local function UpdateSlot(btn, bagID, slotID)
     if btn.BattlepayItemTexture then btn.BattlepayItemTexture:Hide() end
     if btn.UpgradeIcon then btn.UpgradeIcon:Hide() end
 
-    ApplyRim(btn, texture and quality or nil)
+    -- The one slot worth losing, when there is nothing left to lose.
+    -- A rim rather than a badge in the corner: the corners are spoken
+    -- for, and there is only ever one of these, so it reads as "this
+    -- one" rather than as another scheme to learn.
+    local isCheapest = texture and cheapestBag == bagID and cheapestSlot == slotID
+    if isCheapest then
+        EnsureTossMark(btn):Show()
+    elseif btn._bazTossMark then
+        btn._bazTossMark:Hide()
+    end
+
+    ApplyRim(btn, texture and quality or nil,
+        isCheapest and BazUI.Skin.Theme.colors.caution or nil)
     ApplyBackdrop(btn, texture and true or false)
     ApplyMarks(btn, texture and link or nil)
 
@@ -944,7 +1206,7 @@ addon.Bag.UpdateSlot            = UpdateSlot
 -- Top-level panel
 ---------------------------------------------------------------------------
 
-local function BuildFrame()
+function BuildFrame()
     if frame then return frame end
 
     local panelW = PanelWidthFor(GetCols())
@@ -1462,6 +1724,11 @@ end)
 -- growing or a potion being drunk actually needs. The real layout waits
 -- for the fight to end.
 function Bag:RefreshContents()
+    -- Worked out once, before the slots are redrawn, because it is a
+    -- question about the whole bag and asking it per slot would walk
+    -- every bag once per slot.
+    FindCheapestJunk((SlotCounts()))
+
     for bagID, slots in pairs(slotButtons) do
         for slotID, btn in pairs(slots) do
             if btn:IsShown() then UpdateSlot(btn, bagID, slotID) end
@@ -1476,10 +1743,18 @@ end
 function Bag:Refresh()
     if not frame then return end
 
+    -- Before anything is drawn: which slot, if any, is the one to throw
+    -- away first. Every slot's redraw below asks whether it is that one.
+    FindCheapestJunk((SlotCounts()))
+
     -- Slot buttons are protected, so a fight is no time to be moving
-    -- them. Leaving combat is one of the events that asks for a refresh,
-    -- so the layout happens then; until it does, what a slot shows is
-    -- still kept current.
+    -- them. What each slot shows is still kept current - an item used or
+    -- looted updates in place - and the buttons themselves are already
+    -- there, made ahead of time by PrimeSlots. What waits for the end of
+    -- the fight is the arrangement: a category that has grown, a column
+    -- the panel wants to add, an empty slot that has just been filled and
+    -- would have to appear. Leaving combat asks for a refresh, so that is
+    -- when it settles.
     if InCombatLockdown() then
         self:RefreshContents()
         return
@@ -1506,10 +1781,10 @@ function Bag:Refresh()
     local cols       = GetCols()
     local hideEmpty  = HideEmpty()
 
-    -- Resize the panel width to match the column count. The search bar
-    -- + sort button + money frame are anchored relative to the panel
-    -- edges so they reflow automatically.
-    frame:SetWidth(PanelWidthFor(cols))
+    -- The panel's width follows the column count, and the column count is
+    -- not settled until the content has been fitted - see below. The
+    -- search bar, sort button and money frame anchor to the panel's
+    -- edges, so they reflow when it is set.
 
     -- Apply the bg-opacity setting. frame.Bg is the stock
     -- FlatPanelBackgroundTemplate (a translucent dark overlay).
@@ -1542,172 +1817,219 @@ function Bag:Refresh()
         frame.scrollChild:SetWidth(frame.scrollFrame:GetWidth() or 1)
     end
 
-    -- Content y-cursor starts at 0 (top of scrollChild) instead of
-    -- -TOP_PAD relative to frame - the chrome lives outside the
-    -- scroll area now.
-    local y = 0
+    -- Laying the content out, for a given width and with or without the
+    -- expensive half.
+    --
+    -- One function because it is now run more than once. The panel has to
+    -- know how tall its content comes out before it can choose how wide
+    -- to be, and the only honest way to ask is to lay it out and look:
+    -- the height depends on how many categories the bag splits into and
+    -- where each grid wraps, not on a slot count that could be worked out
+    -- in advance. A second, simpler estimate would be two answers to one
+    -- question, and they would drift.
+    local function LayoutContent(useCols, updateSlot)
+        -- The y-cursor starts at 0, the top of scrollChild, rather than
+        -- at -TOP_PAD: the chrome lives outside the scroll area.
+        local y = 0
 
-    -- Dispatch to the appropriate layout. Bag mode renders the static
-    -- bag/reagent sections inline (kept here because it's the simple
-    -- common case). Category mode hands off to the Layouts module.
-    local mode = addon:GetSetting("bagMode") or "bags"
+        -- Dispatch to the appropriate layout. Bag mode renders the static
+        -- bag/reagent sections inline (kept here because it's the simple
+        -- common case). Category mode hands off to the Layouts module.
+        local mode = addon:GetSetting("bagMode") or "bags"
 
-    if mode == "categories" and addon.Layouts and addon.Layouts.Render then
-        -- Hide bag-mode sections when category mode is active so a
-        -- pooled section frame from a previous render doesn't peek
-        -- through the category layout.
-        for _, section in pairs(sections) do
-            section.header:Hide()
-            section.body:Hide()
-        end
-
-        y = addon.Layouts.Render({
-            -- Layouts anchor relative to scrollChild now so the bag
-            -- content scrolls cleanly when content > maxHeight.
-            frame                 = frame.scrollChild or frame,
-            cols                  = cols,
-            SLOT_SIZE             = SLOT_SIZE,
-            SLOT_SPACING_X        = SLOT_SPACING_X,
-            SLOT_SPACING_Y        = SLOT_SPACING_Y,
-            SIDE_PAD              = 0,   -- scrollChild already has the side pad applied
-            TOP_PAD               = 0,   -- scrollChild already starts below the chrome
-            IsCollapsed           = IsCollapsed,
-            SetCollapsed          = SetCollapsed,
-            GetOrCreateSlotButton = GetOrCreateSlotButton,
-            UpdateSlot            = UpdateSlot,
-            Refresh               = function() Bag:Refresh() end,
-        })
-    elseif addon:GetSetting("perBagSections")
-           and addon.Layouts and addon.Layouts.RenderPerBag then
-        -- Bags mode + Separate Each Bag - render one thin-divider
-        -- section per equipped bag, sharing the divider chrome with
-        -- Categories mode.
-        for _, section in pairs(sections) do
-            section.header:Hide()
-            section.body:Hide()
-        end
-
-        y = addon.Layouts.RenderPerBag({
-            frame                 = frame.scrollChild or frame,
-            cols                  = cols,
-            SLOT_SIZE             = SLOT_SIZE,
-            SLOT_SPACING_X        = SLOT_SPACING_X,
-            SLOT_SPACING_Y        = SLOT_SPACING_Y,
-            SIDE_PAD              = 0,
-            TOP_PAD               = 0,
-            IsCollapsed           = IsCollapsed,
-            SetCollapsed          = SetCollapsed,
-            GetOrCreateSlotButton = GetOrCreateSlotButton,
-            UpdateSlot            = UpdateSlot,
-            Refresh               = function() Bag:Refresh() end,
-            hideEmpty             = hideEmpty,
-        })
-    else
-        -- Bag mode (the default). Clear any category chrome left over
-        -- from a Flow / Hybrid render before drawing the bag sections.
-        if addon.Layouts and addon.Layouts.HideAll then
-            addon.Layouts.HideAll()
-        end
-        -- One section per bag type with the existing collapse / count chrome.
-        -- Sections not in this refresh's defs (a keyring that vanished)
-        -- get hidden first.
-        local anchor = frame.scrollChild or frame
-        local defs = GetSectionDefs()
-        local live = {}
-        for _, def in ipairs(defs) do live[def.key] = true end
-        for key, section in pairs(sections) do
-            if not live[key] then
+        if mode == "categories" and addon.Layouts and addon.Layouts.Render then
+            -- Hide bag-mode sections when category mode is active so a
+            -- pooled section frame from a previous render doesn't peek
+            -- through the category layout.
+            for _, section in pairs(sections) do
                 section.header:Hide()
                 section.body:Hide()
             end
-        end
-        for _, def in ipairs(defs) do
-            local section = GetOrCreateSection(def)
-            local collapsed = IsCollapsed(def.key)
 
-            -- Header
-            section.header:ClearAllPoints()
-            section.header:SetPoint("TOPLEFT",  anchor, "TOPLEFT",  0, y)
-            section.header:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, y)
-            section.toggle:SetTexture(collapsed
-                and "Interface\\Buttons\\UI-PlusButton-Up"
-                or  "Interface\\Buttons\\UI-MinusButton-Up")
-            section.title:SetText(def.title)
-            section.header:Show()
-            y = y - SECTION_HEADER_H - 2
+            y = addon.Layouts.Render({
+                -- Layouts anchor relative to scrollChild now so the bag
+                -- content scrolls cleanly when content > maxHeight.
+                frame                 = frame.scrollChild or frame,
+                cols                  = useCols,
+                SLOT_SIZE             = SLOT_SIZE,
+                SLOT_SPACING_X        = SLOT_SPACING_X,
+                SLOT_SPACING_Y        = SLOT_SPACING_Y,
+                SIDE_PAD              = 0,   -- scrollChild already has the side pad applied
+                TOP_PAD               = 0,   -- scrollChild already starts below the chrome
+                IsCollapsed           = IsCollapsed,
+                SetCollapsed          = SetCollapsed,
+                GetOrCreateSlotButton = GetOrCreateSlotButton,
+                UpdateSlot            = updateSlot,
+                Refresh               = function() Bag:Refresh() end,
+            })
+        elseif addon:GetSetting("perBagSections")
+               and addon.Layouts and addon.Layouts.RenderPerBag then
+            -- Bags mode + Separate Each Bag - render one thin-divider
+            -- section per equipped bag, sharing the divider chrome with
+            -- Categories mode.
+            for _, section in pairs(sections) do
+                section.header:Hide()
+                section.body:Hide()
+            end
 
-            -- Collect (bag, slot) pairs. When Hide Empty is on, skip slots
-            -- that don't currently hold an item.
-            local pairs_list = {}
-            for _, bagID in ipairs(def.bagIDs) do
-                local n = C_Container.GetContainerNumSlots(bagID) or 0
-                for slotID = 1, n do
-                    if hideEmpty then
-                        local info = C_Container.GetContainerItemInfo(bagID, slotID)
-                        if info and info.iconFileID then
+            y = addon.Layouts.RenderPerBag({
+                frame                 = frame.scrollChild or frame,
+                cols                  = useCols,
+                SLOT_SIZE             = SLOT_SIZE,
+                SLOT_SPACING_X        = SLOT_SPACING_X,
+                SLOT_SPACING_Y        = SLOT_SPACING_Y,
+                SIDE_PAD              = 0,
+                TOP_PAD               = 0,
+                IsCollapsed           = IsCollapsed,
+                SetCollapsed          = SetCollapsed,
+                GetOrCreateSlotButton = GetOrCreateSlotButton,
+                UpdateSlot            = updateSlot,
+                Refresh               = function() Bag:Refresh() end,
+                hideEmpty             = hideEmpty,
+            })
+        else
+            -- Bag mode (the default). Clear any category chrome left over
+            -- from a Flow / Hybrid render before drawing the bag sections.
+            if addon.Layouts and addon.Layouts.HideAll then
+                addon.Layouts.HideAll()
+            end
+            -- One section per bag type with the existing collapse / count chrome.
+            -- Sections not in this refresh's defs (a keyring that vanished)
+            -- get hidden first.
+            local anchor = frame.scrollChild or frame
+            local defs = GetSectionDefs()
+            local live = {}
+            for _, def in ipairs(defs) do live[def.key] = true end
+            for key, section in pairs(sections) do
+                if not live[key] then
+                    section.header:Hide()
+                    section.body:Hide()
+                end
+            end
+            for _, def in ipairs(defs) do
+                local section = GetOrCreateSection(def)
+                local collapsed = IsCollapsed(def.key)
+
+                -- Header
+                section.header:ClearAllPoints()
+                section.header:SetPoint("TOPLEFT",  anchor, "TOPLEFT",  0, y)
+                section.header:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, y)
+                section.toggle:SetTexture(collapsed
+                    and "Interface\\Buttons\\UI-PlusButton-Up"
+                    or  "Interface\\Buttons\\UI-MinusButton-Up")
+                section.title:SetText(def.title)
+                section.header:Show()
+                y = y - SECTION_HEADER_H - 2
+
+                -- Collect (bag, slot) pairs. When Hide Empty is on, skip slots
+                -- that don't currently hold an item.
+                local pairs_list = {}
+                for _, bagID in ipairs(def.bagIDs) do
+                    local n = C_Container.GetContainerNumSlots(bagID) or 0
+                    for slotID = 1, n do
+                        if hideEmpty then
+                            local info = C_Container.GetContainerItemInfo(bagID, slotID)
+                            if info and info.iconFileID then
+                                pairs_list[#pairs_list + 1] = { bagID = bagID, slotID = slotID }
+                            end
+                        else
                             pairs_list[#pairs_list + 1] = { bagID = bagID, slotID = slotID }
                         end
-                    else
-                        pairs_list[#pairs_list + 1] = { bagID = bagID, slotID = slotID }
                     end
                 end
-            end
 
-            -- Section count e.g. "3 / 24"
-            local total, free = 0, 0
-            for _, bagID in ipairs(def.bagIDs) do
-                free  = free  + (C_Container.GetContainerNumFreeSlots(bagID) or 0)
-                total = total + (C_Container.GetContainerNumSlots(bagID) or 0)
-            end
-            section.count:SetText(string.format("|cff999999%d / %d|r", total - free, total))
+                -- Section count e.g. "3 / 24"
+                local total, free = 0, 0
+                for _, bagID in ipairs(def.bagIDs) do
+                    free  = free  + (C_Container.GetContainerNumFreeSlots(bagID) or 0)
+                    total = total + (C_Container.GetContainerNumSlots(bagID) or 0)
+                end
+                section.count:SetText(string.format("|cff999999%d / %d|r", total - free, total))
 
-            -- Body layout
-            local rows  = math.ceil(#pairs_list / cols)
-            local bodyH = rows * SLOT_SIZE + math.max(0, rows - 1) * SLOT_SPACING_Y
-            if collapsed then bodyH = 0 end
+                -- Body layout
+                local rows  = math.ceil(#pairs_list / useCols)
+                local bodyH = rows * SLOT_SIZE + math.max(0, rows - 1) * SLOT_SPACING_Y
+                if collapsed then bodyH = 0 end
 
-            section.body:ClearAllPoints()
-            section.body:SetPoint("TOPLEFT",  anchor, "TOPLEFT",  0, y)
-            section.body:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, y)
-            section.body:SetHeight(math.max(bodyH, 0.001))
-            section.body:Show()
+                section.body:ClearAllPoints()
+                section.body:SetPoint("TOPLEFT",  anchor, "TOPLEFT",  0, y)
+                section.body:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, y)
+                section.body:SetHeight(math.max(bodyH, 0.001))
+                section.body:Show()
 
-            if not collapsed then
-                for i, p in ipairs(pairs_list) do
-                    local btn = GetOrCreateSlotButton(p.bagID, p.slotID)
-                    local col = (i - 1) % cols
-                    local row = math.floor((i - 1) / cols)
+                if not collapsed then
+                    for i, p in ipairs(pairs_list) do
+                        local btn = GetOrCreateSlotButton(p.bagID, p.slotID)
+                        local col = (i - 1) % useCols
+                        local row = math.floor((i - 1) / useCols)
 
-                    if btn then
-                    btn:ClearAllPoints()
-                    btn:SetPoint("TOPLEFT", section.body, "TOPLEFT",
-                        col * (SLOT_SIZE + SLOT_SPACING_X),
-                        -row * (SLOT_SIZE + SLOT_SPACING_Y))
-                    btn:Show()
-                    UpdateSlot(btn, p.bagID, p.slotID)
+                        if btn then
+                        btn:ClearAllPoints()
+                        btn:SetPoint("TOPLEFT", section.body, "TOPLEFT",
+                            col * (SLOT_SIZE + SLOT_SPACING_X),
+                            -row * (SLOT_SIZE + SLOT_SPACING_Y))
+                        btn:Show()
+                        updateSlot(btn, p.bagID, p.slotID)
+                        end
                     end
                 end
-            end
 
-            if not collapsed then
-                y = y - bodyH - 8
-            else
-                y = y - 4
+                if not collapsed then
+                    y = y - bodyH - 8
+                else
+                    y = y - 4
+                end
             end
         end
+
+        return y
     end
 
+    -- Bags never scroll. Content that will not fit grows the panel a
+    -- column and lays out again, trading height for width until it does:
+    -- a wider bag read at a glance beats a taller one wheeled through.
+    -- The row cap is what that is measured against - it used to be where
+    -- scrolling began, and is now where a column is added.
+    --
+    -- Bounded by what the screen will take, because a bag wider than the
+    -- monitor is worse than one that scrolls. If even the widest panel
+    -- cannot hold it - a great many categories, all open - the scroll is
+    -- still underneath as the last resort.
+    --
+    -- The trial passes are handed a do-nothing slot updater. None of the
+    -- arithmetic that decides the height reads an item, so the answer is
+    -- exact while the per-slot work is skipped; only the pass that counts
+    -- draws.
+    local function NoSlotWork() end
+    local maxRows = addon:GetSetting("maxRows") or 15
+    local maxH    = maxRows * (SLOT_SIZE + SLOT_SPACING_Y)
+
+    local room    = (UIParent:GetWidth() or 1024) - 40
+    local ceiling = cols
+    while ceiling < 40 and PanelWidthFor(ceiling + 1) <= room do
+        ceiling = ceiling + 1
+    end
+
+    while cols < ceiling do
+        if math.abs(LayoutContent(cols, NoSlotWork)) <= maxH then break end
+        cols = cols + 1
+    end
+
+    -- The width is only known now, once the fitting above has settled it.
+    frame:SetWidth(PanelWidthFor(cols))
+    local y = LayoutContent(cols, UpdateSlot)
     -- Bottom padding below the scroll area. The money frame lives in the
     -- top-right chrome, so this is just breathing room.
     local bottomPad  = 12
 
-    -- Cap the scroll area at the user's maxRows setting (one row =
-    -- SLOT_SIZE + SLOT_SPACING_Y ≈ 41 px). Anything taller scrolls;
-    -- anything shorter shrinks the panel to fit content.
-    local contentH = math.abs(y)
-    local maxRows  = addon:GetSetting("maxRows") or 15
-    local maxH     = maxRows * (SLOT_SIZE + SLOT_SPACING_Y)
-    local scrollH  = math.min(contentH, maxH)
+    -- The panel is as tall as its content. The fitting above has already
+    -- spent every column the screen allows trying to make that true, so
+    -- the clamp below only bites when it could not - and then scrolling
+    -- is the lesser evil. Measured against the screen rather than the row
+    -- cap, since the cap has already had its say.
+    local contentH   = math.abs(y)
+    local screenRoom = (UIParent:GetHeight() or 768) - TOP_PAD - 60
+    local scrollH    = math.min(contentH, math.max(maxH, screenRoom))
 
     if frame.scrollChild then
         frame.scrollChild:SetHeight(math.max(contentH, 1))
@@ -1778,6 +2100,22 @@ local function ShowPanel(self)
         frame.scrollFrame:SetVerticalScroll(0)
     end
 
+    -- Free space starts folded away, every time.
+    --
+    -- Empty slots are the one category nobody opens the bag to read.
+    -- They earn their place - somewhere to drop something, and a sense of
+    -- how much room is left - but not the screenful they take when the
+    -- bag is half empty, and the count in the title bar has already
+    -- answered the question they were being scrolled past to reach.
+    --
+    -- Folded on every open rather than once, so unfolding it is a choice
+    -- about the bag in front of you rather than one that quietly sticks
+    -- and has to be undone later.
+    local Categories = addon.Categories
+    for key in pairs((Categories and Categories.EMPTY_KEYS) or {}) do
+        SetCollapsed(key, true)
+    end
+
     self:Refresh()
     frame:Show()
 
@@ -1834,10 +2172,25 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("INVENTORY_SEARCH_UPDATE")    -- search box text > re-evaluate isFiltered
 events:RegisterEvent("MERCHANT_SHOW")              -- junk coins only show at a vendor
 events:RegisterEvent("MERCHANT_CLOSED")
+-- A spell picked up or put down changes what a left click on a slot
+-- means. See SlotClickAction.
+events:RegisterEvent("CURRENT_SPELL_CAST_CHANGED")
 -- A layout the fight would not let us do.
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
 pcall(events.RegisterEvent, events, "BAG_NEW_ITEMS_UPDATED")
-events:SetScript("OnEvent", ScheduleRefresh)
+events:SetScript("OnEvent", function()
+    -- Any of these can mean slots this panel has never seen: a bag
+    -- swapped for a bigger one, a reagent bag equipped, the first login.
+    -- Making the buttons now is what lets the bag be opened and used in
+    -- the next fight, so it happens before the refresh rather than as
+    -- part of it. In combat it does nothing and waits for the regen
+    -- event, which is in this same list.
+    PrimeSlots()
+    -- And what a right click means depends on whether a merchant is
+    -- open, which two of these events are exactly about.
+    ApplySlotActions()
+    ScheduleRefresh()
+end)
 
 ---------------------------------------------------------------------------
 -- Override Blizzard's bag toggles so the B key, the bag bar and any

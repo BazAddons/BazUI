@@ -192,6 +192,15 @@ local function GetGeneralOptionsTable()
             get = function() return p.dragRequiresShift == true end,
             set = function(_, val) p.dragRequiresShift = val end,
         },
+        dropCreatesBar = {
+            order = 23.6, type = "toggle", name = "Drop on the world to make a bar",
+            desc = "Drag an ability out of the spellbook and let go anywhere: "
+                .. "a bar appears there holding it, or it joins a bar you "
+                .. "dropped it beside. Pulling something off a bar and "
+                .. "dropping it still just clears the slot.",
+            get = function() return p.dropCreatesBar ~= false end,
+            set = function(_, val) p.dropCreatesBar = val end,
+        },
         showTooltips = {
             order = 24, type = "toggle", name = "Show tooltips",
             get = function() return p.showTooltips ~= false end,

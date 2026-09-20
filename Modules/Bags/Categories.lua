@@ -62,6 +62,22 @@ Categories.FACTORY_DEFAULTS = {
         },
     },
     {
+        -- Not like the others: what puts an item here is the slot it is
+        -- sitting in, not anything about the item. The same herb is the
+        -- same herb wherever it is, so there is nothing to write a tag
+        -- against - membership is decided in GetPairsByCategory, and the
+        -- empty tag list here keeps the classifier from ever claiming
+        -- something for this category by mistake.
+        --
+        -- Holds the empty reagent slots too. Free space that only takes
+        -- reagents is not the same thing as free space, and lumping the
+        -- two together is what made the bag look roomier than it was.
+        key = "reagents", name = "Reagents", order = 35, matchPriority = 1001,
+        matchMode = "all",
+        tags = {},
+        isProtected = true,
+    },
+    {
         key = "questitems", name = "Quest Items", order = 40, matchPriority = 40,
         matchMode = "any",
         tags = {
@@ -123,14 +139,71 @@ Categories.FACTORY_DEFAULTS = {
         tags = {},
         isProtected = true,
     },
+    {
+        -- Free space that will only take one kind of thing, kept apart
+        -- from free space proper. A reagent slot is no use for the sword
+        -- you are about to loot, so counting it as room - or showing it
+        -- in the same block - says you have space you have not got.
+        key = "emptyreagents", name = "Empty Reagent Slots",
+        order = 71, matchPriority = 1002,
+        matchMode = "all",
+        tags = {},
+        isProtected = true,
+    },
+    {
+        -- The same for the keyring, which is the one that made this
+        -- worth splitting: a keyring runs to thirty-odd slots and is
+        -- nearly always empty, so its free space swamped everything
+        -- else's and made a full bag look roomy.
+        key = "emptykeyring", name = "Empty Keyring Slots",
+        order = 72, matchPriority = 1003,
+        matchMode = "all",
+        tags = {},
+        isProtected = true,
+    },
 }
 
--- The key free space lives under, for the few places that have to know
--- this category is not like the others.
-Categories.EMPTY_KEY = "empty"
+-- The keys that are not like the others, for the few places that have to
+-- know: the reagent bag's own slots, and free space - of which there are
+-- three kinds, because a slot that will only take one sort of thing is
+-- not the same as a slot that will take anything.
+Categories.REAGENT_KEY       = "reagents"
+Categories.EMPTY_KEY         = "empty"
+Categories.EMPTY_REAGENT_KEY = "emptyreagents"
+Categories.EMPTY_KEYRING_KEY = "emptykeyring"
+
+-- Every category that holds nothing but free space, so the panel can
+-- fold them all away at once without naming them one at a time.
+Categories.EMPTY_KEYS = {
+    [Categories.EMPTY_KEY]         = true,
+    [Categories.EMPTY_REAGENT_KEY] = true,
+    [Categories.EMPTY_KEYRING_KEY] = true,
+}
+
+-- Whether a category can appear at all right now.
+--
+-- Different from `hidden`, which is a choice the player made. This is
+-- about whether the thing the category describes exists: with no reagent
+-- bag carried there are no reagent slots, so the category is not empty -
+-- it is meaningless, and showing an empty heading for it would be
+-- offering to sort something that cannot happen. Everything else is
+-- always available.
+function Categories.Available(key)
+    if key == Categories.REAGENT_KEY or key == Categories.EMPTY_REAGENT_KEY then
+        return addon.GetReagentBagID() ~= nil
+    end
+    if key == Categories.EMPTY_KEYRING_KEY then
+        return addon.GetKeyringBagID() ~= nil
+    end
+    return true
+end
 
 -- Bags scanned in categories mode come from addon.GetAllBagIDs(), so the
--- keyring and any reagent bag are included exactly when the client has them.
+-- keyring and any reagent bag are included exactly when the character is
+-- carrying them. What differs is where their slots land: the reagent
+-- bag's go to Categories.REAGENT_KEY whatever is in them, and the
+-- keyring's are classified by item like anything else, because a key is
+-- a key wherever it sits and the Keys category already collects them.
 
 ---------------------------------------------------------------------------
 -- EnsureDefaults
@@ -1047,15 +1120,34 @@ function Categories.GetPairsByCategory(includeEmpty)
         return bucket
     end
 
+    local reagentBag = addon.GetReagentBagID()
+    local keyringBag = addon.GetKeyringBagID()
+
+    -- Which free-space category a bag's empty slots belong to, worked out
+    -- once per bag: the answer cannot change halfway down one.
+    local emptyKeyForBag = {}
+    if reagentBag then emptyKeyForBag[reagentBag] = Categories.EMPTY_REAGENT_KEY end
+    if keyringBag then emptyKeyForBag[keyringBag] = Categories.EMPTY_KEYRING_KEY end
+
     for _, bagID in ipairs(addon.GetAllBagIDs()) do
         local n = C_Container.GetContainerNumSlots(bagID) or 0
+        -- What is in the reagent bag goes to the Reagents category,
+        -- because where it is says more about it than what it is.
+        local reagentSlot = (reagentBag ~= nil and bagID == reagentBag)
+        local emptyKey = emptyKeyForBag[bagID] or Categories.EMPTY_KEY
         for slotID = 1, n do
             local info = C_Container.GetContainerItemInfo(bagID, slotID)
             if not (info and info.iconFileID) then
+                -- Free space, filed by what the slot will accept. Still
+                -- silenced by "hide empty slots", which means empty slots
+                -- wherever they are.
                 if includeEmpty then
-                    local bucket = Bucket(Categories.EMPTY_KEY)
+                    local bucket = Bucket(emptyKey)
                     bucket[#bucket + 1] = { bagID = bagID, slotID = slotID }
                 end
+            elseif reagentSlot then
+                local bucket = Bucket(Categories.REAGENT_KEY)
+                bucket[#bucket + 1] = { bagID = bagID, slotID = slotID }
             else
                 local link    = info.hyperlink
                 local quality = info.quality

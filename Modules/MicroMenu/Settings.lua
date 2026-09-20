@@ -59,11 +59,21 @@ local entries = {
 -- A switch for a button that is not here greys out rather than
 -- disappearing, so the list is the same shape wherever you read it and
 -- nobody goes looking for a row that moved.
+--
+-- Greyed on whether this client uses the button, not on whether the frame
+-- exists. Both clients define every button either of them has, so the
+-- second question answers yes for things that are nowhere on screen - a
+-- switch offering to show Achievements on Forever, which has none.
 for i, def in ipairs(addon.DEFS) do
     entries[#entries + 1] = {
         key = "btn_" .. def.key, label = def.label, type = "toggle", section = "buttons", order = i,
         desc = "Whether this button is on the bar.",
-        disabled = function() return _G[def.frame] == nil end,
+        disabled = function()
+            for _, listed in ipairs(addon:Buttons()) do
+                if listed.def.key == def.key then return false end
+            end
+            return true
+        end,
         get = function()
             local prefs = addon:GetSetting("buttons")
             return not prefs or prefs[def.key] ~= false

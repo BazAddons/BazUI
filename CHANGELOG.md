@@ -1,78 +1,68 @@
-## 006
+## 007
 
-**BazUI comes with three layouts now.** A fresh install has **BazUI**,
-**Classic** and **Modern** sitting in the profile list, ready to switch
-between. They are three real arrangements rather than three colour schemes,
-so you can try one, keep what you like and change the rest. Nothing you have
-already set up is touched: an existing install keeps the profile it has and
-simply gains the two new ones.
+**Drop a spell on the ground and you get a bar.** Drag an ability out of
+your spellbook, let go anywhere over the world, and a bar appears there
+holding it. Let go beside a bar you have already made and that bar grows
+a slot on the side you came in on instead - a ghost of the button shows
+you exactly where it will land before you commit to it. Items, macros,
+mounts, equipment sets and flyouts all work the same way. Pulling
+something off a bar and dropping it still just clears the slot, and
+there is a switch in the Bars options if you would rather the gesture
+did nothing at all.
 
-**Settings still do not stick on Forever, and it is not BazUI.** That client
-does not read an addon's settings back when you log in, so everything starts
-from the built-in layout each launch. It affects addons across the board, and
-the game's own settings too. There is an open bug report and nothing an addon
-can do in the meantime. On retail your settings save normally.
+**The bag has had a hard look at itself.** Reagent slots have stopped
+pretending to be ordinary space, bags never scroll, and the bag opens
+and works in combat like everything else.
 
 ### New
 
-- **Two new kinds of bar.** A **portrait**, flat or 3D, which can be held
-  square so it is never stretched; and a **blank** bar that carries text and
-  small marks instead of a value. Both dock and stack like any other bar.
-- **Marks you can put on a bar.** Resting, in combat, group leader, the raid
-  marker and away, each switched on per bar. They used to be one hard-coded zZ
-  on your own health.
-- **Bar text has a proper set of controls.** Size, either following the bar or
-  pinned to a number; the outline around each letter; a drop shadow; the
-  colour; and which end of the bar it reads from.
-- **Aura icons can be round or square**, and every skin setting now belongs to
-  the profile, so two profiles can look completely different.
-- **Any bar or row can be left out of its stack's size.** Height and width are
-  separate switches, so a casting bar can span the width of the stack it sits
-  on while adding nothing to the height something docked beside that stack has
-  to match.
-- **New profiles can be made from Edit Mode**, without going to the options.
+- **Reagent slots are their own category**, full and empty, and the count
+  in the title bar ignores them. Twelve free general slots and thirty
+  free reagent slots were never the same thing. The categories only
+  appear if you are carrying a reagent bag.
+- **Empty, empty reagent and empty keyring are three separate
+  categories**, each collapsed when the bag opens, so a bag full of
+  nothing stops pushing everything you own off the bottom.
+- **When your bags fill up, the cheapest piece of junk is marked.** The
+  slot wears a cross across the whole icon and the category heading names
+  it - "drop Small Crab Claw first" - so you can see what to throw away
+  without reading forty tooltips.
+- **Right-clicking an item at a vendor sells it** instead of trying to
+  equip it.
+- **Using an ability on an item in your bag works.** Casting something
+  that asks for a target and then clicking a bag slot used to be refused
+  by the game outright.
+- **Delete this bar** is on the bar's shift-right-click menu.
+- **Draggable windows have a tab of their own** in the QoL options rather
+  than sharing one, and **the quest window can be dragged** along with
+  the rest of them.
 
 ### Changed
 
-- **Docking is about stacks, not single bars.** Dock a portrait beside a health
-  bar with a power bar under it and the portrait stands as tall as the pair.
-  Dock something under that group and it runs as wide as the group. All four
-  edges behave the same way, which was not true before.
-- **The order you dock in decides the sizes.** What you docked first keeps the
-  size it was given, so adding a portrait beside a health bar no longer reaches
-  back and widens the power bar that joined underneath before the portrait
-  existed. Layouts can be built a piece at a time and stay put.
-- **The green landing line now reaches across the whole stack** you are about
-  to join, rather than the one bar it happens to name.
-- **A reload leaves you on the profile you were on.** A character used to get
-  quietly pinned to the default the first time it logged in, which undid any
-  switch the moment you reloaded.
+- **Bags never scroll.** A bag that would need a scrollbar grows another
+  column instead.
+- **The bag opens and works in combat.** Its slots are built ahead of
+  time now, because the game will not let an addon make that kind of
+  button mid-fight - which is why it used to come up empty.
+- **The quest tracker's height cap starts at 900.** Four hundred was
+  cutting most people off after three or four quests, which is the one
+  thing a quest tracker must not do.
+- **Notification toasts point at the bell**, from whichever corner suits
+  the part of the screen the notification centre is sitting in.
+- **The minimap button wears the addon remote** instead of the codex
+  book.
 
 ### Fixed
 
-- **Drops that showed the green line and then did nothing.** Letting go now
-  acts on exactly what the line promised. Edit Mode's grid was also pulling the
-  frame away from the dock at the last moment, and it now stays out of the way
-  when something is about to dock.
-- **Things docked to a target bar stayed where they were.** They were docked -
-  they had simply never been put anywhere, because the bar they joined is
-  hidden while you have no target.
-- **Target bars getting stuck on screen, or never appearing.** The dock and the
-  game were both deciding whether they were visible, and the dock now leaves
-  that to the game.
-- **3D portraits going black.** Asking the game for a model is a request that
-  can quietly come back empty, and a failed request was being remembered as a
-  success, so nothing ever asked again.
-- **Bars showing the unit's name when you had not asked for it.** "Current /
-  Max" read "Bazbot 69564 / 69564" for everyone on retail.
-- **Errors on retail from the game's new protected values.** Health, power,
-  crit, spell crit, cast names and raid markers can all come back as values an
-  addon is not allowed to read, and reading one throws. Every place that does
-  has been found and guarded.
-- **Names in other alphabets show as names** rather than as boxes.
-- **Settings that were not being saved to the profile**, including the
-  notification bell's position and the tooltip's. There is a `/baz audit`
-  command that reports where every module's settings actually live.
-- **The resting mark animates again** instead of drawing its whole sheet at
-  once.
-- **The profile dropdown updates immediately** after you create a profile.
+- **The micro menu showed buttons the client has not got.** Both clients
+  carry the code for every button either of them has, so asking whether
+  one exists was the wrong question. It now takes the list and the order
+  from the game itself, which means Forever gets Forever's menu -
+  including its Legacy button - and retail gets retail's.
+- **Item levels appeared on everything**, cloth and potions included.
+  This client calls a potion's equipment slot "ignore" rather than
+  leaving it blank, so the old test for "is this gear" said yes to
+  everything. Only gear carries a level now.
+- **The BazUI profile shipped with a second target power bar** that
+  nobody asked for.
+- **A settings tab that wrapped onto two rows.**

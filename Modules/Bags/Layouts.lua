@@ -381,7 +381,15 @@ function Layouts.Render(ctx)
         -- an "Empty Slots" heading over nothing is the one category
         -- that should not appear in categorize mode either.
         local visible
-        if cat.key == Categories.EMPTY_KEY then
+        -- A category describing something this character has not got
+        -- never appears, not even in categorize mode: there is nothing to
+        -- pin into a reagent bag that is not being carried.
+        if Categories.Available and not Categories.Available(cat.key) then
+            visible = false
+        elseif Categories.EMPTY_KEYS and Categories.EMPTY_KEYS[cat.key] then
+            -- A heading over no free space is the one thing that should
+            -- not appear even in categorize mode: there is nothing to
+            -- pin into an empty slot.
             visible = hasItems
         elseif categorizeMode then
             visible = true
@@ -399,6 +407,26 @@ function Layouts.Render(ctx)
             local titleText = cat.title or cat.name or cat.key
             if isHidden then
                 titleText = titleText .. "  |cff888888(hidden)|r"
+            end
+
+            -- The heading says which one to throw away, when there is one
+            -- to say. A mark on a slot is easy to miss in a bag with
+            -- forty of them, and the question - "what do I delete" - is
+            -- answered by a name far better than by a symbol you have to
+            -- find first. Put on whichever category the thing landed in,
+            -- so pinning a grey somewhere unusual moves the note with it.
+            local Bag = addon.Bag
+            if Bag and Bag.CheapestJunk then
+                local tossBag, tossSlot, _, tossName = Bag:CheapestJunk()
+                if tossBag and tossName then
+                    for _, pair in ipairs(items) do
+                        if pair.bagID == tossBag and pair.slotID == tossSlot then
+                            titleText = titleText
+                                .. "   |cffff6060drop " .. tossName .. " first|r"
+                            break
+                        end
+                    end
+                end
             end
             local divider = GetOrCreateDividerRow(frame, cat.key)
             divider:ClearAllPoints()

@@ -59,13 +59,12 @@ local function BuildSpec()
 
     entries[#entries + 1] = {
         key = "note", type = "note", section = "other", order = 99, style = "info",
-        text = "Everything on this page starts off except the draggable "
-            .. "windows, which cannot change anything until you drag "
-            .. "something. The rest change how the game behaves rather "
-            .. "than how it looks, and a switch you did not throw yourself "
-            .. "is one you cannot find again when you want it back. "
-            .. "Console settings are put back the way you had them when "
-            .. "you turn a tweak off.",
+        text = "Everything on this page starts off. These change how the "
+            .. "game behaves rather than how it looks, and a switch you "
+            .. "did not throw yourself is one you cannot find again when "
+            .. "you want it back. Console settings are put back the way "
+            .. "you had them when you turn a tweak off. The draggable "
+            .. "windows have a page of their own.",
     }
 
     return { sections = SECTIONS, entries = entries }
@@ -79,8 +78,25 @@ BazUI:QueueForModule("QoL", function()
     end)
     BazUI:AddToSettings("QoL", "Quality of Life")
 
+    -- Two pages out of one spec. The draggable windows are a list of
+    -- twenty-odd switches that all do the same thing to different
+    -- windows, which reads as a page of its own and crowds everything
+    -- else when it is a section among four.
     BazUI:RegisterOptionsTable("QoL-Settings", function()
-        return BazUI:BuildOptionsTableFromSpec("QoL", { name = "Quality of Life" })
+        return BazUI:BuildOptionsTableFromSpec("QoL", {
+            name = "Quality of Life",
+            skip = { windows = true },
+        })
     end)
     BazUI:AddToSettings("QoL-Settings", "General Settings", "QoL")
+
+    BazUI:RegisterOptionsTable("QoL-Windows", function()
+        return BazUI:BuildOptionsTableFromSpec("QoL", {
+            name    = "Draggable Windows",
+            only    = { windows = true },
+            -- The tab already says what these are.
+            headers = false,
+        })
+    end)
+    BazUI:AddToSettings("QoL-Windows", "Draggable Windows", "QoL")
 end)
