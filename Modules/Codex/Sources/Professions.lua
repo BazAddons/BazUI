@@ -123,6 +123,68 @@ local function ScanProfessions()
 end
 
 ---------------------------------------------------------------------------
+-- Talent points
+--
+-- A class skill line - Arcane, Fire, Frost - is a talent tree, and the
+-- skills sheet only ever says "known" about it. The Talents window puts
+-- the points spent on each tree's header; this reads the same numbers,
+-- from the same place: the active config's tree, its groups, and each
+-- group's currency.
+--
+-- Asked once per draw and cached for a moment, because a page has three
+-- of these on it and the answer cannot change between them.
+---------------------------------------------------------------------------
+
+local pointsByTree, pointsAt = nil, 0
+
+local function ReadTalentPoints()
+    local now = GetTime and GetTime() or 0
+    if pointsByTree and (now - pointsAt) < 1 then return pointsByTree end
+    pointsByTree, pointsAt = {}, now
+
+    if not (C_Traits and C_Traits.GetGroupDisplayInfoByTreeID and C_Traits.GetGroupCurrencyInfo
+        and C_ClassTalents and C_ClassTalents.GetActiveConfigID) then
+        return pointsByTree
+    end
+
+    local ok, configID = pcall(C_ClassTalents.GetActiveConfigID)
+    if not (ok and configID) then return pointsByTree end
+
+    local info
+    ok, info = pcall(C_Traits.GetConfigInfo, configID)
+    if not (ok and info and info.treeIDs) then return pointsByTree end
+
+    for _, treeID in ipairs(info.treeIDs) do
+        local okD, displays = pcall(C_Traits.GetGroupDisplayInfoByTreeID, treeID)
+        if okD and displays then
+            local ids = {}
+            for _, d in ipairs(displays) do ids[#ids + 1] = d.groupID end
+            local okC, groups = pcall(C_Traits.GetGroupCurrencyInfo, configID, ids)
+            local spentByGroup = {}
+            if okC and groups then
+                for _, g in ipairs(groups) do
+                    local currency = g.currencyInfos and g.currencyInfos[1]
+                    spentByGroup[g.traitNodeGroupID] = currency and currency.spent or 0
+                end
+            end
+            for _, d in ipairs(displays) do
+                if d.displayName then
+                    pointsByTree[d.displayName] = spentByGroup[d.groupID] or 0
+                end
+            end
+        end
+    end
+    return pointsByTree
+end
+
+-- How many talent points are in this line, or nil where it is not a
+-- talent tree at all.
+local function TalentPoints(name)
+    local points = ReadTalentPoints()
+    return points[name]
+end
+
+---------------------------------------------------------------------------
 -- Rows
 ---------------------------------------------------------------------------
 
@@ -131,7 +193,10 @@ local function Row(skill)
     local capped = maxRank > 1 and rank >= maxRank
     local known  = maxRank <= 1
     local detail
-    if known then
+    local points = known and TalentPoints(skill.name) or nil
+    if points then
+        detail = points == 1 and "1 point" or (points .. " points")
+    elseif known then
         detail = "known"
     else
         detail = ("%d / %d"):format(rank, maxRank)
@@ -143,8 +208,9 @@ local function Row(skill)
         icon   = skill.icon,
         label  = skill.name,
         detail = detail,
-        state  = capped and "done" or (known and nil or "open"),
-        muted  = known,
+        state  = capped and "done" or (points and points > 0 and "open")
+            or (known and nil or "open"),
+        muted  = known and not (points and points > 0) or nil,
         progress = (not known) and {
             bar   = true,
             value = capped and 1 or rank,
@@ -161,11 +227,22 @@ local function Rows(skills)
 end
 
 local function Summary(skills)
-    local capped, climbing = 0, 0
+    local capped, climbing, points, trees = 0, 0, 0, 0
     for _, s in ipairs(skills) do
         if s.maxRank > 1 then
             if s.rank >= s.maxRank then capped = capped + 1 else climbing = climbing + 1 end
+        else
+            local spent = TalentPoints(s.name)
+            if spent then
+                trees = trees + 1
+                points = points + spent
+            end
         end
+    end
+    -- A block of talent trees says the one number that matters: how many
+    -- points are in it.
+    if trees > 0 and capped + climbing == 0 then
+        return { text = points == 1 and "1 point spent" or (points .. " points spent") }
     end
     if capped + climbing == 0 then return nil end
     local parts = {}
@@ -179,6 +256,22 @@ end
 ---------------------------------------------------------------------------
 
 local professionsNow, groupsNow, collapsedNow = {}, {}, 0
+
+-- The points spent across every tree, for the strip.
+local function TalentHighlight()
+    local points, any = 0, false
+    for _, g in ipairs(groupsNow) do
+        for _, s in ipairs(g.skills) do
+            local spent = TalentPoints(s.name)
+            if spent then
+                any = true
+                points = points + spent
+            end
+        end
+    end
+    if not any then return nil end
+    return { value = points, label = points == 1 and "talent point spent" or "talent points spent" }
+end
 
 local function Highlight()
     local capped, total = 0, 0
@@ -249,7 +342,13 @@ local function Sync()
         blocks[#blocks + 1] = ProfessionBlock(p, index, icons)
     end
 
+    local talentBlock = nil
     for index, g in ipairs(groupsNow) do
+        local hasTrees = false
+        for _, s in ipairs(g.skills) do
+            if TalentPoints(s.name) then hasTrees = true break end
+        end
+        if hasTrees and not talentBlock then talentBlock = g.header end
         blocks[#blocks + 1] = {
             key   = g.header,
             title = g.header,
@@ -257,6 +356,7 @@ local function Sync()
             empty = "Nothing learned here yet.",
             GetRows = function() return Rows(g.skills) end,
             GetBar  = function() return Summary(g.skills) end,
+            GetHighlight = (hasTrees and talentBlock == g.header) and TalentHighlight or nil,
         }
     end
 
@@ -296,9 +396,14 @@ BazUI:QueueForModule("Codex", function()
     local watcher = CreateFrame("Frame")
     watcher:RegisterEvent("SKILL_LINES_CHANGED")
     watcher:RegisterEvent("PLAYER_ENTERING_WORLD")
+    for _, event in ipairs({ "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE",
+                             "CHARACTER_POINTS_CHANGED" }) do
+        pcall(watcher.RegisterEvent, watcher, event)
+    end
     -- Some clients have this event and some do not; asking is harmless.
     pcall(watcher.RegisterEvent, watcher, "TRADE_SKILL_LIST_UPDATE")
     watcher:SetScript("OnEvent", function()
+        pointsByTree = nil
         Sync()
         if Codex.IsShown and Codex:IsShown() then
             Codex.Panel:RebuildTabs()
