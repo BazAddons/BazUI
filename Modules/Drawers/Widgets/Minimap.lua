@@ -147,6 +147,37 @@ end
 -- which is how hiding an action bar ended up tainting Edit Mode.
 local wheelZoomed = setmetatable({}, { __mode = "k" })
 
+---------------------------------------------------------------------------
+-- Shift-right-click for the calendar
+--
+-- The game hangs its calendar off a button on the minimap, and BazUI
+-- takes that whole cluster away. Shift and right click is free here -
+-- the map's own right click opens the tracking menu, and nothing reads
+-- shift with it - so it is the obvious home for the thing that used to
+-- sit an inch away.
+--
+-- HookScript rather than SetScript: the map's own handling of a click
+-- is Blizzard's, and running before it rather than instead of it is
+-- what keeps pings and tracking working.
+---------------------------------------------------------------------------
+
+local function EnableCalendarClick()
+    if not Minimap or Minimap._bazCalendarHooked then return end
+    Minimap._bazCalendarHooked = true
+    Minimap:HookScript("OnMouseUp", function(_, button)
+        if button ~= "RightButton" or not IsShiftKeyDown() then return end
+        if BazUI.Codex and BazUI.Codex.OpenCalendar then
+            BazUI.Codex.OpenCalendar()
+        elseif _G.ToggleCalendar then
+            if securecallfunction then
+                securecallfunction(_G.ToggleCalendar)
+            else
+                _G.ToggleCalendar()
+            end
+        end
+    end)
+end
+
 local function EnableWheelZoom()
     if not Minimap or wheelZoomed[Minimap] then return end
     wheelZoomed[Minimap] = true
@@ -637,6 +668,7 @@ function MinimapWidget:Init()
         end
     end)
     EnableWheelZoom()
+    EnableCalendarClick()
     self:ApplyFrameStyle()
     self:ApplyHideSettings()
 end

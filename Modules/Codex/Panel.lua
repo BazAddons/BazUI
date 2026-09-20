@@ -780,6 +780,9 @@ local function UpdateHero()
 
     local tab = addon:GetSetting("activeTab") or "today"
     hero.section:SetText(Codex.tabLabels and Codex.tabLabels[tab] or "")
+    if hero.calendar then
+        hero.calendar:SetShown(tab == "events" and _G.ToggleCalendar ~= nil)
+    end
 
     local name = UnitName("player") or "?"
     local realm = GetRealmName and GetRealmName()
@@ -1154,32 +1157,37 @@ local function BuildHero(parent)
     hero.section:SetTextColor(unpack(Theme.colors.gold))
 
     -- The game's calendar has no home in this interface, so the codex
-    -- gives it one: a button on the header, beside the page's name.
+    -- gives it one: a round button on the header, wearing the Events
+    -- page's own painting, which is a calendar. It appears on the
+    -- Events page and nowhere else - a button that does the same thing
+    -- on every page is a button nobody reads after the first.
+    local CAL_SIZE = 30
     local cal = CreateFrame("Button", nil, hero)
-    cal:SetSize(26, 26)
+    cal:SetSize(CAL_SIZE, CAL_SIZE)
     cal:SetPoint("RIGHT", hero.section, "LEFT", -14, 0)
     cal.icon = cal:CreateTexture(nil, "ARTWORK")
-    cal.icon:SetAllPoints()
-    -- The Events page's own painting is a calendar, which is what this
-    -- button opens. It wore the pocket watch before, which is Today's.
+    cal.icon:SetPoint("CENTER")
+    cal.icon:SetSize(CAL_SIZE, CAL_SIZE)
     cal.icon:SetTexture(TabIcon("events"))
-    cal.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    cal.icon:SetAlpha(0.7)
+    -- The scripts go on before the round dressing does: that dressing
+    -- hooks OnLeave for its own press state, and a SetScript afterwards
+    -- would throw the hook away.
     cal:SetScript("OnEnter", function(self)
-        self.icon:SetAlpha(1)
+        Theme.SetRoundButtonHover(self, true)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("Calendar", unpack(Theme.colors.text))
-        GameTooltip:AddLine("Open the game's calendar.", 0.9, 0.9, 0.9, true)
+        GameTooltip:AddLine("Open the game's own calendar.", 0.9, 0.9, 0.9, true)
         GameTooltip:Show()
     end)
     cal:SetScript("OnLeave", function(self)
-        self.icon:SetAlpha(0.7)
+        Theme.SetRoundButtonHover(self, false)
         GameTooltip:Hide()
     end)
     cal:SetScript("OnClick", function()
         if Codex.OpenCalendar then Codex.OpenCalendar() end
     end)
-    cal:SetShown(_G.ToggleCalendar ~= nil)
+    Theme.ApplyRoundButton(cal, cal.icon, { size = CAL_SIZE })
+    cal:Hide()
     hero.calendar = cal
 
     return hero
