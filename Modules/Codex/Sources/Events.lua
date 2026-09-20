@@ -25,7 +25,6 @@ local COMMON = {
 }
 local PREFIX = "evt."
 
-local DAYS_AHEAD = 7
 
 ---------------------------------------------------------------------------
 -- Opening the real thing
@@ -100,13 +99,11 @@ local function DayEvents(day, monthOffset)
     return out
 end
 
--- Is this one of the game's own holidays, rather than somebody's raid
--- night?
---
--- Worked out from the enum's own key names rather than from numbers:
--- the values differ between clients, and a guessed number is how every
--- holiday ended up filed as an ordinary event. A client that answers
--- with a string ("HOLIDAY", "HOLIDAY_WEEKLY") is read the same way.
+-- One of the game's own holidays, rather than somebody's raid night?
+-- Worked out from the enum's own key names rather than from numbers,
+-- which differ between clients. It is only used to mark a row: on this
+-- calendar nearly everything is a holiday, so filing by it would put
+-- every event in one pile and leave the rest empty.
 local holidaySet
 local function HolidaySet()
     if holidaySet then return holidaySet end
@@ -127,71 +124,82 @@ local function IsHoliday(e)
     return HolidaySet()[kind] or false
 end
 
--- An event's own words for when it is: "started", "ends today", or the
--- day it falls on.
+-- An event's own words for when it is.
 local function When(e, offsetDays)
-    if e.sequenceType == "ONGOING" then return "running now" end
-    if e.sequenceType == "START" and offsetDays == 0 then return "starts today" end
-    if e.sequenceType == "END" and offsetDays == 0 then return "ends today" end
-    if offsetDays == 0 then return "today" end
+    if offsetDays == 0 then
+        if e.sequenceType == "START" then return "starts today" end
+        if e.sequenceType == "END" then return "ends today" end
+        if e.sequenceType == "ONGOING" then return "running now" end
+        return "today"
+    end
     if offsetDays == 1 then return "tomorrow" end
     return ("in %d days"):format(offsetDays)
 end
 
 ---------------------------------------------------------------------------
--- Blocks
+-- Gathering
+--
+-- From today to the end of the month, and never less than a fortnight,
+-- so the page does not empty out on the 29th. A run of days is one
+-- event, not one per day: the calendar numbers the days of a run, and
+-- anything past the first is the same thing still going.
 ---------------------------------------------------------------------------
+
+local MIN_DAYS = 14
 
 local function Gather()
     local now = Today()
     if not (now and HasCalendar()) then return nil end
 
-    local info
+    local numDays = 31
     local ok, month = pcall(C_Calendar.GetMonthInfo, 0)
-    if ok then info = month end
-    local numDays = (info and info.numDays) or 31
+    if ok and month and month.numDays then numDays = month.numDays end
 
-    -- An event that runs for days is listed once, on the first day it
-    -- appears - otherwise a week-long festival fills the page with
-    -- seven identical rows saying "running now".
-    local today, soon, holidays = {}, {}, {}
-    local seen = {}
-    for offset = 0, DAYS_AHEAD do
-        local day = now.monthDay + offset
-        local monthOffset = 0
+    local toMonthEnd = numDays - now.monthDay
+    local span = math.max(toMonthEnd, MIN_DAYS)
+    local spills = span > toMonthEnd
+
+    local today, soon = {}, {}
+    local started = {}
+    for offset = 0, span do
+        local day, monthOffset = now.monthDay + offset, 0
         if day > numDays then
             day = day - numDays
             monthOffset = 1
         end
         for _, e in ipairs(DayEvents(day, monthOffset)) do
+            -- Day two of a run is the same event still going.
+            local later = e.sequenceIndex and e.sequenceIndex > 1
             local key = (e.title or "?") .. "|" .. tostring(e.eventType or "")
-            if not seen[key] then
-                seen[key] = true
-                local row = { event = e, offset = offset, day = day, monthOffset = monthOffset }
-                if IsHoliday(e) then
-                    holidays[#holidays + 1] = row
-                elseif offset == 0 then
-                    today[#today + 1] = row
-                else
-                    soon[#soon + 1] = row
-                end
+            if not later and not started[key] then
+                started[key] = true
+                local row = {
+                    event = e, offset = offset, day = day, monthOffset = monthOffset,
+                    holiday = IsHoliday(e),
+                }
+                if offset == 0 then today[#today + 1] = row else soon[#soon + 1] = row end
             end
         end
     end
-    return { today = today, soon = soon, holidays = holidays, now = now }
+    return { today = today, soon = soon, now = now, spills = spills }
 end
 
 local function Row(entry)
     local e = entry.event
+    local lines = { e.title }
+    if entry.holiday then lines[#lines + 1] = "Kind\tHoliday" end
+    if e.difficultyName and e.difficultyName ~= "" then
+        lines[#lines + 1] = "Difficulty\t" .. e.difficultyName
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "Click to open the calendar on this day."
     return {
         icon   = e.iconTexture,
         label  = e.title,
         detail = When(e, entry.offset),
         state  = entry.offset == 0 and "open" or nil,
-        muted  = entry.offset > 2 or nil,
-        tip    = e.title .. (e.difficultyName and e.difficultyName ~= ""
-            and ("|nDifficulty\t" .. e.difficultyName) or "")
-            .. "|n|nClick to open the calendar on this day.",
+        muted  = entry.offset > 7 or nil,
+        tip    = table.concat(lines, "|n"),
         onClick = function() OpenCalendar(entry.monthOffset, entry.day) end,
     }
 end
@@ -224,17 +232,17 @@ local function Blocks()
 
     return {
         {
-            key   = "today",
-            title = "Today",
+            key    = "today",
+            title  = "Today",
             column = 1,
-            empty = "Nothing on today.",
+            empty  = "Nothing on today.",
             GetRows = function()
                 local d = Gather()
                 return d and Rows(d.today) or {}
             end,
             GetHighlight = function()
                 local d = Gather()
-                local n = d and (#d.today + #d.holidays) or 0
+                local n = d and #d.today or 0
                 return {
                     value = n,
                     label = n == 1 and "event on today" or "events on today",
@@ -243,23 +251,29 @@ local function Blocks()
             end,
         },
         {
-            key    = "holidays",
-            title  = "Holidays",
-            column = 1,
-            empty  = "No holiday running.",
-            GetRows = function()
-                local d = Gather()
-                return d and Rows(d.holidays) or {}
-            end,
-        },
-        {
+            -- Named for what it actually covers: the rest of this month,
+            -- or "coming up" once that is a short enough stretch that the
+            -- page reaches into the next one.
             key    = "soon",
-            title  = "This week",
+            title  = data.spills and "Coming up" or "This month",
             column = 2,
-            empty  = "Nothing else in the next seven days.",
+            empty  = "Nothing else coming up.",
             GetRows = function()
                 local d = Gather()
                 return d and Rows(d.soon) or {}
+            end,
+            GetBar = function()
+                local d = Gather()
+                local n = d and #d.soon or 0
+                if n == 0 then return nil end
+                local holidays = 0
+                for _, entry in ipairs(d.soon) do
+                    if entry.holiday then holidays = holidays + 1 end
+                end
+                local text = ("%d coming"):format(n)
+                if holidays > 0 then text = text .. ("  |  %d holiday%s"):format(
+                    holidays, holidays == 1 and "" or "s") end
+                return { text = text }
             end,
         },
     }
