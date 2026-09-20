@@ -106,6 +106,18 @@ O.BLOCK_MARGIN_TOP = {
     collapsible = 14,
 }
 
+-- The air above a block, asked for rather than worked out again.
+--
+-- Three different loops stack widgets - the page renderer, the widget
+-- renderer under it, and the nested-block renderer - and the margins
+-- went into the third one alone, which draws nothing a reader sees on
+-- its own. Twice. This is the only place that answers the question now,
+-- and all three ask it.
+function O.MarginTop(opt, first)
+    if first or type(opt) ~= "table" then return 0 end
+    return O.BLOCK_MARGIN_TOP[opt.type] or 0
+end
+
 local function CreateTextWidget(presetName)
     return function(parent, opt, contentWidth)
         local preset = O.TEXT_PRESETS[presetName]
@@ -706,9 +718,7 @@ local function RenderBlockList(parent, blocks, contentWidth, startY)
     for _, block in ipairs(blocks or {}) do
         local factory = O.widgetFactories[block.type]
         if factory then
-            if not first then
-                y = y - (O.BLOCK_MARGIN_TOP[block.type] or 0)
-            end
+            y = y - O.MarginTop(block, first)
             local widget, h = factory(parent, block, contentWidth)
             widget:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
             widget:Show()

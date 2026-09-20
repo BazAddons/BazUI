@@ -31,19 +31,9 @@ function O.RenderWidgets(parent, args, contentWidth, _, startY)
                         y = y - O.SECTION_GAP
                     end
                     -- Air above a block of prose, by what the block is.
-                    --
-                    -- This is the renderer a manual page goes through -
-                    -- a guide is flattened into an args table and drawn
-                    -- here, not through RenderBlockList, which only
-                    -- handles blocks nested inside another block. The
-                    -- margins lived there alone for a while and did
-                    -- nothing at all to the page anybody reads.
-                    --
                     -- Nothing is listed for a toggle or a range, so a
                     -- settings page keeps the tight stack it wants.
-                    if not first then
-                        y = y - ((O.BLOCK_MARGIN_TOP or {})[opt.type] or 0)
-                    end
+                    y = y - O.MarginTop(opt, first)
                     local widget, h = factory(parent, opt, contentWidth)
                     widget:SetPoint("TOPLEFT", parent, "TOPLEFT", O.PAD, y)
                     widget:Show()

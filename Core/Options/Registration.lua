@@ -107,7 +107,11 @@ local function RenderPageContent(content, optionsTable, width, stateHost)
     local pickerGroups, pickerButtons = {}, {}
     local seenGroup, first = false, true
 
-    local function Place(widget, h)
+    -- `opt` is optional: a header placed for a group has no block of
+    -- its own to be spaced against, and takes O.SECTION_GAP above
+    -- instead, which its caller has already applied.
+    local function Place(widget, h, opt)
+        y = y - O.MarginTop(opt, first)
         widget:SetPoint("TOPLEFT", content, "TOPLEFT", O.PAD, y)
         widget:Show()
         y = y - h - O.SPACING
@@ -133,7 +137,8 @@ local function RenderPageContent(content, optionsTable, width, stateHost)
             local factory = O.widgetFactories[opt.type]
             if factory then
                 if opt.type == "header" and not first then y = y - O.SECTION_GAP end
-                Place(factory(content, opt, contentWidth))
+                local widget, h = factory(content, opt, contentWidth)
+                Place(widget, h, opt)
             end
         end
     end
