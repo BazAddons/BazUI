@@ -210,6 +210,7 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         def.art          = block.art
         def.artFallback  = block.artFallback
         def.artAlpha     = block.artAlpha
+        def.artSquare    = block.artSquare
         def.icon         = block.icon
         def.rowless      = block.rowless
         -- Which column it belongs in, where the block cares. Most do

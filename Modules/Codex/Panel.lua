@@ -254,15 +254,29 @@ CreatePlate = function(parent)
     plate:SetSize(PLATE_W, PLATE_H)
     if HasAtlas(PLATE_ATLAS) then
         plate.art = plate:CreateTexture(nil, "ARTWORK")
-        plate.art:SetAtlas(PLATE_ATLAS, true)
-        plate.art:SetPoint("CENTER")
+        plate.art:SetAtlas(PLATE_ATLAS, false)
+        plate.art:SetAllPoints()
     end
     plate.title = Theme.FontString(plate, "OVERLAY", "GameFontNormal")
     plate.title:SetPoint("CENTER", 0, 1)
-    plate.title:SetWidth(PLATE_W - 30)
     plate.title:SetWordWrap(false)
     plate.title:SetTextColor(unpack(Theme.colors.gold))
     return plate
+end
+
+-- The plate is the character sheet's own size until a heading needs
+-- more, and then it takes what it needs up to the width it is given.
+-- A name cut to "Stranglethorn Fishing Ex..." is a name nobody can
+-- read, and the plate's ends stretch without complaint.
+local PLATE_PAD = 34
+
+function Panel.FitPlate(plate, text, maxWidth)
+    plate.title:SetWidth(0)
+    Theme.SetText(plate.title, text or "")
+    local wanted = (plate.title:GetStringWidth() or 0) + PLATE_PAD
+    local width = math.max(PLATE_W, math.min(maxWidth or PLATE_W, wanted))
+    plate:SetWidth(width)
+    plate.title:SetWidth(width - PLATE_PAD + 10)
 end
 
 ---------------------------------------------------------------------------
@@ -793,7 +807,7 @@ function Panel:Refresh()
         card:ClearAllPoints()
         card:SetPoint("TOPLEFT", card._x, -y)
         card:SetWidth(colW)
-        card.title:SetText(def.title or def.id)
+        Panel.FitPlate(card.plate, def.title or def.id, colW - CARD_PAD * 4)
 
         local collapsed = Codex:IsCollapsed(def.id)
         BazUI.SetArrowTexture(card.arrow, collapsed and "RIGHT" or "DOWN", 16)
@@ -851,6 +865,15 @@ function Panel:Refresh()
                 art.tex:SetTexCoord(0, 1, 0, 1)
                 art.tex:SetAtlas(artName, true)
                 art.tex:SetPoint("RIGHT", 0, 0)
+            elseif def.artSquare then
+                -- An icon is square and small; blown up to the card's
+                -- height against the right edge it reads as a mark on
+                -- the page rather than a stretched photograph.
+                local side = math.max(card:GetHeight() - 8, 48)
+                art.tex:SetTexture(artName)
+                art.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                art.tex:SetSize(side, side)
+                art.tex:SetPoint("RIGHT", -6, 0)
             else
                 art.tex:SetTexture(artName)
                 art.tex:SetTexCoord(0, 1, 0, 1)

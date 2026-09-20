@@ -128,28 +128,12 @@ end
 ---------------------------------------------------------------------------
 -- What a holiday is, in its own words
 --
--- The calendar keeps a description and a banner for every holiday it
--- runs, and hands them over for the day and index the event sits at.
--- The banner is named without its folder, so the folder is put back;
--- a client that has not got that picture falls back to the calendar's
--- own default, and one that has neither shows no picture at all.
+-- The calendar keeps a description for every holiday it runs, and
+-- hands it over for the day and index the event sits at. Its banner is
+-- not taken: those pictures are the decorative border of a day cell
+-- rather than a scene, and a border behind a paragraph is a mess. The
+-- event's own icon is the picture worth having.
 ---------------------------------------------------------------------------
-
-local HOLIDAY_ART = "Interface\\Calendar\\Holidays\\"
-local DEFAULT_ART = HOLIDAY_ART .. "Calendar_DefaultHoliday"
-
-local function BannerFor(texture)
-    if type(texture) == "number" then return texture end
-    if type(texture) == "string" and texture ~= "" then
-        local path = texture:find("\\") and texture or (HOLIDAY_ART .. texture)
-        if BazUI.Has.Texture(path) then return path end
-        -- The calendar names a picture per part of a run; the plain one
-        -- is the whole holiday.
-        local base = path:gsub("Start$", ""):gsub("Ongoing$", ""):gsub("End$", "")
-        if base ~= path and BazUI.Has.Texture(base) then return base end
-    end
-    return BazUI.Has.Texture(DEFAULT_ART) and DEFAULT_ART or nil
-end
 
 local function HolidayInfo(entry)
     if not (C_Calendar and C_Calendar.GetHolidayInfo) then return nil end
@@ -312,9 +296,13 @@ local function Blocks()
             key     = "featured",
             title   = name,
             column  = 1,
-            art     = info and BannerFor(info.texture) or nil,
-            artFallback = DEFAULT_ART,
-            artAlpha = 0.35,
+            -- The event's own picture, blown up and faded against the
+            -- right edge. The calendar's banners are the decorative
+            -- border of a day cell rather than a scene, which is not
+            -- something to put behind text.
+            art       = featured.event.iconTexture,
+            artSquare = true,
+            artAlpha  = 0.25,
             blurb   = (info and info.description ~= "" and info.description) or nil,
             GetRows = function()
                 local rows = {}
