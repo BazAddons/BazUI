@@ -3,9 +3,10 @@
 -- BazUI Bars: drop it anywhere
 --
 -- Drag a spell out of the spellbook, let go over the world, and a bar
--- appears there holding it. The same for an item, a macro, a mount, an
--- equipment set or a flyout - whatever the cursor can carry, because the
--- action registry already knows how to turn any of it into a button.
+-- appears there holding it. The same for a macro, a mount, an equipment
+-- set or a flyout, because the action registry already knows how to turn
+-- any of those into a button. Items are the one exception, for the
+-- reason given below.
 --
 -- The gesture was doing nothing before. Blizzard's answer to a spell
 -- dropped on the world is to put it back, which is right when there is
@@ -25,7 +26,13 @@
 -- the same reason - a preview that sometimes lies is worse than no
 -- preview at all.
 --
--- Two things it deliberately will not do:
+-- Three things it deliberately will not do:
+--
+--   An item is left alone entirely. Letting go of one over the world is
+--   how the game asks whether you want to destroy it, and dropping a bar
+--   on top of that question meant nothing could be thrown away while
+--   BazUI was loaded. An item still goes onto a bar by being dropped on
+--   a slot, which is where that gesture belongs.
 --
 --   A drag that started on one of our own buttons is left alone. Pulling
 --   a spell off a bar and dropping it on the ground is how everybody
@@ -124,6 +131,24 @@ end
 
 local carriedHandler, carriedData, carriedIcon, carriedChecked
 
+-- Whether the cursor is holding an item, which is not ours to answer.
+--
+-- Letting go of an item over the world is the game's delete gesture: its
+-- own handler on this same frame raises the "destroy this?" question,
+-- and ours ran afterwards, cleared the cursor out from under it and made
+-- a bar. So an item is refused before anything else looks at it.
+--
+-- Asked of what the cursor is carrying rather than of where the drag
+-- began, because an item can come from a bag, the bank, a loot window or
+-- an equipment slot, and a list of those places is a list that will be
+-- missing one - and every one it misses is something you cannot throw
+-- away. This costs the gesture toys and bag items as bar makers, which
+-- is a fair trade for never standing between somebody and their rubbish.
+local function CarryingAnItem()
+    if not GetCursorInfo then return false end
+    return (GetCursorInfo()) == "item"
+end
+
 local function ForgetCarry()
     carriedHandler, carriedData, carriedIcon, carriedChecked = nil, nil, nil, false
 end
@@ -136,7 +161,7 @@ local function Carry()
     if carriedChecked then return carriedHandler, carriedData end
     carriedChecked = true
 
-    if CameFromABar() then return nil end
+    if CameFromABar() or CarryingAnItem() then return nil end
 
     carriedHandler, carriedData = BazBars.Actions:FromCursor()
     if carriedHandler and carriedHandler.getIcon then

@@ -15,6 +15,12 @@
 -- The reading comes from the quest tracker widget's own data layer
 -- rather than a second walk of the quest log: one place understands
 -- what a quest looks like on this client, and both readers use it.
+--
+-- That now includes the walk itself. This file used to enumerate the log
+-- with GetNumQuestLogEntries and GetQuestLogTitle, which Forever does not
+-- have - it ships retail's C_QuestLog and none of the legacy globals - so
+-- the log came back empty and this tab told a character carrying a dozen
+-- quests that there was nothing in it.
 ---------------------------------------------------------------------------
 
 local Codex = BazUI.Codex
@@ -30,18 +36,6 @@ end
 ---------------------------------------------------------------------------
 -- Reading the log
 ---------------------------------------------------------------------------
-
-local function QuestIDs()
-    local ids = {}
-    local total = GetNumQuestLogEntries and GetNumQuestLogEntries() or 0
-    for i = 1, total do
-        local _, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(i)
-        if not isHeader and questID and questID > 0 then
-            ids[#ids + 1] = questID
-        end
-    end
-    return ids
-end
 
 -- How far through a quest's objectives you are. Counting finished
 -- objectives works on every client here; the fulfilled/required numbers
@@ -65,10 +59,10 @@ end
 
 local function Gather()
     local QT = Tracker()
-    if not QT or not QT.GetQuestData then return {}, 0, 0 end
+    if not QT or not QT.GetQuestData or not QT.GetAllQuestIDs then return {}, 0, 0 end
 
     local quests, ready, active = {}, 0, 0
-    for _, questID in ipairs(QuestIDs()) do
+    for _, questID in ipairs(QT.GetAllQuestIDs()) do
         local ok, quest = pcall(QT.GetQuestData, questID)
         if ok and quest and quest.title ~= "" then
             local done, total = Progress(quest)

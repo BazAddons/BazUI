@@ -155,6 +155,49 @@ function QT.GetTrackedQuestIDs()
 end
 
 ---------------------------------------------------------------------------
+-- The whole log
+---------------------------------------------------------------------------
+
+-- Every quest in the log: no headers, and none of the game's own hidden
+-- bookkeeping quests.
+--
+-- The tracker itself only ever wants what is being watched, so this is
+-- here for the Codex rather than for the widget. It lives here anyway
+-- because this is the file that knows how to ask each client - and the
+-- Codex walking the log for itself is exactly how it came to report an
+-- empty quest log to a character carrying a dozen. It called
+-- GetNumQuestLogEntries and GetQuestLogTitle, which read like the obvious
+-- way to walk a quest log and do not exist on this game type at all, so
+-- the walk finished before it started. The same trap as the one at the
+-- top of this file, one floor down.
+function QT.GetAllQuestIDs()
+    local ids = {}
+
+    if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
+        for index = 1, (C_QuestLog.GetNumQuestLogEntries() or 0) do
+            local ok, info = pcall(C_QuestLog.GetInfo, index)
+            if ok and info and not info.isHeader and not info.isHidden
+                and info.questID and info.questID > 0 then
+                ids[#ids + 1] = info.questID
+            end
+        end
+        if #ids > 0 then return ids end
+    end
+
+    -- Classic Era, where that pair is missing and these two are not - the
+    -- mirror of Forever, which is why both get asked.
+    if GetNumQuestLogEntries and GetQuestLogTitle then
+        for index = 1, (GetNumQuestLogEntries() or 0) do
+            local _, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(index)
+            if not isHeader and questID and questID > 0 then
+                ids[#ids + 1] = questID
+            end
+        end
+    end
+    return ids
+end
+
+---------------------------------------------------------------------------
 -- Quest classification
 ---------------------------------------------------------------------------
 
@@ -204,10 +247,18 @@ function QT.GetQuestData(questID)
 
     -- Turn-in-from-anywhere quests. When one of these is complete the block
     -- says "Click to complete quest" instead of listing objectives.
-    local isAutoComplete = false
+    local isAutoComplete, level = false, nil
     if logIndex and C_QuestLog and C_QuestLog.GetInfo then
         local ok, info = pcall(C_QuestLog.GetInfo, logIndex)
-        if ok and info and info.isAutoComplete then isAutoComplete = true end
+        if ok and info then
+            isAutoComplete = info.isAutoComplete and true or false
+            level = info.level
+        end
+    end
+    -- Era keeps it on the log row instead.
+    if not level and logIndex and GetQuestLogTitle then
+        local _, rowLevel = GetQuestLogTitle(logIndex)
+        level = rowLevel
     end
 
     -- "Return to so-and-so", shown in place of objectives once done.
@@ -221,6 +272,7 @@ function QT.GetQuestData(questID)
         kind               = "quest",
         id                 = questID,
         title              = title,
+        level              = level,
         objectives         = objectives,
         isComplete         = isComplete,
         isAutoComplete     = isAutoComplete,
