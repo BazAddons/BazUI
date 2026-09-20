@@ -81,16 +81,33 @@ local STATE_COLOR = {
 
 Codex.STATE_COLOR = STATE_COLOR
 
--- The tab pictures. Blizzard's icons for now; when the codex has art of
--- its own, this is the one table to point at it.
-local TAB_ICONS = {
-    today    = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-    reputation = "Interface\\Icons\\Achievement_Reputation_01",
-    progress = "Interface\\Icons\\Achievement_General",
-    items    = "Interface\\Icons\\inv_misc_bag_08",
-    wishlist = "Interface\\Icons\\INV_Misc_Note_01",
-}
+-- The tab pictures.
+--
+-- The codex has art of its own: one painting per page, named for the
+-- page, under Textures/Codex. Asked for by name rather than listed, so
+-- a new page's picture is a file dropped in beside the others - see
+-- tools/gen-codex-icons.py, which brings them in from the source art
+-- at the size a tab draws them.
+--
+-- Checked rather than assumed, so a page added before its painting
+-- exists still draws something: what the page asked for, then
+-- Blizzard's own, then the book.
+local TAB_ART = "Interface\\AddOns\\BazUI\\Textures\\Codex\\"
 local TAB_ICON_DEFAULT = "Interface\\Icons\\INV_Misc_Book_09"
+
+local TAB_FALLBACK = {
+    today      = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    progress   = "Interface\\Icons\\Achievement_General",
+    reputation = "Interface\\Icons\\Achievement_Reputation_01",
+    items      = "Interface\\Icons\\inv_misc_bag_08",
+    wishlist   = "Interface\\Icons\\INV_Misc_Note_01",
+}
+
+local function TabIcon(key, named)
+    local own = TAB_ART .. key:gsub("^%l", string.upper) .. ".png"
+    if BazUI.Has.Texture(own) then return own end
+    return named or TAB_FALLBACK[key] or TAB_ICON_DEFAULT
+end
 
 -- The arrow that says there is more below, and the wheel that gets you
 -- there. Any scroll frame in the codex asks for these rather than
@@ -1215,7 +1232,7 @@ function Panel:RebuildTabs()
         seen[key] = true
         order[#order + 1] = {
             key = key, label = label, sort = sort or 100,
-            icon = icon or TAB_ICONS[key] or TAB_ICON_DEFAULT,
+            icon = TabIcon(key, icon),
         }
     end
     -- The two questions the codex exists to answer come first, always,
