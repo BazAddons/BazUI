@@ -18,7 +18,7 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "paragraph", text = "This module builds its own chat windows rather than redressing Blizzard's. What comes out looks familiar - the same colors, the same gold names, the same clickable links - because the game still writes the messages and still resolves the links. What changes is everything around them." },
                 { type = "list", items = {
                     "|cffffd700Tabs|r you create, rename, reorder and delete, each subscribing to its own set of channels.",
-                    "|cffffd700The combat log as a real tab|r, with the game's own filter buttons on it instead of stranded off screen.",
+                    "|cffffd700The game's combat log on a real tab|r, filter buttons and all, where this client will have it - see its own page.",
                     "|cffffd700Timestamps in a left gutter|r, with a colored bar tying a wrapped line back to its stamp.",
                     "|cffffd700History that survives|r a reload and a relog, replayed with the times the messages actually arrived.",
                     "|cffffd700Copy chat|r, which the game does not let you do at all.",
@@ -36,7 +36,8 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "h3", text = "Making and naming" },
                 { type = "list", items = {
                     "The |cffffd700+|r at the right end of the tab strip makes a new one.",
-                    "Right-click a tab for its menu: Rename, Channels, Clear, Lock, Move to, Delete. The Channels popup has a Name field too.",
+                    "Right-click a tab for its menu: |cffffd700Rename...|r, |cffffd700Channels...|r, |cffffd700Clear messages|r, |cffffd700Lock window|r, |cffffd700Move to|r, |cffffd700Delete tab|r, and a switch to run the tabs the other way round. The Channels popup has a Name field too.",
+                    "The first tab has no Delete and no Move to: it is the dock everything else hangs off.",
                     "The |cffffd700Tabs|r page lists every tab with the same name field and an Edit Channels button.",
                 } },
                 { type = "h3", text = "Deleting and reordering" },
@@ -54,12 +55,13 @@ BazUI:RegisterUserGuide("Chat", {
                     { "In a party", "You are in a party and not a raid." },
                     { "In a raid", "You are in a raid." },
                     { "In combat", "You are fighting." },
-                    { "In a battleground or arena", "You are in either." },
-                    { "In a dungeon or raid", "You are in any instance." },
+                    { "In a battleground / arena", "You are in either." },
+                    { "In a dungeon / raid", "You are in any instance." },
                 } },
                 { type = "note", text = "If the tab you are looking at goes away - you leave the raid while the Raid tab is up - the window falls back to General rather than leaving you staring at nothing." },
                 { type = "h3", text = "Starting over" },
-                { type = "paragraph", text = "|cffffd700Reset Tabs to Defaults|r on the Tabs page throws away the tabs you made and puts the original four back with their channels. Your appearance settings are left alone - only the tab structure resets." },
+                { type = "paragraph", text = "|cffffd700Reset Tabs to Defaults|r on the Tabs page throws away the tabs you made and puts the original four back with their channels. Your appearance settings are left alone - only the tab structure resets - and it reloads the interface when it is done." },
+                { type = "note", text = "To get back a default tab you deleted without losing anything else, |cffffd700/bc restoredefaults|r puts Guild, Trade and Log back and leaves your own tabs alone. It reloads too." },
             },
         },
 
@@ -83,11 +85,27 @@ BazUI:RegisterUserGuide("Chat", {
         },
 
         {
+            title = "More than one window",
+            blocks = {
+                { type = "paragraph", text = "A tab does not have to stay where it is. |cffffd700Move to|r on its right-click menu lists every chat window you have, plus |cffffd700New window (pop out)|r." },
+                { type = "list", items = {
+                    "Popping a tab out gives it a window of its own, which you can put anywhere and size on its own terms.",
+                    "Each window gets its own entry in Edit Mode, named |cffffd700Chat: 2|r and so on.",
+                    "|cffffd700Pop all tabs back to dock|r, on a popped window's Edit Mode panel, undoes the lot.",
+                } },
+                { type = "note", text = "A combat log in its own window beside the main one is the usual reason to want this. Raid chat in a second window while you watch general in the first is the other." },
+            },
+        },
+
+        {
             title = "The combat log",
             blocks = {
-                { type = "paragraph", text = "The combat log lands on the |cffffd700Log|r tab instead of on a chat frame you cannot see. The game's own row of filter buttons - My Actions, What Happened to Me, and the Additional Filters dropdown - is moved onto that tab and follows it when you resize the window." },
+                { type = "paragraph", text = "The |cffffd700Log|r tab ships carrying the quiet running commentary the game produces about you: experience, honour, reputation, skill ups and pet news. That is what is on it out of the box, and it is read-only, with no edit box." },
+                { type = "h3", text = "The game's own combat log" },
+                { type = "paragraph", text = "The full combat log - the one with My Actions, What Happened to Me and the Additional Filters dropdown - lives in an addon the game does not load by itself. |cffffd700Use Blizzard's combat log|r, on the General page beside the master switch, loads it and hands the Log tab its output, its filters and its quick buttons." },
+                { type = "note", style = "warning", text = "|cffffd700It starts switched off, and on WoW: Forever you probably want it left that way.|r Loading that addon on this build leaves its own refresh erroring every frame - hundreds a session, inside Blizzard's file, on something no addon can reach. Turn it on where the client behaves. It takes a reload either way." },
                 { type = "paragraph", text = "|cffffd700The parsing and filtering are still the game's.|r This module only decides where the output goes, so every filter you have set up, custom ones included, keeps working exactly as it did." },
-                { type = "paragraph", text = "The Log tab can be deleted like any other, and stays deleted. |cffffd700Reset Tabs to Defaults|r is how you get it back." },
+                { type = "paragraph", text = "The Log tab can be deleted like any other, and stays deleted. |cffffd700/bc restoredefaults|r is how you get it back without resetting anything else." },
             },
         },
 
@@ -109,7 +127,7 @@ BazUI:RegisterUserGuide("Chat", {
         {
             title = "Appearance",
             blocks = {
-                { type = "paragraph", text = "These are on the |cffffd700Appearance|r page and on the window's Edit Mode popup, so you can set them while you are looking at the window." },
+                { type = "paragraph", text = "These are in the |cffffd700Appearance|r section of the General page, and on the window's Edit Mode popup, so you can set them while you are looking at the window." },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Use the BazUI chat font", "DorisPP, the face the addon ships. Off goes back to the game's font." },
                     { "Text size", "Scales the text against the size set in the game's own chat options. The text only, not the window." },
@@ -136,11 +154,11 @@ BazUI:RegisterUserGuide("Chat", {
             blocks = {
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Fade old messages", "Off keeps every message visible until new ones push it off the top." },
-                    { "Visible for", "How long a message stays fully visible before it starts to fade, 10 to 600 seconds." },
-                    { "Fade duration", "How long the fade itself takes, up to 5 seconds." },
+                    { "Visible for (seconds)", "How long a message stays fully visible before it starts to fade, 10 to 600." },
+                    { "Fade duration (seconds)", "How long the fade itself takes, up to 5." },
                     { "Indent wrapped lines", "A wrapped line is indented under the start of the message. Only applies with timestamps off - with them on, the gutter already handles it." },
-                    { "Line spacing", "Extra pixels between lines, 0 to 8. One to three is a gap; more is a list." },
-                    { "History buffer", "How many past lines are kept, 100 to 2000. 500 is the game's own default and what this starts at." },
+                    { "Line spacing (pixels)", "Extra space between lines, 0 to 8. One to three is a gap; more is a list." },
+                    { "History buffer (lines)", "How many past lines are kept, 100 to 2000. 500 is the game's own default and what this starts at." },
                 } },
             },
         },
@@ -148,7 +166,7 @@ BazUI:RegisterUserGuide("Chat", {
         {
             title = "History that survives",
             blocks = {
-                { type = "paragraph", text = "Chat comes back after a reload and after a relog. What is kept is replayed into each tab, with a |cff8ce0ff--- end of history ---|r line marking where the past stops and the present starts." },
+                { type = "paragraph", text = "Chat comes back after a reload and after a relog. What is kept is replayed into each tab, with a line marking where the past stops and the present starts - it says how many lines came back and when they were saved." },
                 { type = "paragraph", text = "How much is kept is the |cffffd700History buffer|r setting. More lines means more memory and a slightly slower reload while they replay." },
                 { type = "h3", text = "What is stored" },
                 { type = "list", items = {
@@ -171,7 +189,7 @@ BazUI:RegisterUserGuide("Chat", {
                 { type = "paragraph", text = "The game gives you no way to select chat text. The small icon at the top right of the chat window opens a dialog holding the tab's lines; Select All and Ctrl+C gets them out. |cffffd700/bc copy|r opens the same dialog, which is worth a keybind if you do it often." },
                 { type = "paragraph", text = "Color codes are stripped on the way out, so what you paste into a bug report or a forum post is plain readable text. Item, spell and quest links keep their names." },
                 { type = "h3", text = "Up and Down" },
-                { type = "paragraph", text = "Press |cffffd700Up|r in the chat box to bring back the last thing you typed, and again to go further back; |cffffd700Down|r walks forward again. It covers slash commands too, which is the usual reason to want it. The list lasts the session." },
+                { type = "paragraph", text = "Press |cffffd700Up|r in the chat box to bring back the last thing you typed, and again to go further back; |cffffd700Down|r walks forward again. It covers slash commands too, which is the usual reason to want it. The last fifty lines are kept, and they survive a reload and a relog." },
             },
         },
 
@@ -196,6 +214,12 @@ BazUI:RegisterUserGuide("Chat", {
                     { "/bc font", "Reports whether the chat font is loaded and in use - the first thing to try if the text looks wrong." },
                     { "/bc toggle", "Master on and off." },
                     { "/bc reset", "Wipes every Chat setting and reloads." },
+                    { "/bc channels", "Lists the channels you are in, and says which one counts as Trade." },
+                    { "/bc restoredefaults", "Puts back a deleted Guild, Trade or Log tab, leaving your own tabs alone. Reloads." },
+                    { "/bc lock", "Locks the active window so it cannot be dragged or resized outside Edit Mode." },
+                    { "/bc unlock", "Unlocks it: drag the window to move it, and use the bottom-right corner to resize, without opening Edit Mode." },
+                    { "/bc histcheck", "Reports on the typed-message history, for when Up stops bringing anything back." },
+                    { "/bc settings", "Opens the settings page. Every BazUI command takes this, and |cffffd700help|r." },
                 } },
                 { type = "note", text = "A font the client cannot load needs the game restarted rather than reloaded - the client reads its fonts once, at startup. /bc font says so plainly when that is what has happened." },
             },
