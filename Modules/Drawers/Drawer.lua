@@ -206,6 +206,18 @@ function Drawer:Build()
     return f
 end
 
+-- Whatever was parked above gets placed the moment combat ends.
+BazUI:QueueForLogin(function()
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+    watcher:SetScript("OnEvent", function()
+        if Drawer._placePending then
+            Drawer._placePending = nil
+            if addon.ApplySettings then addon:ApplySettings() end
+        end
+    end)
+end)
+
 function Drawer:BuildToggleButton(name, parent)
     local btn = CreateFrame("Button", name, parent)
     btn:SetSize(16, 35)
@@ -230,6 +242,15 @@ end
 
 function Drawer:ApplySide()
     local f = self.frame; if not f then return end
+
+    -- A drawer holding a protected widget - the minimap, a secure button
+    -- - cannot be moved in combat, and a reload mid-fight arrives here in
+    -- combat. Park it and place it when the fight is over; until then it
+    -- stays wherever it was born.
+    if InCombatLockdown() and f:IsProtected() then
+        Drawer._placePending = true
+        return
+    end
     local side = addon:GetSetting("side") or "right"
     local width = GetWidth()
 
@@ -290,6 +311,10 @@ local SLIDE_DURATION = 0.25  -- seconds for slide animation
 
 function Drawer:SlideToX(targetX, onFinish)
     local f = self.frame; if not f then return end
+    if InCombatLockdown() and f:IsProtected() then
+        Drawer._placePending = true
+        return
+    end
     local topPoint = self._topPoint or "TOPRIGHT"
     local bottomPoint = self._bottomPoint or "BOTTOMRIGHT"
 

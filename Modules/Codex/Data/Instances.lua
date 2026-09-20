@@ -448,12 +448,9 @@ Instances.entries = {
         },
     },
     {
-        map = 2832, name = "Nightmare Grove", kind = "raid", players = 40, level = 60,
+        map = 249, name = "Onyxia's Lair", kind = "raid", players = 40, level = 60,
         bosses = {
-            "Emeriss",
-            "Lethon",
-            "Taerar",
-            "Ysondre",
+            "Onyxia",
         },
     },
     {
@@ -498,9 +495,12 @@ Instances.entries = {
 
     -- worlds
     {
-        map = 249, name = "Onyxia's Lair", kind = "world", players = 40, level = 60,
+        map = 2832, name = "Nightmare Grove", kind = "world", players = 40, level = 60,
         bosses = {
-            "Onyxia",
+            "Emeriss",
+            "Lethon",
+            "Taerar",
+            "Ysondre",
         },
     },
     {

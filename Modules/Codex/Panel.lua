@@ -291,6 +291,25 @@ function Panel.SetSkillBar(bar, kit, value, max, text)
     bar.text:SetText(text or "")
 end
 
+-- A tooltip written as lines. The first is the title; the rest wrap,
+-- because SetText alone never does and a list of twenty bosses came out
+-- as one line across the whole screen.
+function Panel.SetTooltipText(tooltip, text)
+    local first = true
+    -- Split on the literal "|n" only; a colour code has a bar in it too.
+    for line in (tostring(text or "") .. "|n"):gmatch("(.-)|n") do
+        if line ~= "" then
+            if first then
+                tooltip:SetText(line, unpack(Theme.colors.text))
+                first = false
+            else
+                tooltip:AddLine(line, 0.9, 0.9, 0.9, true)
+            end
+        end
+    end
+    if first then tooltip:SetText(tostring(text or "")) end
+end
+
 ---------------------------------------------------------------------------
 -- Rows
 ---------------------------------------------------------------------------
@@ -325,7 +344,7 @@ local function AcquireRow(parent)
         if self._link then
             GameTooltip:SetHyperlink(self._link)
         else
-            GameTooltip:SetText(self._tip, unpack(Theme.colors.text))
+            Panel.SetTooltipText(GameTooltip, self._tip)
         end
         GameTooltip:Show()
     end)
@@ -786,9 +805,12 @@ function Panel:Refresh()
         colY[col] = y + card:GetHeight() + CARD_GAP
     end
 
+    -- Each column's height carries the gap it would put under a next
+    -- card; the page does not need it, and counting it made the page
+    -- scroll by exactly that much.
     local tallest = 1
-    for c = 1, COLUMNS do tallest = math.max(tallest, colY[c]) end
-    content:SetHeight(tallest)
+    for c = 1, COLUMNS do tallest = math.max(tallest, colY[c] - CARD_GAP) end
+    content:SetHeight(math.max(tallest, 1))
 end
 
 function Panel:QueueRefresh()

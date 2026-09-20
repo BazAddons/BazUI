@@ -52,9 +52,21 @@ local MapScale
 -- parent; only the wrapper's own parent changes based on dock/float).
 ---------------------------------------------------------------------------
 
+local pendingAttach
+
 local function AttachMinimap(parent)
     if not Minimap or not parent then return end
     if minimapParentedInto == parent then return end
+
+    -- The Minimap is a protected frame; reparenting and anchoring it in
+    -- combat is refused, and marking it done anyway is how a reload
+    -- mid-fight left the map sitting in the middle of the screen. Park
+    -- the request and do it when the fight ends.
+    if InCombatLockdown() and Minimap:IsProtected() then
+        pendingAttach = parent
+        return
+    end
+    pendingAttach = nil
 
     -- Lock strata/level BEFORE reparenting or the Minimap widget stops
     -- rendering. Fixed so inherited strata from our wrapper can't leak
@@ -575,6 +587,10 @@ function MinimapWidget:Init()
 
     wrapper = CreateFrame("Frame", "BazUIDrawerMinimapWrapper", UIParent)
     wrapper:SetSize(wrapperW, wrapperH)
+    -- Invisible until the dock has put it somewhere. A frame born at the
+    -- centre of the screen and left there by combat should not be seen
+    -- there; alpha is the one thing combat lets us change.
+    wrapper:SetAlpha(0)
 
     -- Anchored straight away, though the dock will place it properly and
     -- clear this when it does. The Minimap ends up parented to this, and
@@ -593,12 +609,13 @@ function MinimapWidget:Init()
         -- Asked on every reflow, so a style change is picked up even if
         -- something else in the drawer triggers the reflow first.
         GetDesiredHeight = function() return (select(2, Footprint())) end,
-        OnDock       = function() AttachMinimap(wrapper) end,
+        OnDock       = function() AttachMinimap(wrapper); wrapper:SetAlpha(1) end,
         OnUndock     = function()
             -- When switching to floating mode or re-docking, we keep the
             -- wrapper as the Minimap's parent so the Minimap follows the
             -- wrapper wherever WidgetHost puts it.
             AttachMinimap(wrapper)
+            wrapper:SetAlpha(1)
         end,
         GetOptionsArgs = function() return MinimapWidget:GetOptionsArgs() end,
     }
@@ -608,6 +625,17 @@ function MinimapWidget:Init()
     -- Parent the minimap right away so it's ready before the widget
     -- host's first reflow.
     AttachMinimap(wrapper)
+
+    -- And again when a fight that refused it ends.
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+    watcher:SetScript("OnEvent", function()
+        if pendingAttach then
+            local parent = pendingAttach
+            AttachMinimap(parent)
+            if MinimapWidget.ApplyFrameStyle then MinimapWidget:ApplyFrameStyle() end
+        end
+    end)
     EnableWheelZoom()
     self:ApplyFrameStyle()
     self:ApplyHideSettings()
