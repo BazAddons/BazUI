@@ -1,42 +1,53 @@
-## 011
+## 012
 
-**Cyrillic, Korean, Chinese and Japanese text reads properly now.** 010
-tried to fix this by falling back to "the game's font" when BazUI's own
-could not spell something - but the game has a different font per
-language, and the English client's has no Cyrillic in it either, so that
-fixed nothing. BazUI now picks a face to suit the alphabet the text is
-actually written in, out of the faces your client already has. A Russian
-name in an English client draws as a name. Nothing to set up.
+**The Codex is rebuilt, and it is the reason for this release.** It used to
+be four pages of lists. It is now eleven pages built out of the game's own
+window art, with a tab and a painting for each: Today, Progress, Legacy,
+Events, Equipment, Instances, Reputation, Currencies, Professions, Items and
+Wishlist. Open it with `/codex` or by left-clicking the BazUI button on your
+minimap.
 
-Greek is the one alphabet left, because no font the game ships carries
-it. There is a Fonts folder in the addon now if you want to supply your
-own; the note inside explains it and suggests one.
+Some of what it answers, the game will not tell an addon at all - which
+raids you are keyed for, which dungeon sits at which level - so that part is
+written down and checked against your client before it is shown. A door it
+is unsure of is left out rather than promised.
 
 ### New
 
-- **`/baz fonts`** writes sample text in eight alphabets, in BazUI's face
-  and in the one it would borrow, and names the file each came from. If
-  text is coming out as empty boxes, this says exactly where the problem
-  is.
-- **Your own font.** Drop a .ttf into the addon's Fonts folder as
-  Custom.ttf and it joins the font list. Read the note in that folder
-  first - the game only loads fonts when it starts, so it takes a
-  restart rather than a reload.
-- **Drawer widgets have buttons on their title bars.** Hover one and you
-  get move up, move down, collapse and a red cross to take the widget off
-  that drawer. Everything is where it was; the controls only appear under
-  the cursor.
+- **Every page explains itself.** Hover a block's heading and it says what
+  goes in it. A block with nothing in it yet tells you what would fill it,
+  so an empty page reads as something to go and do.
+- **Equipment** is a paper doll with your item level on each slot and the
+  one thing wrong with it underneath: a missing enchant, or how worn it is.
+- **Instances** is the whole map of where you can go, not only where you are
+  ready for. Each row says which of the five things is true: saved, too low,
+  not attuned yet, outgrown, or open to you.
+- **Events** reads your calendar, leads with the holiday that is running,
+  and every row opens the calendar on that day. There is a round calendar
+  button on that page, and **shift and right click on the minimap** opens
+  the calendar from anywhere.
+- **Mirror bars.** Breath, fatigue and feign death as a bar you make
+  yourself, docked where you want it, wearing your skin, coloured by which
+  timer is counting. Edit Mode, Create, Bars and readouts. Making your first
+  one takes the game's own timer bars off the top of the screen.
+- **A manual that matches the addon.** Every page of the User Manual has
+  been read against the code it describes and rewritten. Whole features had
+  never been written down, and a fair number of settings had been renamed
+  since.
 
 ### Fixed
 
-- **Options buttons that appeared to do nothing.** A button that redrew
-  its own page was being drawn over by the page as it had been a moment
-  earlier, so the thing it had just done was invisible - making a drawer
-  and having the list still show the old one, for instance. Every page is
-  affected; the drawers page is where it showed.
-- **Making a new drawer, bar or unit frame bar now opens its settings**
-  rather than leaving you to find it in the list.
-- **Dragging a widget to reorder it did nothing.** It turned the title bar
-  green and then put the widget back where it started, every time.
-- **Minimap buttons vanished until a reload** if you collapsed the widget
-  and opened it again.
+- **Dropping a consumable on an action bar used it.** The click that placed
+  it also drank it. Click-dropping onto a slot that already held something
+  quietly did nothing at all, for the same reason.
+- **The reorder arrows were invisible.** Every list you can reorder - bag
+  categories, drawer widgets, minimap buttons - had working arrows with no
+  picture on them.
+- **Blocked actions when closing the map in combat.** BazUI made the game's
+  windows draggable in a way that left its name on them, so the map's own
+  work in a fight was refused and blamed on us.
+- **`/bb dup`, `/bb copy`, `/bb remove` and `/bb spacing`** were listed in
+  the help and did nothing. They work now.
+- **A reload in combat left the minimap in the middle of the screen.**
+- **Shift and right click on the minimap** no longer pings where you
+  clicked while opening the calendar.
