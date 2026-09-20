@@ -79,11 +79,15 @@ local function BossLines(lock)
     return #lines > 0 and table.concat(lines, "|n") or nil
 end
 
+-- The gate evaluator names what is missing; everything else is done.
 local function StepLines(entry, state)
+    local missing = {}
+    for _, name in ipairs(state.missing or {}) do missing[name] = true end
     local lines = {}
-    for i, step in ipairs(entry.steps or {}) do
-        local done = state.steps and state.steps[i] and state.steps[i].done
-        lines[#lines + 1] = (done and "|cff73c773+|r " or "|cff888888-|r ") .. (step.name or "?")
+    for _, step in ipairs(entry.steps or {}) do
+        local name = step.label or step.name or step.kind or "?"
+        local done = not missing[name]
+        lines[#lines + 1] = (done and "|cff73c773+|r " or "|cff888888-|r ") .. name
     end
     return #lines > 0 and table.concat(lines, "|n") or nil
 end
