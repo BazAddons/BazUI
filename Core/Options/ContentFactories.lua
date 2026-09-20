@@ -89,21 +89,21 @@ O.TEXT_PRESETS = {
 -- Nothing is added above the first block on a page, which already has
 -- the page's own top padding.
 O.BLOCK_MARGIN_TOP = {
-    h1        = 18,
-    h2        = 14,
-    h3        = 11,
-    h4        = 9,
-    paragraph = 5,
-    lead      = 5,
-    caption   = 3,
-    quote     = 9,
-    list      = 6,
-    note      = 10,
-    code      = 9,
-    table     = 10,
-    image     = 10,
-    imageRow  = 10,
-    collapsible = 10,
+    h1        = 24,
+    h2        = 20,
+    h3        = 16,
+    h4        = 12,
+    paragraph = 8,
+    lead      = 8,
+    caption   = 4,
+    quote     = 12,
+    list      = 10,
+    note      = 14,
+    code      = 12,
+    table     = 14,
+    image     = 14,
+    imageRow  = 14,
+    collapsible = 14,
 }
 
 local function CreateTextWidget(presetName)
