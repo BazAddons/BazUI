@@ -13,7 +13,7 @@
 --
 --   a box    - the thin-bordered plate the game draws tooltips in. The
 --              character sits in one, each block of a page is one, each
---              number on the rail is one.
+--              headline number in the strip is one.
 --   a plate  - the carved heading the character sheet puts over
 --              "General" and "Weapons". Every block wears one.
 --   a band   - the soft stripe the character sheet lays under every
@@ -46,8 +46,8 @@ local EDGE_R        = 6    -- the offsets Blizzard's own button frames use
 local EDGE_B        = 6
 local INNER         = 16   -- inside the inset's border, clear of the filigree
 local HERO_H        = 64
-local RAIL_W        = 200
 local GAP           = 12
+local COLUMNS       = 2
 local SCROLLBAR_W   = 16
 local TABS_Y        = -30  -- where the character sheet hangs its tabs
 
@@ -60,8 +60,9 @@ local CARD_PAD      = 10
 local CARD_GAP      = 12
 local TILE_H        = 58
 local TILE_GAP      = 8
+local TILE_MAX_W    = 260
 
-local frame, inset, scroll, content, hero, rail, headerHost
+local frame, inset, scroll, content, hero, headerHost
 local rowPool, cardPool, tilePool = {}, {}, {}
 local liveCards, liveTiles = {}, {}
 local refreshQueued = false
@@ -94,7 +95,7 @@ local function ContentWidth()
     -- been laid out; before that, the arithmetic.
     local w = scroll and scroll:GetWidth()
     if w and w > 50 then return math.floor(w) end
-    return WIDTH - EDGE_L - EDGE_R - INNER * 2 - RAIL_W - GAP - SCROLLBAR_W
+    return WIDTH - EDGE_L - EDGE_R - INNER * 2 - SCROLLBAR_W
 end
 
 local function HasAtlas(name)
@@ -511,20 +512,21 @@ local function ReleaseAll()
 end
 
 ---------------------------------------------------------------------------
--- The rail
+-- The strip
 --
--- One tile per block that can put a single number on itself. This is
--- the half of the window you read from across the room.
+-- One tile per block that can put a single number on itself, in a row
+-- across the top of the page. This is the part you read from across
+-- the room. A page with nothing to count has no strip.
 ---------------------------------------------------------------------------
 
 local function AcquireTile()
     local tile = table.remove(tilePool)
     if tile then
-        tile:SetParent(rail)
+        tile:SetParent(content)
         return tile
     end
 
-    tile = Panel.CreateBox(rail)
+    tile = Panel.CreateBox(content)
     tile:SetHeight(TILE_H)
 
     -- A band down the inside of the left edge in the reading's colour.
@@ -548,7 +550,8 @@ local function AcquireTile()
     return tile
 end
 
-local function DrawRail(tab)
+-- Returns the height the strip took, so the blocks start below it.
+local function DrawStrip(tab, width)
     local highlights = {}
 
     for _, def in ipairs(Codex:GetSections(tab)) do
@@ -564,22 +567,25 @@ local function DrawRail(tab)
         end
     end
 
-    rail.empty:SetShown(#highlights == 0)
+    if #highlights == 0 then return 0 end
 
-    local y = 0
+    local n = #highlights
+    local tileW = math.min(TILE_MAX_W, math.floor((width - TILE_GAP * (n - 1)) / n))
+    local x = 0
     for _, h in ipairs(highlights) do
         local tile = AcquireTile()
         tile:ClearAllPoints()
-        tile:SetPoint("TOPLEFT", 0, -y)
-        tile:SetPoint("TOPRIGHT", 0, -y)
+        tile:SetPoint("TOPLEFT", x, 0)
+        tile:SetSize(tileW, TILE_H)
         tile.value:SetText(tostring(h.value))
         tile.value:SetTextColor(unpack(h.color or Theme.colors.gold))
         tile.accent:SetColorTexture(unpack(h.color or Theme.colors.goldDim))
         tile.label:SetText(h.label or "")
         tile:Show()
         liveTiles[#liveTiles + 1] = tile
-        y = y + TILE_H + TILE_GAP
+        x = x + tileW + TILE_GAP
     end
+    return TILE_H + CARD_GAP
 end
 
 ---------------------------------------------------------------------------
@@ -648,8 +654,6 @@ function Panel:Refresh()
     local tab   = addon:GetSetting("activeTab") or "today"
     local width = ContentWidth()
 
-    DrawRail(tab)
-
     -- A tab that owns its page keeps its frames between visits, so the
     -- ones we are not showing have to be put away.
     for key, def in pairs(Codex.customTabs or {}) do
@@ -669,13 +673,25 @@ function Panel:Refresh()
         return
     end
 
-    local y = 0
+    local top = DrawStrip(tab, width)
+
+    -- Two columns; each block goes to whichever is shorter.
+    local colW = math.floor((width - CARD_GAP * (COLUMNS - 1)) / COLUMNS)
+    local colY = {}
+    for c = 1, COLUMNS do colY[c] = top end
+
     for _, def in ipairs(Codex:GetSections(tab)) do
+        local col = 1
+        for c = 2, COLUMNS do
+            if colY[c] < colY[col] then col = c end
+        end
+        local y = colY[col]
+
         local card = AcquireCard()
         card._sectionID = def.id
         card:ClearAllPoints()
-        card:SetPoint("TOPLEFT", 0, -y)
-        card:SetWidth(width)
+        card:SetPoint("TOPLEFT", (col - 1) * (colW + CARD_GAP), -y)
+        card:SetWidth(colW)
         card.title:SetText(def.title or def.id)
 
         local collapsed = Codex:IsCollapsed(def.id)
@@ -765,10 +781,12 @@ function Panel:Refresh()
 
         card:Show()
         liveCards[#liveCards + 1] = card
-        y = y + card:GetHeight() + CARD_GAP
+        colY[col] = y + card:GetHeight() + CARD_GAP
     end
 
-    content:SetHeight(math.max(y, 1))
+    local tallest = 1
+    for c = 1, COLUMNS do tallest = math.max(tallest, colY[c]) end
+    content:SetHeight(tallest)
 end
 
 function Panel:QueueRefresh()
@@ -851,23 +869,10 @@ local function Build()
     Codex.tabKeys = {}
     Codex.tabLabels = {}
 
-    rail = CreateFrame("Frame", nil, inset)
-    rail:SetPoint("TOPLEFT", hero, "BOTTOMLEFT", 0, -GAP)
-    rail:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", INNER, INNER)
-    rail:SetWidth(RAIL_W)
-
-    rail.empty = Theme.FontString(rail, "OVERLAY", "GameFontHighlightSmall")
-    rail.empty:SetPoint("TOPLEFT", 4, -4)
-    rail.empty:SetPoint("TOPRIGHT", -4, -4)
-    rail.empty:SetJustifyH("LEFT")
-    rail.empty:SetText("Nothing to count on this page.")
-    rail.empty:SetTextColor(unpack(Theme.colors.textMuted))
-    rail.empty:Hide()
-
     -- A page that takes typing puts its box and its filters up here,
     -- outside the scroll, so they stay put while the list moves.
     headerHost = CreateFrame("Frame", nil, inset)
-    headerHost:SetPoint("TOPLEFT", rail, "TOPRIGHT", GAP, 0)
+    headerHost:SetPoint("TOPLEFT", hero, "BOTTOMLEFT", 0, -GAP)
     headerHost:SetPoint("RIGHT", inset, "RIGHT", -(INNER + SCROLLBAR_W), 0)
     headerHost:SetHeight(1)
 

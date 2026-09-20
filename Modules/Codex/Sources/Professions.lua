@@ -80,10 +80,13 @@ local function ScanSkills()
         local s = C_SkillInfo.GetSkillLineInfo(i)
         if s and s.name then
             if s.isHeader then
-                current = { header = s.name, skills = {} }
+                current = { header = s.name, skills = {}, seen = {} }
                 groups[#groups + 1] = current
                 if s.isCollapsed then collapsed = collapsed + 1 end
-            elseif current then
+            elseif current and not current.seen[s.name] then
+                -- The sheet lists some skills twice, once per rank line;
+                -- one row per name is the reading that means something.
+                current.seen[s.name] = true
                 current.skills[#current.skills + 1] = {
                     name     = s.name,
                     rank     = s.rank or 0,
@@ -198,6 +201,10 @@ local function ProfessionBlock(p, index, icons)
     local trade = TradeInfo(p.skillID)
     local kit = trade and trade.profession and KITS[trade.profession] or nil
     local icon = p.icon or icons[p.skillID]
+    if not icon and p.skillID and C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillTexture then
+        local ok, tex = pcall(C_TradeSkillUI.GetTradeSkillTexture, p.skillID)
+        if ok then icon = tex end
+    end
     local text = ("%s %d/%d"):format(p.name, p.rank, p.maxRank)
     if p.modifier and p.modifier > 0 then
         text = ("%s %d/%d  (+%d)"):format(p.name, p.rank, p.maxRank, p.modifier)
