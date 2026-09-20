@@ -118,29 +118,73 @@ function Bar:CreateSingleButton(frame, barData, r, c)
         return (Flyout and Flyout.HasPending and Flyout.HasPending()) or false
     end
 
-    btn:HookScript("PreClick", function(self)
+    -- A click is two halves, and the drop belongs to the first one.
+    --
+    -- The button is registered for the down event as well as the up one,
+    -- so a click that places something is delivered twice. Both halves
+    -- used to be treated as a drop, and both went wrong:
+    --
+    --   Dropping on an empty slot used the thing you dropped. The down
+    --   half placed it; by the up half the cursor was empty, so nothing
+    --   was stashed and the secure action fired - the action being the
+    --   one just placed. Drop a healing potion on a bar, drink it.
+    --
+    --   Dropping on a full slot did nothing at all. The down half
+    --   swapped, leaving the old action on the cursor, and the up half
+    --   saw a full cursor and swapped straight back.
+    --
+    -- So the down half claims the drop and the up half that follows it
+    -- is swallowed: no cast, no second drop. The window is there
+    -- because the up may never arrive on this button - the mouse can
+    -- move between the two halves - and a flag left standing would eat
+    -- an honest click much later.
+    local DROP_CLICK_WINDOW = 1.0
+
+    local function Stash(self)
+        self._bazStashedType = self:GetAttribute("type") or false
+        self:SetAttribute("type", nil)
+    end
+
+    btn:HookScript("PreClick", function(self, _, down)
         if InCombatLockdown() then return end
+
+        -- The up half of a click that already dropped something.
+        if not down and self._bazDropAt then
+            local recent = (GetTime() - self._bazDropAt) < DROP_CLICK_WINDOW
+            self._bazDropAt = nil
+            if recent then
+                self._bazDropDispatch = false
+                Stash(self)
+                return
+            end
+        end
+
         if HasIncomingDrop() then
-            self._bazStashedType = self:GetAttribute("type") or false
-            self:SetAttribute("type", nil)
+            self._bazDropDispatch = true
+            self._bazDropAt = down and GetTime() or nil
+            Stash(self)
         end
     end)
-    btn:HookScript("PostClick", function(self, mouseButton, down)
+
+    btn:HookScript("PostClick", function(self)
         if InCombatLockdown() then return end
 
-        -- Drop path: PreClick stashed type because cursor had contents
-        -- at click time. Now restore + dispatch the drop.
         if self._bazStashedType ~= nil then
-            self._bazStashedType = nil
-            if HasIncomingDrop() then
-                addon.Button:ReceiveDrag(self)
-            end
-            -- ReceiveDrag (if it ran) will have reset the button's type
-            -- attribute via SetActionFromHandler, so we don't need to
-            -- restore the stash.
-            return
-        end
+            local stashed = self._bazStashedType
+            local dispatch = self._bazDropDispatch
+            self._bazStashedType, self._bazDropDispatch = nil, nil
 
+            if dispatch and HasIncomingDrop() then
+                -- ReceiveDrag sets the type itself, through
+                -- SetActionFromHandler.
+                addon.Button:ReceiveDrag(self)
+            elseif stashed then
+                -- Nothing was dropped after all, so the slot goes back
+                -- to being what it was. Left nil, the button would be
+                -- dead until something else set an action on it.
+                self:SetAttribute("type", stashed)
+            end
+        end
     end)
 
     btn.bbBarID = barData.id
