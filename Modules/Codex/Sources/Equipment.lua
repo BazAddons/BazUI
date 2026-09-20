@@ -257,10 +257,9 @@ local function CreateSummaryRow(parent)
     return row
 end
 
-local SUMMARY_ROWS = { "equipped", "level", "enchants", "durability" }
+local SUMMARY_ROWS = { "equipped", "enchants", "durability" }
 local SUMMARY_LABEL = {
     equipped   = "Equipped",
-    level      = "Item level",
     enchants   = "Enchants",
     durability = "Durability",
 }
@@ -314,6 +313,25 @@ local function Build(parent)
         page.summary.rows[key] = row
     end
     page.summary:SetHeight(52 + #SUMMARY_ROWS * 24 + 10)
+
+    -- The item level, as a card of its own under the left column: the
+    -- sheet's own figure in the sheet's own colour, and under it the
+    -- mean of what is actually worn, because the sheet divides by every
+    -- slot and a character with six pieces on reads as a three.
+    page.ilvl = Panel.CreateBox(page)
+    page.ilvl.label = Theme.FontString(page.ilvl, "OVERLAY", "GameFontHighlightSmall")
+    page.ilvl.label:SetPoint("TOPLEFT", 12, -9)
+    page.ilvl.label:SetText("Item level")
+    page.ilvl.label:SetTextColor(unpack(Theme.colors.textMuted))
+    page.ilvl.value = Theme.FontString(page.ilvl, "OVERLAY", "GameFontNormalHuge")
+    page.ilvl.value:SetPoint("LEFT", 12, -4)
+    page.ilvl.value:SetJustifyH("LEFT")
+    page.ilvl.note = Theme.FontString(page.ilvl, "OVERLAY", "GameFontHighlightSmall")
+    page.ilvl.note:SetPoint("BOTTOMRIGHT", -12, 9)
+    page.ilvl.note:SetPoint("LEFT", page.ilvl.value, "RIGHT", 12, 0)
+    page.ilvl.note:SetJustifyH("RIGHT")
+    page.ilvl.note:SetWordWrap(false)
+    page.ilvl.note:SetTextColor(unpack(Theme.colors.textSoft))
 
     -- The character sheet's numbers, in a column of their own. The sheet
     -- keeps them behind a scroll; here there is room to lay them out,
@@ -411,6 +429,11 @@ end
 -- a number our code is not allowed to look at.
 local function StatHidden(row, stat)
     if not row:IsShown() then return true end
+    local okBlank, blank = pcall(function()
+        local t = row.Value:GetText()
+        return t == nil or t == ""
+    end)
+    if okBlank and blank then return true end
     if stat.showFunc then
         local ok, show = pcall(stat.showFunc)
         if ok and not show then return true end
@@ -550,7 +573,7 @@ local function Render(content, width)
 
     -- Sized to the window rather than the other way round: the tallest
     -- column decides how tall a card may be, so the page never scrolls.
-    local rows = { left = 0, right = 0 }
+    local rows = { left = 1, right = 0 }   -- the left starts at one: the item level card
     for _, r in ipairs(snap.slots) do rows[r.side] = rows[r.side] + 1 end
     local tallestCount = math.max(rows.left, rows.right, 1)
     local avail = Codex.Panel.ContentHeight()
@@ -579,6 +602,28 @@ local function Render(content, width)
     end
     for i = #snap.slots + 1, #cards do cards[i]:Hide() end
 
+    -- The item level card closes the left column.
+    p.ilvl:ClearAllPoints()
+    p.ilvl:SetPoint("TOPLEFT", leftX, -ys.left)
+    p.ilvl:SetSize(colW, cardH)
+    p.ilvl.value:SetText(snap.average and tostring(snap.average) or "-")
+    if GetItemLevelColor then
+        local ok, r, g, b = pcall(GetItemLevelColor)
+        if ok and r then p.ilvl.value:SetTextColor(r, g, b) else p.ilvl.value:SetTextColor(unpack(Theme.colors.gold)) end
+    else
+        p.ilvl.value:SetTextColor(unpack(Theme.colors.gold))
+    end
+    if #snap.levels > 0 then
+        local sum = 0
+        for _, l in ipairs(snap.levels) do sum = sum + l end
+        local worn = math.floor(sum / #snap.levels + 0.5)
+        p.ilvl.note:SetText(("worn pieces average %d"):format(worn))
+    else
+        p.ilvl.note:SetText("nothing worn")
+    end
+    p.ilvl:Show()
+    ys.left = ys.left + cardH + CARD_GAP
+
     local leftH  = math.max(ys.left - CARD_GAP, 1)
     local rightH = math.max(ys.right - CARD_GAP, 1)
     local tallest = math.max(leftH, rightH)
@@ -606,7 +651,6 @@ local function Render(content, width)
 
     local sums = p.summary.rows
     sums.equipped.value:SetText(string.format("%d of %d", snap.equipped, snap.total))
-    sums.level.value:SetText(snap.average and tostring(snap.average) or "-")
     if snap.missing > 0 then
         sums.enchants.value:SetText(string.format("%d missing", snap.missing))
         sums.enchants.value:SetTextColor(unpack(expectEnchants and Theme.colors.caution or Theme.colors.textSoft))
