@@ -212,6 +212,9 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         def.artAlpha     = block.artAlpha
         def.icon         = block.icon
         def.rowless      = block.rowless
+        -- Which column it belongs in, where the block cares. Most do
+        -- not, and fall where the layout puts them.
+        def.column       = block.column
     end
     for id in pairs(self.sections) do
         if id:sub(1, #prefix) == prefix and not wanted[id] then

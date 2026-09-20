@@ -776,9 +776,14 @@ function Panel:Refresh()
     for c = 1, COLUMNS do colY[c] = top end
 
     for _, def in ipairs(Codex:GetSections(tab)) do
-        local col = 1
-        for c = 2, COLUMNS do
-            if colY[c] < colY[col] then col = c end
+        -- A block that named its column goes there; the rest fall into
+        -- whichever column is shorter.
+        local col = def.column
+        if not (col and col >= 1 and col <= COLUMNS) then
+            col = 1
+            for c = 2, COLUMNS do
+                if colY[c] < colY[col] then col = c end
+            end
         end
         local y = colY[col]
 

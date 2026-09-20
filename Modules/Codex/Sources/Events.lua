@@ -101,16 +101,30 @@ local function DayEvents(day, monthOffset)
 end
 
 -- Is this one of the game's own holidays, rather than somebody's raid
--- night? The calendar types say so.
-local HOLIDAY = {
-    [Enum and Enum.CalendarType and Enum.CalendarType.Holiday or 4] = true,
-    [Enum and Enum.CalendarType and Enum.CalendarType.HolidayWeekly or 5] = true,
-    [Enum and Enum.CalendarType and Enum.CalendarType.HolidayDarkmoon or 6] = true,
-    [Enum and Enum.CalendarType and Enum.CalendarType.HolidayBattleground or 7] = true,
-}
+-- night?
+--
+-- Worked out from the enum's own key names rather than from numbers:
+-- the values differ between clients, and a guessed number is how every
+-- holiday ended up filed as an ordinary event. A client that answers
+-- with a string ("HOLIDAY", "HOLIDAY_WEEKLY") is read the same way.
+local holidaySet
+local function HolidaySet()
+    if holidaySet then return holidaySet end
+    holidaySet = {}
+    if Enum and Enum.CalendarType then
+        for key, value in pairs(Enum.CalendarType) do
+            if type(key) == "string" and key:lower():find("holiday") then
+                holidaySet[value] = true
+            end
+        end
+    end
+    return holidaySet
+end
 
 local function IsHoliday(e)
-    return HOLIDAY[e.calendarType] or false
+    local kind = e.calendarType
+    if type(kind) == "string" then return kind:upper():find("HOLIDAY") ~= nil end
+    return HolidaySet()[kind] or false
 end
 
 -- An event's own words for when it is: "started", "ends today", or the
@@ -137,7 +151,11 @@ local function Gather()
     if ok then info = month end
     local numDays = (info and info.numDays) or 31
 
+    -- An event that runs for days is listed once, on the first day it
+    -- appears - otherwise a week-long festival fills the page with
+    -- seven identical rows saying "running now".
     local today, soon, holidays = {}, {}, {}
+    local seen = {}
     for offset = 0, DAYS_AHEAD do
         local day = now.monthDay + offset
         local monthOffset = 0
@@ -146,19 +164,17 @@ local function Gather()
             monthOffset = 1
         end
         for _, e in ipairs(DayEvents(day, monthOffset)) do
-            local row = { event = e, offset = offset, day = day, monthOffset = monthOffset }
-            if IsHoliday(e) then
-                -- A holiday spans days; it is listed once, on the first
-                -- day it shows up.
-                local seen = false
-                for _, other in ipairs(holidays) do
-                    if other.event.title == e.title then seen = true break end
+            local key = (e.title or "?") .. "|" .. tostring(e.eventType or "")
+            if not seen[key] then
+                seen[key] = true
+                local row = { event = e, offset = offset, day = day, monthOffset = monthOffset }
+                if IsHoliday(e) then
+                    holidays[#holidays + 1] = row
+                elseif offset == 0 then
+                    today[#today + 1] = row
+                else
+                    soon[#soon + 1] = row
                 end
-                if not seen then holidays[#holidays + 1] = row end
-            elseif offset == 0 then
-                today[#today + 1] = row
-            else
-                soon[#soon + 1] = row
             end
         end
     end
@@ -210,6 +226,7 @@ local function Blocks()
         {
             key   = "today",
             title = "Today",
+            column = 1,
             empty = "Nothing on today.",
             GetRows = function()
                 local d = Gather()
@@ -226,18 +243,20 @@ local function Blocks()
             end,
         },
         {
-            key   = "holidays",
-            title = "Holidays",
-            empty = "No holiday running.",
+            key    = "holidays",
+            title  = "Holidays",
+            column = 1,
+            empty  = "No holiday running.",
             GetRows = function()
                 local d = Gather()
                 return d and Rows(d.holidays) or {}
             end,
         },
         {
-            key   = "soon",
-            title = "This week",
-            empty = "Nothing else in the next seven days.",
+            key    = "soon",
+            title  = "This week",
+            column = 2,
+            empty  = "Nothing else in the next seven days.",
             GetRows = function()
                 local d = Gather()
                 return d and Rows(d.soon) or {}
