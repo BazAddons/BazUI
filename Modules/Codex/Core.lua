@@ -215,6 +215,9 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         -- Which column it belongs in, where the block cares. Most do
         -- not, and fall where the layout puts them.
         def.column       = block.column
+        -- A paragraph under the heading, for a block whose subject
+        -- needs saying rather than counting.
+        def.blurb        = block.blurb
     end
     for id in pairs(self.sections) do
         if id:sub(1, #prefix) == prefix and not wanted[id] then

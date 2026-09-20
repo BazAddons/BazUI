@@ -125,6 +125,50 @@ local function IsHoliday(e)
     return HolidaySet()[kind] or false
 end
 
+---------------------------------------------------------------------------
+-- What a holiday is, in its own words
+--
+-- The calendar keeps a description and a banner for every holiday it
+-- runs, and hands them over for the day and index the event sits at.
+-- The banner is named without its folder, so the folder is put back;
+-- a client that has not got that picture falls back to the calendar's
+-- own default, and one that has neither shows no picture at all.
+---------------------------------------------------------------------------
+
+local HOLIDAY_ART = "Interface\\Calendar\\Holidays\\"
+local DEFAULT_ART = HOLIDAY_ART .. "Calendar_DefaultHoliday"
+
+local function BannerFor(texture)
+    if type(texture) == "number" then return texture end
+    if type(texture) == "string" and texture ~= "" then
+        local path = texture:find("\\") and texture or (HOLIDAY_ART .. texture)
+        if BazUI.Has.Texture(path) then return path end
+        -- The calendar names a picture per part of a run; the plain one
+        -- is the whole holiday.
+        local base = path:gsub("Start$", ""):gsub("Ongoing$", ""):gsub("End$", "")
+        if base ~= path and BazUI.Has.Texture(base) then return base end
+    end
+    return BazUI.Has.Texture(DEFAULT_ART) and DEFAULT_ART or nil
+end
+
+local function HolidayInfo(entry)
+    if not (C_Calendar and C_Calendar.GetHolidayInfo) then return nil end
+    local ok, info = pcall(C_Calendar.GetHolidayInfo,
+        entry.monthOffset, entry.day, entry.index)
+    if not (ok and info) then return nil end
+    return info
+end
+
+-- A date the way the game writes one.
+local function ShortDate(t)
+    if not (t and t.monthDay and t.month) then return nil end
+    if FormatShortDate then
+        local ok, text = pcall(FormatShortDate, t.monthDay, t.month)
+        if ok and text then return text end
+    end
+    return ("%d/%d"):format(t.month, t.monthDay)
+end
+
 -- An event's own words for when it is.
 local function When(e, offsetDays)
     if offsetDays == 0 then
@@ -168,7 +212,7 @@ local function Gather()
             day = day - numDays
             monthOffset = 1
         end
-        for _, e in ipairs(DayEvents(day, monthOffset)) do
+        for i, e in ipairs(DayEvents(day, monthOffset)) do
             -- Day two of a run is the same event still going.
             local later = e.sequenceIndex and e.sequenceIndex > 1
             local key = (e.title or "?") .. "|" .. tostring(e.eventType or "")
@@ -176,7 +220,7 @@ local function Gather()
                 started[key] = true
                 local row = {
                     event = e, offset = offset, day = day, monthOffset = monthOffset,
-                    holiday = IsHoliday(e),
+                    index = i, holiday = IsHoliday(e),
                 }
                 if offset == 0 then today[#today + 1] = row else soon[#soon + 1] = row end
             end
@@ -188,9 +232,18 @@ end
 local function Row(entry)
     local e = entry.event
     local lines = { e.title }
-    if entry.holiday then lines[#lines + 1] = "Kind\tHoliday" end
+    local info = entry.holiday and HolidayInfo(entry) or nil
+
+    if info and info.startTime and info.endTime then
+        local from, to = ShortDate(info.startTime), ShortDate(info.endTime)
+        if from and to then lines[#lines + 1] = "Runs\t" .. from .. " to " .. to end
+    end
     if e.difficultyName and e.difficultyName ~= "" then
         lines[#lines + 1] = "Difficulty\t" .. e.difficultyName
+    end
+    if info and info.description and info.description ~= "" then
+        lines[#lines + 1] = ""
+        lines[#lines + 1] = info.description
     end
     lines[#lines + 1] = ""
     lines[#lines + 1] = "Click to open the calendar on this day."
@@ -231,8 +284,62 @@ local function Blocks()
         } }
     end
 
-    return {
-        {
+    -- The holiday that is on, or the next one, told properly: its
+    -- banner behind it, its own words under the heading, and when it
+    -- ends. The rest of the page counts; this one says.
+    local featured
+    for _, entry in ipairs(data.today) do
+        if entry.holiday then featured = entry break end
+    end
+    if not featured then
+        for _, entry in ipairs(data.soon) do
+            if entry.holiday then featured = entry break end
+        end
+    end
+
+    local blocks = {}
+
+    if featured then
+        local info = HolidayInfo(featured)
+        local name = (info and info.name) or featured.event.title
+        local when = When(featured.event, featured.offset)
+        local runs
+        if info and info.startTime and info.endTime then
+            local from, to = ShortDate(info.startTime), ShortDate(info.endTime)
+            if from and to then runs = from .. " to " .. to end
+        end
+        blocks[#blocks + 1] = {
+            key     = "featured",
+            title   = name,
+            column  = 1,
+            art     = info and BannerFor(info.texture) or nil,
+            artFallback = DEFAULT_ART,
+            artAlpha = 0.35,
+            blurb   = (info and info.description ~= "" and info.description) or nil,
+            GetRows = function()
+                local rows = {}
+                rows[#rows + 1] = {
+                    icon   = featured.event.iconTexture,
+                    label  = featured.offset == 0 and "On now" or "Starts",
+                    detail = when,
+                    state  = featured.offset == 0 and "open" or nil,
+                }
+                if runs then
+                    rows[#rows + 1] = { label = "Runs", detail = runs, muted = true }
+                end
+                rows[#rows + 1] = {
+                    label   = "Open the calendar",
+                    detail  = "go",
+                    muted   = true,
+                    onClick = function() OpenCalendar(featured.monthOffset, featured.day) end,
+                    tip     = "Click to open the game's calendar on this day.",
+                }
+                return rows
+            end,
+        }
+    end
+
+    blocks[#blocks + 1] = {
             key    = "today",
             title  = "Today",
             column = 1,
@@ -250,8 +357,9 @@ local function Blocks()
                     color = n > 0 and Theme.colors.gold or nil,
                 }
             end,
-        },
-        {
+        }
+
+    blocks[#blocks + 1] = {
             -- Named for what it actually covers: the rest of this month,
             -- or "coming up" once that is a short enough stretch that the
             -- page reaches into the next one.
@@ -276,8 +384,9 @@ local function Blocks()
                     holidays, holidays == 1 and "" or "s") end
                 return { text = text }
             end,
-        },
-    }
+        }
+
+    return blocks
 end
 
 local function Sync()

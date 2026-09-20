@@ -830,11 +830,33 @@ function Panel:Refresh()
         end
 
         -- The picture behind, if the block brought one the client has.
-        local artName = def.art and (HasAtlas(def.art) and def.art
-            or (def.artFallback and HasAtlas(def.artFallback) and def.artFallback))
-        if artName then
+        -- Either an atlas or a texture path; a path is drawn to the
+        -- card's own height rather than the atlas's natural size,
+        -- because a banner has no size of its own to keep.
+        local function Usable(name)
+            if type(name) ~= "string" then return nil end
+            if name:find("\\") then
+                return BazUI.Has.Texture(name) and "file" or nil
+            end
+            return HasAtlas(name) and "atlas" or nil
+        end
+        local artName, artKind = def.art, Usable(def.art)
+        if not artKind and def.artFallback then
+            artName, artKind = def.artFallback, Usable(def.artFallback)
+        end
+        if artKind then
             local art = CardArt(card)
-            art.tex:SetAtlas(artName, true)
+            art.tex:ClearAllPoints()
+            if artKind == "atlas" then
+                art.tex:SetTexCoord(0, 1, 0, 1)
+                art.tex:SetAtlas(artName, true)
+                art.tex:SetPoint("RIGHT", 0, 0)
+            else
+                art.tex:SetTexture(artName)
+                art.tex:SetTexCoord(0, 1, 0, 1)
+                art.tex:SetPoint("TOPLEFT")
+                art.tex:SetPoint("BOTTOMRIGHT")
+            end
             art.tex:SetAlpha(def.artAlpha or 1)
             art:Show()
         elseif card.artFrame then
@@ -856,6 +878,26 @@ function Panel:Refresh()
         -- nothing.
         local headH = 2 + PLATE_H + (skinned and (SKILLBAR_H + 18) or (summary and 18 or 4))
         card.head:SetHeight(headH)
+
+        -- And a paragraph beneath the head, where the block brought one.
+        local blurb = (not collapsed) and def.blurb or nil
+        if blurb then
+            if not card.blurb then
+                card.blurb = Theme.FontString(card, "OVERLAY", "GameFontHighlightSmall")
+                card.blurb:SetJustifyH("LEFT")
+                card.blurb:SetJustifyV("TOP")
+                card.blurb:SetWordWrap(true)
+                card.blurb:SetTextColor(unpack(Theme.colors.textSoft))
+            end
+            card.blurb:ClearAllPoints()
+            card.blurb:SetPoint("TOPLEFT", CARD_PAD + 2, -(headH + 8))
+            card.blurb:SetPoint("TOPRIGHT", -(CARD_PAD + 2), -(headH + 8))
+            Theme.SetText(card.blurb, blurb)
+            card.blurb:Show()
+            headH = headH + 8 + math.ceil((card.blurb:GetStringHeight() or 12) + 2)
+        elseif card.blurb then
+            card.blurb:Hide()
+        end
 
         if collapsed then
             card.count:SetText(def.collapsedHint or "")
