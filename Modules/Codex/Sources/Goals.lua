@@ -77,6 +77,9 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Goals",
     order  = 20,
+    about  = "The long things worth chasing: your first mount, the epic one,"
+        .. " a class reward. One appears as you come within reach of it, and"
+        .. " moves to Progress once it is done.",
     -- Not "goals appear as you grow into them", which tells nobody
     -- anything: the nearest one, by name, and what it wants.
     empty  = function()
@@ -98,8 +101,14 @@ Codex:RegisterSection({
             wants[#wants + 1] = (step.label or ""):gsub("^%u", string.lower)
         end
         local asks = #wants > 0 and (": " .. table.concat(wants, ", ")) or ""
+        local needs = nearest.level or level
+        for _, step in ipairs(nearest.steps or {}) do
+            if step.kind == "level" and step.level then
+                needs = math.max(needs, step.level)
+            end
+        end
         return ("Nothing on the go yet. The next is %s at level %d%s."):format(
-            nearest.name, nearest.level or level, asks)
+            nearest.name, needs, asks)
     end,
     events = EVENTS,
 
@@ -142,6 +151,7 @@ Codex:RegisterSection({
     tab    = "progress",
     title  = "Goals",
     order  = 5,
+    about  = "Goals you have finished.",
     empty  = "Nothing finished yet. A goal moves here the moment its last step is done.",
     events = EVENTS,
 

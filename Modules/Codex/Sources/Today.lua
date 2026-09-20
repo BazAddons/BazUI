@@ -49,6 +49,8 @@ Codex:RegisterSection({
     id     = "lockouts",
     tab    = "today",
     title  = "Saved instances",
+    about  = "Raids and dungeons you are locked to until they reset, with how"
+        .. " many of their bosses you have already killed.",
     order  = 10,
     empty = function()
         local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
@@ -147,6 +149,8 @@ Codex:RegisterSection({
     id     = "resets",
     tab    = "today",
     title  = "Resets",
+    about  = "When the game's own timers roll over. The daily one clears daily"
+        .. " quests; the weekly one clears raid lockouts.",
     order  = 20,
     empty = "This client reports no reset timers.",
     events = { "PLAYER_ENTERING_WORLD" },

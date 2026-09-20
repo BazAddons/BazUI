@@ -125,6 +125,7 @@ Codex:RegisterSection({
     id     = "quests",
     tab    = "today",
     title  = "Quests",
+    about  = "Everything in your quest log, the ones ready to hand in first.",
     order  = 5,
     empty  = "Nothing in the quest log.",
     events = {

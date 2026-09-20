@@ -38,6 +38,7 @@ Codex:RegisterSection({
     id     = "titles",
     tab    = "progress",
     title  = "Titles",
+    about  = "Every title this character has earned the right to wear.",
     order  = 10,
     empty = "No titles earned yet. Titles come from reputations, rare feats and the battlegrounds.",
     events = { "KNOWN_TITLES_UPDATE", "PLAYER_ENTERING_WORLD" },
@@ -123,6 +124,7 @@ Codex:RegisterSection({
     id     = "mounts",
     tab    = "progress",
     title  = "Mounts",
+    about  = "Mounts you own, and how many there are to own in all.",
     order  = 20,
     empty = function()
         local level = UnitLevel("player") or 1
@@ -156,6 +158,7 @@ Codex:RegisterSection({
     id     = "pets",
     tab    = "progress",
     title  = "Pets",
+    about  = "The small companions that follow you about.",
     order  = 30,
     empty = "No pets yet. Vendors in the capitals sell a few; others drop or come from quests.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },

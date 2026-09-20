@@ -583,11 +583,24 @@ local function AcquireCard()
     card.count:SetPoint("RIGHT", card.arrow, "LEFT", -8, 0)
     card.count:SetTextColor(unpack(Theme.colors.textMuted))
 
+    -- Hovering a heading says what the block is for. A title has room
+    -- for two or three words and no more, which is not enough to
+    -- explain "Attunements in progress" to somebody meeting it for the
+    -- first time.
     card.head:SetScript("OnEnter", function(self)
-        self:GetParent().arrow:SetAlpha(1)
+        local block = self:GetParent()
+        block.arrow:SetAlpha(1)
+        if not block._about then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        Panel.SetTooltipText(GameTooltip, block._about)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(Codex:IsCollapsed(block._sectionID)
+            and "Click to unfold." or "Click to fold away.", 0.6, 0.55, 0.45, true)
+        GameTooltip:Show()
     end)
     card.head:SetScript("OnLeave", function(self)
         self:GetParent().arrow:SetAlpha(0.6)
+        GameTooltip:Hide()
     end)
     card.head:SetScript("OnClick", function(self)
         local id = self:GetParent()._sectionID
@@ -865,6 +878,7 @@ function Panel:Refresh()
 
         local card = AcquireCard()
         card._sectionID = def.id
+        card._about = def.about and ((def.title or def.id) .. "|n" .. def.about) or nil
         card._x = (col - 1) * (colW + CARD_GAP)
         card:ClearAllPoints()
         card:SetPoint("TOPLEFT", card._x, -y)

@@ -48,7 +48,9 @@ end
 Codex:RegisterSection({
     id     = "open",
     tab    = "today",
-    title  = "Open to you",
+    title  = "Ready to run",
+    about  = "Raids and dungeons you are attuned for, old enough for, and not"
+        .. " already saved to. If it is here, you can walk in today.",
     order  = 8,
     empty  = function()
         local A = Access()
@@ -121,7 +123,10 @@ Codex:RegisterSection({
 Codex:RegisterSection({
     id     = "attunements",
     tab    = "today",
-    title  = "Working towards",
+    title  = "Attunements started",
+    about  = "Raids and dungeons whose key or attunement you have begun but not"
+        .. " finished. Each says how many of its steps are done; finish the last"
+        .. " one and it moves up to Ready to run.",
     order  = 30,
     empty  = function()
         local A = Access()

@@ -345,6 +345,8 @@ Codex:RegisterSection({
     id     = "forYourLevel",
     tab    = "today",
     title  = "For your level",
+    about  = "Dungeons tuned for where you are now, give or take a couple of"
+        .. " levels. The full map of them is on the Instances page.",
     order  = 7,
     empty  = function()
         local level = UnitLevel("player") or 1

@@ -163,6 +163,8 @@ local function Blocks()
     blocks[#blocks + 1] = {
         key   = "points",
         title = "Legacy points",
+        about = "Points the whole account earns once, from challenges, and that"
+            .. " every character then spends separately across the three trees.",
         GetRows = function()
             local p, rows = Points(), {}
             if p.earned then
@@ -210,6 +212,8 @@ local function Blocks()
         blocks[#blocks + 1] = {
             key   = "trees",
             title = "Trees",
+            about = "Where this character has put its legacy points. Another"
+                .. " character may spend the very same points quite differently.",
             empty = "Nothing spent yet.",
             GetRows = function()
                 local rows = {}

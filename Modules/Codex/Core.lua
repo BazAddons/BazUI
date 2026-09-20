@@ -214,6 +214,8 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         -- A block whose rows are not a list of anything has no count
         -- worth putting in the corner.
         def.hideCount    = block.hideCount
+        -- What the block is for, in a sentence, shown on its heading.
+        def.about        = block.about
         def.icon         = block.icon
         def.rowless      = block.rowless
         -- Which column it belongs in, where the block cares. Most do
