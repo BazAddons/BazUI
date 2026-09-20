@@ -789,6 +789,7 @@ function Panel:Refresh()
         BazUI.SetArrowTexture(card.arrow, collapsed and "RIGHT" or "DOWN", 16)
 
         local barDef = (not collapsed) and def.GetBar and def.GetBar() or nil
+        local rows = (not collapsed) and ((def.GetRows and def.GetRows()) or {}) or {}
 
         -- A block may ask for the profession book's bar instead of a
         -- sentence; it gets the sentence where the client lacks the art.
@@ -806,7 +807,11 @@ function Panel:Refresh()
         end
         if card.skill and not skinned then card.skill:Hide() end
 
-        local summary = (not skinned) and Summary(barDef) or nil
+        -- A summary over one row says what the row says. "1 at cap"
+        -- above "Language: Common  300 / 300" is the same reading
+        -- twice, and the line it costs is a line the page has to find
+        -- somewhere - which is how a page ends up scrolling by an inch.
+        local summary = (not skinned) and #rows > 1 and Summary(barDef) or nil
         card.summary:SetText(summary or "")
         if barDef and barDef.color then
             card.summary:SetTextColor(barDef.color[1], barDef.color[2], barDef.color[3])
@@ -847,8 +852,6 @@ function Panel:Refresh()
             card:SetHeight(headH + 8)
         else
             local inner = headH + 8
-
-            local rows = (def.GetRows and def.GetRows()) or {}
             local shown = #rows > 0 and rows or nil
 
             -- Would the whole block fit between here and the foot of the
