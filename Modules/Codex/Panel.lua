@@ -209,7 +209,9 @@ end
 
 -- The heading plate, with its title on it. Falls back to a bare title
 -- where the art is missing.
-local function CreatePlate(parent)
+local CreatePlate
+function Panel.CreatePlate(parent) return CreatePlate(parent) end
+CreatePlate = function(parent)
     local plate = CreateFrame("Frame", nil, parent)
     plate:SetSize(PLATE_W, PLATE_H)
     if HasAtlas(PLATE_ATLAS) then

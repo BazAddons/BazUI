@@ -181,8 +181,10 @@ end
 local CARD_MAX = 58   -- as tall as a card gets
 local CARD_MIN = 40   -- and as short
 local CARD_GAP = 6
-local MODEL_W  = 300
+local MODEL_W  = 250
+local STATS_W  = 300
 local COL_GAP  = 14
+local STAT_ROW_H = 22
 local ICON     = 40
 
 local page
@@ -313,7 +315,174 @@ local function Build(parent)
     end
     page.summary:SetHeight(52 + #SUMMARY_ROWS * 24 + 10)
 
+    -- The character sheet's numbers, in a column of their own. The sheet
+    -- keeps them behind a scroll; here there is room to lay them out,
+    -- and where there is not, the column scrolls on its own.
+    page.stats = Panel.CreateBox(page)
+    local statScroll = CreateFrame("ScrollFrame", nil, page.stats)
+    statScroll:SetPoint("TOPLEFT", 6, -8)
+    statScroll:SetPoint("BOTTOMRIGHT", -6, 8)
+    statScroll:EnableMouseWheel(true)
+    statScroll:SetScript("OnMouseWheel", function(self, delta)
+        local most = math.max(0, (self.bazContentH or 0) - self:GetHeight())
+        local to = math.max(0, math.min(most, (self:GetVerticalScroll() or 0) - delta * 44))
+        self:SetVerticalScroll(to)
+    end)
+    local body = CreateFrame("Frame", nil, statScroll)
+    body:SetSize(1, 1)
+    statScroll:SetScrollChild(body)
+    page.stats.scroll = statScroll
+    page.stats.body = body
+    page.stats.plates = {}
+    page.stats.rows = {}
+
     return page
+end
+
+---------------------------------------------------------------------------
+-- The numbers
+--
+-- Read the way the character sheet reads them: its own category table
+-- and its own update functions, run against rows of ours shaped the way
+-- it expects (a Label and a Value). Run as Blizzard's code, because on
+-- Forever health is a secret number and only their code may compare it.
+-- Whatever it writes on the row - the text, a tooltip, a hidden flag -
+-- is what the sheet would have shown.
+---------------------------------------------------------------------------
+
+local function CallAsBlizzard(fn, ...)
+    if securecallfunction then
+        return pcall(securecallfunction, fn, ...)
+    end
+    return pcall(fn, ...)
+end
+
+-- Retail names its categories by frame; Forever by word. Either way the
+-- heading is a word.
+local function CategoryTitle(cat)
+    if cat.categoryName and cat.categoryName ~= "" then return cat.categoryName end
+    local frameName = cat.categoryFrame or ""
+    local word = frameName:gsub("Category$", "")
+    local key = "STAT_CATEGORY_" .. word:upper()
+    return _G[key] or word
+end
+
+local function AcquireStatPlate(box, i)
+    local plate = box.plates[i]
+    if not plate then
+        plate = Codex.Panel.CreatePlate(box.body)
+        box.plates[i] = plate
+    end
+    return plate
+end
+
+local function AcquireStatRow(box, i)
+    local row = box.rows[i]
+    if not row then
+        row = Codex.Panel.CreateBandRow(box.body)
+        row:SetHeight(STAT_ROW_H)
+        row.Label = Theme.FontString(row, "OVERLAY", "GameFontNormal")
+        row.Label:SetPoint("LEFT", 11, 0)
+        row.Label:SetJustifyH("LEFT")
+        row.Value = Theme.FontString(row, "OVERLAY", "GameFontHighlight")
+        row.Value:SetPoint("RIGHT", -8, 0)
+        row.Value:SetJustifyH("RIGHT")
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
+            self.hover:Show()
+            if self.onEnterFunc then
+                CallAsBlizzard(self.onEnterFunc, self)
+            elseif PaperDollStatTooltip then
+                CallAsBlizzard(PaperDollStatTooltip, self)
+            end
+        end)
+        row:SetScript("OnLeave", function(self)
+            self.hover:Hide()
+            GameTooltip:Hide()
+        end)
+        box.rows[i] = row
+    end
+    return row
+end
+
+-- Whether the sheet would have left this stat out: the update hid the
+-- row itself, its value sits at the category's hideAt, or its showFunc
+-- says no. The comparison is done carefully, because the value may be
+-- a number our code is not allowed to look at.
+local function StatHidden(row, stat)
+    if not row:IsShown() then return true end
+    if stat.showFunc then
+        local ok, show = pcall(stat.showFunc)
+        if ok and not show then return true end
+    end
+    if stat.hideAt ~= nil then
+        local ok, hidden = pcall(function() return row.numericValue == stat.hideAt end)
+        if ok and hidden then return true end
+    end
+    return false
+end
+
+local function FillStats(box, width)
+    local info = PAPERDOLL_STATINFO
+    local cats = PAPERDOLL_STATCATEGORIES
+    local plateN, rowN, y = 0, 0, 4
+    if type(info) == "table" and type(cats) == "table" then
+        for _, cat in ipairs(cats) do
+            if (cat.unit or "player") == "player" then
+                local rowsHere = 0
+                local plateIndex = plateN + 1
+                local plateY = y
+                y = y + 40 + 4
+
+                for _, stat in ipairs(cat.stats or {}) do
+                    local entry = info[stat.stat]
+                    if entry and entry.updateFunc then
+                        rowN = rowN + 1
+                        local row = AcquireStatRow(box, rowN)
+                        row.unit = "player"
+                        row.tooltip, row.tooltip2, row.tooltip3, row.onEnterFunc = nil, nil, nil, nil
+                        row.numericValue = nil
+                        row:Show()
+                        local ok = CallAsBlizzard(entry.updateFunc, row, "player")
+                        if ok and not StatHidden(row, stat) then
+                            rowsHere = rowsHere + 1
+                            row:ClearAllPoints()
+                            row:SetPoint("TOPLEFT", 0, -y)
+                            row:SetWidth(width)
+                            Codex.Panel.SetRowBand(row, rowsHere)
+                            row:Show()
+                            y = y + STAT_ROW_H
+                        else
+                            row:Hide()
+                            rowN = rowN - 1
+                            -- the row stays in the pool for the next stat
+                            box.rows[rowN + 1] = row
+                        end
+                    end
+                end
+
+                if rowsHere > 0 then
+                    plateN = plateIndex
+                    local plate = AcquireStatPlate(box, plateN)
+                    plate:ClearAllPoints()
+                    plate:SetPoint("TOP", box.body, "TOP", 0, -plateY)
+                    plate.title:SetText(CategoryTitle(cat))
+                    plate:Show()
+                    y = y + 6
+                else
+                    y = plateY
+                end
+            end
+        end
+    end
+    for i = plateN + 1, #box.plates do box.plates[i]:Hide() end
+    for i = rowN + 1, #box.rows do box.rows[i]:Hide() end
+
+    box.body:SetSize(width, math.max(y, 1))
+    box.scroll.bazContentH = y
+    if (box.scroll:GetVerticalScroll() or 0) > math.max(0, y - box.scroll:GetHeight()) then
+        box.scroll:SetVerticalScroll(0)
+    end
 end
 
 local function Percent(fraction)
@@ -388,8 +557,9 @@ local function Render(content, width)
     local cardH = math.floor((avail - CARD_GAP * (tallestCount - 1)) / tallestCount)
     cardH = math.max(CARD_MIN, math.min(CARD_MAX, cardH))
 
-    local colW = math.floor((width - MODEL_W - COL_GAP * 2) / 2)
+    local colW = math.floor((width - MODEL_W - STATS_W - COL_GAP * 3) / 2)
     local leftX, rightX = 0, colW + COL_GAP + MODEL_W + COL_GAP
+    local statsX = rightX + colW + COL_GAP
     local ys = { left = 0, right = 0 }
 
     for i, r in ipairs(snap.slots) do
@@ -423,6 +593,12 @@ local function Render(content, width)
     p.summary:ClearAllPoints()
     p.summary:SetPoint("TOPLEFT", p.modelBox, "BOTTOMLEFT", 0, -CARD_GAP)
     p.summary:SetWidth(MODEL_W)
+
+    -- The stats column stands as tall as the page.
+    p.stats:ClearAllPoints()
+    p.stats:SetPoint("TOPLEFT", statsX, 0)
+    p.stats:SetSize(width - statsX, math.max(tallest, modelH + CARD_GAP + summaryH))
+    FillStats(p.stats, (width - statsX) - 12)
 
     if p.model:IsShown() then
         p.model:SetUnit("player")
