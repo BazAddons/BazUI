@@ -862,7 +862,7 @@ function Panel:Refresh()
             -- page? If not, and there is room worth scrolling in, the
             -- list goes inside the card and scrolls there.
             local listH = ((shown and #shown or 1) * ROW_H) + CARD_PAD
-            local room  = math.max(0, viewport - y) - inner - CARD_PAD
+            local room  = math.floor(math.max(0, viewport - y) - inner - CARD_PAD)
             local owns  = (listH > room) and (room >= CARD_SCROLL_MIN)
 
             local body, bodyY = card, inner
@@ -925,7 +925,7 @@ function Panel:Refresh()
     -- with each other and with the window. Only a little short: a page
     -- that is half empty would rather have two ordinary blocks than
     -- two tall hollow ones.
-    if tallest <= viewport then
+    if tallest <= viewport + 1 then
         local slack = viewport * SLACK_SHARE
         for c = 1, COLUMNS do
             local card = colLast[c]
