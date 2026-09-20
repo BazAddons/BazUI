@@ -325,6 +325,41 @@ function Button:UpdateFlyoutArrow(btn)
     arrow:Show()
 end
 
+-- The last one drunk takes the slot with it.
+--
+-- A consumable you have run out of leaves an icon that does nothing: it
+-- cannot be clicked, its count reads zero, and the only thing it tells
+-- you is what used to be there. Blizzard's own bars have cleared an
+-- emptied item slot since vanilla, and this is the same idea - put the
+-- water back in the bag and drag it out again.
+--
+-- Never on the strength of a single reading, though. Item data is not
+-- always there the moment a bag update lands, at login especially, so a
+-- slot emptied on a false zero would be a slot the player has to fill in
+-- again with nothing to say why it went. The count has to have been seen
+-- to be positive first: drinking the last one is a one that becomes a
+-- zero, and a login that cannot answer yet has never seen the one.
+function Button:UpdateStock(btn)
+    local handler, data = GetHandler(btn)
+    if not (handler and handler.isHeld) then return end
+
+    if handler.isHeld(data) then
+        btn.bbHadStock = true
+        return
+    end
+
+    if not btn.bbHadStock then return end
+
+    -- Clearing a slot writes secure attributes, so it waits for the end
+    -- of the fight. The mark is left standing on purpose: the full update
+    -- that runs when combat drops comes back through here and finishes
+    -- the job.
+    if InCombatLockdown() then return end
+
+    btn.bbHadStock = nil
+    Button:ClearAction(btn)
+end
+
 function Button:UpdateButton(btn)
     Button:UpdateTexture(btn)
     Button:UpdateCooldown(btn)
@@ -335,6 +370,9 @@ function Button:UpdateButton(btn)
     Button:UpdateEquipped(btn)
     Button:UpdateMacroName(btn)
     Button:UpdateFlyoutArrow(btn)
+    -- Last, because it can empty the slot, and everything above wants a
+    -- slot with something in it.
+    Button:UpdateStock(btn)
 end
 
 ---------------------------------------------------------------------------

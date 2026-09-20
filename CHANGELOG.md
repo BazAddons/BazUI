@@ -1,18 +1,28 @@
-## 008
+## 009
 
-Two fixes from 007, neither of which was worth waiting on.
+**The bag works in a fight.** It opens, closes, gets dragged around and
+rearranges itself while you are in combat, the way every other window
+does. Before this it refused - and on 008 it refused loudly, with an
+error, which is the worst way to say no.
 
-### Fixed
+The cause was ours. A bag slot was built as a secure button so that
+clicking one could use what was in it. That made every frame around it
+protected, and the game does not let an addon open, close, move or lay
+out a protected frame during combat. It turns out the game's own bag slot
+already does all of that from an ordinary button - using, selling at a
+vendor, picking up, splitting, linking, and putting a waiting spell onto
+an item. Ours now leaves that alone instead of reinventing it, and about
+a hundred and twenty lines of working around the problem went with it.
 
-- **You can throw things away again.** Dragging an item out of your bags
-  and letting go over the world is how the game asks whether you want to
-  destroy it - and 007's new "drop a spell to make a bar" was answering
-  that question with a bar, so nothing could be deleted while BazUI was
-  loaded. Items are left alone entirely now. Dropping one onto a bar slot
-  still puts it there, and spells, macros, mounts, equipment sets and
-  flyouts still make a bar wherever you let go of them.
-- **The Codex said your quest log was empty.** It was reading the log
-  through calls Forever does not have, so the Today tab reported nothing
-  to a character carrying a dozen quests. It now reads the log the same
-  way the quest tracker does, which has always worked. Quest levels show
-  in the row tooltips as well, which they never did.
+Nothing you do with a bag slot has changed. If anything it should be a
+little more like the bag you already know.
+
+### Changed
+
+- **An item you run out of clears its own bar slot.** Drink the last
+  water and the button empties, rather than leaving an icon that cannot
+  be clicked and reads zero. A trinket you are wearing does not count as
+  gone, and neither does a wand with charges left. Putting the last of
+  something in the bank does clear it - it is not in your bags any more,
+  and a slot you cannot use until your next bank visit is worse than one
+  you refill by dragging.

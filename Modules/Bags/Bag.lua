@@ -131,19 +131,6 @@ BazUI:RegisterDependency({
     why    = "Every bag slot is one of these.",
     check  = function() return BazUI.Has.Template(SLOT_TEMPLATE) end,
 })
--- The template only. The other half of this used to ask for
--- SECURE_ACTIONS.item as well, and reported missing on every client -
--- SECURE_ACTIONS is a file local inside Blizzard's SecureTemplates.lua
--- and never a global, so no addon can see it. What the "item" action does
--- is only observable from inside the secure environment; the template
--- being there is the part we can honestly ask about.
-BazUI:RegisterDependency({
-    module = "Bags",
-    label  = "SecureActionButtonTemplate",
-    why    = "Using an item from a bag. Without it every use is refused as a protected call.",
-    check  = function() return BazUI.Has.Template("SecureActionButtonTemplate") end,
-})
-
 -- The slot template is a Button on Classic clients and an ItemButton on
 -- newer ones; ask the client rather than guess.
 local function SlotFrameType()
@@ -409,107 +396,38 @@ local function ApplyBackdrop(btn, occupied)
 end
 
 ---------------------------------------------------------------------------
--- What a right click means
+-- A slot is an ordinary button, and that is the whole trick
 --
--- Away from a vendor it means "use this", and the secure environment does
--- it: the button carries type2 = "item", and the game uses what is in the
--- slot. That is the only way a click from an addon's button can use an
--- item at all, so it has to stay.
+-- It used to inherit SecureActionButtonTemplate as well, so that a right
+-- click could hand "use what is in this slot" to the secure environment.
+-- That looked necessary: using a bag item is a protected call, and it was
+-- being refused down our code path with "BazUI tried to call the
+-- protected function UseContainerItem()".
 --
--- At a vendor the same click means "sell this", and the two are not the
--- same verb. Handed to the secure handler, a sword is equipped instead of
--- sold - which is what it was told to do, and the wrong thing entirely.
+-- The refusal was our own doing. Inheriting the secure template replaces
+-- the slot template's OnClick, so we had re-implemented the click here
+-- and were calling Blizzard's handler from our code - which is what made
+-- it our code path. Left alone, ContainerFrameItemButtonTemplate carries
+-- its own OnClick, set in Blizzard's XML, and that handler does the lot:
+-- picking up, using, selling at a vendor, splitting, linking, and putting
+-- a waiting spell onto the item. This is how Blizzard's own bag works and
+-- how every replacement bag works, checked against the client's source
+-- rather than guessed at.
 --
--- The secure environment has no notion of "sell", so the action comes off
--- the button while a merchant is open and the sale is made in the click
--- handler instead, by the same call the sell-junk button makes. It is not
--- a protected call; what is protected is *using* an item, which is why
--- that half has to stay secure and this half does not.
---
--- Safe to swap because a merchant cannot open in combat, which is the
--- only time an attribute cannot be set. The regen guard is there for the
--- odd case of a fight starting with the window still up.
+-- What it bought, beyond simplicity: a secure button makes every frame
+-- above it protected, and an addon may not show, hide, move or lay out a
+-- protected frame in combat. That is why the bag could not be opened
+-- during a fight. With ordinary buttons the whole panel is ordinary, and
+-- it opens, closes, drags and rearranges mid-fight like anything else.
 ---------------------------------------------------------------------------
-
-local function AtVendor()
-    return (MerchantFrame and MerchantFrame:IsShown()) and true or false
-end
-
-local function SlotUseAction()
-    return AtVendor() and nil or "item"
-end
-
--- Whether a spell is waiting to be pointed at something.
-local function Targeting()
-    return (SpellIsTargeting and SpellIsTargeting()) and true or false
-end
-
--- What a left click means, which is usually nothing of ours.
---
--- Picking a stack up is the ordinary answer and the click handler does
--- that. The exception is a spell waiting for a target - casting
--- Comprehend Scroll and then clicking the scroll. Applying a spell to a
--- bag slot goes through a protected call, and it is refused down an
--- addon's code path however politely we ask: the game's own bag manages
--- it because the click arrives in their code, not ours.
---
--- A macro is the way through. The secure environment runs it, "/use bag
--- slot" reaches the same protected call from Blizzard's side, and the
--- pending spell lands on the item. Only while one is pending, because
--- the same macro on an ordinary click would use the item when the player
--- meant to pick it up.
-local function SlotClickAction(bagID, slotID)
-    if not Targeting() then return nil, nil end
-    return "macro", "/use " .. bagID .. " " .. slotID
-end
-
-local function ApplySlotActions()
-    if InCombatLockdown() then return end
-    local action = SlotUseAction()
-    for bagID, slots in pairs(slotButtons) do
-        for slotID, btn in pairs(slots) do
-            btn:SetAttribute("type2", action)
-            local clickType, macro = SlotClickAction(bagID, slotID)
-            btn:SetAttribute("type1", clickType)
-            btn:SetAttribute("macrotext1", macro)
-        end
-    end
-end
 
 local function GetOrCreateSlotButton(bagID, slotID)
     slotButtons[bagID] = slotButtons[bagID] or {}
     if slotButtons[bagID][slotID] then return slotButtons[bagID][slotID] end
 
-    -- A protected frame cannot be created, moved or shown in combat, so
-    -- there is nothing to do here until the fight ends. Refresh knows to
-    -- come back.
-    if InCombatLockdown() then return nil end
-
     local parent = GetOrCreateBagContext(bagID)
     local name = "BazUIBagSlot_" .. bagID .. "_" .. slotID
-    local btn = CreateFrame(SlotFrameType(), name,
-        parent, SLOT_TEMPLATE .. ",SecureActionButtonTemplate")
-
-    -- Using an item has to be the game's doing rather than ours.
-    --
-    -- The slot template's own click handler calls UseContainerItem, and
-    -- that call is refused for anything an addon made: the button is
-    -- ours, so the code path is ours, so the game will not run a
-    -- protected function down it. No amount of care on this side changes
-    -- that, and reusing Blizzard's own buttons does not either - the
-    -- taint follows the moment they are reparented.
-    --
-    -- So the right button is handed to the secure environment, which
-    -- takes a bag and a slot and uses what is in it. Everything else a
-    -- slot does - picking up, dropping, linking, splitting - is
-    -- unprotected and stays with Blizzard's handler, called from PreClick
-    -- below because inheriting the secure template replaced it.
-    btn:SetAttribute("type2", SlotUseAction())
-    local clickType, macro = SlotClickAction(bagID, slotID)
-    btn:SetAttribute("type1", clickType)
-    btn:SetAttribute("macrotext1", macro)
-    btn:SetAttribute("item", bagID .. " " .. slotID)
-    btn:RegisterForClicks("AnyUp")
+    local btn = CreateFrame(SlotFrameType(), name, parent, SLOT_TEMPLATE)
 
     -- Initialize handles SetID, SetBagID attribute, ItemSlotBackground
     -- (the combined-bag leather background), and Show. Without this we
@@ -521,44 +439,13 @@ local function GetOrCreateSlotButton(bagID, slotID)
         btn:SetID(slotID)
     end
 
-    -- Shift+right-click > category context menu. PreClick fires before
-    -- the secure action handler (which would normally use the item on
-    -- right-click), so we can show our menu without losing the rest of
-    -- the slot's standard behavior. shift+right is unbound by default
-    -- in modern WoW so this doesn't compete with use-item / split-stack.
+    -- Shift+right-click opens our category menu. The only thing added to
+    -- the click here: everything else the slot does is the template's own
+    -- OnClick, which runs after this and is left alone. Shift+right is
+    -- unbound by default, so nothing is being taken away from it.
     btn:HookScript("PreClick", function(self, mouseBtn)
         if mouseBtn == "RightButton" and IsShiftKeyDown() then
             Bag:ShowCategoryMenuForSlot(self, bagID, slotID)
-            return
-        end
-
-        -- What the slot template's own OnClick used to do, for the
-        -- clicks the secure handler is not answering.
-        --
-        -- A plain right click is normally its business, and doing it here
-        -- as well would be asking twice for the same thing - once
-        -- refused. At a vendor it is not its business: the action has
-        -- been taken off the button, and the sale is made here.
-        if mouseBtn == "RightButton" and not IsModifiedClick() then
-            if AtVendor() and C_Container and C_Container.UseContainerItem then
-                C_Container.UseContainerItem(bagID, slotID)
-            end
-            return
-        end
-
-        -- A spell waiting for a target is the secure environment's to
-        -- answer, by the macro on the button. Blizzard's handler would
-        -- reach for the protected call from our code and be refused,
-        -- which is where "BazUI tried to call UseContainerItem" came
-        -- from - the click still worked in their bag and threw here.
-        if Targeting() then return end
-
-        if IsModifiedClick() then
-            if _G.ContainerFrameItemButton_OnModifiedClick then
-                _G.ContainerFrameItemButton_OnModifiedClick(self, mouseBtn)
-            end
-        elseif _G.ContainerFrameItemButton_OnClick then
-            _G.ContainerFrameItemButton_OnClick(self, mouseBtn)
         end
     end)
 
@@ -597,29 +484,18 @@ local function GetOrCreateSlotButton(bagID, slotID)
 end
 
 ---------------------------------------------------------------------------
--- Having the slots ready before the fight
+-- Having the slots ready before they are asked for
 --
--- A slot button is a secure frame, because clicking one has to be able to
--- use what is in it, and the game will not let an addon create a secure
--- frame in combat. Built on demand, as they were, that meant a bag first
--- opened during a fight had no buttons to open with - and nothing put
--- them there until the fight ended.
---
--- So they are made ahead of time, while there is no fight on: at login,
--- whenever the bags change, and again on the way out of combat for
--- anything that turned up meanwhile. Making one is cheap and making them
--- twice is free, since the maker hands back the one it already made.
---
--- This does not make the panel rearrange itself in combat - moving a
--- secure frame is refused just as firmly as making one, so a bag that
--- needs to reflow waits. What it does mean is that the bag you open
--- mid-fight is the bag you left, and every slot in it works.
+-- Nothing forces this any more - an ordinary button can be made at any
+-- time, in a fight or out of one - but a bag opened for the first time
+-- still reads better if the buttons are already there. Making one is
+-- cheap and making it twice is free, since the maker hands back the one
+-- it already made.
 ---------------------------------------------------------------------------
 
 local BuildFrame
 
 local function PrimeSlots()
-    if InCombatLockdown() then return end
     -- The buttons hang off the panel's scroll child, so the panel has to
     -- exist first. Building it does not show it.
     BuildFrame()
@@ -1718,11 +1594,11 @@ end)
 
 -- Everything a slot says, without moving anything.
 --
--- The slot buttons are protected now, so showing, hiding or placing one
--- during a fight is refused. What is not refused is changing what it
--- shows - the icon, the count, the border - which is all that a stack
--- growing or a potion being drunk actually needs. The real layout waits
--- for the fight to end.
+-- Nothing calls this now that a full refresh runs in combat as happily as
+-- out of it. Kept because it is the cheap half of a refresh - what every
+-- slot shows, without deciding where any of them go - and a panel that
+-- only needs its counts brought up to date should not be paying for a
+-- relayout to get them.
 function Bag:RefreshContents()
     -- Worked out once, before the slots are redrawn, because it is a
     -- question about the whole bag and asking it per slot would walk
@@ -1746,19 +1622,6 @@ function Bag:Refresh()
     -- Before anything is drawn: which slot, if any, is the one to throw
     -- away first. Every slot's redraw below asks whether it is that one.
     FindCheapestJunk((SlotCounts()))
-
-    -- Slot buttons are protected, so a fight is no time to be moving
-    -- them. What each slot shows is still kept current - an item used or
-    -- looted updates in place - and the buttons themselves are already
-    -- there, made ahead of time by PrimeSlots. What waits for the end of
-    -- the fight is the arrangement: a category that has grown, a column
-    -- the panel wants to add, an empty slot that has just been filled and
-    -- would have to appear. Leaving combat asks for a refresh, so that is
-    -- when it settles.
-    if InCombatLockdown() then
-        self:RefreshContents()
-        return
-    end
 
     -- Pin the frame to its current top-left corner before any resize
     -- so width/height changes grow toward bottom-right rather than
@@ -2172,10 +2035,7 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:RegisterEvent("INVENTORY_SEARCH_UPDATE")    -- search box text > re-evaluate isFiltered
 events:RegisterEvent("MERCHANT_SHOW")              -- junk coins only show at a vendor
 events:RegisterEvent("MERCHANT_CLOSED")
--- A spell picked up or put down changes what a left click on a slot
--- means. See SlotClickAction.
-events:RegisterEvent("CURRENT_SPELL_CAST_CHANGED")
--- A layout the fight would not let us do.
+-- Anything looted or used during a fight that the panel did not lay out.
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
 pcall(events.RegisterEvent, events, "BAG_NEW_ITEMS_UPDATED")
 events:SetScript("OnEvent", function()
@@ -2186,9 +2046,6 @@ events:SetScript("OnEvent", function()
     -- part of it. In combat it does nothing and waits for the regen
     -- event, which is in this same list.
     PrimeSlots()
-    -- And what a right click means depends on whether a merchant is
-    -- open, which two of these events are exactly about.
-    ApplySlotActions()
     ScheduleRefresh()
 end)
 

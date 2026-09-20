@@ -83,6 +83,23 @@ function Item.getCount(data)
     return tostring(count)
 end
 
+-- Whether the player still has one of these.
+--
+-- Answered here rather than by the button, because "have you got one" is
+-- an item question and it has a catch: a trinket you are wearing is in no
+-- bag at all and is still very much yours. Counting charges as well, so a
+-- wand with three left reads as held rather than as a single object.
+--
+-- The bank is deliberately not counted. Something put away is not
+-- something you can click, and a slot that sits there unusable until you
+-- next visit a bank is worse than one you refill by dragging.
+function Item.isHeld(data)
+    local count = C_Item.GetItemCount(data.id, false, true) or 0
+    if count > 0 then return true end
+    if C_Item.IsEquippedItem and C_Item.IsEquippedItem(data.id) then return true end
+    return false
+end
+
 -- Item cooldowns moved namespaces over the years: C_Item on Retail,
 -- C_Container on Classic, a bare global before that.
 local GetItemCooldownCompat = (C_Item and C_Item.GetItemCooldown)

@@ -742,6 +742,9 @@ addon.config.onReady = function(self)
 
     -- These are infrequent events - a full update pass is fine.
     self:On("BAG_UPDATE",               function() addon:QueueFullUpdate() end)
+    -- And once the fight is over, for whatever could not be done during
+    -- it - an item that ran out mid-pull leaves its slot then.
+    self:On("PLAYER_REGEN_ENABLED",     function() addon:QueueFullUpdate() end)
     self:On("PLAYER_EQUIPMENT_CHANGED", function() addon:QueueFullUpdate() end)
     self:On("ACTIONBAR_UPDATE_STATE",   function() addon:QueueFullUpdate() end)
 
