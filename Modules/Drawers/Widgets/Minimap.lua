@@ -151,28 +151,45 @@ local wheelZoomed = setmetatable({}, { __mode = "k" })
 -- Shift-right-click for the calendar
 --
 -- The game hangs its calendar off a button on the minimap, and BazUI
--- takes that whole cluster away. Shift and right click is free here -
--- the map's own right click opens the tracking menu, and nothing reads
--- shift with it - so it is the obvious home for the thing that used to
--- sit an inch away.
+-- takes that whole cluster away. Shift and right click is free here, so
+-- it is the obvious home for the thing that used to sit an inch away.
 --
--- HookScript rather than SetScript: the map's own handling of a click
--- is Blizzard's, and running before it rather than instead of it is
--- what keeps pings and tracking working.
+-- The map's own click handler pings the spot under the cursor, and it
+-- does that for every mouse button - Blizzard's handler reads the
+-- cursor, never the button, on all three clients. A hook cannot call
+-- that off, so this stands in front of the handler instead of behind
+-- it: our combination opens the calendar and stops there, and every
+-- other click is handed to Blizzard's own script untouched, through
+-- securecallfunction so the ping still runs as the game's own code.
 ---------------------------------------------------------------------------
+
+local function OpenCalendar()
+    if BazUI.Codex and BazUI.Codex.OpenCalendar then
+        BazUI.Codex.OpenCalendar()
+    elseif _G.ToggleCalendar then
+        if securecallfunction then
+            securecallfunction(_G.ToggleCalendar)
+        else
+            _G.ToggleCalendar()
+        end
+    end
+end
 
 local function EnableCalendarClick()
     if not Minimap or Minimap._bazCalendarHooked then return end
     Minimap._bazCalendarHooked = true
-    Minimap:HookScript("OnMouseUp", function(_, button)
-        if button ~= "RightButton" or not IsShiftKeyDown() then return end
-        if BazUI.Codex and BazUI.Codex.OpenCalendar then
-            BazUI.Codex.OpenCalendar()
-        elseif _G.ToggleCalendar then
+
+    local theirs = Minimap:GetScript("OnMouseUp")
+    Minimap:SetScript("OnMouseUp", function(self, button, ...)
+        if button == "RightButton" and IsShiftKeyDown() then
+            OpenCalendar()
+            return
+        end
+        if theirs then
             if securecallfunction then
-                securecallfunction(_G.ToggleCalendar)
+                securecallfunction(theirs, self, button, ...)
             else
-                _G.ToggleCalendar()
+                theirs(self, button, ...)
             end
         end
     end)

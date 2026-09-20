@@ -79,6 +79,34 @@ local function Draggable(def, frame)
 end
 
 ---------------------------------------------------------------------------
+-- Touching somebody else's window
+--
+-- Every call below runs one of Blizzard's own frame methods on one of
+-- Blizzard's own frames. On Forever a method called from our code stores
+-- its result as ours, so a window we merely made movable is a window
+-- carrying BazUI's name from login onwards - and the game then refuses
+-- the protected work it does on that frame in combat and blames us. The
+-- world map is where that shows: closing it refreshes its pins, a pin
+-- calls SetPassThroughButtons, and in combat that comes back as
+-- "BazUI tried to call the protected function Button:SetPassThroughButtons".
+--
+-- securecallfunction runs the method as the game's own code, so what it
+-- stores stays Blizzard's. The window still moves; it just no longer
+-- signs their frame with our name.
+---------------------------------------------------------------------------
+
+local securecall = _G.securecallfunction
+
+local function Secure(frame, method, ...)
+    local fn = frame and frame[method]
+    if not fn then return end
+    if securecall then
+        return securecall(fn, frame, ...)
+    end
+    return fn(frame, ...)
+end
+
+---------------------------------------------------------------------------
 -- Where a window was left
 ---------------------------------------------------------------------------
 
@@ -119,8 +147,8 @@ local function Reassert(def, frame)
     local pos = Positions()[def.key]
     if not pos or InCombatLockdown() then return end
 
-    frame:ClearAllPoints()
-    frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    Secure(frame, "ClearAllPoints")
+    Secure(frame, "SetPoint", pos.point, UIParent, pos.relPoint, pos.x, pos.y)
 end
 
 function addon:ClearWindowPositions()
@@ -140,21 +168,21 @@ local function Wire(def, frame)
     if wired[frame] then return end
     wired[frame] = true
 
-    frame:SetMovable(true)
-    frame:SetClampedToScreen(true)
-    frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton")
+    Secure(frame, "SetMovable", true)
+    Secure(frame, "SetClampedToScreen", true)
+    Secure(frame, "EnableMouse", true)
+    Secure(frame, "RegisterForDrag", "LeftButton")
 
     frame:HookScript("OnDragStart", function(self)
         if not addon:Enabled(def.key) then return end
         if not Draggable(def, self) then return end
         if InCombatLockdown() then return end
         moving[self] = true
-        self:StartMoving()
+        Secure(self, "StartMoving")
     end)
 
     frame:HookScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
+        Secure(self, "StopMovingOrSizing")
         if addon:Enabled(def.key) then SavePosition(def.key, self) end
         moving[self] = nil
     end)
