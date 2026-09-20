@@ -13,7 +13,7 @@
 --
 -- Written by tools/bake-profiles.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:31:13.
+-- Arranged on a 1920 x 1080 screen, baked 2026-09-20 19:47:53.
 ---------------------------------------------------------------------------
 
 BazUI:RegisterPreset({
@@ -70,8 +70,8 @@ BazUI:RegisterPreset({
                     onlyMine = false,
                     position = {
                         point = "CENTER",
-                        relPoint = "RIGHT",
-                        x = -666.2,
+                        relPoint = "CENTER",
+                        x = 293.8,
                         y = 128,
                     },
                     stack = "DOWN",
@@ -232,6 +232,7 @@ BazUI:RegisterPreset({
             hideBagBar = true,
             hideEmpty = true,
             itemCategories = {},
+            markCheapestJunk = true,
             maxRows = 15,
             perBagSections = true,
             position = {
@@ -274,6 +275,7 @@ BazUI:RegisterPreset({
                 },
             },
             dragRequiresShift = false,
+            dropCreatesBar = true,
             fullRangeColor = true,
             hideDefaultActionBar = true,
             hideDefaultActionBarArt = false,
@@ -585,9 +587,6 @@ BazUI:RegisterPreset({
                 _bazui = {
                     enabled = true,
                 },
-                _test = {
-                    enabled = true,
-                },
             },
             panelOpacity = 0.9,
             position = "BOTTOMRIGHT",
@@ -882,9 +881,9 @@ BazUI:RegisterPreset({
                     name = "Party 3 Health 2",
                     position = {
                         point = "CENTER",
-                        relPoint = "LEFT",
+                        relPoint = "TOPLEFT",
                         x = 90.3,
-                        y = 182,
+                        y = -358,
                     },
                     textFormat = "namePercent",
                     textMode = "always",

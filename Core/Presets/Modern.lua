@@ -13,7 +13,7 @@
 --
 -- Written by tools/bake-profiles.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:31:13.
+-- Arranged on a 1920 x 1080 screen, baked 2026-09-20 19:47:53.
 ---------------------------------------------------------------------------
 
 BazUI:RegisterPreset({
@@ -68,8 +68,8 @@ BazUI:RegisterPreset({
                     onlyMine = false,
                     position = {
                         point = "CENTER",
-                        relPoint = "RIGHT",
-                        x = -666.2,
+                        relPoint = "CENTER",
+                        x = 293.8,
                         y = 128,
                     },
                     stack = "DOWN",
@@ -230,6 +230,7 @@ BazUI:RegisterPreset({
             hideBagBar = true,
             hideEmpty = true,
             itemCategories = {},
+            markCheapestJunk = true,
             maxRows = 15,
             perBagSections = true,
             position = {
@@ -282,9 +283,9 @@ BazUI:RegisterPreset({
                     mouseoverFade = false,
                     pos = {
                         point = "CENTER",
-                        relPoint = "BOTTOM",
+                        relPoint = "CENTER",
                         x = 0,
-                        y = 467.7,
+                        y = -207.3,
                     },
                     rightClickSelfCast = false,
                     rows = 2,
@@ -293,6 +294,7 @@ BazUI:RegisterPreset({
                 },
             },
             dragRequiresShift = false,
+            dropCreatesBar = true,
             fullRangeColor = true,
             hideDefaultActionBar = true,
             hideDefaultActionBarArt = false,
@@ -602,9 +604,6 @@ BazUI:RegisterPreset({
                 _bazui = {
                     enabled = true,
                 },
-                _test = {
-                    enabled = true,
-                },
             },
             panelOpacity = 0.9,
             position = "TOPLEFT",
@@ -725,9 +724,9 @@ BazUI:RegisterPreset({
                     name = "Player Casting 1",
                     position = {
                         point = "CENTER",
-                        relPoint = "BOTTOMLEFT",
+                        relPoint = "LEFT",
                         x = 570.3,
-                        y = 370.8,
+                        y = -169.2,
                     },
                     textFormat = "current",
                     textMode = "always",
@@ -749,8 +748,8 @@ BazUI:RegisterPreset({
                     name = "Target Health 1",
                     position = {
                         point = "CENTER",
-                        relPoint = "RIGHT",
-                        x = -670.2,
+                        relPoint = "CENTER",
+                        x = 289.8,
                         y = -80,
                     },
                     textFormat = "nameLevel",
@@ -888,9 +887,9 @@ BazUI:RegisterPreset({
                     name = "Party 3 Health 2",
                     position = {
                         point = "CENTER",
-                        relPoint = "LEFT",
+                        relPoint = "TOPLEFT",
                         x = 90.3,
-                        y = 182,
+                        y = -358,
                     },
                     textFormat = "namePercent",
                     textMode = "always",
@@ -1005,8 +1004,8 @@ BazUI:RegisterPreset({
                     name = "Target Casting 1",
                     position = {
                         point = "CENTER",
-                        relPoint = "RIGHT",
-                        x = -690.2,
+                        relPoint = "CENTER",
+                        x = 269.8,
                         y = 40,
                     },
                     textFormat = "current",
@@ -1052,9 +1051,9 @@ BazUI:RegisterPreset({
                     portrait3d = true,
                     position = {
                         point = "CENTER",
-                        relPoint = "BOTTOMRIGHT",
+                        relPoint = "RIGHT",
                         x = -570.2,
-                        y = 370.8,
+                        y = -169.2,
                     },
                     square = true,
                     textFormat = "namePercent",

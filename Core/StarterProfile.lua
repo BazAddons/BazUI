@@ -18,7 +18,7 @@
 --
 -- Written by tools/bake-profiles.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:31:13.
+-- Arranged on a 1920 x 1080 screen, baked 2026-09-20 19:47:53.
 ---------------------------------------------------------------------------
 
 BazUI.StarterProfile = {
@@ -31,16 +31,16 @@ BazUI.StarterProfile = {
         perRow = 8,
         rows = {
             {
-                align = "RIGHT",
+                align = "LEFT",
                 dock = {
                     edge = "TOP",
                     host = "bar:1",
                 },
-                dockSeq = 24,
+                dockSeq = 2,
                 dockedAs = "bar:1|TOP",
                 filter = "HELPFUL",
                 gap = 4,
-                grow = "LEFT",
+                grow = "RIGHT",
                 id = 1,
                 name = "Player Buffs 1",
                 onlyMine = false,
@@ -55,7 +55,7 @@ BazUI.StarterProfile = {
                 unit = "player",
             },
             {
-                align = "LEFT",
+                align = "RIGHT",
                 dock = {
                     edge = "TOP",
                     host = "bar:1",
@@ -64,6 +64,7 @@ BazUI.StarterProfile = {
                 dockedAs = "bar:1|TOP",
                 filter = "HARMFUL",
                 gap = 4,
+                grow = "LEFT",
                 id = 2,
                 name = "Player Debuffs 1",
                 onlyMine = false,
@@ -165,6 +166,24 @@ BazUI.StarterProfile = {
                 order = 70,
                 tags = {},
             },
+            emptykeyring = {
+                isDefault = true,
+                isProtected = true,
+                matchMode = "all",
+                matchPriority = 1003,
+                name = "Empty Keyring Slots",
+                order = 72,
+                tags = {},
+            },
+            emptyreagents = {
+                isDefault = true,
+                isProtected = true,
+                matchMode = "all",
+                matchPriority = 1002,
+                name = "Empty Reagent Slots",
+                order = 71,
+                tags = {},
+            },
             equipment = {
                 isDefault = true,
                 matchMode = "any",
@@ -235,6 +254,15 @@ BazUI.StarterProfile = {
                     },
                 },
             },
+            reagents = {
+                isDefault = true,
+                isProtected = true,
+                matchMode = "all",
+                matchPriority = 1001,
+                name = "Reagents",
+                order = 35,
+                tags = {},
+            },
             tradegoods = {
                 isDefault = true,
                 matchMode = "any",
@@ -277,6 +305,7 @@ BazUI.StarterProfile = {
         hideBagBar = true,
         hideEmpty = true,
         itemCategories = {},
+        markCheapestJunk = true,
         maxRows = 15,
         perBagSections = true,
         position = {
@@ -340,6 +369,7 @@ BazUI.StarterProfile = {
             },
         },
         dragRequiresShift = false,
+        dropCreatesBar = true,
         fullRangeColor = true,
         hideDefaultActionBar = true,
         hideDefaultActionBarArt = false,
@@ -549,7 +579,30 @@ BazUI.StarterProfile = {
                     bazdrawer_questtracker = 40,
                     bazdrawer_zonetext = 10,
                 },
-                widgets = "*",
+                widgets = {
+                    "bazdrawer_minimapbuttons",
+                    "bazdrawer_zonetext",
+                    "bazdrawer_questtracker",
+                    "bazdrawer_resettimers",
+                    "bazdrawer_freebagslots",
+                    "bazdrawer_performance",
+                    "bazdrawer_fps",
+                    "bazdrawer_trinkettracker",
+                    "bazdrawer_trackedreputation",
+                    "bazdrawer_repair",
+                    "bazdrawer_goldtracker",
+                    "bazdrawer_coords",
+                    "bazdrawer_speed",
+                    "bazdrawer_stats",
+                    "bazdrawer_tooltip",
+                    "bazdrawer_notepad",
+                    "bazdrawer_stopwatch",
+                    "bazdrawer_todo",
+                    "bazdrawer_calculator",
+                    "bazdrawer_minimap",
+                    "bazdrawer_minimap_infobar",
+                    "bazdrawer_itemlevel",
+                },
             },
         },
         edgeRevealPx = 8,
@@ -645,9 +698,6 @@ BazUI.StarterProfile = {
             _bazui = {
                 enabled = true,
             },
-            _test = {
-                enabled = true,
-            },
         },
         panelOpacity = 0.9,
         position = "TOPLEFT",
@@ -691,6 +741,7 @@ BazUI.StarterProfile = {
     UnitFrames = {
         barClicks = true,
         classColor = true,
+        hideMirrorTimers = true,
         hidePlayerCastBar = true,
         hidePlayerFrame = true,
         position = {
@@ -813,9 +864,9 @@ BazUI.StarterProfile = {
                 name = "Target Power 1",
                 position = {
                     point = "CENTER",
-                    relPoint = "TOP",
+                    relPoint = "CENTER",
                     x = -128,
-                    y = -366.7,
+                    y = 173.3,
                 },
                 textFormat = "current",
                 textMode = "always",
@@ -950,9 +1001,9 @@ BazUI.StarterProfile = {
                 name = "Party 3 Health 2",
                 position = {
                     point = "CENTER",
-                    relPoint = "LEFT",
+                    relPoint = "TOPLEFT",
                     x = 90.3,
-                    y = 182,
+                    y = -358,
                 },
                 textFormat = "namePercent",
                 textMode = "always",
@@ -1028,6 +1079,28 @@ BazUI.StarterProfile = {
                 unit = "party4",
                 width = 240,
             },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "float",
+                },
+                dockedAs = "float",
+                height = 24,
+                id = 15,
+                kind = "mirror",
+                name = "Mirror Bar 1",
+                position = {
+                    point = "CENTER",
+                    relPoint = "TOP",
+                    x = 0,
+                    y = -220,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "player",
+                width = 240,
+            },
         },
         targetPosition = {
             point = "CENTER",
@@ -1039,136 +1112,9 @@ BazUI.StarterProfile = {
         unitTooltips = true,
     },
     skin = {
-        active = "custom",
+        active = "bazui",
         custom = {
-            border = {
-                {
-                    color = {
-                        0,
-                        0,
-                        0.1,
-                        1,
-                    },
-                    thickness = 2,
-                },
-            },
-            colors = {
-                bg = {
-                    0,
-                    0,
-                    0,
-                    0.9,
-                },
-                bgHover = {
-                    0.2,
-                    0.1,
-                    0.1,
-                    0.9,
-                },
-                bgRaised = {
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.9,
-                },
-                caution = {
-                    1,
-                    0.7,
-                    0.2,
-                    1,
-                },
-                danger = {
-                    0.9,
-                    0.3,
-                    0.3,
-                    1,
-                },
-                divider = {
-                    0.6,
-                    0.4,
-                    0.2,
-                    0.6,
-                },
-                edge = {
-                    0.4,
-                    0.3,
-                    0.1,
-                    0.6,
-                },
-                gold = {
-                    1,
-                    0.8,
-                    0,
-                    1,
-                },
-                goldDim = {
-                    0.6,
-                    0.5,
-                    0.2,
-                    1,
-                },
-                goldSoft = {
-                    1,
-                    0.8,
-                    0.5,
-                    1,
-                },
-                rankBoss = {
-                    1,
-                    0.4,
-                    0.3,
-                    0.9,
-                },
-                rankElite = {
-                    1,
-                    0.8,
-                    0.3,
-                    0.9,
-                },
-                rankRare = {
-                    0.4,
-                    0.7,
-                    1,
-                    0.9,
-                },
-                rankRareElite = {
-                    0.7,
-                    0.4,
-                    1,
-                    0.9,
-                },
-                success = {
-                    0.5,
-                    0.8,
-                    0.5,
-                    1,
-                },
-                text = {
-                    1,
-                    1,
-                    0.9,
-                    1,
-                },
-                textMuted = {
-                    0.6,
-                    0.6,
-                    0.5,
-                    1,
-                },
-                textSoft = {
-                    0.8,
-                    0.8,
-                    0.6,
-                    1,
-                },
-                warn = {
-                    1,
-                    0.5,
-                    0.2,
-                    1,
-                },
-            },
-            fill = "flat",
+            colors = {},
         },
     },
 }
