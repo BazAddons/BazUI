@@ -42,6 +42,14 @@ local PERSONAL = {
     itemIndex = true,
     wishlist = true,
 
+    -- What was said and what was typed. A chat window keeps its own
+    -- scrollback and the box above it keeps every slash command that went
+    -- through it, which is nine kilobytes of somebody's evening per
+    -- window and nobody else's business. The header has always claimed
+    -- chat history stays out; this is where that becomes true.
+    history = true,
+    typedHistory = true,
+
     -- Which thing happened to be open or folded shut when the export was
     -- taken. Not layout, just where the session had got to.
     collapsed = true,
@@ -160,7 +168,19 @@ end
 -- Writing it out
 ---------------------------------------------------------------------------
 
-local POSITION_KEYS = { pos = true, position = true, targetPosition = true }
+-- `bellAnchor` is here because it is a position that is not called one.
+-- Left out, the notification bell shipped as its raw offset from the
+-- bottom-left corner of the screen it was arranged on - which on a 4K
+-- monitor is over a thousand pixels up, and off the top of anything
+-- smaller. A key is a position because of what it holds, not what it is
+-- called.
+local POSITION_KEYS = {
+    pos = true, position = true, targetPosition = true, bellAnchor = true,
+}
+
+-- Keys whose every child is a position. A window remembers where it was
+-- dragged under its own name, so there is no one key to list.
+local POSITION_CONTAINERS = { windowPositions = true }
 
 -- Of those, the ones whose offsets are in a scaled frame's own units.
 --
@@ -185,6 +205,13 @@ local function Write(value, out, depth, key, scale)
     if t == "table" then
         if key and POSITION_KEYS[key] then
             value = NormalisePosition(value, SCALED_POSITION_KEYS[key] and scale or 1)
+        elseif key and POSITION_CONTAINERS[key] then
+            local fixed = {}
+            for name, child in pairs(value) do
+                fixed[name] = (type(child) == "table")
+                    and NormalisePosition(child, 1) or child
+            end
+            value = fixed
         end
 
         -- For the children: this table's own scale, if it has one.

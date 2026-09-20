@@ -191,7 +191,7 @@ function Plates:UpdateName(ours)
     local wants = Wants(unit)
 
     ours.name:SetShown(wants.name)
-    ours.name:SetText(UnitName(unit) or "")
+    BazUI.Skin.Theme.SetText(ours.name, UnitName(unit) or "")
     ours.name:SetTextColor(unpack(BazUI.UnitColor(unit, {
         classColor = wants.classColor,
         reaction   = true,
@@ -217,7 +217,7 @@ function Plates:UpdateTarget(ours)
     -- name has nothing to put it around. Its name still takes the target
     -- colour from the theme, which is what marks it there.
     local wanted = Setting("targetMark") ~= false
-        and unit and UnitIsUnit(unit, "target")
+        and unit and BazUI.Secret.IsUnit(unit, "target")
         and addon:UnitWants(unit, "showBar")
     ours.mark:SetShown(wanted and true or false)
 end

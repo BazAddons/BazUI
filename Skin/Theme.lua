@@ -410,6 +410,152 @@ function Theme.FontFile()
     return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
+---------------------------------------------------------------------------
+-- Text our face cannot draw
+--
+-- DorisPP holds 472 characters: ASCII, Latin-1, most of Latin Extended-A,
+-- and a handful of punctuation and maths symbols. Read straight out of
+-- the file's cmap, so this is what it has rather than what it ought to
+-- have. No Cyrillic, no Greek beyond pi, nothing CJK.
+--
+-- Which is why a Chinese guild member's name came out as a row of boxes
+-- while Blizzard's own panels showed it perfectly: the client's faces are
+-- .slug vector fonts carrying the whole of Unicode, and ours is a TTF
+-- with a Latin alphabet in it.
+--
+-- There is no font fallback in the API - a FontString gets one face - so
+-- the choice has to be made per string, before the text is set.
+---------------------------------------------------------------------------
+
+local COVERAGE = {
+    { 0x0020, 0x007E }, { 0x00A0, 0x0192 }, { 0x02C6, 0x02DD },
+    { 0x03C0, 0x03C0 }, { 0x2013, 0x2044 }, { 0x20A3, 0x20A3 },
+    { 0x2122, 0x2126 }, { 0x2202, 0x222B }, { 0x2248, 0x2248 },
+    { 0x2260, 0x2265 }, { 0x25CA, 0x25CA }, { 0xF000, 0xF002 },
+}
+
+-- A skin may bring a face of its own, and we have no idea what is in it.
+-- Assuming the Latin runs above is the safe guess: it is what nearly
+-- every decorative face carries, and guessing low only ever costs a
+-- string the game's font instead of the skin's.
+local function Covered(cp)
+    for i = 1, #COVERAGE do
+        local range = COVERAGE[i]
+        if cp >= range[1] and cp <= range[2] then return true end
+    end
+    return false
+end
+
+-- UTF-8 by hand: this client's Lua has no utf8 library, and a decoder
+-- that only has to answer "is this one in the font" is a few lines.
+-- A four byte sequence is past everything the face has, so its value
+-- never needs working out.
+local function CodepointAt(text, i)
+    local b = text:byte(i)
+    if not b then return nil end
+    if b < 0x80 then return b, i + 1 end
+    if b < 0xE0 then
+        return (b % 0x20) * 0x40 + (text:byte(i + 1) or 0) % 0x40, i + 2
+    end
+    if b < 0xF0 then
+        return (b % 0x10) * 0x1000
+            + ((text:byte(i + 1) or 0) % 0x40) * 0x40
+            + (text:byte(i + 2) or 0) % 0x40, i + 3
+    end
+    return 0x10000, i + 4
+end
+
+-- Whether our face can draw every character in this text.
+--
+-- Nearly everything the interface draws is plain ASCII, and that is one
+-- pattern match away - so it is the first question asked, and usually
+-- the only one.
+-- Answered inside a guarded read, because the string may be one the
+-- client will not let us look at: a unit's name is a secret string when
+-- identity is restricted, and comparing it, searching it or walking its
+-- bytes are all reads that raise. Every caller of SetText below is a
+-- place a name can arrive, so guarding here covers all of them at once.
+--
+-- A string we are not allowed to inspect is assumed to need the fallback
+-- face, which is the game's own and can draw anything. The worst that
+-- costs is one name in a slightly different face; guessing the other way
+-- costs the name itself, drawn as boxes.
+function Theme.CanDraw(text)
+    return BazUI.Secret.Read(function()
+        if type(text) ~= "string" or text == "" then return true end
+        if not text:find("[\128-\255]") then return true end
+
+        local i = 1
+        while true do
+            local cp, nextI = CodepointAt(text, i)
+            if not cp then return true end
+            if not Covered(cp) then return false end
+            i = nextI
+        end
+    end, false)
+end
+
+-- The switch. On unless it is turned off, like the face itself.
+function Theme.IsFontFallbackEnabled()
+    return not BazUIDB or BazUIDB.fontFallback ~= false
+end
+
+function Theme.FallbackFontFile()
+    return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+end
+
+-- The face to draw a particular string in.
+function Theme.FaceFor(text)
+    local ours = Theme.FontFile()
+    if not Theme.IsFontFallbackEnabled() then return ours end
+    if Theme.CanDraw(text) then return ours end
+    return Theme.FallbackFontFile()
+end
+
+-- Set a string's text in a face that can draw it.
+--
+-- A drop-in for SetText: the size and flags come off whatever the string
+-- is already wearing, so nothing about how it looks changes - except
+-- that the characters appear.
+--
+-- The face it was wearing is remembered rather than assumed, so a string
+-- goes back to exactly what it had once it holds something drawable
+-- again. The one thing that cannot be put back is a font *object* link:
+-- SetFont on a string overrides the object, and there is no way to ask
+-- which object it was. A string that swapped once therefore stops
+-- following later edits to that object, which is a smaller price than
+-- drawing boxes.
+-- Put the string in a face that can draw this text, and leave the text
+-- itself alone.
+--
+-- Separate from SetText because some text is never handed over as a
+-- string: a bar showing a secret health value formats it inside the
+-- widget, and all we have to judge by is the format, which is where the
+-- unit's name sits.
+function Theme.EnsureFace(fontString, text)
+    if not fontString or not fontString.GetFont then return end
+
+    local have, size, flags = fontString:GetFont()
+    if not have then return end
+
+    if not Theme.CanDraw(text) and Theme.IsFontFallbackEnabled() then
+        if not fontString._bazFaceBefore then
+            fontString._bazFaceBefore = have
+            fontString:SetFont(Theme.FallbackFontFile(), size, flags)
+        end
+    elseif fontString._bazFaceBefore then
+        fontString:SetFont(fontString._bazFaceBefore, size, flags)
+        fontString._bazFaceBefore = nil
+    end
+end
+
+function Theme.SetText(fontString, text)
+    if not fontString then return end
+    text = text or ""
+    Theme.EnsureFace(fontString, text)
+    fontString:SetText(text)
+end
+
 -- Blizzard's font objects, mirrored in our face.
 --
 -- Code that calls SetFontObject(GameFontNormal) can't take a file the
@@ -1407,6 +1553,30 @@ local function ApplyMenuFont(frame, depth)
     for _, child in ipairs({ frame:GetChildren() }) do
         ApplyMenuFont(child, depth + 1)
     end
+end
+
+-- What a dropdown button says.
+--
+-- SetDefaultText is not enough on its own, and the way it fails is quiet.
+-- Blizzard's DropdownSelectionTextMixin keeps the text of whichever entry
+-- was checked the last time the menu was generated, in the widget's own
+-- `text`, and GetUpdateText returns `self.text or self.defaultText` - so
+-- the moment a menu has been opened once, the default text loses forever.
+--
+-- Everything that goes wrong from there looks like something else: a
+-- dropdown whose value was changed by another control goes on naming the
+-- old one, and only a rebuild of the panel puts it right, so it reads as
+-- "it updates when I reopen the window". OverrideText is Blizzard's way
+-- of saying the owner paints this, and every BazUI dropdown does, because
+-- every one of them has a get to paint from.
+--
+-- Both are set: the default still matters before any menu exists, and
+-- when a dropdown is empty.
+function Theme.SetDropdownText(button, text)
+    if not button then return end
+    text = text or ""
+    if button.SetDefaultText then button:SetDefaultText(text) end
+    if button.OverrideText  then button:OverrideText(text)  end
 end
 
 function Theme.ApplyMenuChrome(menu)

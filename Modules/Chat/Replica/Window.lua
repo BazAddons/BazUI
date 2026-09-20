@@ -116,6 +116,20 @@ local function ChatFontFile() return BazUI.Skin.Theme.FONT_FILE end
 local customFont
 local fontProbe
 
+-- Set once a line arrives that the suite's face has no characters for.
+--
+-- Chat cannot do what the rest of the interface does about this. A
+-- FontString gets its own face, so Theme.SetText can pick one per string;
+-- a chat window is one scrolling frame wearing one font object for every
+-- line it will ever hold, and there is no per-line face to choose. So the
+-- window as a whole goes over to the game's face, which has the whole of
+-- Unicode in it, and stays there for the session.
+--
+-- One foreign name in the guild is enough to trigger it, which sounds
+-- heavy-handed until you consider the alternative: that name, and every
+-- message that player ever sends, drawn as boxes.
+local faceCannotDraw = false
+
 local MIN_FONT_SIZE, MAX_FONT_SIZE = 6, 32
 
 -- The face and size the chat should be drawn in. `scale` multiplies the
@@ -126,6 +140,8 @@ local function ChatFontObject(useCustom, scale)
     if not blizzard then return nil end
     -- The suite-wide switch turns the face off everywhere, chat included.
     if not BazUI.Skin.Theme.IsFontEnabled() then useCustom = false end
+    -- And so does a line our face cannot spell.
+    if faceCannotDraw then useCustom = false end
     local blizzFace, blizzSize, flags = blizzard:GetFont()
     blizzSize = blizzSize or 14
     local size = math.floor(blizzSize * (tonumber(scale) or 1) + 0.5)
@@ -862,6 +878,24 @@ local function HookAddMessage(f, idx)
             end
             UpdateScrollToBottomButton(self)
             return
+        end
+
+        -- Anything our face has no characters for takes the whole
+        -- window over to the game's, once. Asked only of text that
+        -- passed IsSafeText above, because reading a secret string is
+        -- what raises.
+        if not faceCannotDraw
+            and BazUI.Skin.Theme.IsFontFallbackEnabled()
+            and not BazUI.Skin.Theme.CanDraw(text) then
+            faceCannotDraw = true
+            -- Next frame: this is the middle of a message being added,
+            -- and re-fonting the frame it is going into is not the
+            -- moment to do it.
+            C_Timer.After(0, function()
+                if addon.Window and addon.Window.ApplyAll then
+                    addon.Window:ApplyAll()
+                end
+            end)
         end
 
         -- Display-time text rewrite: shorten bracketed channel

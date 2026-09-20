@@ -160,7 +160,8 @@ function O.RenderPickerGroup(container, groupOpt, contentWidth, yOffset, execute
     dd:SetHeight(22)
     dd:SetPoint("LEFT", label, "RIGHT", 10, 0)
     dd:SetPoint("RIGHT", rightEdge, rightEdge == row and "RIGHT" or "LEFT", rightEdge == row and -O.ROW_PAD or -12, 0)
-    dd:SetDefaultText(selected and ItemLabel(selected) or "Nothing to show")
+    BazUI.Skin.Theme.SetDropdownText(dd,
+        selected and ItemLabel(selected) or "Nothing to show")
 
     local function Select(child)
         state.selected = ItemKey(child)

@@ -201,12 +201,29 @@ end
 -- opts (optional): { name = "...", intro = "..." }
 ---------------------------------------------------------------------------
 
+-- Changing one setting can change another, and can change whether
+-- another applies at all - the chat window's unified fade mode does
+-- both. The page is a readout, so it is repainted after every change
+-- rather than each spec entry having to remember to ask.
+--
+-- Sliders are left alone. A live one fires this on every step of a drag,
+-- and rebuilding the page would take the slider out from under the
+-- cursor. Nothing yet drives another setting from a slider; when
+-- something does, it can ask for the repaint itself.
+local function Repainting(set, kind)
+    if type(set) ~= "function" or kind == "slider" then return set end
+    return function(info, value)
+        set(info, value)
+        if BazUI.RefreshVisibleOptions then BazUI:RefreshVisibleOptions() end
+    end
+end
+
 local function BuildOptionsArgsForEntry(e)
     local out = {
         name = e.label,
         desc = e.desc,
         get  = e.get,
-        set  = e.set,
+        set  = Repainting(e.set, e.type),
         disabled = e.disabled,
         hidden   = e.hidden,
     }

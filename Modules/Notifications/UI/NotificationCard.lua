@@ -146,8 +146,10 @@ function addon.PopulateNotification(frame, notifData, width, opts)
     end
 
     -- Text
-    frame.title:SetText(notifData.title or "")
-    frame.message:SetText(notifData.message or "")
+    -- Through the theme: a player's name can hold characters the
+    -- suite's face has none of, and a row of boxes is not a name.
+    BazUI.Skin.Theme.SetText(frame.title, notifData.title or "")
+    BazUI.Skin.Theme.SetText(frame.message, notifData.message or "")
     addon.ApplyMessageStyle(frame.message, notifData.emphasis)
 
     -- The band down the left. Its colour says which source the card came

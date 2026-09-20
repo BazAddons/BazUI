@@ -735,12 +735,12 @@ local function PopulateHistory()
         if entry.icon then card.icon:SetTexture(entry.icon); card.icon:Show()
         else card.icon:Hide() end
 
-        card.title:SetText(entry.title or "")
+        BazUI.Skin.Theme.SetText(card.title, entry.title or "")
         card.title:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormal"))
         card.title:ClearAllPoints()
         card.title:SetPoint("TOPLEFT", card.icon, "TOPRIGHT", 6, 0)
         card.title:SetPoint("RIGHT", card, "RIGHT", -90, 0)
-        card.message:SetText(entry.message or "")
+        BazUI.Skin.Theme.SetText(card.message, entry.message or "")
         addon.ApplyMessageStyle(card.message, entry.emphasis)
         card.timestamp:SetText(FormatHistoryTimestamp(entry.realTime))
 

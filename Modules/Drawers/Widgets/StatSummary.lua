@@ -33,14 +33,24 @@ end
 
 -- Spell crit is the lowest across the magic schools, the way the
 -- character pane reports it.
+--
+-- Picking the lowest of seven means comparing them, and a crit chance can
+-- come back as a secret number - one that can be printed but not
+-- measured. There is no smallest-of without comparing, so when the
+-- comparison is refused this answers with the first school instead. For
+-- anyone whose schools all read the same, which is nearly everyone, that
+-- is the same number by a shorter road.
 local function SpellCrit()
     if not GetSpellCritChance then return 0 end
-    local lowest
-    for school = 2, 7 do
-        local crit = GetSpellCritChance(school) or 0
-        if not lowest or crit < lowest then lowest = crit end
-    end
-    return lowest or 0
+    local first = GetSpellCritChance(2)
+    return BazUI.Secret.Read(function()
+        local lowest = first or 0
+        for school = 3, 7 do
+            local crit = GetSpellCritChance(school) or 0
+            if crit < lowest then lowest = crit end
+        end
+        return lowest
+    end, first or 0)
 end
 
 local STAT_GETTERS = {
@@ -108,8 +118,11 @@ function StatWidget:Update()
 
     for _, stat in ipairs(STATS) do
         local row = frame.rows[stat.key]
-        local val = STAT_GETTERS[stat.key]() or 0
-        row.value:SetText(string.format("%.1f%%", val))
+        -- Handed to the font string to format rather than formatted
+        -- here. A stat can be a secret number, and building a string from
+        -- one is a read; the widget is allowed to print what we are not
+        -- allowed to see.
+        row.value:SetFormattedText("%.1f%%", STAT_GETTERS[stat.key]() or 0)
     end
 
     if addon.WidgetHost and addon.WidgetHost.UpdateWidgetStatus then

@@ -5,7 +5,16 @@
 ---------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-local handlers = {}  -- [eventName] = { [addonName] = handler }
+
+-- [eventName] = { { owner = addonName, fn = handler }, ... }
+--
+-- A list rather than a map keyed by owner. It used to be the map, which
+-- silently allowed one handler per owner per event - and every global
+-- listener registers under the owner "BazUI", so the second thing in the
+-- addon to care about a given event threw the first one away without a
+-- word. Edit Mode's layout dropdown and the skin both want to hear about
+-- a profile change; under the old shape, whichever loaded last won.
+local handlers = {}
 
 ---------------------------------------------------------------------------
 -- Event Frame Dispatch
@@ -14,8 +23,8 @@ local handlers = {}  -- [eventName] = { [addonName] = handler }
 eventFrame:SetScript("OnEvent", function(_, event, ...)
     local list = handlers[event]
     if not list then return end
-    for _, handler in pairs(list) do
-        handler(event, ...)
+    for _, entry in ipairs(list) do
+        entry.fn(event, ...)
     end
 end)
 
@@ -29,18 +38,18 @@ local function RegisterHandler(owner, event, handler)
         -- Attempt to register as WoW event; silently fails for custom events
         pcall(eventFrame.RegisterEvent, eventFrame, event)
     end
-    handlers[event][owner] = handler
+    handlers[event][#handlers[event] + 1] = { owner = owner, fn = handler }
 end
 
 local function UnregisterAll(owner)
     -- Collect events to clean up first, then modify (safe iteration)
     local toRemove = {}
     for event, list in pairs(handlers) do
-        if list[owner] then
-            list[owner] = nil
-            if not next(list) then
-                toRemove[#toRemove + 1] = event
-            end
+        for i = #list, 1, -1 do
+            if list[i].owner == owner then table.remove(list, i) end
+        end
+        if #list == 0 then
+            toRemove[#toRemove + 1] = event
         end
     end
     for _, event in ipairs(toRemove) do
@@ -69,8 +78,8 @@ end
 function BazUI:Fire(event, ...)
     local list = handlers[event]
     if not list then return end
-    for _, handler in pairs(list) do
-        handler(event, ...)
+    for _, entry in ipairs(list) do
+        entry.fn(event, ...)
     end
 end
 

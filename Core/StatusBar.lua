@@ -332,7 +332,9 @@ function BarMixin:SetText(text)
     if not self.text then return end
     self._rawText = nil
     self._text = text
-    self.text:SetText(text or "")
+    -- Through the theme: a bar's text usually holds a unit's name, and a
+    -- name can be written in characters the suite's face has none of.
+    BazUI.Skin.Theme.SetText(self.text, text or "")
     self:_RefreshText()
 end
 
@@ -347,6 +349,9 @@ function BarMixin:SetFormattedText(format, ...)
     if not self.text then return end
     self._text = nil
     self._rawText = true
+    -- Only the format is ours to read - the values are secret - but that
+    -- is where the name sits, so it is enough to choose a face by.
+    BazUI.Skin.Theme.EnsureFace(self.text, format)
     self.text:SetFormattedText(format, ...)
     self:_RefreshText()
 end
@@ -367,6 +372,98 @@ function BarMixin:SetTextMode(mode)
 end
 
 ---------------------------------------------------------------------------
+-- How the writing looks
+---------------------------------------------------------------------------
+
+-- What the player calls an edge, and what the game calls it.
+local OUTLINES = {
+    NONE  = "",
+    THIN  = "OUTLINE",
+    THICK = "THICKOUTLINE",
+}
+-- Ordered, not keyed: an edge runs none, thin, thick and a line reads
+-- left to right. Sorting these by their words would put "Thick" before
+-- "Thin" and "Centre" first, which is a list nobody scans.
+BazUI.BarTextOutlines = {
+    { value = "NONE",  label = "None"  },
+    { value = "THIN",  label = "Thin"  },
+    { value = "THICK", label = "Thick" },
+}
+BazUI.BarTextAligns = {
+    { value = "LEFT",   label = "Left"   },
+    { value = "CENTER", label = "Centre" },
+    { value = "RIGHT",  label = "Right"  },
+}
+
+-- The face, size and edge, applied together.
+--
+-- Size is the one worth explaining. Left alone it follows the bar, which
+-- is what a bar wants nearly always: the writing grows with the thing it
+-- is written on, and a bar you drag taller does not end up with the same
+-- small text on a bigger field. A number instead pins it, for a bar that
+-- has to match something beside it rather than itself.
+function BarMixin:_ApplyTextFont()
+    if not self.text then return end
+
+    local size = self._textSize
+    if not size or size <= 0 then
+        local height = self._innerHeight or self:GetHeight() or 14
+        size = math.max(8, math.min(12, height - 2))
+    end
+    size = math.max(6, math.min(48, size))
+
+    -- Which file, remembering that the theme may have moved this string
+    -- to the game's face because ours cannot draw what it holds. Leave it
+    -- there and keep the face to go back to up to date, or the next swap
+    -- back would restore a face this bar no longer uses.
+    local ours = (Theme and Theme.FontFile()) or STANDARD_TEXT_FONT
+    local face = ours
+    if self.text._bazFaceBefore then
+        self.text._bazFaceBefore = ours
+        face = Theme and Theme.FallbackFontFile() or STANDARD_TEXT_FONT
+    end
+
+    self.text:SetFont(face, size, OUTLINES[self._textOutline or "THIN"] or "OUTLINE")
+
+    -- A shadow is the other way to lift text off a busy fill, and it
+    -- reads softer than an outline. Offered alongside rather than instead:
+    -- a thin outline with a shadow under it is what most of the game's
+    -- own numbers wear.
+    if self._textShadow then
+        self.text:SetShadowColor(0, 0, 0, 1)
+        self.text:SetShadowOffset(1, -1)
+    else
+        self.text:SetShadowOffset(0, 0)
+    end
+
+    local c = self._textColor
+    self.text:SetTextColor(c and c.r or 1, c and c.g or 1, c and c.b or 1,
+        c and c.a or 1)
+end
+
+-- Everything about how the text reads, in one call.
+--
+-- One rather than five, because these are a single decision and applying
+-- them separately means five passes over the same string and five chances
+-- to leave it half-changed.
+--
+--   size     pixels, or nil to follow the bar's height
+--   outline  "NONE", "THIN" or "THICK"
+--   shadow   true for a drop shadow behind it
+--   color    { r, g, b, a }, or nil for white
+--   align    "LEFT", "CENTER" or "RIGHT" within the bar
+function BarMixin:SetTextStyle(style)
+    style = style or {}
+    self._textSize    = tonumber(style.size)
+    self._textOutline = style.outline or "THIN"
+    self._textShadow  = style.shadow and true or false
+    self._textColor   = style.color
+    self._textAlign   = style.align or "CENTER"
+    self:_ApplyTextFont()
+    self:_RefreshText()
+end
+
+---------------------------------------------------------------------------
 -- A mark in front of the text
 --
 -- A real texture rather than one of the client's inline text escapes. An
@@ -380,6 +477,9 @@ end
 -- half of what the icon and its gap take up, which puts the two of them
 -- together back in the middle.
 ---------------------------------------------------------------------------
+
+-- How far the writing stays clear of the ends of the fill.
+local TEXT_PAD = 5
 
 local LEAD_GAP = 3
 
@@ -432,9 +532,24 @@ function BarMixin:_RefreshText()
 
     local taken = lead and (lead + LEAD_GAP) or 0
     local width = self._innerWidth or self:GetWidth() or 0
-    self.text:SetWidth(math.max(10, width - 10 - taken))
+    self.text:SetWidth(math.max(10, width - TEXT_PAD * 2 - taken))
+
+    -- Hung from whichever end it is meant to read from, and justified the
+    -- same way, so a long name runs out of room at the far end rather
+    -- than drifting off both. The mark in front is anchored to the text
+    -- rather than to the bar, so it comes along without being told: at
+    -- the left it sits in the padding, in the middle it pushes the pair
+    -- over by half its width, which is what the offset below is.
+    local align = self._textAlign or "CENTER"
+    self.text:SetJustifyH(align)
     self.text:ClearAllPoints()
-    self.text:SetPoint("CENTER", self.fill, "CENTER", taken / 2, 0)
+    if align == "LEFT" then
+        self.text:SetPoint("LEFT", self.fill, "LEFT", TEXT_PAD + taken, 0)
+    elseif align == "RIGHT" then
+        self.text:SetPoint("RIGHT", self.fill, "RIGHT", -TEXT_PAD, 0)
+    else
+        self.text:SetPoint("CENTER", self.fill, "CENTER", taken / 2, 0)
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -537,8 +652,10 @@ function BarMixin:SetBarSize(width, height)
 
     if self.spark then self.spark:SetSize(2, self._innerHeight) end
     if self.text then
-        self.text:SetFont(Theme and Theme.FontFile() or STANDARD_TEXT_FONT,
-            math.max(8, math.min(12, height - 2)), "OUTLINE")
+        -- Through the one place that decides how the text looks, so a bar
+        -- resized keeps whatever was chosen for it and only the size that
+        -- follows the bar follows the bar.
+        self:_ApplyTextFont()
         self:_RefreshText()
     end
 
@@ -550,7 +667,27 @@ end
 -- a bar to draw: a nameplate as wide as the width somebody set, a bar
 -- stretched to match the frame it is docked to. Either measurement may be
 -- left out, and that one is kept as it is.
+-- Square, whichever measurement is being set.
+--
+-- A portrait is the case. The dock hands a side-docked bar its height and
+-- a top- or bottom-docked one its width, and a portrait wants the other
+-- measurement to follow so the face is never stretched. With this on,
+-- setting either measurement sets both - and when both arrive at once,
+-- the height is the one that counts, since a portrait's size is how tall
+-- it stands.
+function BarMixin:SetSquare(square)
+    self._square = square and true or false
+end
+
+function BarMixin:IsSquare()
+    return self._square == true
+end
+
 function BarMixin:SetOuterSize(width, height)
+    if self._square then
+        local side = height or width
+        if side then width, height = side, side end
+    end
     local inset = self._inset or 0
     local fillW = width and math.max(1, width - inset * 2) or self._fillWidth or 1
     local fillH = height and math.max(1, height - inset * 2) or self._fillHeight or 1
@@ -558,6 +695,21 @@ function BarMixin:SetOuterSize(width, height)
 end
 
 -- The fill's size, which is not the frame's.
+-- Whether the coloured part is drawn at all.
+--
+-- A portrait or a blank bar is a bar in every other way - same chrome,
+-- same size, same docking - with nothing to show a value for. Hiding the
+-- fill rather than making a second kind of frame is what lets those two
+-- inherit all of it.
+function BarMixin:SetFillShown(shown)
+    if not self.fill then return end
+    self.fill:SetShown(shown ~= false)
+    -- The spark's own visibility is worked out from the fraction every
+    -- time a value lands, and a bar with no fill never gets one - so
+    -- hiding it here is enough and nothing has to put it back.
+    if self.spark and shown == false then self.spark:Hide() end
+end
+
 function BarMixin:GetFillSize()
     return self._fillWidth or 0, self._fillHeight or 0
 end

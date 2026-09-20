@@ -220,6 +220,12 @@ function Dock:ShowSnapLine(snap)
     local host = self:GetHostFrame(snap.host)
     if not host then return end
 
+    -- How far the host's stack reaches past the host at each end of the
+    -- line. Read off the real frames, before the handle below stands in
+    -- for the host, because the stack is a fact about where the bars are
+    -- and not about what Edit Mode is drawing over them.
+    local before, after = self:StackOverhang(host, snap.edge)
+
     -- Draw it on the host's handle when one is showing, not on the host
     -- itself. In Edit Mode the handle is what you can see, and it has a
     -- minimum size: a row of auras only a pixel or two tall would put
@@ -238,9 +244,21 @@ function Dock:ShowSnapLine(snap)
     local look = SNAP_LOOK[snap.edge] or SNAP_LOOK.BOTTOM
     local sideways = (snap.edge == "LEFT" or snap.edge == "RIGHT")
 
+    -- Stretched to the stack rather than to the one bar the drop happens
+    -- to name. A bar dropped below a health bar with a portrait beside it
+    -- spans the pair, so the line says the pair. The two ends are the two
+    -- overhangs, in whichever order the edge runs: a line lying down
+    -- reaches left and right, one standing up reaches up and down.
+    local scale = host:GetEffectiveScale() or 1
+    local padA, padB
+    if sideways then padA, padB = after / scale, -before / scale
+    else             padA, padB = -before / scale, after / scale end
+
     line:ClearAllPoints()
-    line:SetPoint(look.along[1], host, look.along[1], 0, 0)
-    line:SetPoint(look.along[2], host, look.along[2], 0, 0)
+    line:SetPoint(look.along[1], host, look.along[1],
+        sideways and 0 or padA, sideways and padA or 0)
+    line:SetPoint(look.along[2], host, look.along[2],
+        sideways and 0 or padB, sideways and padB or 0)
     if sideways then
         line:SetWidth(3)
         line:SetPoint(look.near, host, look.far, look.nudge, 0)
@@ -385,14 +403,50 @@ function Dock:CreateMover(target, opts)
     -- and centered on it. Hung by the same corner the dock hung its
     -- target by, it grows inward exactly as the row does.
     function mover:Refresh()
-        if self.isDragging or self.isMoving then return end
-        local floorW, floorH = minWidth, minHeight
-        if MinSize then
-            local w, h = MinSize()
-            floorW, floorH = math.max(floorW, w or 0), math.max(floorH, h or 0)
+        if self.isDragging or self.isMoving then
+            -- Asked at the one moment it cannot be answered. Remembered
+            -- rather than dropped: a target that changes size during a
+            -- drag - and undocking a row from something it was stretched
+            -- to is exactly that - would otherwise leave the handle, and
+            -- the Edit Mode ghost drawn on it, the size the target used
+            -- to be, until something else happened to ask again.
+            self._refreshWanted = true
+            return
         end
-        self:SetSize(math.max(floorW, target:GetWidth() or 0),
-            math.max(floorH, target:GetHeight() or 0))
+        self._refreshWanted = nil
+
+        -- Drawn at the target's size, grabbed at no less than the floor.
+        --
+        -- The handle used to be sized to the floor, so a bar thinner than
+        -- twenty pixels wore a ghost taller than itself - and once the
+        -- dock began fitting a power bar into its share of an action
+        -- bar's height, that ghost climbed into the health bar above.
+        -- What has to stay at least the floor is the area you can grab,
+        -- and that is a hit rect, not a size: the frame is drawn true
+        -- and its clickable area is pushed out past its edges to make up
+        -- the difference.
+        --
+        -- MinSize is a different thing. A module handing one over is
+        -- describing the footprint its target will occupy - a row of
+        -- auras with nothing in it is still a row wide - not asking to be
+        -- grabbable, so that one is drawn.
+        local w = target:GetWidth() or 0
+        local h = target:GetHeight() or 0
+        if MinSize then
+            local mw, mh = MinSize()
+            w, h = math.max(w, mw or 0), math.max(h, mh or 0)
+        end
+        self:SetSize(math.max(1, w), math.max(1, h))
+
+        local padX = math.max(0, (minWidth  - w) / 2)
+        local padY = math.max(0, (minHeight - h) / 2)
+        self:SetHitRectInsets(-padX, -padX, -padY, -padY)
+        -- The Edit Mode overlay is what actually takes the drag, and it
+        -- is exactly this frame's size, so it has to reach as far.
+        if self._bazEditOverlay then
+            self._bazEditOverlay:SetHitRectInsets(-padX, -padX, -padY, -padY)
+        end
+
         local point = Dock:FollowerPoint(target) or "CENTER"
         self:ClearAllPoints()
         self:SetPoint(point, target, point, 0, 0)
@@ -409,8 +463,11 @@ function Dock:CreateMover(target, opts)
         if editing then self:Refresh() end
     end
 
+    -- Drawing the line and remembering what it promised are the same
+    -- act, because letting go has to honour it.
     function mover:ShowSnap(snap)
         self._snapShown = snap and true or false
+        self._snap = snap
         Dock:ShowSnapLine(snap)
     end
 
@@ -429,8 +486,15 @@ function Dock:CreateMover(target, opts)
     -- caller having to remember.
     target:HookScript("OnSizeChanged", function() mover:Refresh() end)
 
+    -- One handler each, set rather than hooked. These used to be a
+    -- SetScript and a HookScript apiece, with the drag-stop hook
+    -- registered before the SetScript that replaced it - so isMoving was
+    -- set at the start of a drag and never cleared, and every Refresh
+    -- after the first drag returned early forever.
     mover:SetScript("OnDragStart", function(self)
-        if not InCombatLockdown() then self:StartMoving() end
+        if InCombatLockdown() then return end
+        self.isMoving = true
+        self:StartMoving()
     end)
 
     -- While it is being dragged, say whether letting go would dock it,
@@ -442,6 +506,12 @@ function Dock:CreateMover(target, opts)
     mover:SetScript("OnUpdate", function(self)
         if not (self.isDragging or self.isMoving) then
             if self._snapShown then self:ShowSnap(nil) end
+            -- Whatever ended the drag, and however it ended, the handle
+            -- takes the target's shape again on the next frame. Drop
+            -- does it directly for the ordinary case; this catches the
+            -- rest, including Edit Mode closing with the mouse still
+            -- down.
+            if self._refreshWanted then self:Refresh() end
             return
         end
 
@@ -458,15 +528,25 @@ function Dock:CreateMover(target, opts)
         self:ShowSnap(Dock:NearestSnap(self, target))
     end)
 
-    mover:HookScript("OnDragStart", function(self) self.isMoving = true end)
-    mover:HookScript("OnDragStop", function(self)
-        self.isMoving = false
-        self:ShowSnap(nil)
-    end)
-
     -- Letting go. Works out where it landed, hands that to the owner,
     -- and gets out of the way.
     function mover:Drop()
+        -- What the line was promising, taken before anything below moves
+        -- the frame.
+        --
+        -- This used to ask the dock again, from wherever the frame had
+        -- ended up - and by then it had been put back on the screen here,
+        -- and pulled to the nearest grid line by Edit Mode before that. A
+        -- frame that moved even a little on the way down could be out of
+        -- the dock's reach by the time it was asked, so the line said one
+        -- thing and the drop did another. That is the worst way for this
+        -- to fail, because there is nothing to see: you watched it offer
+        -- and then watched it refuse.
+        --
+        -- Asked again only if no line was up, which is the case where
+        -- something other than a drag called this.
+        local snap = self._snap
+
         self:StopMovingOrSizing()
         self:ShowSnap(nil)
 
@@ -483,16 +563,25 @@ function Dock:CreateMover(target, opts)
             end
         end
 
-        local snap = Dock:NearestSnap(self, target)
+        if snap == nil then snap = Dock:NearestSnap(self, target) end
         local x, y = self:GetCenter()
         if x then
             local scale = self:GetEffectiveScale() / UIParent:GetEffectiveScale()
             x, y = x * scale, y * scale
         end
         if opts.onDrop then opts.onDrop(snap, x, y) end
+
+        -- Back onto the target, at whatever size the drop left it. A row
+        -- that has just come off a host it was stretched to is a
+        -- different shape than it was a moment ago, and the handle is
+        -- meant to be a picture of it.
+        self:Refresh()
     end
 
-    mover:SetScript("OnDragStop", function(self) self:Drop() end)
+    mover:SetScript("OnDragStop", function(self)
+        self.isMoving = false
+        self:Drop()
+    end)
 
     -- Nudging a docked target is the dock's business, not the mover's:
     -- the dock places it, so an adjustment that is not part of what the

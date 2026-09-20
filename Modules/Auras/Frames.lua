@@ -23,6 +23,7 @@
 ---------------------------------------------------------------------------
 
 local addon = BazUI:GetModule("Auras")
+
 local Auras = BazUI.Auras
 
 local TEMPLATE = "BazUIAuraButtonTemplate"
@@ -215,6 +216,63 @@ local function UpdateButton(btn)
     end
 end
 
+-- How much of the rounded-corner mask is actually opaque.
+--
+-- Measured off Interface/HUD/UIActionBarIconFrameMask.blp: a 64 by 64
+-- texture whose rounded square spans 40.4 pixels of it, the rest being
+-- transparent margin. So a mask laid over a button at the button's own
+-- size hides nearly a fifth of it on every side, which is what put a
+-- visible gap between icons set to touch.
+--
+-- Scaled up until the opaque part is exactly the rect being masked.
+-- Blizzard does the same by hand where it matters: a 31 pixel action
+-- button wears a 45 pixel copy of this same mask.
+local MASK_OPAQUE = 0.6306
+
+-- Square or round, applied to a button that already exists.
+--
+-- Rounding is a mask over the same geometry, so this can be called on a
+-- button at any time and in either direction - nothing is rebuilt and
+-- nothing moves. A client without the atlas simply stays square, which
+-- is the shape everything was drawn for anyway.
+--
+-- Read per row, so a row can be given its own shape later without this
+-- changing; today only the module-wide setting is on a page.
+function Auras.ApplyButtonShape(btn, shape)
+    local border, icon = btn.Border, btn.Icon
+    local maskB, maskI = btn.RoundMaskBorder, btn.RoundMaskIcon
+    if not (border and icon and maskB and maskI) then return end
+
+    if shape == nil then
+        shape = addon:RowValue(addon:RowOfButton(btn), "iconShape")
+    end
+    local rounded = (shape == "round")
+
+    if rounded then
+        -- Sized on every pass rather than only when the shape changes:
+        -- the button is resized whenever its row is, and a mask left at
+        -- the old size rounds the wrong rectangle.
+        local w = btn:GetWidth() or 0
+        local h = btn:GetHeight() or 0
+        maskB:SetSize(w / MASK_OPAQUE, h / MASK_OPAQUE)
+        -- The icon sits a pixel inside the border, so its mask is a
+        -- pixel smaller and stays concentric with it.
+        maskI:SetSize(math.max(1, w - 2) / MASK_OPAQUE,
+                      math.max(1, h - 2) / MASK_OPAQUE)
+    end
+
+    if btn._bazRounded ~= rounded then
+        btn._bazRounded = rounded
+        if rounded then
+            border:AddMaskTexture(maskB)
+            icon:AddMaskTexture(maskI)
+        else
+            border:RemoveMaskTexture(maskB)
+            icon:RemoveMaskTexture(maskI)
+        end
+    end
+end
+
 function Auras.ApplyButtonSize(btn)
     local size = addon:RowValue(addon:RowOfButton(btn), "iconSize")
     if InCombatLockdown() then
@@ -233,6 +291,7 @@ function Auras.ApplyButtonSize(btn)
     btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
         addon:DurationSize(row, size), "OUTLINE")
     btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.40)), "OUTLINE")
+    Auras.ApplyButtonShape(btn)
 end
 
 ---------------------------------------------------------------------------
@@ -425,6 +484,14 @@ end
 -- the row sits across its host is the group's alignment, not a growth
 -- direction: the two used to be the same setting because the first icon
 -- was pinned to a portrait.
+-- The corner a row's icons grow from. The header is hung by it and a
+-- floating row's frame is placed by it, so it is asked here rather than
+-- worked out twice.
+local function RowCorner(below, def)
+    local right = (def.grow or "RIGHT") == "RIGHT"
+    return (below and "TOP" or "BOTTOM") .. (right and "LEFT" or "RIGHT")
+end
+
 local function ConfigureHeader(def, below)
     local h       = headers[def.id]
     if not h then return end
@@ -433,16 +500,11 @@ local function ConfigureHeader(def, below)
     local perRow  = addon:RowValue(def, "perRow")
     local step    = size + spacing
 
-    -- Which way the icons run, and which way extra rows stack. Stacking
-    -- follows the docked edge unless the row says otherwise, since rows
-    -- growing back over what they are docked to is never what anyone
-    -- meant by it.
-    local right = (def.grow or "RIGHT") == "RIGHT"
-    if def.stack == "UP" then below = false
-    elseif def.stack == "DOWN" then below = true end
-
-    local point = (below and "TOP" or "BOTTOM") .. (right and "LEFT" or "RIGHT")
-
+    -- Which way the icons run. Which way extra lines stack is already
+    -- settled - RowsBelow answers that, including the row's own
+    -- override, and every caller passes its answer in.
+    local right   = (def.grow or "RIGHT") == "RIGHT"
+    local point   = RowCorner(below, def)
     local xOffset = right and step or -step
     -- A total to show, spread evenly rather than filling rows of perRow
     -- and overshooting: ten at eight across is two rows of five, not two
@@ -713,6 +775,7 @@ local ROW_DEFAULT = {
     iconSize      = 26,
     spacing       = 3,
     perRow        = 8,
+    iconShape     = "square",
     sortMethod    = "INDEX",
     sortDirection = "+",
     showDuration  = true,
@@ -869,8 +932,13 @@ function addon:CopyRow(def, unit, hostId, edge, drop)
     if not copy then return nil end
 
     for key, value in pairs(def) do
+        -- Not the dock's ticket either. A copy is a new docking, even
+        -- when it lands on the same edge as the row it came from, and it
+        -- goes to the back of the queue: whatever was already docked
+        -- there keeps the size it was given before the copy existed.
         if key ~= "id" and key ~= "name" and key ~= "unit"
-            and key ~= "dock" and key ~= "position" then
+            and key ~= "dock" and key ~= "position"
+            and key ~= "dockSeq" and key ~= "dockedAs" then
             copy[key] = value
         end
     end
@@ -892,24 +960,32 @@ function addon:CopyRow(def, unit, hostId, edge, drop)
     return self:RowHostID(copy.id), rowFrames[copy.id]
 end
 
+-- Take a row's frame down, without touching the list it came from.
+-- Deleting a row and switching to a profile that never had one are the
+-- same teardown; only the bookkeeping around it differs.
+local function TearDownRow(id, def)
+    local frame = rowFrames[id]
+    if frame then
+        BazUI.Dock:Detach(frame)
+        BazUI.Dock:UnregisterHost(addon:RowHostID(id))
+        BazUI.Dock:UnregisterCopier(frame)
+        if frame.mover then
+            BazUI:UnregisterEditModeFrame(frame.mover)
+            frame.mover:Hide()
+        end
+        frame:Hide()
+        def = def or frame.def
+        rowFrames[id] = nil
+    end
+    if def then ParkHeader(def) end
+end
+
 function addon:RemoveRow(id)
     if InCombatLockdown() then return false end
     local rows = self:Rows()
     for index, def in ipairs(rows) do
         if def.id == id then
-            local frame = rowFrames[id]
-            if frame then
-                BazUI.Dock:Detach(frame)
-                BazUI.Dock:UnregisterHost(self:RowHostID(id))
-                BazUI.Dock:UnregisterCopier(frame)
-                if frame.mover then
-                    BazUI:UnregisterEditModeFrame(frame.mover)
-                    frame.mover:Hide()
-                end
-                frame:Hide()
-                rowFrames[id] = nil
-            end
-            ParkHeader(def)
+            TearDownRow(id, def)
             table.remove(rows, index)
             self:SaveRows()
             self:ApplySettings()
@@ -945,8 +1021,12 @@ end
 ---------------------------------------------------------------------------
 
 -- Rows run away from whatever the row is attached to: docked above
--- something they stack upward, everywhere else downward.
+-- something they stack upward, everywhere else downward. A row that says
+-- which way it wants to stack overrides all of it - rows growing back
+-- over what they are docked to is never what anyone meant by it.
 local function RowsBelow(def)
+    if def.stack == "UP"   then return false end
+    if def.stack == "DOWN" then return true  end
     if def.dock and def.dock.host and def.dock.host ~= "float" then
         return def.dock.edge ~= "TOP"
     end
@@ -954,12 +1034,30 @@ local function RowsBelow(def)
 end
 
 function addon:BuildRow(def)
-    if rowFrames[def.id] then return rowFrames[def.id] end
+    local existing = rowFrames[def.id]
+    if existing then
+        -- Switching profile hands the module a whole new settings table,
+        -- and the row definitions in it are new tables even when they
+        -- say exactly the same thing. The frames stay, so everything
+        -- built with this row - the mover, the size hook, the copier -
+        -- would go on reading the definition from whichever profile was
+        -- worn when the row was first made.
+        --
+        -- That is why dragging a row off its dock sprang straight back
+        -- on a profile switched into: the drop wrote "floating" into a
+        -- profile nobody was wearing, and the next layout pass read the
+        -- live one, which still said docked. So the frame carries the
+        -- definition and it is re-pointed here; nothing captures a
+        -- definition table for longer than one call.
+        existing.def = def
+        return existing
+    end
     if not CreateHeader(def) then return nil end
 
     local frame = CreateFrame("Frame", "BazUIAuraRowFrame" .. def.id, UIParent)
     frame:SetFrameStrata("LOW")
     frame:SetSize(26, 26)
+    frame.def = def
     rowFrames[def.id] = frame
 
     headers[def.id]:SetParent(frame)
@@ -973,7 +1071,7 @@ function addon:BuildRow(def)
     -- And how to make another of itself, so a stack holding rows can be
     -- copied for somebody else along with the bars around them.
     BazUI.Dock:RegisterCopier(frame, function(unit, hostId, edge, drop)
-        return addon:CopyRow(def, unit, hostId, edge, drop)
+        return addon:CopyRow(frame.def, unit, hostId, edge, drop)
     end)
 
     -- The thing this is docked to can be rescaled or resized long after
@@ -981,10 +1079,11 @@ function addon:BuildRow(def)
     -- filling row measures its icons again when that happens; the guard
     -- is because sizing the row is itself a size change.
     frame:HookScript("OnSizeChanged", function()
-        if refitting or InCombatLockdown() or not addon:RowMeasured(def) then return end
+        local live = frame.def
+        if refitting or InCombatLockdown() or not addon:RowMeasured(live) then return end
         refitting = true
-        if addon:FitRow(def) then
-            ConfigureHeader(def, RowsBelow(def))
+        if addon:FitRow(live) then
+            ConfigureHeader(live, RowsBelow(live))
             addon:SizeRows()
         end
         refitting = false
@@ -999,20 +1098,22 @@ function addon:BuildRow(def)
         -- empty row is one pixel tall, and a handle that size says
         -- nothing about where the icons will land.
         minSize   = function()
-            local size    = addon:RowValue(def, "iconSize")
-            local spacing = addon:RowValue(def, "spacing")
-            local perRow  = addon:RowValue(def, "perRow")
+            local live    = frame.def
+            local size    = addon:RowValue(live, "iconSize")
+            local spacing = addon:RowValue(live, "spacing")
+            local perRow  = addon:RowValue(live, "perRow")
             return perRow * (size + spacing) - spacing, size
         end,
-        settings  = function() return addon:RowEditSettings(def) end,
-        actions   = function() return addon:RowEditActions(def) end,
-        onDrop    = function(snap, x, y) addon:RowDropped(def, snap, x, y) end,
+        settings  = function() return addon:RowEditSettings(frame.def) end,
+        actions   = function() return addon:RowEditActions(frame.def) end,
+        onDrop    = function(snap, x, y) addon:RowDropped(frame.def, snap, x, y) end,
         onOffset  = function(x, y)
             -- Kept with the dock it belongs to, so undocking takes the
             -- nudge with it rather than leaving it to surprise whoever
             -- docks the row somewhere else later.
-            def.dock = def.dock or { host = "float" }
-            def.dock.offset = (x ~= 0 or y ~= 0) and { x = x, y = y } or nil
+            local live = frame.def
+            live.dock = live.dock or { host = "float" }
+            live.dock.offset = (x ~= 0 or y ~= 0) and { x = x, y = y } or nil
             addon:SaveRows()
         end,
     })
@@ -1021,6 +1122,16 @@ end
 
 function addon:BuildRows()
     if InCombatLockdown() then return end
+
+    -- Rows left behind by the profile before this one. A switch replaces
+    -- the settings, not the frames, so a row the new profile has never
+    -- heard of would sit on screen answering to nothing.
+    local live = {}
+    for _, def in ipairs(self:Rows()) do live[def.id] = true end
+    for id in pairs(rowFrames) do
+        if not live[id] then TearDownRow(id) end
+    end
+
     -- Rows made before names were numbered can collide, and two entries
     -- with one name in a list is a coin toss.
     local seen = {}
@@ -1079,6 +1190,36 @@ function addon:FitRow(def)
     return true
 end
 
+-- How many lines of icons the stand-ins draw for a row: the row's own
+-- limit where it has one, and a few where it does not, since a row with
+-- no limit has no number of its own to show.
+--
+-- Here rather than beside LayoutDemo because the row has to hold that
+-- many lines open, and the preview has to draw that many, and the two
+-- being separate numbers is what left the handle covering the first line
+-- of a three line preview.
+local DEMO_ROWS = 3
+
+local function DemoRows(def)
+    local h = headers[def.id]
+    local limit = tonumber(h and h.bazCfg and h.bazCfg.rows) or 0
+    return (limit > 0) and limit or DEMO_ROWS
+end
+
+-- The box a row was arranged in: as wide as a full line of icons, as
+-- tall as the lines Edit Mode stood it up to. It is what the handle and
+-- the ghost cover while you arrange one, so it is what a floating row is
+-- placed by - rather than the icons it happens to be carrying, which is
+-- a different size every time somebody casts something.
+function addon:RowFootprint(def)
+    local size    = self:RowValue(def, "iconSize")
+    local spacing = self:RowValue(def, "spacing")
+    local perRow  = self:RowValue(def, "perRow")
+    local lines   = DemoRows(def)
+    return math.max(1, perRow * (size + spacing) - spacing),
+           math.max(1, lines  * size + (lines - 1) * spacing)
+end
+
 function addon:SizeRows()
     if InCombatLockdown() then return end
 
@@ -1096,7 +1237,22 @@ function addon:SizeRows()
             -- above it, always, and the icons are sized to suit.
             local filling = self:RowMeasured(def) and BazUI.Dock:IsDocked(frame)
 
-            if count == 0 then
+            if demoActive then
+                -- While the stand-ins are up they are what is on screen,
+                -- so the row measures them rather than whatever the
+                -- player happens to be carrying - which, mid-arrangement,
+                -- is usually nothing. The handle is a picture of the
+                -- frame, and a handle one line tall over a three line
+                -- preview says the wrong thing about where the icons
+                -- will land.
+                local lines  = DemoRows(def)
+                local height = lines * size + (lines - 1) * spacing
+                if filling then
+                    frame:SetHeight(height)
+                else
+                    frame:SetSize(math.max(1, perRow * step - spacing), height)
+                end
+            elseif count == 0 then
                 -- Nothing to show, so it takes up no height: a docked
                 -- row with no auras in it should not hold space open
                 -- above whatever is under it. The width it would have
@@ -1111,7 +1267,7 @@ function addon:SizeRows()
                 -- handle is an icon tall whatever it stands for, so with
                 -- Edit Mode open an empty row holds a row's height and
                 -- the handles are spaced the way the icons will be.
-                local empty = (BazUI:IsEditMode() or demoActive) and size or 1
+                local empty = BazUI:IsEditMode() and size or 1
                 if filling then
                     frame:SetHeight(empty)
                 else
@@ -1154,6 +1310,11 @@ function addon:ApplyRows()
         if frame then
             local dock  = def.dock or { host = "float" }
             local takes = self:RowTakes(def)
+            -- The dock reads its own settings out of the layout and hands
+            -- back a ticket, so that what an old profile means and when
+            -- this row was docked are each answered in one place rather
+            -- than once per module.
+            local countsHeight, countsWidth, seq = BazUI.Dock:StackSettings(def)
             BazUI.Dock:AttachTo(frame, dock.host, {
                 edge  = dock.edge or "BOTTOM",
                 -- Half is an aligned follower that still takes its width
@@ -1170,13 +1331,39 @@ function addon:ApplyRows()
                 -- full width is sorted between them, and a bar and a row
                 -- can each number themselves 1.
                 order = 1000 + def.id,
+                -- Whether this row counts toward the size of the stack it
+                -- is in, for anything docked to that stack on the other
+                -- axis. Height and width answered separately: a row can
+                -- span the width of the stack it sits on and still add
+                -- nothing to the height that stack is fitted to. And when
+                -- it joined, so that whatever was docked before it keeps
+                -- the size it was given then.
+                countsHeight = countsHeight,
+                countsWidth  = countsWidth,
+                seq          = seq,
             })
 
             if not BazUI.Dock:IsDocked(frame) then
                 local pos = def.position or
                     { point = "CENTER", relPoint = "CENTER", x = 0, y = -230 }
+                local point, x, y = pos.point, pos.x, pos.y
+
+                -- Hung by the corner its icons grow from, not by its
+                -- middle. The frame is exactly as wide and tall as the
+                -- icons in it, so an anchor in the middle moves every
+                -- icon whenever one comes or goes: a row arranged full
+                -- in Edit Mode came back centered on the spot instead of
+                -- starting at it. The saved position is the middle of
+                -- the footprint, so the corner is half a footprint away.
+                if point == "CENTER" then
+                    local w, h = self:RowFootprint(def)
+                    point = RowCorner(RowsBelow(def), def)
+                    x = x + (point:find("RIGHT") and w or -w) / 2
+                    y = y + (point:find("TOP")   and h or -h) / 2
+                end
+
                 frame:ClearAllPoints()
-                frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+                frame:SetPoint(point, UIParent, pos.relPoint, x, y)
             end
 
             -- Through the dock, so a row hanging off something hidden
@@ -1196,6 +1383,8 @@ function addon:ApplyRows()
             self:FitRow(def)
         end
     end
+    -- Every row is attached; lay it all out in the dock's own order.
+    BazUI.Dock:Relayout()
 end
 
 -- Where a row ended up after a drag.
@@ -1299,6 +1488,33 @@ function addon:RowEditSettings(def)
     -- A row on a side keeps its own size - see RowTakes - so the choice
     -- is greyed out there rather than offering something it will ignore.
     local function OnASide() return Floating() or addon:RowAxis(def) == "H" end
+
+    -- A docked row is part of a stack, and anything docked to that stack
+    -- on the other axis sizes itself to the whole of it. These leave the
+    -- row out of that measurement, separately for each way of measuring:
+    -- a row can span the width of the stack it sits on and still add
+    -- nothing to the height. Floating, it is in no stack at all.
+    widgets[#widgets + 1] = { type = "checkbox", section = "Docking",
+        label = "Counts toward stack height",
+        desc = "Off, whatever docks to the side of this stack ignores this row "
+            .. "when sizing itself to the stack's height.",
+        disabled = Floating,
+        get = function() return BazUI.Dock:CountsHeight(def) end,
+        set = function(value)
+            def.countsHeight = value and true or false
+            Refresh()
+        end }
+
+    widgets[#widgets + 1] = { type = "checkbox", section = "Docking",
+        label = "Counts toward stack width",
+        desc = "Off, whatever docks above or below this stack ignores this row "
+            .. "when sizing itself to the stack's width.",
+        disabled = Floating,
+        get = function() return BazUI.Dock:CountsWidth(def) end,
+        set = function(value)
+            def.countsWidth = value and nil or false
+            Refresh()
+        end }
 
     widgets[#widgets + 1] = { type = "dropdown", section = "Docking", label = "On the",
         options = Values(addon.ROW_EDGES),
@@ -1524,7 +1740,6 @@ end
 -- underneath it.
 ---------------------------------------------------------------------------
 
-local DEMO_ROWS = 3
 
 local DEMO_BUFFS = {
     "Spell_Holy_WordFortitude", "Spell_Holy_PowerWordShield", "Spell_Nature_Regeneration",
@@ -1582,9 +1797,7 @@ function LayoutDemo()
             -- shows a layout the row will never produce, which is worse
             -- than no preview: it was showing three rows to somebody who
             -- had just asked for one.
-            local maxWraps = tonumber(cfg.rows) or 0
-            local rows  = (maxWraps > 0) and maxWraps or DEMO_ROWS
-            local count = wrap * rows
+            local count = wrap * DemoRows(def)
             -- The header lives in its unit frame's scale; the stand-ins
             -- live under UIParent, so offsets and sizes scale to match.
             local s = h:GetEffectiveScale() / demoFrame:GetEffectiveScale()
@@ -1598,6 +1811,9 @@ function LayoutDemo()
 
                 local px = size * s
                 btn:SetSize(px, px)
+                -- The preview is there to show what the row will look
+                -- like, and the shape is half of that.
+                Auras.ApplyButtonShape(btn, addon:RowValue(def, "iconShape"))
                 btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
                     addon:DurationSize(def, px), "OUTLINE")
                 btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.40)), "OUTLINE")

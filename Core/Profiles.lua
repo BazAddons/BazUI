@@ -5,7 +5,37 @@
 -- Profiles stored in BazUIDB.profiles[profileName][addonName] = { ... }
 ---------------------------------------------------------------------------
 
-local DEFAULT_PROFILE = "Default"
+local DEFAULT_PROFILE = "BazUI"
+
+-- What that profile used to be called.
+--
+-- Renaming somebody's profile is rewriting their settings, and a profile
+-- name turns up in character pins, in the default-profile pointer and in
+-- whatever they have written down. So an install that already has a
+-- "Default" keeps it and goes on using it as its fallback; only a fresh
+-- one gets the new name. The two never coexist as the fallback - the
+-- moment a "BazUI" profile exists, that is the one.
+local LEGACY_DEFAULT = "Default"
+
+-- The profile to fall back on: the one that cannot be deleted or renamed,
+-- and the one a character with no pin ends up wearing.
+--
+-- Asked for by name from the panels as well, so that the control that
+-- greys out Rename and the code that refuses it are answering the same
+-- question. They used to hold a copy of the name each, which was fine
+-- while there was only ever one name.
+local function FallbackProfile(sv)
+    sv = sv or BazUIDB
+    local profiles = sv and sv.profiles
+    if profiles and profiles[LEGACY_DEFAULT] and not profiles[DEFAULT_PROFILE] then
+        return LEGACY_DEFAULT
+    end
+    return DEFAULT_PROFILE
+end
+
+function BazUI:GetFallbackProfile()
+    return FallbackProfile()
+end
 
 -- Profile change callbacks per addon
 local profileCallbacks = {} -- [addonName] = { handler1, handler2, ... }
@@ -72,9 +102,31 @@ end
 -- module name to settings - because it is the same thing with a label on
 -- it, baked from an arrangement made in game by the same exporter.
 local function ApplyStarter(addonName, section, source)
-    local starter = (source or BazUI.StarterProfile)
-    starter = starter and starter[addonName]
+    -- A shipped layout that says nothing about a module is not asking for
+    -- that module to be left bare - it simply did not have it when the
+    -- arrangement was made. The starter layout stands in, so choosing one
+    -- never comes out worse than a fresh install.
+    local starter = (source and source[addonName])
+        or (BazUI.StarterProfile and BazUI.StarterProfile[addonName])
     if starter then DeepMerge(section, starter) end
+end
+
+-- Everything in a layout that is not a module's section.
+--
+-- FillAllAddonDefaults walks the list of registered modules, so a key
+-- belonging to the profile itself would be dropped on the way through -
+-- and the skin is exactly that kind of key. It is also most of what tells
+-- Classic and Modern apart, so losing it would have made the two shipped
+-- layouts look like each other.
+--
+-- Only ever fills a gap. A profile that already says something keeps it.
+local function ApplyProfileKeys(profile, source)
+    if not source then return end
+    for key, value in pairs(source) do
+        if not (BazUI.addons and BazUI.addons[key]) and profile[key] == nil then
+            profile[key] = (type(value) == "table") and CopyTable(value) or value
+        end
+    end
 end
 
 local function FillAllAddonDefaults(profile, source)
@@ -88,6 +140,7 @@ local function FillAllAddonDefaults(profile, source)
             if fresh then ApplyStarter(addonName, profile[addonName], source) end
         end
     end
+    ApplyProfileKeys(profile, source or BazUI.StarterProfile)
 end
 
 ---------------------------------------------------------------------------
@@ -176,8 +229,9 @@ function BazUI:InitProfiles()
     end
 
     -- Create Default profile if it doesn't exist
-    if not sv.profiles[DEFAULT_PROFILE] then
-        sv.profiles[DEFAULT_PROFILE] = {}
+    local fallback = FallbackProfile(sv)
+    if not sv.profiles[fallback] then
+        sv.profiles[fallback] = {}
     end
 
     -- Default-profile pointer: which profile should brand-new characters
@@ -186,18 +240,28 @@ function BazUI:InitProfiles()
     if sv.defaultProfile and not sv.profiles[sv.defaultProfile] then
         sv.defaultProfile = nil
     end
-    local defaultName = sv.defaultProfile or DEFAULT_PROFILE
+    local defaultName = sv.defaultProfile or fallback
 
-    -- New character on first login: assign directly to the default profile
-    -- (no per-character copy). Changes to the default propagate to every
-    -- character using it, which is what users expect from a "default."
+    -- A character used to be pinned to the default profile the first time
+    -- it logged in. Nobody asked for that pin, and because a character
+    -- pin outranks everything, it undid any profile you switched to the
+    -- moment you reloaded - the switch held all session and then quietly
+    -- went back.
+    --
+    -- The pins that were written are cleared here rather than left to
+    -- confuse. Only the ones pointing at the default profile: pinning a
+    -- character to the default is what the fallback does anyway, so
+    -- dropping it changes nothing for anyone who meant it, while a pin
+    -- to any other profile was deliberate and is left alone.
     local charKey = GetCharacterKey()
-    if charKey ~= "Unknown" and not sv.assignments[charKey] then
-        sv.assignments[charKey] = defaultName
+    if charKey ~= "Unknown" and sv.assignments[charKey] == defaultName then
+        sv.assignments[charKey] = nil
     end
 
-    -- Resolve which profile this character should use
-    sv.activeProfile = self:ResolveProfile() or DEFAULT_PROFILE
+    -- What this character should wear. A pin it was deliberately given
+    -- wins; failing that, whatever it was last switched to, so a reload
+    -- leaves you where you were; failing that, the default.
+    sv.activeProfile = self:ResolveProfile() or fallback
 
     -- Ensure the resolved profile exists
     if not sv.profiles[sv.activeProfile] then
@@ -264,7 +328,57 @@ function BazUI:RepairProfileDefaults()
     FillAllAddonDefaults(profile)
 end
 
+---------------------------------------------------------------------------
+-- The profiles that come with the addon
+--
+-- Three of them, so somebody installing it has something to compare
+-- rather than one look to accept or rebuild from nothing. "BazUI" wears
+-- the starter layout; Classic and Modern are shipped layouts registered
+-- from their own files under Core/Presets.
+--
+-- Made once and written down as made. Deleting one has to stick, or a
+-- profile you got rid of turns up again at the next login - so what has
+-- been created is remembered rather than worked out from what is there
+-- now.
+--
+-- At login rather than at ADDON_LOADED, because building a profile means
+-- filling every module's section and the modules have not registered yet
+-- when the profile structure is first set up.
+---------------------------------------------------------------------------
+
+local SHIPPED = {
+    { name = DEFAULT_PROFILE },
+    { name = "Classic", preset = "Classic" },
+    { name = "Modern",  preset = "Modern"  },
+}
+
+function BazUI:SeedShippedProfiles()
+    local sv = BazUIDB
+    if not (sv and sv.profiles) then return end
+    sv.shippedProfiles = sv.shippedProfiles or {}
+
+    -- An install from before the shipped set already has the starter
+    -- layout, under the name it went by then. Counting it as made keeps a
+    -- second copy of the same arrangement from appearing beside it.
+    if sv.profiles[LEGACY_DEFAULT] and not sv.profiles[DEFAULT_PROFILE] then
+        sv.shippedProfiles[DEFAULT_PROFILE] = true
+    end
+
+    for _, shipped in ipairs(SHIPPED) do
+        if not sv.shippedProfiles[shipped.name] then
+            sv.shippedProfiles[shipped.name] = true
+            if not sv.profiles[shipped.name] then
+                local preset = shipped.preset and self:GetPreset(shipped.preset)
+                sv.profiles[shipped.name] = {}
+                FillAllAddonDefaults(sv.profiles[shipped.name],
+                    preset and preset.profile or nil)
+            end
+        end
+    end
+end
+
 BazUI:QueueForLogin(function()
+    BazUI:SeedShippedProfiles()
     BazUI:RepairProfileDefaults()
 end)
 
@@ -340,8 +454,16 @@ function BazUI:ResolveProfile()
         return assignments[classKey]
     end
 
-    -- Priority 4: Default
-    return DEFAULT_PROFILE
+    -- Priority 4: whatever this character was last switched to. A
+    -- profile that has since been deleted is skipped rather than
+    -- resurrected.
+    local last = sv.lastProfile and sv.lastProfile[charKey]
+    if last and sv.profiles and sv.profiles[last] then
+        return last
+    end
+
+    -- Priority 5: the profile new characters start on.
+    return sv.defaultProfile or DEFAULT_PROFILE
 end
 
 ---------------------------------------------------------------------------
@@ -389,6 +511,21 @@ function BazUI:SetActiveProfile(profileName)
 
     local oldProfile = sv.activeProfile
     sv.activeProfile = profileName
+
+    -- Remembered per character, so a reload comes back to it. Per
+    -- character rather than one global answer because two characters
+    -- wearing different profiles is the ordinary case, and a single
+    -- value would mean whichever logged in last decided for both.
+    --
+    -- Not written as an assignment: a pin is something the player set on
+    -- the Profiles page and expects to hold, and quietly rewriting it
+    -- every time somebody tried another layout would make the pins on
+    -- that page lie.
+    local charKey = GetCharacterKey()
+    if charKey ~= "Unknown" then
+        sv.lastProfile = sv.lastProfile or {}
+        sv.lastProfile[charKey] = profileName
+    end
 
     -- Fill defaults for all addons in the new profile
     FillAllAddonDefaults(sv.profiles[profileName])
@@ -457,7 +594,7 @@ function BazUI:DeleteProfile(profileName)
     if not sv or not sv.profiles then return false end
 
     if sv.activeProfile == profileName then return false end
-    if profileName == DEFAULT_PROFILE then return false end
+    if profileName == FallbackProfile(sv) then return false end
 
     sv.profiles[profileName] = nil
 
@@ -485,7 +622,7 @@ function BazUI:RenameProfile(oldName, newName)
 
     if not oldName or not newName or oldName == "" or newName == "" then return false end
     if oldName == newName then return true end
-    if oldName == DEFAULT_PROFILE then return false end
+    if oldName == FallbackProfile(sv) then return false end
     if sv.profiles[newName] then return false end
 
     sv.profiles[newName] = sv.profiles[oldName]
@@ -499,6 +636,16 @@ function BazUI:RenameProfile(oldName, newName)
         for scope, assignedProfile in pairs(sv.assignments) do
             if assignedProfile == oldName then
                 sv.assignments[scope] = newName
+            end
+        end
+    end
+
+    -- And what each character was last switched to, or a rename would
+    -- send everyone back to the default on their next reload.
+    if sv.lastProfile then
+        for charKey, name in pairs(sv.lastProfile) do
+            if name == oldName then
+                sv.lastProfile[charKey] = newName
             end
         end
     end
@@ -606,6 +753,15 @@ end
 -- Profile Change Callbacks
 ---------------------------------------------------------------------------
 
+-- Whether a module asked to be told about a profile change. Only the
+-- settings audit needs this; profileCallbacks is a file-local and the
+-- question is worth answering honestly rather than by guessing from
+-- outside.
+function BazUI:HasProfileCallback(addonName)
+    local list = profileCallbacks[addonName]
+    return (list and #list > 0) and true or false
+end
+
 function BazUI:FireProfileChanged(addonName, newProfile, oldProfile)
     local callbacks = profileCallbacks[addonName]
     if callbacks then
@@ -633,10 +789,25 @@ function BazUI:FireProfileChanged(addonName, newProfile, oldProfile)
     -- an extra pass on top rather than a replacement. ApplySettings has to
     -- be safe to call twice, which is what it means for a thing to be
     -- named ApplySettings.
-    local addonObj = BazUI.GetModule and BazUI:GetModule(addonName)
-    if addonObj and type(addonObj.ApplySettings) == "function" then
+    -- Looked for on the object RegisterModule handed back, and then on
+    -- the module's own namespace table, because they are not always the
+    -- same table. Notifications keeps its ApplySettings on
+    -- BazUI.Notifications, so this looked straight past it - and that
+    -- module was left as the one thing still showing the old profile
+    -- after a fallback written to stop exactly that. The bell staying
+    -- put when you switched layouts was this, not a position that had
+    -- failed to save.
+    local host = BazUI.GetModule and BazUI:GetModule(addonName)
+    if not (host and type(host.ApplySettings) == "function") then
+        local namespace = BazUI.addonNamespaces and BazUI.addonNamespaces[addonName]
+        if namespace and type(namespace.ApplySettings) == "function" then
+            host = namespace
+        end
+    end
+
+    if host and type(host.ApplySettings) == "function" then
         C_Timer.After(0, function()
-            local ok, err = pcall(addonObj.ApplySettings, addonObj)
+            local ok, err = pcall(host.ApplySettings, host)
             if not ok then
                 BazUI:Print(("|cffff4444%s could not redraw for the new profile:|r %s")
                     :format(tostring(addonName), tostring(err)))

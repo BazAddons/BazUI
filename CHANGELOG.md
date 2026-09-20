@@ -1,8 +1,11 @@
-## 005
+## 006
 
-**BazUI runs on retail now, as well as on World of Warcraft: Forever.** One
-addon, one download, the same interface on both. Nothing about the Forever
-build changes because of it.
+**BazUI comes with three layouts now.** A fresh install has **BazUI**,
+**Classic** and **Modern** sitting in the profile list, ready to switch
+between. They are three real arrangements rather than three colour schemes,
+so you can try one, keep what you like and change the rest. Nothing you have
+already set up is touched: an existing install keeps the profile it has and
+simply gains the two new ones.
 
 **Settings still do not stick on Forever, and it is not BazUI.** That client
 does not read an addon's settings back when you log in, so everything starts
@@ -10,52 +13,66 @@ from the built-in layout each launch. It affects addons across the board, and
 the game's own settings too. There is an open bug report and nothing an addon
 can do in the meantime. On retail your settings save normally.
 
-### Fixed
-
-- **Health and power bars are coloured from the first frame.** They came up
-  black and only found their colour when you moved the mouse over one. A bar
-  loses its fill when it is resized, and putting the value back used the one
-  way that cannot work for health and power - so every resize emptied them.
-- **Escape works after leaving Edit Mode.** Opening BazUI Edit from the Game
-  Menu closed that menu the wrong way, and Escape did nothing at all for the
-  rest of the session.
-- **Quick Keybind Mode no longer swallows your keys.** After one use it took
-  every keypress, including Escape, until you logged out.
-- **Right-clicking a unit bar gives the game's own menu** - the one that knows
-  about inviting, promoting and the rest. It had been falling back to a
-  shortened guess since the feature was written.
-
 ### New
 
-- **Nameplates can be set up per kind of unit.** Friendly players, friendly
-  NPCs, neutral, hostile players, hostile NPCs, and mobs somebody else has
-  tagged are six separate things now, each with its own switches for the
-  health bar, name, level, rare and elite mark and class colour. Turn the bar
-  off on friendly NPCs and a capital city becomes readable again. There is a
-  new **Unit Kinds** page for it.
-- **Bars and aura rows dock to the sides of things**, not just above and
-  below. Dock your health to the left of a two-row action bar and your
-  target's to the right, and each pair fills the height of the bar beside it.
-- **Profiles can be exported and imported** as a string, to send to somebody
-  else. An imported profile arrives as a new one; nothing you have is
-  replaced.
+- **Two new kinds of bar.** A **portrait**, flat or 3D, which can be held
+  square so it is never stretched; and a **blank** bar that carries text and
+  small marks instead of a value. Both dock and stack like any other bar.
+- **Marks you can put on a bar.** Resting, in combat, group leader, the raid
+  marker and away, each switched on per bar. They used to be one hard-coded zZ
+  on your own health.
+- **Bar text has a proper set of controls.** Size, either following the bar or
+  pinned to a number; the outline around each letter; a drop shadow; the
+  colour; and which end of the bar it reads from.
+- **Aura icons can be round or square**, and every skin setting now belongs to
+  the profile, so two profiles can look completely different.
+- **Any bar or row can be left out of its stack's size.** Height and width are
+  separate switches, so a casting bar can span the width of the stack it sits
+  on while adding nothing to the height something docked beside that stack has
+  to match.
+- **New profiles can be made from Edit Mode**, without going to the options.
 
 ### Changed
 
-- **The Profiles page has been rebuilt.** It is grouped by what you came to do
-  rather than by what kind of control each row is, the buttons say what they
-  do instead of what they are, and the auto-assign switches show what they are
-  set to - previously you could only find out by logging in as that character.
-- **Edit Mode reads properly.** Every frame shows its name over the blue,
-  sized to fit rather than spilling over its neighbours, and the frame that
-  carries a stack is gold while the things it carries are blue. The panel has
-  a button to move it to the other edge, and the pin beside it now actually
-  unpins.
-- **BazUI Edit sits under Edit Mode in the Game Menu**, rather than at the
-  bottom under Return to Game.
-- **The micro menu shows every button the game has.** On retail that is
-  thirteen, including Professions, Achievements, Housing, the group finder,
-  Collections, the adventure guide and the shop. The leftover square behind
-  each round button is gone.
-- **Party bars come with the starting layout**, so grouping up shows something
-  without having to make them first.
+- **Docking is about stacks, not single bars.** Dock a portrait beside a health
+  bar with a power bar under it and the portrait stands as tall as the pair.
+  Dock something under that group and it runs as wide as the group. All four
+  edges behave the same way, which was not true before.
+- **The order you dock in decides the sizes.** What you docked first keeps the
+  size it was given, so adding a portrait beside a health bar no longer reaches
+  back and widens the power bar that joined underneath before the portrait
+  existed. Layouts can be built a piece at a time and stay put.
+- **The green landing line now reaches across the whole stack** you are about
+  to join, rather than the one bar it happens to name.
+- **A reload leaves you on the profile you were on.** A character used to get
+  quietly pinned to the default the first time it logged in, which undid any
+  switch the moment you reloaded.
+
+### Fixed
+
+- **Drops that showed the green line and then did nothing.** Letting go now
+  acts on exactly what the line promised. Edit Mode's grid was also pulling the
+  frame away from the dock at the last moment, and it now stays out of the way
+  when something is about to dock.
+- **Things docked to a target bar stayed where they were.** They were docked -
+  they had simply never been put anywhere, because the bar they joined is
+  hidden while you have no target.
+- **Target bars getting stuck on screen, or never appearing.** The dock and the
+  game were both deciding whether they were visible, and the dock now leaves
+  that to the game.
+- **3D portraits going black.** Asking the game for a model is a request that
+  can quietly come back empty, and a failed request was being remembered as a
+  success, so nothing ever asked again.
+- **Bars showing the unit's name when you had not asked for it.** "Current /
+  Max" read "Bazbot 69564 / 69564" for everyone on retail.
+- **Errors on retail from the game's new protected values.** Health, power,
+  crit, spell crit, cast names and raid markers can all come back as values an
+  addon is not allowed to read, and reading one throws. Every place that does
+  has been found and guarded.
+- **Names in other alphabets show as names** rather than as boxes.
+- **Settings that were not being saved to the profile**, including the
+  notification bell's position and the tooltip's. There is a `/baz audit`
+  command that reports where every module's settings actually live.
+- **The resting mark animates again** instead of drawing its whole sheet at
+  once.
+- **The profile dropdown updates immediately** after you create a profile.

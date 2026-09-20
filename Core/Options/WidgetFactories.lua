@@ -382,10 +382,14 @@ local function CreateSelectWidget(parent, opt, contentWidth)
     local btn = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
     AnchorControl(frame, btn, ddW, 22)
 
+    -- The label comes from opt.get and nowhere else, so a value changed
+    -- by another control shows here too. See Theme.SetDropdownText for
+    -- why setting the default text alone is not enough.
     local function UpdateLabel()
         local vals = GetValues(opt)
         local val = opt.get and opt.get()
-        btn:SetDefaultText(vals[val] or (val ~= nil and tostring(val)) or "Select...")
+        BazUI.Skin.Theme.SetDropdownText(btn,
+            vals[val] or (val ~= nil and tostring(val)) or "Select...")
     end
     btn:SetupMenu(function(_, rootDescription)
         local vals = GetValues(opt)

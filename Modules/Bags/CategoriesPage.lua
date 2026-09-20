@@ -176,7 +176,7 @@ local function BuildValueControl(frame, tag, key, idx, leftPx, rightInsetPx)
     elseif tag.type == "expac" then
         label = ExpacValueLabel(tonumber(tag.value))
     end
-    btn:SetDefaultText(label or "?")
+    BazUI.Skin.Theme.SetDropdownText(btn, label or "?")
 
     btn:SetupMenu(function(_, root)
         if tag.type == "class" then
@@ -252,7 +252,7 @@ local function CreateRuleRowWidget(parent, opt, contentWidth)
     local typeBtn = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
     typeBtn:SetPoint("LEFT", frame, "LEFT", 0, 0)
     typeBtn:SetWidth(TYPE_W)
-    typeBtn:SetDefaultText(TypeLabel(tag.type))
+    BazUI.Skin.Theme.SetDropdownText(typeBtn, TypeLabel(tag.type))
     typeBtn:SetupMenu(function(_, root)
         for _, t in ipairs(addon.Categories.TYPE_OPTIONS) do
             root:CreateRadio(t.label,
@@ -277,7 +277,7 @@ local function CreateRuleRowWidget(parent, opt, contentWidth)
         local opBtn = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
         opBtn:SetPoint("LEFT", typeBtn, "RIGHT", GAP, 0)
         opBtn:SetWidth(OP_W)
-        opBtn:SetDefaultText(OpLabelFor(tag.type, tag.op))
+        BazUI.Skin.Theme.SetDropdownText(opBtn, OpLabelFor(tag.type, tag.op))
         opBtn:SetupMenu(function(_, root)
             for _, o in ipairs(ops) do
                 root:CreateRadio(o.label,

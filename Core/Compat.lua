@@ -124,6 +124,35 @@ function BazUI.Secret.Read(fn, fallback)
     return value
 end
 
+-- The same question, when the caller needs to know whether it could be
+-- answered at all.
+--
+-- Read hands back a stand-in and the caller cannot tell the difference,
+-- which is what you want nearly every time. Not always, though: a secret
+-- string can be handed to a font string and printed, but not read, not
+-- measured and not even tested for truth - so code that has to choose
+-- between two of them needs a plain boolean to branch on, and the value
+-- itself only to pass along. This returns both.
+function BazUI.Secret.Try(fn)
+    return pcall(fn)
+end
+
+-- Whether two unit tokens name the same unit.
+--
+-- UnitIsUnit is SecretWhenUnitComparisonRestricted, and what it hands
+-- back is a secret *boolean* - the one kind that cannot even be tested
+-- for truth, so `if UnitIsUnit(a, b) then` raises before the body is
+-- reached. Every caller wants the same fallback, so it lives here rather
+-- than in each of them: a comparison we are not allowed to make counts as
+-- "not the same unit", which leaves the interface plain instead of
+-- marking the wrong thing.
+function BazUI.Secret.IsUnit(a, b)
+    if not (a and b and UnitIsUnit) then return false end
+    return BazUI.Secret.Read(function()
+        return UnitIsUnit(a, b) and true or false
+    end, false)
+end
+
 -- Which functions will take one
 --
 -- The client documents this itself. Every entry in

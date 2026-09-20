@@ -18,6 +18,21 @@ function BazUI:RegisterCommands(addonName, config)
     local commands = config.commands or {}
     local primarySlash = config.slash[1]
 
+    -- `settings` and `help` are answered below before anything the module
+    -- registered is looked at, so a module command by either name is
+    -- simply unreachable - and silently so, which cost an afternoon once:
+    -- a new /baz settings opened the options panel instead of running,
+    -- and nothing anywhere said why. Say it at registration, where the
+    -- person who can fix it is looking.
+    for _, reserved in ipairs({ "settings", "help" }) do
+        if commands[reserved] then
+            print(("|cffff4444BazUI:|r %s registered '%s', which %s answers itself."
+                .. " Rename it; it can never run."):format(
+                addonName, reserved, primarySlash))
+            commands[reserved] = nil
+        end
+    end
+
     -- Build the slash handler
     local function HandleSlash(msg)
         local cmd, args = strmatch(msg, "^(%S+)%s*(.*)")

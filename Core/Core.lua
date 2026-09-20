@@ -839,6 +839,25 @@ BazUI:QueueForLogin(function()
                         end
                     end,
                 },
+                fontFallback = {
+                    order = 4,
+                    type = "toggle",
+                    name = "Borrow the game's font where ours cannot spell",
+                    desc = "The BazUI face carries a Latin alphabet and nothing else, "
+                        .. "so a name written in Chinese, Korean or Cyrillic draws as a "
+                        .. "row of boxes.\n\nOn, anything it has no characters for is "
+                        .. "drawn in the game's own font instead - just that piece of "
+                        .. "text, with everything around it unchanged. A chat window is "
+                        .. "the exception: it wears one face for every line it holds, so "
+                        .. "one such message takes the whole window over.",
+                    disabled = function() return BazUIDB.useFont == false end,
+                    get = function() return BazUIDB.fontFallback ~= false end,
+                    set = function(_, val)
+                        BazUIDB.fontFallback = val
+                        local chat = BazUI.Chat and BazUI.Chat.Window
+                        if chat and chat.ApplyAll then chat:ApplyAll() end
+                    end,
+                },
             },
         }
 
@@ -1101,6 +1120,27 @@ BazUI:QueueForLogin(function()
             check = {
                 desc = "Check everything the addon takes hold of in the game's own UI - frames, templates, console settings - and say what is missing. Worth running first on a new client build.",
                 handler = function() BazUI:PrintDependencyReport() end,
+            },
+            audit = {
+                desc = "Where every module's settings live, and which of them really follow the profile. Add a module name to see one of them key by key.",
+                handler = function(args)
+                    args = strtrim(tostring(args or ""))
+                    if args ~= "" then
+                        BazUI:PrintModuleSettings(args)
+                    else
+                        BazUI:PrintSettingsAudit()
+                    end
+                end,
+            },
+            dock = {
+                desc = "What the dock thinks your layout is: everything docked, in the order it was docked, and what each piece adds to its stack. Add 'snap' to list what the snap test can see.",
+                handler = function(args)
+                    if strtrim(tostring(args or "")):lower() == "snap" then
+                        BazUI.Dock:DescribeSnap(print)
+                    else
+                        BazUI.Dock:PrintLayout()
+                    end
+                end,
             },
             errors = {
                 desc = "Anything that failed while the interface was being built. Empty is the normal answer.",

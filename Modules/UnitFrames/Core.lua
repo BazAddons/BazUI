@@ -213,6 +213,13 @@ end
 function addon:ApplySettings()
     local UnitBars = self.UnitBars
     if not UnitBars then return end
+    -- The bars, then their settings. A profile switch calls this, and a
+    -- switch can add bars, take bars away, and hand back fresh
+    -- definition tables for the ones that stay. Applying without
+    -- rebuilding first left the module wearing the profile it came
+    -- from: new bars never appeared, old ones never left, and every bar
+    -- still read and wrote the definition it was made with.
+    UnitBars:BuildAll()
     UnitBars:ApplyAll()
     UnitBars:UpdateAll()
     UnitBars:SuppressStock()

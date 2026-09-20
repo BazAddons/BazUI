@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-2.0-or-later -->
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd">
-    <!-- The look of one aura icon: a square rim, the icon inside it, the
-         stack count and the time left.
+    <!-- The look of one aura icon: a rim, the icon inside it, the stack
+         count and the time left. Square or round, which is a mask over
+         the same geometry rather than a second template.
          Shared by the real buttons and the preview's stand-ins. -->
     <Button name="BazUIAuraVisualTemplate" virtual="true">
         <Size x="26" y="26"/>
@@ -25,6 +26,41 @@
                 <Texture parentKey="Border" setAllPoints="true">
                     <Color r="0.08" g="0.08" b="0.10" a="1"/>
                 </Texture>
+
+                <!-- Rounded corners, when they are asked for.
+                     
+                     Declared here and attached to nothing: a MaskTexture
+                     does nothing until a texture is told to wear it, so
+                     these sit inert until Auras.ApplyButtonShape hands
+                     them out, and the setting can be changed back without
+                     rebuilding a single button.
+                     
+                     Two of them, one per texture, each anchored to what it
+                     masks. A single button-sized mask would round the
+                     border correctly and leave the icon - which sits a
+                     pixel inside - with corners the mask never reached.
+                     
+                     Centred on what they mask and sized by
+                     Auras.ApplyButtonShape, because the art needs scaling
+                     up before its opaque part covers the whole rect - see
+                     the note beside MASK_OPAQUE. Neither moves an anchor. That is what the square version of this
+                     went wrong on: the rim used to hang two pixels outside
+                     the button, so a row measured four pixels narrower
+                     than it looked and one told to fill its host got it
+                     wrong. Rounding is only what is drawn; the box a
+                     button occupies is the same either way. -->
+                <MaskTexture parentKey="RoundMaskBorder" atlas="UI-HUD-ActionBar-IconFrame-Mask"
+                             hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Anchors>
+                        <Anchor point="CENTER"/>
+                    </Anchors>
+                </MaskTexture>
+                <MaskTexture parentKey="RoundMaskIcon" atlas="UI-HUD-ActionBar-IconFrame-Mask"
+                             hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Anchors>
+                        <Anchor point="CENTER" relativeKey="$parent.Icon"/>
+                    </Anchors>
+                </MaskTexture>
             </Layer>
             <Layer level="ARTWORK">
                 <!-- Trimmed, because every icon in the game's art has a

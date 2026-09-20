@@ -145,7 +145,13 @@ BazUI:RegisterModule("Notifications", {
     end,
 
     onReady = function(self)
-        -- onReady fires once on PLAYER_LOGIN
+        -- Asked for by name, like the other nine modules that draw
+        -- something. FireProfileChanged has a fallback that looks for an
+        -- ApplySettings, but it looks on the object RegisterModule hands
+        -- back and this module keeps its on BazUI.Notifications - two
+        -- different tables. The fallback has since been taught to look in
+        -- both places; this does not depend on it having been.
+        self:OnProfileChanged(function() addon:ApplySettings() end)
     end,
 })
 

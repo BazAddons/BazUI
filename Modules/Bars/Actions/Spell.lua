@@ -112,10 +112,14 @@ end
 
 function Spell.getCount(data)
     local info = C_Spell.GetSpellCharges(data.id)
-    if info and info.maxCharges and info.maxCharges > 1 then
-        return tostring(info.currentCharges)
-    end
-    return ""
+    if not (info and info.maxCharges) then return "" end
+    -- Charges are secret while cooldowns are restricted, and both the
+    -- comparison and the tostring below are reads. No count rather than
+    -- a wrong one: the button still works, it just says nothing.
+    return BazUI.Secret.Read(function()
+        if info.maxCharges > 1 then return tostring(info.currentCharges) end
+        return ""
+    end, "")
 end
 
 -- Preferred cooldown path - applies the cooldown to the Cooldown frame

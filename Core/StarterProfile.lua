@@ -2,11 +2,12 @@
 ---------------------------------------------------------------------------
 -- BazUI Starter Profile
 --
--- The layout a fresh install starts with. Core lays these values over a
--- module's coded defaults the first time that module's section is
--- created in a profile: on a brand-new install, when a new profile is
--- made, and when a module is added to an existing install. Existing
--- sections are never touched, so nobody's settings change on update.
+-- The layout a fresh install starts with, and the one the shipped "BazUI"
+-- profile wears. Core lays these values over a module's coded defaults
+-- the first time that module's section is created in a profile: on a
+-- brand-new install, when a new profile is made, and when a module is
+-- added to an existing install. Existing sections are never touched, so
+-- nobody's settings change on update.
 --
 -- Positions use screen anchors (BOTTOM, TOP, RIGHT ...), never absolute
 -- pixels from a corner, so the layout lands the same at any resolution
@@ -15,9 +16,9 @@
 -- Anything tied to one player stays out: per-character bar payloads,
 -- item pins, chat history, minimap button order from other addons.
 --
--- Written by tools/bake-starter.py from an arrangement made in game.
+-- Written by tools/bake-profiles.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 2100.5 x 1181.5 screen, 2026-09-19 09:11:07.
+-- Arranged on a 2100.5 x 1181.5 screen, baked 2026-09-19 20:00:06.
 ---------------------------------------------------------------------------
 
 BazUI.StarterProfile = {
@@ -25,45 +26,53 @@ BazUI.StarterProfile = {
         debuffBorders = true,
         enabled = true,
         hideBlizzard = true,
+        iconShape = "square",
         iconSize = 40,
         perRow = 8,
         rows = {
-            {
-                align = "LEFT",
-                dock = {
-                    edge = "TOP",
-                    host = "bar:1",
-                },
-                filter = "HELPFUL",
-                gap = 4,
-                id = 1,
-                name = "Player Buffs 1",
-                onlyMine = false,
-                position = {
-                    point = "CENTER",
-                    relPoint = "BOTTOM",
-                    x = -300,
-                    y = 310,
-                },
-                takes = "half",
-                unit = "player",
-            },
             {
                 align = "RIGHT",
                 dock = {
                     edge = "TOP",
                     host = "bar:1",
                 },
+                dockSeq = 24,
+                dockedAs = "bar:1|TOP",
+                filter = "HELPFUL",
+                gap = 4,
+                grow = "LEFT",
+                id = 1,
+                name = "Player Buffs 1",
+                onlyMine = false,
+                perRow = 10,
+                position = {
+                    point = "CENTER",
+                    relPoint = "TOPRIGHT",
+                    x = -474.2,
+                    y = -110.7,
+                },
+                takes = "half",
+                unit = "player",
+            },
+            {
+                align = "LEFT",
+                dock = {
+                    edge = "TOP",
+                    host = "bar:1",
+                },
+                dockSeq = 25,
+                dockedAs = "bar:1|TOP",
                 filter = "HARMFUL",
                 gap = 4,
                 id = 2,
                 name = "Player Debuffs 1",
                 onlyMine = false,
+                perRow = 10,
                 position = {
                     point = "CENTER",
-                    relPoint = "BOTTOM",
-                    x = -300,
-                    y = 270,
+                    relPoint = "RIGHT",
+                    x = -602.2,
+                    y = -160,
                 },
                 takes = "half",
                 unit = "player",
@@ -72,8 +81,10 @@ BazUI.StarterProfile = {
                 align = "LEFT",
                 dock = {
                     edge = "BOTTOM",
-                    host = "statusbar:5",
+                    host = "statusbar:15",
                 },
+                dockSeq = 48,
+                dockedAs = "statusbar:15|BOTTOM",
                 filter = "HELPFUL",
                 gap = 4,
                 id = 3,
@@ -82,9 +93,9 @@ BazUI.StarterProfile = {
                 onlyMine = false,
                 position = {
                     point = "CENTER",
-                    relPoint = "BOTTOM",
-                    x = 300,
-                    y = 310,
+                    relPoint = "LEFT",
+                    x = 378.3,
+                    y = 160,
                 },
                 takes = "half",
                 unit = "target",
@@ -93,8 +104,10 @@ BazUI.StarterProfile = {
                 align = "RIGHT",
                 dock = {
                     edge = "BOTTOM",
-                    host = "statusbar:5",
+                    host = "statusbar:15",
                 },
+                dockSeq = 47,
+                dockedAs = "statusbar:15|BOTTOM",
                 filter = "HARMFUL",
                 gap = 4,
                 id = 4,
@@ -103,9 +116,9 @@ BazUI.StarterProfile = {
                 onlyMine = false,
                 position = {
                     point = "CENTER",
-                    relPoint = "BOTTOM",
-                    x = 300,
-                    y = 270,
+                    relPoint = "RIGHT",
+                    x = -634.2,
+                    y = 96,
                 },
                 takes = "half",
                 unit = "target",
@@ -269,13 +282,13 @@ BazUI.StarterProfile = {
         position = {
             point = "RIGHT",
             relPoint = "RIGHT",
-            x = -285,
-            y = -18,
+            x = -260.9,
+            y = -110.6,
         },
         rarityRims = "uncommon",
         sellJunkButton = true,
-        showBindType = false,
-        showItemLevel = false,
+        showBindType = true,
+        showItemLevel = true,
         strata = "DIALOG",
         titleCount = true,
     },
@@ -297,11 +310,11 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "BOTTOM",
                     x = 0,
-                    y = 85.7,
+                    y = 49.2,
                 },
                 rightClickSelfCast = false,
                 rows = 1,
-                scale = 0.7,
+                scale = 1,
                 spacing = 3,
             },
             {
@@ -318,7 +331,7 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "BOTTOM",
                     x = 0,
-                    y = 451.4,
+                    y = 478.2,
                 },
                 rightClickSelfCast = false,
                 rows = 2,
@@ -386,17 +399,6 @@ BazUI.StarterProfile = {
             hoverTooltip = true,
             separator = "-",
         },
-        typedHistory = {
-            "/reload",
-            "/baz check",
-            "/reloasd",
-            "/reload",
-            "/baz check",
-            "/reload",
-            "/baz export",
-            "/reload",
-            "/baz export",
-        },
         windows = {
             {
                 alpha = 1,
@@ -430,635 +432,6 @@ BazUI.StarterProfile = {
                 fadeDuration = 0.5,
                 fading = true,
                 fontScale = 1,
-                history = {
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789822781,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789822781,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789822781,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789822866,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789822866,
-                    },
-                    {
-                        text = "|cff3399ffBars|r: Removed 3 abilities this character doesn't know from the bars.",
-                        time = 1789822866,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789822866,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Remember to act responsibly, protect your personal information, and report anything offensive. View our In-Game Code of Conduct on |HurlIndex:64|h|cnVISITABLE_URL_DEFAULT_CHAT_LINK_COLOR:https://support.blizzard.com/article/42673|r|h for more information.",
-                        time = 1789822915,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789822915,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789822915,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789822917,
-                    },
-                    {
-                        b = 1,
-                        g = 0.8,
-                        r = 0.5,
-                        text = "|TInterface\\FriendsFrame\\UI-Toast-ToastIcons.tga:16:16:0:0:128:64:2:29:34:61|t|HBNplayer:|Ks30|k:41:46:BN_INLINE_TOAST_ALERT:0|h[|Ks30|k] (|T-144869:10:10:0:0:32:32:0:32:0:32|t OmeDeltaTTV)|h has come online.",
-                        time = 1789822955,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: Checking 44 things the addon takes hold of in the game's own UI:",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Bags|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ContainerFrameItemButtonTemplate",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r SecureActionButtonTemplate + SECURE_ACTIONS.item  - Using an item from a bag. Without it every use is refused as a protected call.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      UI-ActionButton-Border",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700BazUI|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-CopperIcon",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-GoldIcon",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-SilverIcon",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      MenuUtil.CreateContextMenu returns its menu",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Minimap|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      MinimapBackdrop",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Nameplates|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      C_NamePlate.GetNamePlateForUnit",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Notifications (Zygor)|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:AddEntry  - Hooked to hear a notification being raised.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:GetEntry and .Entries  - Finding the entry again, so clicking ours does what clicking theirs did.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:ShowOne  - Replaced to hold Zygor's own popup back.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r ZGV.NotificationCenter  - Everything else here hangs off it.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Quality of Life|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CVar cameraDistanceMaxZoomFactor",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r CVar instantQuestText  - Instant quest text sets it.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CanMerchantRepair()",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CancelDuel()",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      RepairAllItems()",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Screenshot()",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Skin|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ColorPickerFrame:SetupColorPickerAndShow",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Texture:SetGradient",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Tooltip|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ContainerFrameItemButton_CalculateItemTooltipAnchors",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipHeaderText",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipText",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipTextSmall",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "  |cffffd700Unit Frames|r",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r CastingBarFrame  - Hidden by the Hide the casting bar switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CompactRaidFrameManager",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r GamepadPlayerCastingBarFrame  - Hidden by the Hide the casting bar switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      OverlayPlayerCastingBarFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PartyFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r PartyMemberFrame1  - Hidden by the Hide the party frames switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r PartyMemberFrame2  - Hidden by the Hide the party frames switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r PartyMemberFrame3  - Hidden by the Hide the party frames switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r PartyMemberFrame4  - Hidden by the Hide the party frames switch.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PetCastingBarFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PlayerCastingBarFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PlayerFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r SECURE_ACTIONS.togglemenu  - The right-click menu on a bar picks itself; without it we fall back to our own guess.",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\bossIcon.png",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteIcon.png",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteRareIcon.png",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\rareIcon.png",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      TargetFrame",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ToggleCharacter()",
-                        time = 1789822995,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: |cffff444413 missing.|r Anything above marked MISSING will fail quietly rather than error, so start there.",
-                        time = 1789822995,
-                    },
-                    {
-                        b = 0.6,
-                        g = 1,
-                        r = 1,
-                        text = "Silvermoon Noble says: The threat departed, yet the scholars remained.",
-                        time = 1789823057,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Type '/help' for a listing of a few commands.",
-                        time = 1789823094,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789823099,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789823099,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789823099,
-                    },
-                    {
-                        text = "|cff3399ffUnit Frames|r: Created Party 1 Health 1",
-                        time = 1789823168,
-                    },
-                    {
-                        text = "|cff3399ffUnit Frames|r: Created Party 1 Power 1",
-                        time = 1789823177,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789823231,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789823231,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789823233,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: Checking 36 things the addon takes hold of in the game's own UI:",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Bags|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ContainerFrameItemButtonTemplate",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      SecureActionButtonTemplate",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      UI-ActionButton-Border",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700BazUI|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-CopperIcon",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-GoldIcon",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Interface\\MoneyFrame\\UI-SilverIcon",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      MenuUtil.CreateContextMenu returns its menu",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Minimap|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      MinimapBackdrop",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Nameplates|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      C_NamePlate.GetNamePlateForUnit",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Notifications (Zygor)|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:AddEntry  - Hooked to hear a notification being raised.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:GetEntry and .Entries  - Finding the entry again, so clicking ours does what clicking theirs did.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r NotificationCenter:ShowOne  - Replaced to hold Zygor's own popup back.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r ZGV.NotificationCenter  - Everything else here hangs off it.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Quality of Life|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CVar cameraDistanceMaxZoomFactor",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cffff4444MISSING|r CVar instantQuestText  - Instant quest text sets it.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CanMerchantRepair()",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CancelDuel()",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      RepairAllItems()",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Screenshot()",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Skin|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ColorPickerFrame:SetupColorPickerAndShow",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Texture:SetGradient",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Tooltip|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ContainerFrameItemButton_CalculateItemTooltipAnchors",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipHeaderText",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipText",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      GameTooltipTextSmall",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "  |cffffd700Unit Frames|r",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      CompactRaidFrameManager",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PartyFrame or PartyMemberFrame1 or PartyMemberFrame2 or PartyMemberFrame3 or PartyMemberFrame4",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PetCastingBarFrame",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PlayerCastingBarFrame or OverlayPlayerCastingBarFrame or GamepadPlayerCastingBarFrame or CastingBarFrame",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      PlayerFrame",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\bossIcon.png",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteIcon.png",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\eliteRareIcon.png",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      Skin\\Assets\\rareIcon.png",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      TargetFrame",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "    |cff44ff44ok|r      ToggleCharacter()",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: |cffff44445 missing.|r Anything above marked MISSING will fail quietly rather than error, so start there.",
-                        time = 1789823234,
-                    },
-                    {
-                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 2.",
-                        time = 1789823275,
-                    },
-                    {
-                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 3.",
-                        time = 1789823280,
-                    },
-                    {
-                        text = "|cff3399ffUnit Frames|r: Copied 2 for Party 4.",
-                        time = 1789823285,
-                    },
-                    {
-                        b = 0.6,
-                        g = 1,
-                        r = 1,
-                        text = "Silvermoon Resident says: This sudden peace feels too convenient...",
-                        time = 1789823369,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789823403,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789823403,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789823403,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789823438,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789823438,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789823438,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: Layout written to the saved variables. |cffffd700/reload|r puts it on disk.",
-                        time = 1789823442,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: |cffff8800Copy dialog kept 0 of 54845 characters.|r",
-                        time = 1789823442,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: Layout written to the saved variables. |cffffd700/reload|r puts it on disk.",
-                        time = 1789823448,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r: |cffff8800Copy dialog kept 0 of 55255 characters.|r",
-                        time = 1789823448,
-                    },
-                    {
-                        b = 0,
-                        g = 1,
-                        r = 1,
-                        text = "Loot Specialization set to: Arcane",
-                        time = 1789823462,
-                    },
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789823462,
-                    },
-                    {
-                        text = "|cff3399ffBazUI|r v004 loaded (12 modules). Type |cff00ff00/baz|r for options.",
-                        time = 1789823462,
-                    },
-                },
                 indentedWordWrap = true,
                 label = "General",
                 maxLines = 500,
@@ -1082,15 +455,6 @@ BazUI.StarterProfile = {
                 eventGroup = "GUILD",
                 fadeDuration = 0.5,
                 fading = true,
-                history = {
-                    {
-                        b = 0.3,
-                        g = 1,
-                        r = 0.3,
-                        text = "Guild Message of the Day: \"Epitome has a neighborhood! Move your house today!\"",
-                        time = 1789822915,
-                    },
-                },
                 indentedWordWrap = true,
                 label = "Guild",
                 maxLines = 500,
@@ -1266,6 +630,12 @@ BazUI.StarterProfile = {
         width = 110,
     },
     Notifications = {
+        bellAnchor = {
+            point = "CENTER",
+            relPoint = "TOPLEFT",
+            x = 30.3,
+            y = -30.7,
+        },
         dndAutoCombat = false,
         dndAutoInstance = false,
         dndEnabled = false,
@@ -1294,22 +664,29 @@ BazUI.StarterProfile = {
     QoL = {
         restores = {},
         tweaks = {},
-        windowPositions = {},
+        windowPositions = {
+            dragOptions = {
+                point = "LEFT",
+                relPoint = "LEFT",
+                x = 294.9,
+                y = 101.8,
+            },
+        },
     },
     Tooltip = {
-        anchor = "default",
+        anchor = "fixed",
         cursorX = 18,
         cursorY = 18,
         enabled = true,
         hideCombat = false,
-        hideHealth = false,
+        hideHealth = true,
         opacity = 1,
         origin = "auto",
         point = "BOTTOMRIGHT",
         scale = 1,
         skin = true,
-        x = -24,
-        y = 100,
+        x = -109.6,
+        y = 48.6,
     },
     UnitFrames = {
         barClicks = true,
@@ -1336,6 +713,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "bar:2",
                 },
+                dockSeq = 29,
+                dockedAs = "bar:2|BOTTOM",
                 height = 24,
                 hoverFormat = "current/max",
                 id = 1,
@@ -1343,21 +722,23 @@ BazUI.StarterProfile = {
                 name = "Player Health 1",
                 position = {
                     point = "CENTER",
-                    relPoint = "BOTTOM",
-                    x = -256,
-                    y = 220,
+                    relPoint = "TOPLEFT",
+                    x = 154.3,
+                    y = -46.7,
                 },
                 textFormat = "nameLevel",
                 textMode = "always",
                 ticks = 0,
                 unit = "player",
-                width = 240,
+                width = 259,
             },
             {
                 dock = {
                     edge = "BOTTOM",
                     host = "statusbar:1",
                 },
+                dockSeq = 30,
+                dockedAs = "statusbar:1|BOTTOM",
                 height = 10,
                 id = 2,
                 kind = "power",
@@ -1379,28 +760,31 @@ BazUI.StarterProfile = {
                     edge = "TOP",
                     host = "bar:2",
                 },
+                dockSeq = 31,
+                dockedAs = "bar:2|TOP",
                 height = 10,
                 id = 3,
                 kind = "cast",
                 name = "Player Casting 1",
                 position = {
                     point = "CENTER",
-                    relPoint = "CENTER",
-                    x = -96,
-                    y = 96,
+                    relPoint = "BOTTOM",
+                    x = 0,
+                    y = 238.8,
                 },
                 textFormat = "current",
                 textMode = "always",
                 ticks = 0,
                 unit = "player",
-                width = 240,
+                width = 259,
             },
             {
                 dock = {
                     edge = "BOTTOM",
                     host = "float",
                 },
-                height = 24,
+                dockedAs = "float",
+                height = 43,
                 id = 4,
                 kind = "health",
                 name = "Target Health 1",
@@ -1408,28 +792,30 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "TOP",
                     x = 0,
-                    y = -60,
+                    y = -94.7,
                 },
                 textFormat = "namePercent",
                 textMode = "always",
                 ticks = 0,
                 unit = "target",
-                width = 240,
+                width = 320,
             },
             {
                 dock = {
                     edge = "BOTTOM",
                     host = "statusbar:4",
                 },
+                dockSeq = 28,
+                dockedAs = "statusbar:4|BOTTOM",
                 height = 10,
                 id = 5,
                 kind = "power",
                 name = "Target Power 1",
                 position = {
                     point = "CENTER",
-                    relPoint = "CENTER",
-                    x = 0,
-                    y = -160,
+                    relPoint = "TOP",
+                    x = -128,
+                    y = -366.7,
                 },
                 textFormat = "current",
                 textMode = "always",
@@ -1443,6 +829,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "bar:1",
                 },
+                dockSeq = 32,
+                dockedAs = "bar:1|BOTTOM",
                 gap = 6,
                 height = 10,
                 id = 6,
@@ -1450,21 +838,22 @@ BazUI.StarterProfile = {
                 name = "XP Bar 1",
                 position = {
                     point = "CENTER",
-                    relPoint = "CENTER",
-                    x = 0,
-                    y = -160,
+                    relPoint = "BOTTOM",
+                    x = 32,
+                    y = 142.8,
                 },
                 textFormat = "detailed",
                 textMode = "hover",
                 ticks = 10,
                 unit = "player",
-                width = 240,
+                width = 460,
             },
             {
                 dock = {
                     edge = "BOTTOM",
                     host = "float",
                 },
+                dockedAs = "float",
                 height = 24,
                 id = 7,
                 kind = "health",
@@ -1473,7 +862,7 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "TOPLEFT",
                     x = 90.3,
-                    y = -270.8,
+                    y = -270.7,
                 },
                 textFormat = "namePercent",
                 textMode = "always",
@@ -1486,6 +875,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "statusbar:7",
                 },
+                dockSeq = 33,
+                dockedAs = "statusbar:7|BOTTOM",
                 height = 11,
                 id = 8,
                 kind = "power",
@@ -1507,6 +898,7 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "float",
                 },
+                dockedAs = "float",
                 height = 24,
                 id = 9,
                 kind = "health",
@@ -1515,7 +907,7 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "TOPLEFT",
                     x = 90.3,
-                    y = -339.8,
+                    y = -339.7,
                 },
                 textFormat = "namePercent",
                 textMode = "always",
@@ -1528,6 +920,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "statusbar:9",
                 },
+                dockSeq = 34,
+                dockedAs = "statusbar:9|BOTTOM",
                 height = 11,
                 id = 10,
                 kind = "power",
@@ -1549,6 +943,7 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "float",
                 },
+                dockedAs = "float",
                 height = 24,
                 id = 11,
                 kind = "health",
@@ -1570,6 +965,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "statusbar:11",
                 },
+                dockSeq = 35,
+                dockedAs = "statusbar:11|BOTTOM",
                 height = 11,
                 id = 12,
                 kind = "power",
@@ -1591,6 +988,7 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "float",
                 },
+                dockedAs = "float",
                 height = 24,
                 id = 13,
                 kind = "health",
@@ -1612,6 +1010,8 @@ BazUI.StarterProfile = {
                     edge = "BOTTOM",
                     host = "statusbar:13",
                 },
+                dockSeq = 36,
+                dockedAs = "statusbar:13|BOTTOM",
                 height = 11,
                 id = 14,
                 kind = "power",
@@ -1628,6 +1028,29 @@ BazUI.StarterProfile = {
                 unit = "party4",
                 width = 240,
             },
+            {
+                dock = {
+                    edge = "BOTTOM",
+                    host = "statusbar:4",
+                },
+                dockSeq = 46,
+                dockedAs = "statusbar:4|BOTTOM",
+                height = 24,
+                id = 15,
+                kind = "power",
+                name = "Target Power 2",
+                position = {
+                    point = "CENTER",
+                    relPoint = "CENTER",
+                    x = 0,
+                    y = -160,
+                },
+                textFormat = "current",
+                textMode = "always",
+                ticks = 0,
+                unit = "target",
+                width = 240,
+            },
         },
         targetPosition = {
             point = "CENTER",
@@ -1637,5 +1060,138 @@ BazUI.StarterProfile = {
         },
         targetShowValues = "hover",
         unitTooltips = true,
+    },
+    skin = {
+        active = "custom",
+        custom = {
+            border = {
+                {
+                    color = {
+                        0,
+                        0,
+                        0.1,
+                        1,
+                    },
+                    thickness = 2,
+                },
+            },
+            colors = {
+                bg = {
+                    0,
+                    0,
+                    0,
+                    0.9,
+                },
+                bgHover = {
+                    0.2,
+                    0.1,
+                    0.1,
+                    0.9,
+                },
+                bgRaised = {
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.9,
+                },
+                caution = {
+                    1,
+                    0.7,
+                    0.2,
+                    1,
+                },
+                danger = {
+                    0.9,
+                    0.3,
+                    0.3,
+                    1,
+                },
+                divider = {
+                    0.6,
+                    0.4,
+                    0.2,
+                    0.6,
+                },
+                edge = {
+                    0.4,
+                    0.3,
+                    0.1,
+                    0.6,
+                },
+                gold = {
+                    1,
+                    0.8,
+                    0,
+                    1,
+                },
+                goldDim = {
+                    0.6,
+                    0.5,
+                    0.2,
+                    1,
+                },
+                goldSoft = {
+                    1,
+                    0.8,
+                    0.5,
+                    1,
+                },
+                rankBoss = {
+                    1,
+                    0.4,
+                    0.3,
+                    0.9,
+                },
+                rankElite = {
+                    1,
+                    0.8,
+                    0.3,
+                    0.9,
+                },
+                rankRare = {
+                    0.4,
+                    0.7,
+                    1,
+                    0.9,
+                },
+                rankRareElite = {
+                    0.7,
+                    0.4,
+                    1,
+                    0.9,
+                },
+                success = {
+                    0.5,
+                    0.8,
+                    0.5,
+                    1,
+                },
+                text = {
+                    1,
+                    1,
+                    0.9,
+                    1,
+                },
+                textMuted = {
+                    0.6,
+                    0.6,
+                    0.5,
+                    1,
+                },
+                textSoft = {
+                    0.8,
+                    0.8,
+                    0.6,
+                    1,
+                },
+                warn = {
+                    1,
+                    0.5,
+                    0.2,
+                    1,
+                },
+            },
+            fill = "flat",
+        },
     },
 }

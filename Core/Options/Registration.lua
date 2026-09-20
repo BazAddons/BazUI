@@ -489,6 +489,37 @@ function BazUI:OpenOptionsPanel(key)
     end
 end
 
+-- Re-render whatever page is on screen, whichever it is.
+--
+-- A page is a readout of current values, and one setting can change
+-- another: the chat window's unified fade mode sets the background and
+-- tab modes along with itself. Without this the two dropdowns beside it
+-- went on showing what they used to say until the window was closed and
+-- opened again.
+--
+-- Whatever is shown, rather than a named page, because the setting that
+-- changed does not know which page is displaying it - the same spec
+-- feeds the options window and the Edit Mode popup.
+--
+-- Deferred, and only once however many settings changed. This runs from
+-- inside a widget's own set handler, and rendering replaces that widget:
+-- a dropdown would be pulled out from under the menu callback that is
+-- still running.
+local repaintQueued
+
+function BazUI:RefreshVisibleOptions()
+    if repaintQueued then return end
+    repaintQueued = true
+    C_Timer.After(0, function()
+        repaintQueued = false
+        for _, canvas in pairs(canvases) do
+            if canvas:IsShown() and canvas.activeKey then
+                RenderPage(canvas, canvas.activeKey)
+            end
+        end
+    end)
+end
+
 -- Re-render a page if it is the one currently on screen.
 function BazUI:RefreshOptions(key)
     local entry = optionsTables[key]

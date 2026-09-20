@@ -44,12 +44,23 @@ local FAILED_COLOR  = { 0.85, 0.30, 0.30, 1 }
 
 -- What a bar can read. Everything else about it is the same.
 UnitBars.KINDS = {
-    health = "Health",
-    power  = "Power",
-    cast   = "Casting",
-    xp     = "XP",
-    rep    = "Reputation",
+    health   = "Health",
+    power    = "Power",
+    cast     = "Casting",
+    xp       = "XP",
+    rep      = "Reputation",
+    -- Two that show no value at all. They are bars in every other sense:
+    -- the same size, the same docking, the same handle in Edit Mode, so
+    -- a portrait docks to the left of a health bar and a blank one holds
+    -- the marks underneath it without any of that being written twice.
+    portrait = "Portrait",
+    blank    = "Blank",
 }
+
+-- Kinds with nothing to fill. The fill is hidden and the text, the
+-- marks and - for a portrait - the picture are all there is.
+local NO_FILL = { portrait = true, blank = true }
+UnitBars.NO_FILL = NO_FILL
 
 UnitBars.UNITS = {
     player = "Player",
@@ -69,6 +80,13 @@ local function IsUnitKind(kind)
     return kind == "health" or kind == "power" or kind == "cast"
 end
 UnitBars.IsUnitKind = IsUnitKind
+
+-- The kinds whose frames RegisterUnitWatch shows and hides. One answer,
+-- because two things depend on it agreeing: the frame is made secure, and
+-- the dock is told to keep its hands off the frame's visibility.
+local function UnitWatched(def)
+    return def.kind == "health" or def.kind == "power"
+end
 
 ---------------------------------------------------------------------------
 -- The list of bars
@@ -129,12 +147,22 @@ function UnitBars:Add(kind, unit)
         id         = self:NextID(),
         kind       = kind,
         unit       = unit,
-        width      = 240,
+        -- A portrait starts square, because a face stretched across a
+        -- bar's width is a smeared face and nobody wants to discover
+        -- that by making one. Everything else starts bar-shaped.
+        width      = (kind == "portrait") and 40 or 240,
         -- Four pixels a side go to the outline, the rim and the line
         -- between them, so this is a sixteen pixel fill.
-        height     = 24,
-        textMode   = "always",
-        textFormat = (kind == "xp" or kind == "rep") and "detailed"
+        height     = (kind == "portrait") and 40 or 24,
+        -- A portrait says nothing - whose face it is, is the picture.
+        textMode   = (kind == "portrait") and "never" or "always",
+        -- And it keeps its shape: whichever side the dock sets, the other
+        -- follows, so a face is never stretched across a bar.
+        square     = (kind == "portrait") or nil,
+        -- A blank bar says who it is about, since a bar of marks with no
+        -- name on it is a puzzle.
+        textFormat = (kind == "blank") and "name"
+            or (kind == "xp" or kind == "rep") and "detailed"
             or ((kind == "power" or kind == "cast") and "current" or "namePercent"),
         ticks      = (kind == "xp") and 10 or 0,
         dock       = { host = "float", edge = "BOTTOM" },
@@ -174,8 +202,13 @@ function UnitBars:CopyBar(def, unit, hostId, edge, drop)
     if not copy then return nil end
 
     for key, value in pairs(def) do
+        -- Not the dock's ticket either. A copy is a new docking, even
+        -- when it lands on the same edge as the bar it came from, and it
+        -- goes to the back of the queue: whatever was already docked
+        -- there keeps the size it was given before the copy existed.
         if key ~= "id" and key ~= "name" and key ~= "unit"
-            and key ~= "dock" and key ~= "position" then
+            and key ~= "dock" and key ~= "position"
+            and key ~= "dockSeq" and key ~= "dockedAs" then
             copy[key] = value
         end
     end
@@ -201,40 +234,46 @@ function UnitBars:CopyBar(def, unit, hostId, edge, drop)
     return self:HostID(copy.id), bar and bar.frame
 end
 
+-- Take a bar down, without touching the list it came from. Deleting one
+-- and switching to a profile that never had it are the same teardown;
+-- only the bookkeeping around it differs.
+function UnitBars:TearDown(id)
+    local bar = self.bars[id]
+    if not bar then return end
+
+    BazUI.Dock:Detach(bar.frame)
+    BazUI.Dock:UnregisterHost(self:HostID(id))
+    BazUI.Dock:UnregisterCopier(bar.frame)
+
+    -- A health or power bar does not decide for itself whether it is on
+    -- screen: RegisterUnitWatch does, in the secure environment, and it
+    -- goes on showing the frame whenever the unit exists. Hiding a
+    -- deleted bar without canceling that is why one stayed on screen
+    -- with no handle to grab, until a reload.
+    if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
+    bar.frame:SetAttribute("unit", nil)
+    bar.frame:SetScript("OnUpdate", nil)
+    bar.frame:Hide()
+
+    -- Secure frames cannot be destroyed, so it is parked out of the way
+    -- rather than left loose under UIParent where something could show
+    -- it again.
+    bar.frame:ClearAllPoints()
+    bar.frame:SetParent(RetiredParent())
+
+    if bar.mover then
+        BazUI:UnregisterEditModeFrame(bar.mover)
+        bar.mover:Hide()
+    end
+    self.bars[id] = nil
+end
+
 function UnitBars:Remove(id)
     if InCombatLockdown() then return false end
     local defs = self:Defs()
     for i, def in ipairs(defs) do
         if def.id == id then
-            local bar = self.bars[id]
-            if bar then
-                BazUI.Dock:Detach(bar.frame)
-                BazUI.Dock:UnregisterHost(self:HostID(id))
-                BazUI.Dock:UnregisterCopier(bar.frame)
-
-                -- A health or power bar does not decide for itself
-                -- whether it is on screen: RegisterUnitWatch does, in
-                -- the secure environment, and it goes on showing the
-                -- frame whenever the unit exists. Hiding a deleted bar
-                -- without canceling that is why one stayed on screen
-                -- with no handle to grab, until a reload.
-                if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
-                bar.frame:SetAttribute("unit", nil)
-                bar.frame:SetScript("OnUpdate", nil)
-                bar.frame:Hide()
-
-                -- Secure frames cannot be destroyed, so it is parked out
-                -- of the way rather than left loose under UIParent where
-                -- something could show it again.
-                bar.frame:ClearAllPoints()
-                bar.frame:SetParent(RetiredParent())
-
-                if bar.mover then
-                    BazUI:UnregisterEditModeFrame(bar.mover)
-                    bar.mover:Hide()
-                end
-                self.bars[id] = nil
-            end
+            self:TearDown(id)
             table.remove(defs, i)
             self:Save()
             return true
@@ -778,7 +817,13 @@ local function LabelFor(unit, wording)
 
     local extra = BazUI.UnitLevelText(unit, { level = level, rank = rank })
     if not extra then return name end
-    return name ~= "" and (name .. "  " .. extra) or extra
+    -- A name can be a secret string, and one of those cannot be joined to
+    -- anything or even compared with the empty string. When that is
+    -- refused the name goes back on its own: which unit this is matters
+    -- more than its level, and the level is never the part worth keeping.
+    return BazUI.Secret.Read(function()
+        return name ~= "" and (name .. "  " .. extra) or extra
+    end, name)
 end
 
 -- The mark in front of the name, sized to the bar rather than to the
@@ -803,106 +848,23 @@ local function ApplyRankIcon(bar, unit)
 end
 
 ---------------------------------------------------------------------------
--- Resting
+-- Resting, and the rest of the marks
 --
--- The game marks a rested player with an animated zZ beside the portrait.
--- There is no portrait here, so it goes on the health bar - and since the
--- mark is a flipbook rather than a still, it needs an animation of its own
--- rather than a texture swap.
+-- The zZ used to be written out here, on player health bars only. It is
+-- one entry in Indicators.lua now, and a health bar asks for it through
+-- the same path a blank bar does - so there is one answer to "is this
+-- bar resting" rather than two that can drift apart.
 --
--- The art is the game's own atlas, asked for by name the way any texture
--- is. The animation is ours: seven rows of six, forty-two frames, a second
--- and a half a loop, which is the shape the atlas is drawn in. A client
--- without the atlas gets no icon and no error.
+-- These two stay because the Edit Mode panel and the settings page ask
+-- them by name. They are the registry's answers, spelled the old way.
 ---------------------------------------------------------------------------
 
-local REST_ATLAS = "UI-HUD-UnitFrame-Player-Rest-Flipbook"
-local REST_ROWS, REST_COLS, REST_FRAMES, REST_DURATION = 7, 6, 42, 1.5
-
-local restIcons = setmetatable({}, { __mode = "k" })
-
-local function HasRestAtlas()
-    return C_Texture and C_Texture.GetAtlasInfo
-        and C_Texture.GetAtlasInfo(REST_ATLAS) ~= nil
-end
-
-local function RestIcon(frame)
-    local icon = restIcons[frame]
-    if icon then return icon end
-    if not HasRestAtlas() then return nil end
-
-    icon = CreateFrame("Frame", nil, frame)
-    icon:SetFrameLevel(frame:GetFrameLevel() + 3)
-    icon.texture = icon:CreateTexture(nil, "OVERLAY")
-    icon.texture:SetAtlas(REST_ATLAS)
-    icon.texture:SetAllPoints(icon)
-
-    local group = icon:CreateAnimationGroup()
-    group:SetLooping("REPEAT")
-    local flip = group:CreateAnimation("FlipBook")
-    flip:SetTarget(icon.texture)
-    flip:SetDuration(REST_DURATION)
-    flip:SetFlipBookRows(REST_ROWS)
-    flip:SetFlipBookColumns(REST_COLS)
-    flip:SetFlipBookFrames(REST_FRAMES)
-    flip:SetFlipBookFrameWidth(0)
-    flip:SetFlipBookFrameHeight(0)
-    icon.anim = group
-
-    icon:Hide()
-    restIcons[frame] = icon
-    return icon
-end
-
--- Whether this bar wears the mark, which is the bar's own answer once
--- somebody has given it one and the module's until then.
---
--- Per bar because two health bars for yourself is a normal thing to have
--- - one small one docked under an action bar, one big one somewhere you
--- can see it - and the zZ belongs on whichever of them you look at, not
--- on both. Checked against nil rather than leaned on: `or setting` would
--- turn a bar you deliberately switched off back on.
 function UnitBars:RestIconWanted(def)
-    if def and def.restIcon ~= nil then return def.restIcon and true or false end
-    return addon:GetSetting("restIcon") ~= false
+    return addon.Indicators and addon.Indicators:Wanted(def, "rest") or false
 end
 
--- Only a player health bar wears it: resting is a fact about you, and a
--- target's bar saying it would be saying it about the wrong person.
 function UnitBars:CanWearRestIcon(def)
-    return def and def.kind == "health" and def.unit == "player" or false
-end
-
-local function ApplyRestIcon(bar, unit)
-    local wanted = UnitBars:CanWearRestIcon(bar.def)
-        and unit == "player"
-        and UnitBars:RestIconWanted(bar.def)
-        and IsResting and IsResting() and true or false
-
-    local icon = restIcons[bar.frame]
-    if not wanted then
-        if icon then
-            icon.anim:Stop()
-            icon:Hide()
-        end
-        return
-    end
-
-    icon = icon or RestIcon(bar.frame)
-    if not icon then return end
-
-    -- Sized to the fill rather than to the bar, so it sits inside the
-    -- coloured part at any height, and never smaller than it can be read.
-    local _, fill = bar.frame:GetFillSize()
-    local size = math.max(12, math.floor((fill or 16) * 1.1 + 0.5))
-    icon:SetSize(size, size)
-    icon:ClearAllPoints()
-    icon:SetPoint("RIGHT", bar.frame, "RIGHT", -4, 0)
-
-    if not icon:IsShown() then
-        icon:Show()
-        icon.anim:Play()
-    end
+    return addon.Indicators and addon.Indicators:CanWear(def, "rest") or false
 end
 
 -- The glow is the same fact as the word, drawn instead of written. Only
@@ -936,18 +898,48 @@ local function PositiveOrUnknown(value)
     return BazUI.Secret.Read(function() return (value or 0) > 0 end, true)
 end
 
--- The wording the user picked, or the plain pair if building it needs
--- arithmetic we are not allowed to do. The font string may format a
--- secret even though we may not.
+-- Which wordings put the unit's name in the line. Only these may have
+-- one when the wording has to be approximated below.
+local NAMED_WORDINGS = {
+    name = true, nameLevel = true, namePercent = true, detailed = true,
+}
+
+-- The wording the user picked, or as near as can be got to it without
+-- arithmetic we are not allowed to do.
+--
+-- Health and power are secret numbers on some clients: they can be handed
+-- to a widget, which may print them, but not compared or divided by us.
+-- So any wording that needs a percentage has no answer here, and the
+-- nearest honest thing is the pair of numbers.
+--
+-- What it must not do is put a name in that the wording never asked for.
+-- It used to prepend one unconditionally, so a bar set to "Current / Max"
+-- read "Bazbot  69564 / 69564" - the wording was being decided by whether
+-- the numbers happened to be secret rather than by the setting, and on a
+-- client where they always are, half the choices on the panel did the
+-- same thing.
 local function SetBarText(bar, wording, current, maximum, name, level)
     local ok, text = pcall(Format, wording, current, maximum, name, level)
     if ok then
         bar.frame:SetText(text)
         return
     end
-    if name and name ~= "" then
-        bar.frame:SetFormattedText(name:gsub("%%", "%%%%") .. "  %d / %d",
-            current, maximum)
+
+    -- The name goes in as an argument, never baked into the format. It
+    -- can be a secret string, which may be printed but not read - and a
+    -- player's name in a format string is a per-cent sign away from
+    -- garbage anyway.
+    local named = NAMED_WORDINGS[wording] and name ~= nil
+        and BazUI.Secret.Read(function() return name ~= "" end, true)
+
+    -- "current" is the one wording that approximates to a single number
+    -- rather than to the pair. Everything else lands on the pair, which
+    -- says as much as can be said without reading the values.
+    if wording == "current" then
+        if named then bar.frame:SetFormattedText("%s  %d", name, current)
+        else          bar.frame:SetFormattedText("%d", current) end
+    elseif named then
+        bar.frame:SetFormattedText("%s  %d / %d", name, current, maximum)
     else
         bar.frame:SetFormattedText("%d / %d", current, maximum)
     end
@@ -957,7 +949,7 @@ local function UpdateHealth(bar)
     local unit = bar.def.unit
     ApplyRankGlow(bar, unit)
     ApplyRankIcon(bar, unit)
-    ApplyRestIcon(bar, unit)
+    if addon.Indicators then addon.Indicators:Apply(bar, unit) end
     if not UnitExists(unit) then
         if previewing then DrawPlaceholder(bar, "health") end
         return
@@ -971,12 +963,24 @@ local function UpdateHealth(bar)
 
     local wording = TextFormat(bar)
     local name = LabelFor(unit, wording)
+    -- A word instead of numbers. The name is handed to the font string
+    -- rather than joined on here, and whether there is one is decided
+    -- inside a guarded read: a secret name may be printed but not
+    -- compared with the empty string. A name we may not look at is
+    -- certainly not empty, so the benefit of the doubt goes to showing it.
+    local function Status(word)
+        local named = name ~= nil
+            and BazUI.Secret.Read(function() return name ~= "" end, true)
+        if named then bar.frame:SetFormattedText("%s  " .. word, name)
+        else          bar.frame:SetText(word) end
+    end
+
     if UnitIsConnected and not UnitIsConnected(unit) then
-        bar.frame:SetText(name ~= "" and (name .. "  Offline") or "Offline")
+        Status("Offline")
     elseif UnitIsGhost(unit) then
-        bar.frame:SetText(name ~= "" and (name .. "  Ghost") or "Ghost")
+        Status("Ghost")
     elseif UnitIsDead(unit) then
-        bar.frame:SetText(name ~= "" and (name .. "  Dead") or "Dead")
+        Status("Dead")
     else
         SetBarText(bar, wording, current, maximum, name, LevelText(unit))
     end
@@ -1029,6 +1033,160 @@ local function UpdatePower(bar)
     -- bar asked outright for the level still gets it.
     local wording = TextFormat(bar)
     SetBarText(bar, wording, current, maximum, UnitName(unit), LevelText(unit))
+end
+
+-- A portrait, which is the one bar kind whose content is a picture.
+--
+-- Square and centred: stretched across a wide bar it is a smeared face,
+-- so the picture takes the bar's height and the bar keeps whatever width
+-- it was given. That also means a portrait docked beside a health bar
+-- comes out the same height as it without being told.
+-- Asking a model frame for a unit, and knowing whether the asking took.
+--
+-- SetUnit is a request, not a result. The model turns up a moment later,
+-- or it never does: the data is not loaded yet, the frame had no size to
+-- draw into, the unit is somewhere the client has not bothered to model.
+-- A frame that asked and got nothing draws a solid black square, and the
+-- only way out of that is to ask again.
+--
+-- So what is remembered is what arrived, not what was asked for. There
+-- has to be some guard, because SetUnit reloads the model every single
+-- time and this runs on every health tick - but the old guard recorded
+-- the request, which meant one request that fell through was remembered
+-- as a success and the square stayed black until something unrelated
+-- happened to change the unit. Remembering the arrival instead makes a
+-- failed request simply a request that has not been answered yet.
+--
+-- Held at arm's length twice over, so a unit the client has no model for
+-- does not sit there reloading: a wait between tries, and a few tries and
+-- then no more. Anything that means the answer might have changed -
+-- being shown again, a loading screen, the game saying portrait data has
+-- arrived - clears the count and it starts asking afresh.
+local MODEL_RETRY_WAIT  = 0.5
+local MODEL_RETRY_LIMIT = 10
+
+local function RequestModel(model)
+    local unit, want = model._bazUnit, model._bazWant
+    if not unit then return end
+    if model._bazLoaded == want then return end
+
+    -- A different unit than the one being waited on starts the count
+    -- over: this is a new question, not another go at the old one.
+    if model._bazAsked ~= want then
+        model._bazAsked, model._bazTries, model._bazAskedAt = want, 0, nil
+    end
+    if (model._bazTries or 0) >= MODEL_RETRY_LIMIT then return end
+
+    local now = GetTime and GetTime() or 0
+    -- Too soon. The follow-up below is already booked, so there is
+    -- nothing to arrange here.
+    if model._bazAskedAt and now - model._bazAskedAt < MODEL_RETRY_WAIT then
+        return
+    end
+
+    model._bazTries   = model._bazTries + 1
+    model._bazAskedAt = now
+    model:SetUnit(unit)
+
+    -- Booking its own next try rather than waiting to be asked again.
+    -- Updates arrive on health ticks, and a player standing still at full
+    -- health gets none - so a portrait that came up black while nothing
+    -- was happening would go on being black for exactly as long as
+    -- nothing went on happening.
+    if model._bazPending then return end
+    model._bazPending = true
+    C_Timer.After(MODEL_RETRY_WAIT, function()
+        model._bazPending = nil
+        if model:IsShown() then RequestModel(model) end
+    end)
+end
+
+-- Forget what the 3D portraits are holding, so the next update asks
+-- again. For the moments the game tells us the answer may have changed.
+function UnitBars:InvalidatePortraits()
+    for _, bar in pairs(self.bars or {}) do
+        local model = bar.frame and bar.frame.model
+        if model then
+            model._bazLoaded, model._bazAsked, model._bazTries = nil, nil, 0
+        end
+    end
+end
+
+local function UpdatePortrait(bar)
+    local unit   = bar.def.unit
+    local frame  = bar.frame
+    local threeD = bar.def.portrait3d == true
+
+    if not frame.portrait then
+        frame.portrait = frame:CreateTexture(nil, "ARTWORK")
+        frame.portrait:SetPoint("CENTER")
+    end
+    -- Made only when asked for. A model frame is a renderer rather than a
+    -- texture, and most portraits will never turn it on.
+    if threeD and not frame.model then
+        local model = CreateFrame("PlayerModel", nil, frame)
+        model:SetFrameLevel(frame:GetFrameLevel() + 1)
+        model:SetPoint("CENTER")
+
+        -- A model frame that is hidden drops its model, and comes back
+        -- blank when shown again - drawn as a solid black square, which
+        -- is what a target portrait became the second time the same
+        -- target was picked: the unit had not changed, so nothing asked
+        -- for the model again. What it was holding is gone, so what it
+        -- loaded is forgotten here and asked for from scratch.
+        model:SetScript("OnShow", function(self)
+            self._bazLoaded, self._bazAsked, self._bazTries = nil, nil, 0
+            RequestModel(self)
+        end)
+        -- Framing has to be applied to a model that has actually loaded;
+        -- asked of an empty frame it is quietly ignored. So it is done
+        -- here, once the model is there, rather than beside SetUnit.
+        --
+        -- And this is where a request is marked as answered. An empty
+        -- model raises this too, so the file is checked first: taking
+        -- that for the model we wanted is exactly how a black square
+        -- becomes permanent. A client with no way to ask is taken at its
+        -- word.
+        model:SetScript("OnModelLoaded", function(self)
+            local arrived = (not self.GetModelFileID) or self:GetModelFileID()
+            if arrived then self._bazLoaded = self._bazAsked end
+            if self.SetPortraitZoom then self:SetPortraitZoom(1) end
+            self:SetPosition(0, 0, 0)
+        end)
+        frame.model = model
+    end
+
+    local shown = (unit and UnitExists(unit)) and true or false
+    -- The whole bar, not only the picture: an empty box where a target's
+    -- face should be reads as a portrait that will not go away. Not a
+    -- secure frame, so this is the dock's to do - but only when the
+    -- answer changes. This runs on every health tick, and Dock:SetShown
+    -- re-lays the host out each time it is called.
+    if frame._dockWanted ~= shown then
+        BazUI.Dock:SetShown(frame, shown)
+    end
+    frame.portrait:SetShown(shown and not threeD)
+    if frame.model then frame.model:SetShown(shown and threeD) end
+    if not shown then return end
+
+    -- Square, centred, the fill's height: the same box either way, so
+    -- flipping between flat and 3D moves nothing around it.
+    local _, fill = frame:GetFillSize()
+    local size = math.max(8, fill or 16)
+
+    if threeD then
+        local model = frame.model
+        -- Sized before it is asked for anything: a model frame with no
+        -- size has nowhere to draw, and what it loads into nowhere is
+        -- black.
+        model:SetSize(size, size)
+        model._bazUnit = unit
+        model._bazWant = UnitGUID and UnitGUID(unit) or unit
+        RequestModel(model)
+    else
+        frame.portrait:SetSize(size, size)
+        if SetPortraitTexture then SetPortraitTexture(frame.portrait, unit) end
+    end
 end
 
 local function UpdateXP(bar)
@@ -1127,7 +1285,11 @@ local function CastTick(frame)
 
     local fraction = elapsed / span
     frame:SetValue(state.channel and (1 - fraction) or fraction)
-    frame:SetText(string.format("%s  %.1f", state.name or "", (span - elapsed) / 1000))
+    -- Formatted by the font string, not here. The name of a cast can be a
+    -- secret string, and building one into a string is a read - so the
+    -- pieces are handed over separately and the widget puts them together,
+    -- which it is allowed to do.
+    frame:SetFormattedText("%s  %.1f", state.name, (span - elapsed) / 1000)
 end
 
 -- What to call the cast.
@@ -1150,16 +1312,36 @@ end
 -- road.
 local NO_SUBTEXT = "No Text"
 
+-- Whether there is a name worth showing, and what it is.
+--
+-- Two returns rather than one, because the name of a cast can be a
+-- secret string. A font string may print one, but this code may not read
+-- it - not index it for gsub, not compare it, and not even test it for
+-- truth, which is what an `or` chain between two of them would do. So the
+-- deciding is done here, inside the guarded read, and what comes back out
+-- is a plain boolean to branch on and a value only fit to be passed along.
+--
+-- A name we are not allowed to look at is still a name worth showing, and
+-- much better than the word "Casting" - so when the tidying is refused,
+-- the candidate goes through untouched.
 local function Readable(candidate)
-    if type(candidate) ~= "string" then return nil end
-    candidate = candidate:gsub("%s*%-%s*" .. NO_SUBTEXT .. "$", "")
-    if candidate == "" or candidate == NO_SUBTEXT then return nil end
-    return candidate
+    if candidate == nil then return false, nil end
+
+    local ok, usable, text = BazUI.Secret.Try(function()
+        if type(candidate) ~= "string" then return false, nil end
+        local clean = candidate:gsub("%s*%-%s*" .. NO_SUBTEXT .. "$", "")
+        if clean == "" or clean == NO_SUBTEXT then return false, nil end
+        return true, clean
+    end)
+    if not ok then return true, candidate end
+    return usable, text
 end
 
 local function CastName(display, name, channel)
-    return Readable(display) or Readable(name)
-        or (channel and "Channeling" or "Casting")
+    local found, text = Readable(display)
+    if not found then found, text = Readable(name) end
+    if not found then return channel and "Channeling" or "Casting" end
+    return text
 end
 
 function UnitBars:SyncCast(bar)
@@ -1214,6 +1396,11 @@ function UnitBars:Update(bar)
     elseif kind == "power" then UpdatePower(bar)
     elseif kind == "xp" then UpdateXP(bar)
     elseif kind == "rep" then UpdateRep(bar)
+    elseif kind == "portrait" then UpdatePortrait(bar)
+    elseif kind == "blank" then
+        -- Nothing to read; it holds whatever marks it was given, and its
+        -- text, which the shared text pass already set.
+        if addon.Indicators then addon.Indicators:Apply(bar, bar.def.unit) end
     end
 end
 
@@ -1252,7 +1439,7 @@ end
 ---------------------------------------------------------------------------
 
 local function MenuFor(unit)
-    if UnitIsUnit(unit, "player") then return "SELF" end
+    if BazUI.Secret.IsUnit(unit, "player") then return "SELF" end
     if unit:match("^partypet") or UnitIsOtherPlayersPet(unit) then return "OTHERPET" end
     if unit:match("^party") then return "PARTY" end
     if UnitIsPlayer(unit) then
@@ -1293,7 +1480,8 @@ local KIND_OPENS = {
 -- through: it should only do that while it has a reason to.
 local function ApplyBarMouse(bar)
     local frame, def = bar.frame, bar.def
-    if def.kind == "health" or def.kind == "power" then return end
+    -- A secure unit button handles its own mouse.
+    if UnitWatched(def) then return end
 
     local opens = KIND_OPENS[def.kind]
     local clickable = opens and addon:GetSetting("barClicks") ~= false
@@ -1332,10 +1520,21 @@ local function UnitMenu(frame)
 end
 
 function UnitBars:Build(def)
-    if self.bars[def.id] then return self.bars[def.id] end
+    local existing = self.bars[def.id]
+    if existing then
+        -- Switching profile hands the module a whole new settings table,
+        -- and the definitions in it are new tables even when they say
+        -- exactly the same thing. The bars stay, so without this every
+        -- one of them would go on reading - and writing - the definition
+        -- belonging to whichever profile was worn when it was made.
+        -- Dropping a bar somewhere would then save to a profile nobody
+        -- is wearing, and the next layout pass would put it back.
+        existing.def = def
+        return existing
+    end
     if InCombatLockdown() then return nil end
 
-    local secure = (def.kind == "health" or def.kind == "power")
+    local secure = UnitWatched(def)
     local frame = BazUI.CreateStatusBar("BazUIStatusBar" .. def.id, UIParent, {
         style    = "screen",
         width    = def.width or 240,
@@ -1429,6 +1628,15 @@ function UnitBars:BuildAll()
     end
     self:Save()
 
+    -- Bars left behind by the profile before this one. A switch replaces
+    -- the settings, not the frames, so a bar the new profile has never
+    -- heard of would sit on screen answering to nothing.
+    local live = {}
+    for _, def in ipairs(self:Defs()) do live[def.id] = true end
+    for id in pairs(self.bars) do
+        if not live[id] then self:TearDown(id) end
+    end
+
     for _, def in ipairs(self:Defs()) do self:Build(def) end
     self:UpdateAll()
 end
@@ -1446,20 +1654,51 @@ function UnitBars:Apply(bar)
     -- untouched and probably still says whatever it was created with;
     -- reverting to that makes the bar jump smaller for no reason the
     -- player can see.
+    -- A bar docked above or below something takes that thing's width; one
+    -- docked to its side takes its height. Either way the dock sets that
+    -- measurement below, after this, so what is written here is only
+    -- what a floating bar keeps.
     local wasDocked = BazUI.Dock:IsDocked(frame)
     local goingFloat = not def.dock or def.dock.host == "float"
+
     if wasDocked and goingFloat then
-        -- The fill's width, not the frame's: the number kept here is the
+        -- The fill's size, not the frame's: the number kept here is the
         -- one handed back to SetBarSize, and the frame is that plus the
         -- border. Reading the frame would grow the bar every time it was
         -- undocked.
-        local width = frame.GetFillSize and frame:GetFillSize() or frame:GetWidth()
+        --
+        -- Both measurements, because either one of them can have been
+        -- the dock's to set. Keeping only the width is why a bar that
+        -- had been stretched down the side of an action bar snapped back
+        -- to a thin line the moment it came off.
+        local width, height = frame:GetFillSize()
         if width and width > 0 then def.width = math.floor(width + 0.5) end
+        if height and height > 0 then def.height = math.floor(height + 0.5) end
     end
 
-    frame:SetBarSize(math.max(1, math.min(1200, def.width or 240)),
-        math.max(1, math.min(48, def.height or 24)))
+    -- A bar as tall as a two-row action bar is eighty pixels, so the old
+    -- ceiling of forty-eight cut one in half. The cap is there to stop a
+    -- typo making a bar the size of the screen, which a sane number
+    -- still does.
+    -- Told before the size, so the size lands square. A floating square
+    -- bar takes its height as its side; a docked one takes whichever side
+    -- the dock hands it, further down.
+    frame:SetSquare(def.square)
+    local height = math.max(1, math.min(400, def.height or 24))
+    local width  = def.square and height or math.max(1, math.min(1200, def.width or 240))
+    frame:SetBarSize(width, height)
     frame:SetTextMode(def.textMode or "always")
+    -- How the writing looks, in one call: the bar owns the drawing and
+    -- the layout owns the choices.
+    frame:SetTextStyle({
+        size    = def.textSize,
+        outline = def.textOutline,
+        shadow  = def.textShadow,
+        color   = def.textColor,
+        align   = def.textAlign,
+    })
+    -- A portrait or a blank bar keeps the chrome and loses the colour.
+    frame:SetFillShown(not NO_FILL[def.kind])
     ApplyBarMouse(bar)
     frame:SetTicks(def.ticks or 0)
     frame:SetFillDirection(def.fillFrom or "LEFT")
@@ -1469,9 +1708,28 @@ function UnitBars:Apply(bar)
     -- power bar on the right end up on the same action bar.
     local dock  = def.dock or { host = "float" }
     local takes = def.takes or "full"
+    -- The dock reads its own settings out of the layout and hands back a
+    -- ticket, so that what an old profile means and when this bar was
+    -- docked are each answered in one place rather than per module.
+    local countsHeight, countsWidth, seq = BazUI.Dock:StackSettings(def)
     BazUI.Dock:AttachTo(frame, dock.host, {
         edge    = dock.edge or "BOTTOM",
         mode    = (takes == "full") and "stretch" or "align",
+        -- Whether this bar counts toward the size of the stack it is in,
+        -- for anything docked to that stack on the other axis. Height and
+        -- width answered separately: a casting bar can span the width of
+        -- the stack it sits on and add nothing to its height.
+        countsHeight = countsHeight,
+        countsWidth  = countsWidth,
+        -- And when it joined, so that whatever was docked before it keeps
+        -- the size it was given then.
+        seq          = seq,
+        -- A health or power bar appears and vanishes with its unit, by the
+        -- unit watch in the secure environment. Docked, the dock was also
+        -- setting it shown on every layout pass - so a target bar docked
+        -- to an action bar was forced visible with no target, and the
+        -- watch could not get it back.
+        shown   = UnitWatched(def) and "own" or nil,
         align   = def.align or "LEFT",
         share   = (takes == "half") and 2 or nil,
         gutter  = def.gutter,
@@ -1500,6 +1758,11 @@ end
 
 function UnitBars:ApplyAll()
     for _, bar in pairs(self.bars) do self:Apply(bar) end
+    -- Everything is attached now, so lay it all out in the dock's own
+    -- order. Attaching one bar at a time could only ever see the stacks
+    -- as they stood at that moment, which is why a layout came back
+    -- different from a reload than it had been left.
+    BazUI.Dock:Relayout()
 end
 
 ---------------------------------------------------------------------------
@@ -1649,12 +1912,40 @@ function UnitBars:EditSettings(bar)
               UnitBars:RefreshEditSettings()
           end },
 
+        -- Offered on every bar and greyed where it is not a portrait: a
+        -- square health bar is a shape nobody has asked for, and a switch
+        -- you can see is greyed says more than one that is not there.
+        { type = "checkbox", section = "Size", label = "3D portrait",
+          desc = "The unit's model, framed head and shoulders the way the game's "
+              .. "own portraits are, instead of the flat picture.",
+          disabled = function() return def.kind ~= "portrait" end,
+          get = function() return def.portrait3d == true end,
+          set = function(value)
+              def.portrait3d = value and true or nil
+              Refresh()
+              UnitBars:Update(bar)
+          end },
+        { type = "checkbox", section = "Size", label = "Keep square",
+          desc = "Whichever side the dock sets, the other follows, so the "
+              .. "portrait is never stretched. Floating, the height is its size.",
+          disabled = function() return def.kind ~= "portrait" end,
+          get = function() return def.square == true end,
+          set = function(value)
+              def.square = value and true or nil
+              Refresh()
+          end },
         { type = "slider", section = "Size", label = "Width",
           min = 60, max = 1200, step = 5,
+          -- Follows the height while the bar is square, so there is
+          -- nothing here to set.
+          disabled = function() return def.square == true end,
           get = function() return def.width or 240 end,
           set = function(value) def.width = value Refresh() end },
         { type = "slider", section = "Size", label = "Height",
-          min = 1, max = 48, step = 1,
+          -- The same ceiling Apply allows. It used to stop at forty-eight
+          -- here while Apply allowed more, so a bar stretched down a
+          -- two-row action bar could not be given that height by hand.
+          min = 1, max = 400, step = 1,
           get = function() return def.height or 24 end,
           set = function(value) def.height = value Refresh() end },
 
@@ -1668,6 +1959,52 @@ function UnitBars:EditSettings(bar)
           get = function() return def.fillFrom or "LEFT" end,
           set = function(value) def.fillFrom = value Refresh() end },
 
+        -- Left alone, the writing follows the bar: drag a bar taller and
+        -- the text grows with it. Switched off, it is whatever you set -
+        -- which is what two bars side by side want, since they are rarely
+        -- the same height and the writing on them should still match.
+        { type = "checkbox", section = "Text", label = "Size text to the bar",
+          desc = "The text grows and shrinks with the bar. Off, it stays at the "
+              .. "size below however tall the bar is.",
+          get = function() return def.textSize == nil end,
+          set = function(value)
+              def.textSize = value and nil or (def.textSize or 12)
+              Refresh()
+          end },
+
+        { type = "slider", section = "Text", label = "Text size",
+          min = 6, max = 36, step = 1,
+          disabled = function() return def.textSize == nil end,
+          get = function() return def.textSize or bar.frame:TextSize() end,
+          set = function(value) def.textSize = value Refresh() end },
+
+        { type = "dropdown", section = "Text", label = "Edge",
+          options = BazUI.BarTextOutlines,
+          desc = "The outline drawn around each letter, which is what keeps "
+              .. "writing readable over a bar that changes colour under it.",
+          get = function() return def.textOutline or "THIN" end,
+          set = function(value) def.textOutline = value Refresh() end },
+
+        { type = "checkbox", section = "Text", label = "Drop shadow",
+          desc = "A soft shadow behind the text. Reads gentler than an outline, "
+              .. "and the two can be worn together.",
+          get = function() return def.textShadow == true end,
+          set = function(value) def.textShadow = value or nil Refresh() end },
+
+        { type = "color", section = "Text", label = "Text colour",
+          get = function() return def.textColor or { r = 1, g = 1, b = 1, a = 1 } end,
+          set = function(value)
+              def.textColor = value and { r = value.r, g = value.g,
+                  b = value.b, a = value.a or 1 } or nil
+              Refresh()
+          end },
+
+        { type = "dropdown", section = "Text", label = "Sits",
+          options = BazUI.BarTextAligns,
+          desc = "Which end of the bar the writing reads from.",
+          get = function() return def.textAlign or "CENTER" end,
+          set = function(value) def.textAlign = value Refresh() end },
+
         { type = "slider", section = "Text", label = "Tenth marks",
           min = 0, max = 20, step = 1,
           get = function() return def.ticks or 0 end,
@@ -1679,6 +2016,44 @@ function UnitBars:EditSettings(bar)
     -- Appended rather than written inline with a condition: a nil in the
     -- middle of a table constructor ends the list for everything after
     -- it, which would have quietly cost every other bar its nudge.
+    -- Always on the panel, greyed where it does not apply: a floating bar
+    -- is in no stack at all. A switch you can see is greyed says more
+    -- than one that is not there.
+    --
+    -- Two of them, because the two measurements are separate questions.
+    -- Inserted in reverse, since each goes in ahead of the last.
+    local function Floating()
+        local d = def.dock
+        return not (d and d.host and d.host ~= "float")
+    end
+
+    table.insert(widgets, 3, {
+        type = "checkbox", section = "Docking", label = "Counts toward stack width",
+        desc = "Whatever docks above or below this stack sizes itself to the stack's "
+            .. "width. Off, this bar is left out of that measurement - so a mark "
+            .. "beside a health bar does not make the power bar under it any wider.",
+        disabled = Floating,
+        get = function() return BazUI.Dock:CountsWidth(def) end,
+        set = function(value)
+            def.countsWidth = value and nil or false
+            Refresh()
+        end,
+    })
+
+    table.insert(widgets, 3, {
+        type = "checkbox", section = "Docking", label = "Counts toward stack height",
+        desc = "Whatever docks to the side of this stack sizes itself to the stack's "
+            .. "height. Off, this bar is left out of that measurement - so a casting "
+            .. "bar on top of an action bar does not make a health bar docked beside "
+            .. "the action bar any taller.",
+        disabled = Floating,
+        get = function() return BazUI.Dock:CountsHeight(def) end,
+        set = function(value)
+            def.countsHeight = value and true or false
+            Refresh()
+        end,
+    })
+
     if def.dock and def.dock.host and def.dock.host ~= "float" then
         table.insert(widgets, 3, {
             type = "slider", section = "Docking", label = "Gap",
@@ -1686,6 +2061,7 @@ function UnitBars:EditSettings(bar)
             get = function() return def.gap or 2 end,
             set = function(value) def.gap = value Refresh() end,
         })
+
         table.insert(widgets, 3, {
             type = "slider", section = "Docking", label = "Space beside",
             min = 0, max = 40, step = 1,
@@ -1747,20 +2123,34 @@ function UnitBars:EditSettings(bar)
         })
     end
 
+    -- One switch per mark, from the registry rather than written out
+    -- here - a new indicator then arrives on every bar's panel without
+    -- this file hearing about it.
+    --
     -- Offered on every bar and greyed out where it cannot apply, rather
     -- than appearing on one bar and not another: a switch you cannot find
     -- is worse than one you can see is not for this bar.
-    table.insert(widgets, #widgets, {
-        type = "checkbox", section = "Visibility",
-        label = "Resting mark",
-        disabled = function() return not UnitBars:CanWearRestIcon(def) end,
-        get = function() return UnitBars:RestIconWanted(def) end,
-        set = function(value)
-            def.restIcon = value and true or false
-            Refresh()
-            UnitBars:Update(bar)
-        end,
-    })
+    for _, entry in ipairs(addon.Indicators and addon.Indicators.LIST or {}) do
+        local key = entry.key
+        table.insert(widgets, #widgets, {
+            type = "checkbox", section = "Marks",
+            label = entry.label,
+            desc  = entry.desc,
+            disabled = function()
+                return not addon.Indicators:CanWear(def, key)
+            end,
+            get = function() return addon.Indicators:Wanted(def, key) end,
+            set = function(value)
+                addon.Indicators:SetWanted(def, key, value)
+                -- The resting mark had its own field before the registry
+                -- existed, and a profile written by an older build still
+                -- holds it. Kept in step so neither reading wins twice.
+                if key == "rest" then def.restIcon = value and true or false end
+                Refresh()
+                UnitBars:Update(bar)
+            end,
+        })
+    end
 
     if def.kind == "xp" then
         table.insert(widgets, #widgets, {
@@ -1901,7 +2291,7 @@ function UnitBars:SetPreview(on)
 
     for _, bar in pairs(self.bars) do
         local def = bar.def
-        local secure = (def.kind == "health" or def.kind == "power")
+        local secure = UnitWatched(def)
         if secure and not UnitExists(def.unit) then
             if previewing then
                 if _G.UnregisterUnitWatch then _G.UnregisterUnitWatch(bar.frame) end
@@ -2033,7 +2423,7 @@ function UnitBars:CheckRange()
     local fade = addon:GetSetting("rangeFade") ~= false
     for _, bar in pairs(self.bars) do
         local def = bar.def
-        if def.kind == "health" or def.kind == "power" then
+        if UnitWatched(def) then
             local out = false
             if fade and def.unit ~= "player" and UnitExists(def.unit) then
                 -- Both of these can be secret, and `checked and ...` is a
@@ -2093,6 +2483,11 @@ function UnitBars:WatchAll()
         for _, event in ipairs({
             "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION",
             "UPDATE_FACTION", "PLAYER_ENTERING_WORLD",
+            -- A 3D portrait holds nothing across a loading screen, and
+            -- these two are the game saying portrait data has arrived or
+            -- changed. Without them a model that came up empty stayed
+            -- empty, because nothing ever told it to try again.
+            "UNIT_PORTRAIT_UPDATE", "PORTRAITS_UPDATED",
             -- Resting changes the rested overlay without any experience
             -- being gained, and a capped or disabled bar has to notice
             -- that it is now one.
@@ -2101,10 +2496,20 @@ function UnitBars:WatchAll()
             -- Who is in the group is not a unit event: party2 becoming
             -- somebody else fires nothing about party2.
             "GROUP_ROSTER_UPDATE",
+            -- And whatever the marks care about. Asked of the registry
+            -- rather than listed here, so adding an indicator does not
+            -- mean remembering to come back and add its event too.
+            unpack(addon.Indicators and addon.Indicators:Events() or {}),
         }) do
             pcall(watchers._player.RegisterEvent, watchers._player, event)
         end
-        watchers._player:SetScript("OnEvent", function()
+        local PORTRAITS_CHANGED = {
+            UNIT_PORTRAIT_UPDATE  = true,
+            PORTRAITS_UPDATED     = true,
+            PLAYER_ENTERING_WORLD = true,
+        }
+        watchers._player:SetScript("OnEvent", function(_, event)
+            if PORTRAITS_CHANGED[event] then UnitBars:InvalidatePortraits() end
             UnitBars:UpdateAll()
             UnitBars:SuppressStock()
         end)
@@ -2119,7 +2524,7 @@ end
 -- rest are about you and need no such question.
 ---------------------------------------------------------------------------
 
-local KIND_ORDER = { "health", "power", "cast", "xp", "rep" }
+local KIND_ORDER = { "health", "power", "cast", "portrait", "blank", "xp", "rep" }
 local UNIT_ORDER = {
     "player", "target", "pet",
     "party1", "party2", "party3", "party4",
@@ -2235,7 +2640,7 @@ function UnitBars:RegisterCreator()
         local items = {}
         for _, kind in ipairs(KIND_ORDER) do
             local label = UnitBars.KINDS[kind]
-            if IsUnitKind(kind) then
+            if IsUnitKind(kind) or kind == "portrait" or kind == "blank" then
                 local submenu = {}
                 for _, unit in ipairs(UNIT_ORDER) do
                     submenu[#submenu + 1] = {

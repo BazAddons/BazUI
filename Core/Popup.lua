@@ -75,6 +75,24 @@ end
 -- snapshot of state.values at click time.
 ---------------------------------------------------------------------------
 
+-- An edit box does not lose focus because you clicked something else, so
+-- a name typed and never Entered is still sitting in the box while
+-- state.values holds what was there before. Clearing focus fires
+-- OnEditFocusLost, which is where every input widget commits - so this
+-- runs before a button reads the values.
+local function FlushFields()
+    if not fieldFrames then return end
+    for _, entry in ipairs(fieldFrames) do
+        if entry.frame then
+            for _, child in ipairs({ entry.frame:GetChildren() }) do
+                if child:IsObjectType("EditBox") and child:HasFocus() then
+                    child:ClearFocus()
+                end
+            end
+        end
+    end
+end
+
 local function MakeFieldOpt(field, state)
     local key = field.key
     if state.values[key] == nil and field.default ~= nil then
@@ -295,6 +313,7 @@ local function ApplyOpts(opts)
         ApplyButtonStyle(btn, def.style)
         local cb = def.onClick
         btn:SetScript("OnClick", function()
+            FlushFields()
             local values = f._bcState and f._bcState.values or {}
             -- Close BEFORE invoking the callback so the callback can
             -- safely call OpenPopup again (chained confirms etc.)

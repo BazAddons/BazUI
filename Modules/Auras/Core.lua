@@ -32,6 +32,10 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         perRow        = 8,
         iconSize      = 26,
         spacing       = 3,
+        -- Square or round. Round is a mask over the same box, so the
+        -- footprint, the spacing and a filling row's arithmetic are the
+        -- same either way.
+        iconShape     = "square",
         -- The rows you have made. Each carries what it shows and of
         -- whom, where it sits, and how many icons it fits across.
         -- Seeded with four on a new profile.

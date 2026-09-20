@@ -286,6 +286,19 @@ local function SnapToGrid(frame)
     frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", snapX / scale, snapY / scale)
 end
 
+-- Whether letting go here would dock the frame rather than leave it
+-- floating.
+--
+-- Asked of the dock, so it is the same answer the green landing line has
+-- been drawing all the way in. Only of a dock handle: an ordinary Edit
+-- Mode frame has nothing to dock to and belongs to the grid.
+local function DockWouldTake(frame)
+    if not (frame and frame.Drop and frame.target) then return false end
+    local dock = BazUI.Dock
+    if not (dock and dock.NearestSnap) then return false end
+    return dock:NearestSnap(frame, frame.target) ~= nil
+end
+
 ---------------------------------------------------------------------------
 -- Position Persistence
 ---------------------------------------------------------------------------
@@ -363,6 +376,11 @@ local function CreateEditOverlay(frame, config)
     local overlay = CreateFrame("Frame", nil, frame, "NineSliceCodeTemplate")
     overlay:SetAllPoints(frame)
     overlay:SetFrameLevel(frame:GetFrameLevel() + 10)
+    -- A handle drawn thinner than it can be grabbed reaches past its
+    -- edges with a hit rect, and this is the frame the mouse actually
+    -- lands on - so it reaches the same distance. Copied here for the
+    -- first frame; the handle keeps it in step from then on.
+    overlay:SetHitRectInsets(frame:GetHitRectInsets())
     overlay.isSelected = false
 
     ApplyOverlayLook(frame, overlay)
@@ -378,7 +396,14 @@ local function CreateEditOverlay(frame, config)
 
         self:SetScript("OnUpdate", function()
             if parent.isDragging then
-                ShowSnapPreview(parent)
+                -- One promise at a time. While the dock is offering to
+                -- take this frame, the grid lines are describing a place
+                -- it is not going to end up, so they go out.
+                if DockWouldTake(parent) then
+                    HideSnapPreview()
+                else
+                    ShowSnapPreview(parent)
+                end
             end
         end)
     end)
@@ -392,7 +417,17 @@ local function CreateEditOverlay(frame, config)
         self:SetScript("OnUpdate", nil)
         HideSnapPreview()
 
-        SnapToGrid(parent)
+        -- The grid only has a say over a frame that is going to float.
+        -- One about to dock has its place decided by the dock, and
+        -- pulling it to the nearest grid line first is how a drop that
+        -- showed a landing line all the way in then failed to take: the
+        -- pull is up to half a grid square, and half a square is further
+        -- than the dock looks at the wider spacings. Which frames it
+        -- caught depended on their size, since the grid moves a frame by
+        -- its middle and the dock measures from its edge - so a small
+        -- square portrait could miss every time while the wide bars
+        -- around it landed.
+        if not DockWouldTake(parent) then SnapToGrid(parent) end
         SavePosition(parent, config)
         BazUI:RefreshEditOverlays()
         BazUI:RefreshInspectorSide()
@@ -437,7 +472,17 @@ local POPUP_WIDTH = 340
 -- column every widget above is built for; the panel is that plus the
 -- gutter its scroll bar lives in.
 local INSPECTOR_WIDTH  = POPUP_WIDTH + 24
-local INSPECTOR_TOP    = 78
+-- Profiles.lua keeps its own copy of this; it is the name the profile
+-- system falls back to and neither file owns the other.
+-- The profile that cannot be renamed. Asked of the profile system rather
+-- than spelled out here, so this and the code that enforces it cannot
+-- disagree - a Rename button that is not greyed and does nothing is worse
+-- than one that is.
+local function DefaultProfileName()
+    return (BazUI.GetFallbackProfile and BazUI:GetFallbackProfile()) or "BazUI"
+end
+
+local INSPECTOR_TOP    = 108
 local INSPECTOR_BOTTOM = 42
 
 -- Which edge it sits on. Right by default; it moves to the left only to
@@ -445,10 +490,11 @@ local INSPECTOR_BOTTOM = 42
 local inspectorSide   = "RIGHT"
 local inspectorPinned = nil
 
--- Declared here, defined further down with the rest of the docking. The
--- inspector's own buttons are built before it and need to call it, and a
--- local is only visible to code written after it.
+-- Declared here, defined further down. The inspector's own buttons are
+-- built before either of them and need to call them, and a local is only
+-- visible to code written after it.
 local DockInspector
+local ShowInspectorList
 local LABEL_WIDTH = 100
 local SLIDER_WIDTH = 140
 local ROW_HEIGHT = 32
@@ -701,16 +747,16 @@ local function CreateSettingDropdown(parent, widgetDef)
     -- called SetValue.
     local function PaintText()
         if widgetDef.disabled and widgetDef.disabled() and widgetDef.disabledLabel then
-            btn:SetDefaultText(widgetDef.disabledLabel)
+            BazUI.Skin.Theme.SetDropdownText(btn, widgetDef.disabledLabel)
             return
         end
         for _, opt in ipairs(options) do
             if opt.value == row.selectedValue then
-                btn:SetDefaultText(opt.label)
+                BazUI.Skin.Theme.SetDropdownText(btn, opt.label)
                 return
             end
         end
-        btn:SetDefaultText("Custom")
+        BazUI.Skin.Theme.SetDropdownText(btn, "Custom")
     end
 
     row.SetValue = function(self, val)
@@ -723,7 +769,10 @@ local function CreateSettingDropdown(parent, widgetDef)
             for _, opt in ipairs(options) do
                 rootDescription:CreateRadio(opt.label, function() return row.selectedValue == opt.value end, function()
                     row.selectedValue = opt.value
-                    btn:SetDefaultText(opt.label)
+                    -- Through PaintText, which is the one place that
+                    -- decides what this button says - including when the
+                    -- choice has just made the row inapplicable.
+                    PaintText()
                     if row.onChange then
                         row.onChange(opt.value)
                     end
@@ -1153,12 +1202,191 @@ local function BuildPopup()
         end
     end)
 
+    -- Which layout you are arranging.
+    --
+    -- A profile is the whole interface - where everything sits, what
+    -- colour it is, how it behaves - so it is also the layout, and
+    -- switching one here rearranges the screen under you. That is the
+    -- point: arranging a second layout means switching to it first, and
+    -- going back to the options panel to do that is going the long way
+    -- round from the one screen where it matters.
+    --
+    -- Beside the grid rather than in the body, for the same reason the
+    -- grid is there: it belongs to the session, not to whatever is
+    -- selected, and has to stay reachable while a frame's settings fill
+    -- the panel below.
+    local profileLabel = Theme.FontString(f, "ARTWORK", "GameFontHighlightSmall")
+    profileLabel:SetPoint("TOPLEFT", 12, -46)
+    profileLabel:SetText("Layout")
+
+    local profileDrop = CreateFrame("DropdownButton", nil, f, "WowStyle1DropdownTemplate")
+    profileDrop:SetPoint("LEFT", profileLabel, "RIGHT", 8, 0)
+    profileDrop:SetWidth(INSPECTOR_WIDTH - 160)
+    f.profileDrop = profileDrop
+
+    -- Told, not inferred: the button names the profile in use, and
+    -- nothing else gets to write it. Theme.SetDropdownText says why that
+    -- takes more than setting the default text.
+    local function PaintProfile()
+        local name = BazUI:GetActiveProfile() or DefaultProfileName()
+        Theme.SetDropdownText(profileDrop, name)
+    end
+    PaintProfile()
+
+    -- Whoever changed it. The button is a readout of the profile in use,
+    -- and the Options page can change that while this panel is open, so
+    -- it listens rather than being told by the two controls beside it.
+    BazUI:On({ "BAZ_PROFILE_CHANGED", "BAZ_PROFILE_RENAMED" }, PaintProfile)
+
+    -- After a switch, every bar has been destroyed and made again. The
+    -- new ones register themselves and get their overlays from
+    -- RegisterEditModeFrame, but that happens a frame later - the profile
+    -- system defers each module's redraw so nothing rebuilds halfway
+    -- through a pile of settings landing. So this waits too, or it would
+    -- draw the list that was there before the switch.
+    local function AfterSwitch()
+        PaintProfile()
+        C_Timer.After(0, function()
+            if not isEditMode then return end
+            BazUI:RefreshEditOverlays()
+            ShowInspectorList()
+        end)
+    end
+
+    -- A name nobody has used yet, offered rather than imposed: the
+    -- field is prefilled so Create works on the first press, and typing
+    -- over it is the normal case.
+    local function SuggestName()
+        local from = BazUI:GetActiveProfile() or DefaultProfileName()
+        local name, n = from .. " 2", 2
+        while BazUIDB.profiles[name] do
+            n = n + 1
+            name = from .. " " .. n
+        end
+        return name
+    end
+
+    -- Making one is two decisions - what it is called, and what it
+    -- starts out as - so it is a dialog rather than a button that
+    -- guesses. Copying the one you are wearing is the default because
+    -- that is why you are on this screen: you like where things are and
+    -- want a variation, not to begin again.
+    local OpenNewLayout
+    OpenNewLayout = function(prefill, problem)
+        local from = BazUI:GetActiveProfile() or DefaultProfileName()
+        local copyDefault = true
+        if prefill and prefill.copy ~= nil then copyDefault = prefill.copy end
+        BazUI:OpenPopup({
+            title = "New layout",
+            body  = problem or ("A layout is your whole interface: where "
+                .. "everything sits, what colour it is, how it behaves. The new "
+                .. "one becomes the one you are wearing, so you can arrange it "
+                .. "straight away."),
+            fields = {
+                { type = "input", key = "name", label = "Name",
+                  default = (prefill and prefill.name) or SuggestName() },
+                { type = "toggle", key = "copy",
+                  label = "Start from a copy of " .. from,
+                  desc  = "Off starts from the layout BazUI ships with.",
+                  default = copyDefault },
+            },
+            buttons = {
+                { label = "Cancel", style = "default" },
+                { label = "Create", style = "primary", onClick = function(values)
+                    local name = strtrim(tostring(values.name or ""))
+                    if name == "" then name = SuggestName() end
+                    -- Straight back into the dialog with what was typed
+                    -- still in it, rather than a line in chat behind a
+                    -- window that has already gone.
+                    if BazUIDB.profiles[name] then
+                        OpenNewLayout({ name = name, copy = values.copy },
+                            "|cffff4444There is already a layout called "
+                            .. name .. ".|r Pick another name.")
+                        return
+                    end
+                    BazUI:CreateProfile(name)
+                    if values.copy then BazUI:CopyProfile(from, name) end
+                    BazUI:SetActiveProfile(name)
+                    AfterSwitch()
+                    BazUI:Print("Arranging: " .. name)
+                end },
+            },
+        })
+    end
+
+    local function OpenRenameLayout(prefill, problem)
+        local from = BazUI:GetActiveProfile() or DefaultProfileName()
+        -- The menu entry is greyed for Default, so this is belt and
+        -- braces - but RenameProfile refuses it, and the caller below
+        -- reads a refusal as "that name is taken", which it is not.
+        if from == DefaultProfileName() then return end
+        BazUI:OpenPopup({
+            title = "Rename layout",
+            body  = problem or ("Renaming " .. from .. ". Anything pinned to it "
+                .. "follows the new name."),
+            fields = {
+                { type = "input", key = "name", label = "Name",
+                  default = prefill or from },
+            },
+            buttons = {
+                { label = "Cancel", style = "default" },
+                { label = "Rename", style = "primary", onClick = function(values)
+                    local name = strtrim(tostring(values.name or ""))
+                    if name == "" or name == from then return end
+                    if not BazUI:RenameProfile(from, name) then
+                        OpenRenameLayout(name,
+                            "|cffff4444There is already a layout called "
+                            .. name .. ".|r Pick another name.")
+                        return
+                    end
+                    AfterSwitch()
+                end },
+            },
+        })
+    end
+
+    -- Built here rather than beside the dropdown because the entries
+    -- call the two dialogs above, and a closure cannot capture a local
+    -- that does not exist yet.
+    profileDrop:SetupMenu(function(_, root)
+        for _, name in ipairs(BazUI:ListProfiles()) do
+            local entry = root:CreateRadio(name,
+                function() return BazUI:GetActiveProfile() == name end,
+                function()
+                    if BazUI:GetActiveProfile() == name then return end
+                    BazUI:SetActiveProfile(name)
+                    AfterSwitch()
+                end)
+            entry:SetTooltip(function(tooltip)
+                GameTooltip_SetTitle(tooltip, name)
+                GameTooltip_AddNormalLine(tooltip,
+                    "Switch to this layout. Everything on screen is rearranged.")
+            end)
+        end
+        root:CreateDivider()
+        root:CreateButton("New layout...", function() OpenNewLayout() end)
+        local rename = root:CreateButton("Rename this layout...",
+            function() OpenRenameLayout() end)
+        -- Greyed rather than dropped: the entry being there is how you
+        -- learn renaming exists, and Default is the one the profile
+        -- system falls back to.
+        if BazUI:GetActiveProfile() == DefaultProfileName() and rename.SetDisabled then
+            rename:SetDisabled(true)
+        end
+    end)
+
+    local newProfile = Theme.CreateButton(f, {
+        text = "New", width = 60, height = 20,
+        onClick = function() OpenNewLayout() end,
+    })
+    newProfile:SetPoint("LEFT", profileDrop, "RIGHT", 6, 0)
+
     -- Grid controls sit under the title rather than in a section, because
     -- they belong to the session and not to whatever is selected - they
     -- have to stay reachable while a frame's settings fill the body.
     local grid = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
     grid:SetSize(24, 24)
-    grid:SetPoint("TOPLEFT", 10, -42)
+    grid:SetPoint("TOPLEFT", 10, -72)
     grid:SetChecked(GridSettings().grid and true or false)
     grid:SetScript("OnClick", function(self)
         GridSettings().grid = self:GetChecked() and true or false
@@ -1374,7 +1602,7 @@ end
 -- Nothing selected: the panel stays up and says what there is to edit.
 -- A frame tucked behind something else is reachable from here, which it
 -- never was when the only way in was clicking its overlay.
-local function ShowInspectorList()
+function ShowInspectorList()
     local popup = GetOrCreatePopup()
     ClearInspectorBody(popup)
     popup.title:SetText("BazUI Edit")
@@ -1419,15 +1647,19 @@ local function PopulatePopup(frame, config)
     local settings = config.settings or {}
     local sectionMap = {}
     local sectionOrder = {}
-    local firstSection = true
 
+    -- Every section starts open. Only the first did when this was a
+    -- popup the size of a tooltip and the rest had to be folded away to
+    -- fit; the inspector is a full-height panel now, and a setting you
+    -- have to unfold a heading to find is a setting you do not know is
+    -- there. The headings still fold, for anyone who wants less on
+    -- screen.
     for _, widgetDef in ipairs(settings) do
         local sectionName = widgetDef.section or "General"
         if not sectionMap[sectionName] then
-            local sec = CreateSection(popup.content, sectionName, firstSection)
+            local sec = CreateSection(popup.content, sectionName, true)
             sectionMap[sectionName] = sec
             sectionOrder[#sectionOrder + 1] = sectionName
-            firstSection = false
         end
 
         local widget
@@ -1480,7 +1712,7 @@ local function PopulatePopup(frame, config)
 
     local actions = config.actions
     if actions and #actions > 0 then
-        local secActions = CreateSection(popup.content, "Actions", false)
+        local secActions = CreateSection(popup.content, "Actions", true)
 
         for _, actionDef in ipairs(actions) do
             local btn = CreateActionButton(popup.content, actionDef)

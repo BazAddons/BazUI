@@ -29,7 +29,11 @@
 -- a page about it, and was two thirds page by the end.
 ---------------------------------------------------------------------------
 
-local DEFAULT_PROFILE = "Default"
+-- The profile that cannot be deleted or renamed, asked of the profile
+-- system rather than named here so the two cannot drift apart.
+local function DefaultProfile()
+    return (BazUI.GetFallbackProfile and BazUI:GetFallbackProfile()) or "BazUI"
+end
 
 function BazUI:GetProfileOptionsTable()
     local function Refresh()
@@ -82,7 +86,7 @@ function BazUI:GetProfileOptionsTable()
     end
 
     local shown     = Viewing()
-    local isBuiltin = (shown == DEFAULT_PROFILE)
+    local isBuiltin = (shown == DefaultProfile())
     local isActive  = (shown == BazUI:GetActiveProfile())
     local isDefault = (shown == BazUI:GetDefaultProfile())
 

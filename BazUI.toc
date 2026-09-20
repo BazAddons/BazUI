@@ -23,7 +23,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 005
+## Version: 006
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -62,7 +62,10 @@ Core\Core.lua
 Core\Events.lua
 Core\Profiles.lua
 Core\ProfilesPage.lua
+Core\SettingsAudit.lua
 Core\StarterProfile.lua
+Core\Presets\Classic.lua
+Core\Presets\Modern.lua
 Core\StarterExport.lua
 Core\Commands.lua
 Core\UI.lua
@@ -217,6 +220,7 @@ Modules\Bars\UserGuide.lua
 
 Modules\UnitFrames\Core.lua
 Modules\UnitFrames\UnitBars.lua
+Modules\UnitFrames\Indicators.lua
 Modules\UnitFrames\BarOptions.lua
 Modules\UnitFrames\Settings.lua
 Modules\UnitFrames\UserGuide.lua

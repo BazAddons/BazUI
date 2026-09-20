@@ -191,6 +191,11 @@ local skins, order = {}, {}
 -- registering a skin is only registering it.
 local applied = false
 
+-- Forward-declared: RegisterSkin below needs to know which skin is saved,
+-- and the store that answers that is defined further down, beside the
+-- rest of the saving.
+local Store
+
 function Skin:RegisterSkin(def)
     if type(def) ~= "table" then return nil end
     local id = def.id
@@ -221,7 +226,7 @@ function Skin:RegisterSkin(def)
     -- after ours, so its skin arrives after the one saved was asked for
     -- and came back missing; if this is that one, put it on now rather
     -- than leaving somebody in the fallback until they reload.
-    if applied and BazUIDB and BazUIDB.skin and BazUIDB.skin.active == id then
+    if applied and Store().active == id then
         Skin.ApplySkin(id)
     end
 
@@ -248,18 +253,61 @@ skins[BUILT_IN.id].builtIn = true
 ---------------------------------------------------------------------------
 -- Where the choice is kept
 --
--- Beside the font switch, in BazUIDB rather than in a profile. A skin is
--- what the addon looks like to you, not what this character's bars are
--- arranged like, and putting it in a profile would mean a profile switch
--- silently repainting half the screen and needing a reload to finish.
+-- In the profile. It used to sit beside the font switch in BazUIDB, one
+-- look shared by every profile, on the reasoning that a skin is what the
+-- addon looks like to you rather than how this character's bars are
+-- arranged. That reasoning lost: a profile is a whole layout, and a
+-- layout with somebody else's colours on it is half a layout.
+--
+-- The thing that argument was right about is that a switch has to
+-- repaint, and repaint without a reload. ApplySkin already does exactly
+-- that - it walks every colour and redraws every band - so the switch
+-- just has to call it, which is what the listener at the bottom of this
+-- file is for.
 ---------------------------------------------------------------------------
 
 local CUSTOM_ID = "custom"
 
-local function Store()
+function Store()
     BazUIDB = BazUIDB or {}
-    BazUIDB.skin = BazUIDB.skin or {}
-    return BazUIDB.skin
+
+    -- Set the profile structure up rather than giving up on it. This file
+    -- loads before every module and its saved-variables callback runs
+    -- before theirs, so the profiles may not exist yet the first time a
+    -- colour is asked for.
+    if not BazUIDB.profiles and BazUI.InitProfiles then
+        BazUI:InitProfiles()
+    end
+
+    local profile = BazUIDB.profiles and BazUIDB.profiles[BazUIDB.activeProfile or "Default"]
+    if not profile then
+        -- Nothing to keep it in yet. Answering with a loose table rather
+        -- than nil keeps every caller simple; it is replaced the moment
+        -- there is a profile to write to.
+        BazUIDB.skin = BazUIDB.skin or {}
+        return BazUIDB.skin
+    end
+
+    profile.skin = profile.skin or {}
+    return profile.skin
+end
+
+-- Moving house, once.
+--
+-- The old global skin is copied into every profile that has none, not
+-- just the one in use: it was everybody's look a moment ago, and the
+-- upgrade should not repaint the profiles you were not wearing.
+local function MigrateGlobalSkin()
+    local sv = BazUIDB
+    local old = sv and sv.skin
+    if not (old and next(old) and sv.profiles) then return end
+
+    for _, profile in pairs(sv.profiles) do
+        if profile.skin == nil then
+            profile.skin = CopyTable(old)
+        end
+    end
+    sv.skin = nil
 end
 
 function Skin.ActiveSkin()
@@ -593,9 +641,32 @@ end
 
 if BazUI.QueueForVariables then
     BazUI:QueueForVariables(function()
+        MigrateGlobalSkin()
         RegisterCustom()
         Skin.ApplySkin(Store().active or BUILT_IN.id)
         applied = true
+
+        -- A profile switch repaints. ApplySkin walks every colour the
+        -- theme has and redraws every band on screen, so the new
+        -- profile's look lands without a reload - which was the whole
+        -- objection to keeping the skin in a profile.
+        --
+        -- Deferred by a frame, like every other profile-change handler:
+        -- a switch is a pile of settings arriving at once, and repainting
+        -- part way through means painting some of them twice.
+        if BazUI.On then
+            BazUI:On("BAZ_PROFILE_CHANGED", function()
+                C_Timer.After(0, function()
+                    RegisterCustom()
+                    Skin.ApplySkin(Store().active or BUILT_IN.id)
+                    -- The Skin tab is a readout of these colours, so it
+                    -- is redrawn too if somebody is looking at it.
+                    if BazUI.RefreshVisibleOptions then
+                        BazUI:RefreshVisibleOptions()
+                    end
+                end)
+            end)
+        end
     end)
 end
 

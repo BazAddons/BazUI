@@ -84,6 +84,7 @@ BazUI:RegisterUserGuide("Auras", {
                     { "Icons per row / Icon size / Spacing", "The defaults a row uses when it has none of its own." },
                     { "Time remaining on icons", "Timer text." },
                     { "Stack counts", "The number in the corner." },
+                    { "Icon shape", "Square, or rounded like the game's own action buttons. Only the look changes - an icon takes the same space either way." },
                     { "Color debuff rims by type", "Off keeps every debuff rim red." },
                     { "Weapon enchants with the buffs", "Poisons, sharpening stones and the like, shown as buff icons. Right-click removes them." },
                     { "Sort by / Direction", "Order applied, time remaining or name; ascending or descending." },
