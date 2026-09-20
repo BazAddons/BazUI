@@ -127,7 +127,10 @@ function addon.ScaffoldModule(moduleName)
     print("|cff00aaff[BNC]|r Create folder: Interface/AddOns/" .. folderName)
     print(" ")
     print("|cff88ff88-- FILE: " .. folderName .. "/" .. folderName .. ".toc|r")
-    print("## Interface: 120001")
+    -- The number this client actually wants, asked for rather than
+    -- written down: a template that hands somebody a retail interface
+    -- number on Forever produces an addon the client will not load.
+    print("## Interface: " .. (select(4, GetBuildInfo()) or 0))
     print("## Title: BazUI Notifications - " .. displayName)
     print("## Notes: Description of your module.")
     print("## Author: YourName")

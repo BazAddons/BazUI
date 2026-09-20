@@ -205,7 +205,12 @@ local function BarArgs(def)
             height = {
                 order = 22, type = "range", name = "Height",
                 desc = "The height of the fill. The border is added around it, so the bar comes out taller than this by however thick the border is.",
-                min = 1, max = 48, step = 1,
+                -- Four hundred, to agree with the Edit Mode panel. It
+                -- stopped at forty-eight here while that one allowed
+                -- more, so a bar meant to stand beside a two-row action
+                -- bar could be given that height in one editor and not
+                -- the other, and the manual could not tell you which.
+                min = 1, max = 400, step = 1,
                 get = Field(def, "height", 24), set = SetField(def, "height"),
             },
             fillFrom = {
