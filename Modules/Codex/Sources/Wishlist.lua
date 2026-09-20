@@ -16,7 +16,7 @@ local Codex = BazUI.Codex
 local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
-local ROW_H  = 22
+local ROW_H  = 26   -- a banded row, the same one the rest of the codex draws
 
 Codex.customTabs = Codex.customTabs or {}
 
@@ -86,33 +86,28 @@ local function AcquireRow(parent)
         return row
     end
 
-    row = CreateFrame("Button", nil, parent)
+    row = Codex.Panel.CreateBandRow(parent)
     row:SetHeight(ROW_H)
 
-    row.hover = row:CreateTexture(nil, "BACKGROUND")
-    row.hover:SetAllPoints()
-    row.hover:SetColorTexture(Theme.colors.bgHover[1], Theme.colors.bgHover[2],
-        Theme.colors.bgHover[3], 0.5)
-    row.hover:Hide()
-
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(16, 16)
-    row.icon:SetPoint("LEFT", 2, 0)
+    row.icon:SetSize(20, 20)
+    row.icon:SetPoint("LEFT", 8, 0)
     row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
     row.label = Theme.FontString(row, "OVERLAY", "GameFontHighlight")
-    row.label:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+    row.label:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
     row.label:SetJustifyH("LEFT")
+    row.label:SetWordWrap(false)
 
     row.detail = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
-    row.detail:SetPoint("RIGHT", -22, 0)
+    row.detail:SetPoint("RIGHT", -34, 0)
     row.detail:SetJustifyH("RIGHT")
-    row.label:SetPoint("RIGHT", row.detail, "LEFT", -6, 0)
+    row.label:SetPoint("RIGHT", row.detail, "LEFT", -10, 0)
 
     -- One way off the list, and it is where your eye already is.
     row.drop = CreateFrame("Button", nil, row)
     row.drop:SetSize(16, 16)
-    row.drop:SetPoint("RIGHT", -2, 0)
+    row.drop:SetPoint("RIGHT", -10, 0)
     row.drop.text = Theme.FontString(row.drop, "OVERLAY", "GameFontNormal")
     row.drop.text:SetAllPoints()
     row.drop.text:SetText("x")
@@ -247,10 +242,9 @@ local function Build(parent)
     page.rows = {}
 
     -- The list sits in the same card the rest of the codex draws.
-    page.card = CreateFrame("Frame", nil, page)
+    page.card = Codex.Panel.CreateBox(page)
     page.card:SetPoint("TOPLEFT")
     page.card:SetPoint("TOPRIGHT")
-    Theme.ApplyFlatPanel(page.card, Theme.colors.bgRaised, Theme.colors.edge)
 
     return page
 end
@@ -292,8 +286,8 @@ local function Render(content, width)
         header.note:SetTextColor(unpack(headerWarn and Theme.colors.warn or Theme.colors.textMuted))
     end
 
-    local y = 6
-    for _, entry in ipairs(entries) do
+    local y = 10
+    for i, entry in ipairs(entries) do
         local itemID = entry.itemID
         local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID)
         if not name and C_Item.RequestLoadItemDataByID then
@@ -302,8 +296,9 @@ local function Render(content, width)
 
         local row = AcquireRow(p.card)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 1, -y)
-        row:SetPoint("TOPRIGHT", -1, -y)
+        row:SetPoint("TOPLEFT", 10, -y)
+        row:SetPoint("TOPRIGHT", -10, -y)
+        Codex.Panel.SetRowBand(row, i)
         row.itemID = itemID
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
@@ -334,7 +329,7 @@ local function Render(content, width)
         y = y + ROW_H
     end
 
-    local cardHeight = math.max(y + 6, 28)
+    local cardHeight = math.max(y + 10, 28)
     p.card:SetHeight(cardHeight)
     p.card:SetShown(#entries > 0)
 

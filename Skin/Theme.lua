@@ -1136,6 +1136,155 @@ function Theme.SetFlatPanelAlpha(frame, bgAlpha, edgeAlpha)
 end
 
 ---------------------------------------------------------------------------
+-- Insets
+--
+-- The sunken marble panel the game puts inside a window - the bag, the
+-- bank, the quest log, the talents. InsetFrameTemplate where the client
+-- has it, the flat panel where it does not, so a window built on this
+-- is made of the client's own parts wherever they exist. The marble is
+-- tinted down so what sits on it reads; opts.tint says how far.
+---------------------------------------------------------------------------
+
+local INSET_TINT = 0.55
+
+function Theme.CreateInset(parent, opts)
+    opts = opts or {}
+    local f
+    if BazUI.Has and BazUI.Has.Template and BazUI.Has.Template("InsetFrameTemplate") then
+        f = CreateFrame("Frame", opts.name, parent, "InsetFrameTemplate")
+        if f.Bg and f.Bg.SetVertexColor then
+            local t = opts.tint or INSET_TINT
+            f.Bg:SetVertexColor(t, t, t)
+        end
+    else
+        f = CreateFrame("Frame", opts.name, parent)
+        Theme.ApplyFlatPanel(f, Theme.colors.bg, Theme.colors.edge)
+    end
+    if opts.ground == "collections" then
+        Theme.ApplyCollectionsGround(f)
+    end
+    return f
+end
+
+-- Fade the stone, leaving the border alone.
+function Theme.SetInsetAlpha(f, alpha)
+    if f.bazGround then
+        f.bazGround:SetAlpha(alpha or 1)
+    end
+    if f.Bg and f.Bg.SetAlpha then
+        f.Bg:SetAlpha(alpha or 1)
+    else
+        Theme.SetFlatPanelAlpha(f, alpha)
+    end
+end
+
+---------------------------------------------------------------------------
+-- The collections ground
+--
+-- The dark leather the Appearances and Collections panels are laid on:
+-- a tile that repeats to any size, a soft shadow along each edge, and a
+-- filigree in every corner. Blizzard builds it in XML from four
+-- atlases; this builds the same thing from the same atlases, because
+-- the XML template is gated to a game type Forever does not answer to
+-- and the art is there on both clients regardless.
+--
+-- A piece of a ring is the corner art flipped for its corner, and an
+-- edge is the last texel of that art stretched between two corners -
+-- which is exactly how Blizzard's XML does it, TexCoords and all. Done
+-- from Lua the flip has to be worked out inside the atlas's own region
+-- of its file, since SetTexCoord after SetAtlas would forget the region.
+---------------------------------------------------------------------------
+
+local GROUND_TILE   = "collections-background-tile"
+local GROUND_SHADOW = "collections-background-shadow-large"
+local GROUND_INNER  = "collections-background-shadow-small"
+local GROUND_CORNER = "collections-background-corner"
+
+local function AtlasInfo(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) or nil
+end
+
+local function Piece(parent, info, layer, sub, l, r, t, b)
+    local tex = parent:CreateTexture(nil, layer, nil, sub)
+    tex:SetTexture(info.file)
+    local L, R, T, B = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    local w, h = R - L, B - T
+    tex:SetTexCoord(L + w * l, L + w * r, T + h * t, T + h * b)
+    return tex
+end
+
+-- Four corners and, unless cornersOnly, the four edges between them.
+local function Ring(parent, info, layer, sub, around, cornersOnly)
+    local w, h = info.width, info.height
+    local TL = Piece(parent, info, layer, sub, 0, 1, 0, 1)
+    local TR = Piece(parent, info, layer, sub, 1, 0, 0, 1)
+    local BL = Piece(parent, info, layer, sub, 0, 1, 1, 0)
+    local BR = Piece(parent, info, layer, sub, 1, 0, 1, 0)
+    for _, c in ipairs({ TL, TR, BL, BR }) do c:SetSize(w, h) end
+    TL:SetPoint("TOPLEFT", around, "TOPLEFT")
+    TR:SetPoint("TOPRIGHT", around, "TOPRIGHT")
+    BL:SetPoint("BOTTOMLEFT", around, "BOTTOMLEFT")
+    BR:SetPoint("BOTTOMRIGHT", around, "BOTTOMRIGHT")
+    if cornersOnly then return end
+
+    local E = 0.9999
+    local top = Piece(parent, info, layer, sub, E, 1, 0, 1)
+    top:SetHeight(h)
+    top:SetPoint("TOPLEFT", TL, "TOPRIGHT")
+    top:SetPoint("TOPRIGHT", TR, "TOPLEFT")
+
+    local bottom = Piece(parent, info, layer, sub, E, 1, 1, 0)
+    bottom:SetHeight(h)
+    bottom:SetPoint("BOTTOMLEFT", BL, "BOTTOMRIGHT")
+    bottom:SetPoint("BOTTOMRIGHT", BR, "BOTTOMLEFT")
+
+    local left = Piece(parent, info, layer, sub, 0, 1, E, 1)
+    left:SetWidth(w)
+    left:SetPoint("TOPLEFT", TL, "BOTTOMLEFT")
+    left:SetPoint("BOTTOMLEFT", BL, "TOPLEFT")
+
+    local right = Piece(parent, info, layer, sub, 1, 0, E, 1)
+    right:SetWidth(w)
+    right:SetPoint("TOPRIGHT", TR, "BOTTOMRIGHT")
+    right:SetPoint("BOTTOMRIGHT", BR, "TOPRIGHT")
+end
+
+-- True when the ground went on; false when the client has not got the
+-- art, in which case the inset keeps its marble.
+function Theme.ApplyCollectionsGround(f)
+    local tile = AtlasInfo(GROUND_TILE)
+    if not tile then return false end
+
+    -- The tile and everything on it share one frame so they fade as one.
+    local ground = CreateFrame("Frame", nil, f)
+    ground:SetPoint("TOPLEFT", 4, -4)
+    ground:SetPoint("BOTTOMRIGHT", -4, 4)
+    ground:SetFrameLevel(f:GetFrameLevel())
+    f.bazGround = ground
+
+    local bg = ground:CreateTexture(nil, "BACKGROUND", nil, 1)
+    if tile.tilesHorizontally or tile.tilesVertically then
+        bg:SetTexture(tile.file, "REPEAT", "REPEAT")
+        bg:SetHorizTile(true)
+        bg:SetVertTile(true)
+    else
+        bg:SetAtlas(GROUND_TILE, false)
+    end
+    bg:SetAllPoints()
+
+    local shadow = AtlasInfo(GROUND_SHADOW)
+    if shadow then Ring(ground, shadow, "BACKGROUND", 2, ground) end
+
+    local inner = AtlasInfo(GROUND_INNER)
+    if inner then Ring(ground, inner, "ARTWORK", 1, ground) end
+
+    local corner = AtlasInfo(GROUND_CORNER)
+    if corner then Ring(ground, corner, "ARTWORK", 2, ground, true) end
+
+    return true
+end
+
+---------------------------------------------------------------------------
 -- Search box
 --
 -- One text field for the whole suite, wearing the flat chrome: a raised

@@ -2,15 +2,27 @@
 ---------------------------------------------------------------------------
 -- BazUI Codex: the window
 --
--- Three bands and two columns. A title bar, a hero card carrying the
--- character the codex is answering for, and the tab strip; then a rail
--- of headline numbers beside the content, so the shape of the week
--- reads before any of the detail does.
+-- A window made of the game's own parts. The frame is the one the
+-- talents and the character sheet come in - rock, gold border, a round
+-- portrait in the corner. It is laid on the dark leather the Appearances
+-- panel is laid on, and a column of picture tabs hangs off its right
+-- edge, the way every Forever panel picks its pages. Nothing here is a
+-- drawing of a WoW frame; it is the frame.
+--
+-- On the leather, three shapes, all borrowed:
+--
+--   a box    - the thin-bordered plate the game draws tooltips in. The
+--              character sits in one, each block of a page is one, each
+--              number on the rail is one.
+--   a plate  - the carved heading the character sheet puts over
+--              "General" and "Weapons". Every block wears one.
+--   a band   - the soft stripe the character sheet lays under every
+--              other stat line. Rows inside a block sit on those.
 --
 -- Sections hand over rows and the panel draws them, which is what keeps
 -- a lockout, a title and a reputation looking like three readings of
--- the same instrument. Each block is a card: a heading, an optional bar
--- for the one number that sums it up, then its rows.
+-- the same instrument. Numbers are written, not drawn: a block says
+-- "3 of 9" in words and a row says "ready" in its colour.
 --
 -- Everything is pooled. A codex redraws on every event that touches it
 -- and frames cannot be destroyed in this client.
@@ -23,23 +35,31 @@ local Theme = BazUI.Skin.Theme
 local Panel = {}
 Codex.Panel = Panel
 
-local WIDTH, HEIGHT = 900, 580
-local PAD           = 14
-local TITLE_H       = 26
-local HERO_H        = 74
-local TAB_H         = 26
-local RAIL_W        = 176
+-- The size and place of the Talents window on Forever (PlayerSpellsFrame's
+-- talentsWidth / talentsHeight, hung from the top of the screen), so the
+-- codex opens where the talents do and covers the same ground.
+local WIDTH, HEIGHT = 1218, 708
+local HOME_POINT, HOME_Y = "TOP", -41
+local TOP           = 26   -- the window template's title bar
+local EDGE_L        = 4    -- where an inset tucks under the frame border,
+local EDGE_R        = 6    -- the offsets Blizzard's own button frames use
+local EDGE_B        = 6
+local INNER         = 16   -- inside the inset's border, clear of the filigree
+local HERO_H        = 64
+local RAIL_W        = 200
 local GAP           = 12
 local SCROLLBAR_W   = 16
+local TABS_Y        = -30  -- where the character sheet hangs its tabs
 
-local ROW_H         = 24
-local ROW_BAR_H     = 38   -- a row carrying its own progress bar
-local CARD_HEAD     = 26
-local CARD_PAD      = 8
-local CARD_GAP      = 10
-local TILE_H        = 46
+local ROW_H         = 26   -- the character sheet's stat line, near enough
+local PLATE_W       = 197  -- the heading plate's own size
+local PLATE_H       = 40
+local CARD_PAD      = 10
+local CARD_GAP      = 12
+local TILE_H        = 58
+local TILE_GAP      = 8
 
-local frame, scroll, content, hero, rail, headerHost
+local frame, inset, scroll, content, hero, rail, headerHost
 local rowPool, cardPool, tilePool = {}, {}, {}
 local liveCards, liveTiles = {}, {}
 local refreshQueued = false
@@ -54,20 +74,143 @@ local STATE_COLOR = {
     done   = Theme.colors.success,
 }
 
--- The heading strip, the same on every card. Colour in this window says
--- what a thing IS - open, closing, finished, the quality of an item - and
--- a card's subject is not one of those. Sections used to carry a colour
--- each, which spent the whole vocabulary on labels: with a purple heading
--- over a green heading over a blue one, nothing was left that could mean
--- finished. So the chrome is one colour and the readings keep the rest.
-local HEAD_BG  = { 0, 0, 0, 0.25 }
-local HEAD_LIT = { Theme.colors.bgHover[1], Theme.colors.bgHover[2],
-                   Theme.colors.bgHover[3], 0.55 }
-
 Codex.STATE_COLOR = STATE_COLOR
 
+-- The tab pictures. Blizzard's icons for now; when the codex has art of
+-- its own, this is the one table to point at it.
+local TAB_ICONS = {
+    today    = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    achieved = "Interface\\Icons\\Achievement_General",
+    items    = "Interface\\Icons\\inv_misc_bag_08",
+    wishlist = "Interface\\Icons\\INV_Misc_Note_01",
+}
+local TAB_ICON_DEFAULT = "Interface\\Icons\\INV_Misc_Book_09"
+
 local function ContentWidth()
-    return WIDTH - PAD * 2 - RAIL_W - GAP - SCROLLBAR_W
+    -- The scroll frame knows better than arithmetic does, once it has
+    -- been laid out; before that, the arithmetic.
+    local w = scroll and scroll:GetWidth()
+    if w and w > 50 then return math.floor(w) end
+    return WIDTH - EDGE_L - EDGE_R - INNER * 2 - RAIL_W - GAP - SCROLLBAR_W
+end
+
+local function HasAtlas(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
+---------------------------------------------------------------------------
+-- Boxes
+--
+-- The game's tooltip backdrop - the thin nine-slice border round a dark
+-- plate - which both clients ship, so a box here is the same box the
+-- game puts round every tooltip. The fill is thinned so the leather
+-- shows through and a box reads as sitting on it rather than pasted on.
+---------------------------------------------------------------------------
+
+local BOX_TEMPLATE = "TooltipBackdropTemplate"
+local BOX_FILL     = { 0.02, 0.02, 0.02, 0.50 }
+
+Panel.BOX_FILL = BOX_FILL
+
+local function HasBoxTemplate()
+    return BazUI.Has and BazUI.Has.Template and BazUI.Has.Template(BOX_TEMPLATE)
+end
+
+function Panel.CreateBox(parent, frameType)
+    local f
+    if HasBoxTemplate() then
+        f = CreateFrame(frameType or "Frame", nil, parent, BOX_TEMPLATE)
+        f.bazBox = true
+        f:SetBackdropColor(unpack(BOX_FILL))
+    else
+        f = CreateFrame(frameType or "Frame", nil, parent)
+        Theme.ApplyFlatPanel(f, Theme.colors.bgRaised, Theme.colors.edge)
+    end
+    return f
+end
+
+function Panel.SetBoxFill(f, color)
+    color = color or BOX_FILL
+    if f.bazBox then
+        f:SetBackdropColor(color[1], color[2], color[3], color[4] or 1)
+    else
+        Theme.SetFlatPanelColor(f, color, color[4])
+    end
+end
+
+-- nil puts the border back to the art's own colour.
+function Panel.SetBoxBorder(f, color)
+    if f.bazBox then
+        if color then
+            f:SetBackdropBorderColor(color[1], color[2], color[3], 0.9)
+        else
+            f:SetBackdropBorderColor(1, 1, 1, 1)
+        end
+    elseif f._bazFlatPanel then
+        f._bazFlatPanel.edgeColor = color or Theme.colors.edge
+        Theme.SetFlatPanelAlpha(f)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Bands and plates
+--
+-- The character sheet's two pieces of furniture. The band is a soft
+-- stripe that fades at both ends; drawn under every other row it makes
+-- a list countable without ruling it. The plate is the carved heading.
+-- Both are fixed-size art on the character sheet; the band is a
+-- gradient and stretches without complaint (retail already stretches
+-- it), the plate has carved ends and is kept at its own size.
+---------------------------------------------------------------------------
+
+local BAND_ATLAS  = "UI-Character-Info-Line-Bounce"
+local PLATE_ATLAS = "UI-Character-Info-Title"
+local BAND_ALPHA  = 0.55
+
+-- A row that sits on a band: hover on top, band beneath. Pages that draw
+-- their own rows ask for this so theirs match.
+function Panel.CreateBandRow(parent)
+    local row = CreateFrame("Button", nil, parent)
+
+    row.band = row:CreateTexture(nil, "BACKGROUND", nil, -2)
+    row.band:SetAllPoints()
+    if HasAtlas(BAND_ATLAS) then
+        row.band:SetAtlas(BAND_ATLAS, false)
+        row.band:SetAlpha(BAND_ALPHA)
+    else
+        row.band:SetColorTexture(1, 1, 1, 0.05)
+    end
+
+    row.hover = row:CreateTexture(nil, "BACKGROUND", nil, -1)
+    row.hover:SetAllPoints()
+    row.hover:SetColorTexture(Theme.colors.bgHover[1], Theme.colors.bgHover[2],
+        Theme.colors.bgHover[3], 0.6)
+    row.hover:Hide()
+
+    return row
+end
+
+-- Every other row gets the band, counted from the top of its list.
+function Panel.SetRowBand(row, index)
+    row.band:SetShown(index % 2 == 1)
+end
+
+-- The heading plate, with its title on it. Falls back to a bare title
+-- where the art is missing.
+local function CreatePlate(parent)
+    local plate = CreateFrame("Frame", nil, parent)
+    plate:SetSize(PLATE_W, PLATE_H)
+    if HasAtlas(PLATE_ATLAS) then
+        plate.art = plate:CreateTexture(nil, "ARTWORK")
+        plate.art:SetAtlas(PLATE_ATLAS, true)
+        plate.art:SetPoint("CENTER")
+    end
+    plate.title = Theme.FontString(plate, "OVERLAY", "GameFontNormal")
+    plate.title:SetPoint("CENTER", 0, 1)
+    plate.title:SetWidth(PLATE_W - 30)
+    plate.title:SetWordWrap(false)
+    plate.title:SetTextColor(unpack(Theme.colors.gold))
+    return plate
 end
 
 ---------------------------------------------------------------------------
@@ -81,29 +224,17 @@ local function AcquireRow(parent)
         return row
     end
 
-    row = CreateFrame("Button", nil, parent)
+    row = Panel.CreateBandRow(parent)
     row:SetHeight(ROW_H)
 
-    row.hover = row:CreateTexture(nil, "BACKGROUND")
-    row.hover:SetAllPoints()
-    row.hover:SetColorTexture(Theme.colors.bgHover[1], Theme.colors.bgHover[2],
-        Theme.colors.bgHover[3], 0.55)
-    row.hover:Hide()
-
-    -- A stripe down the left edge in the state's color: the one part of
-    -- a row you can read without reading it.
-    row.stripe = row:CreateTexture(nil, "ARTWORK")
-    row.stripe:SetWidth(2)
-    row.stripe:SetPoint("TOPLEFT", 0, -3)
-    row.stripe:SetPoint("BOTTOMLEFT", 0, 3)
-
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(16, 16)
+    row.icon:SetSize(20, 20)
     row.icon:SetPoint("LEFT", 8, 0)
     row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
     row.label = Theme.FontString(row, "OVERLAY", "GameFontHighlight")
     row.label:SetJustifyH("LEFT")
+    row.label:SetWordWrap(false)
 
     row.detail = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
     row.detail:SetJustifyH("RIGHT")
@@ -129,72 +260,51 @@ local function AcquireRow(parent)
     return row
 end
 
--- A row with a reading of its own gets a hairline bar beneath the label.
-local function RowBar(row)
-    if not row.bar then
-        row.bar = Theme.CreateStatBar(row, { height = 8 })
-        row.bar:SetPoint("BOTTOMLEFT", 10, 4)
-        row.bar:SetPoint("BOTTOMRIGHT", -10, 4)
-    end
-    return row.bar
-end
-
-local function DrawRow(row, data, y)
-    -- Inset by the card's own edge so a row's hover fill and its state
-    -- stripe sit inside the frame rather than on top of it.
+local function DrawRow(row, data, y, index)
     row:ClearAllPoints()
-    row:SetPoint("TOPLEFT", 1, -y)
-    row:SetPoint("TOPRIGHT", -1, -y)
+    row:SetPoint("TOPLEFT", CARD_PAD, -y)
+    row:SetPoint("TOPRIGHT", -CARD_PAD, -y)
+    row:SetHeight(ROW_H)
+    Panel.SetRowBand(row, index)
 
     local hasIcon = data.icon ~= nil
     row.icon:SetShown(hasIcon)
     if hasIcon then row.icon:SetTexture(data.icon) end
 
     local state = data.state
-    row.stripe:SetShown(state ~= nil)
-    if state then
-        local c = STATE_COLOR[state] or Theme.colors.textMuted
-        row.stripe:SetColorTexture(c[1], c[2], c[3], 0.9)
-    end
+    local c = state and (STATE_COLOR[state] or Theme.colors.textMuted) or nil
 
     row.label:SetText(data.label or "")
     row.label:SetTextColor(unpack(data.muted and Theme.colors.textMuted or Theme.colors.text))
 
-    row.detail:SetText(data.detail or "")
-    row.detail:SetTextColor(unpack(STATE_COLOR[state] or Theme.colors.textSoft))
-
-    local progress = data.progress
-    local offset = progress and 5 or 0
+    -- A fraction with no words of its own is written as one.
+    local detail = data.detail
+    if (not detail or detail == "") and data.progress and data.progress.max then
+        detail = string.format("%s of %s", tostring(data.progress.value or 0),
+            tostring(data.progress.max))
+    end
+    row.detail:SetText(detail or "")
+    row.detail:SetTextColor(unpack(c or Theme.colors.textSoft))
 
     row.label:ClearAllPoints()
     row.detail:ClearAllPoints()
-    row.detail:SetPoint("RIGHT", -8, offset)
-    row.label:SetPoint("LEFT", hasIcon and 30 or 10, offset)
-    row.label:SetPoint("RIGHT", row.detail, "LEFT", -8, 0)
-
-    if progress then
-        local bar = RowBar(row)
-        bar:SetBarColor(progress.color or STATE_COLOR[state] or Theme.colors.gold)
-        bar:SetValues(progress.value, progress.max)
-        bar:Show()
-        row:SetHeight(ROW_BAR_H)
-    else
-        if row.bar then row.bar:Hide() end
-        row:SetHeight(ROW_H)
-    end
+    row.detail:SetPoint("RIGHT", -10, 0)
+    row.label:SetPoint("LEFT", hasIcon and 36 or 11, 0)
+    row.label:SetPoint("RIGHT", row.detail, "LEFT", -10, 0)
 
     row._tip     = data.tip
     row._link    = data.link
     row._onClick = data.onClick
     row:Show()
-    return progress and ROW_BAR_H or ROW_H
+    return ROW_H
 end
 
 ---------------------------------------------------------------------------
 -- Cards
 --
--- One block of the codex: a heading you can fold away, the number that
--- sums the block up, and the rows.
+-- One block of the codex: a plate with the heading on it, the sentence
+-- that sums the block up, and the rows on their bands. Clicking the
+-- heading folds the block away.
 ---------------------------------------------------------------------------
 
 local function AcquireCard()
@@ -204,59 +314,35 @@ local function AcquireCard()
         return card
     end
 
-    card = CreateFrame("Frame", nil, content)
-    Theme.ApplyFlatPanel(card, Theme.colors.bgRaised, Theme.colors.edge)
+    card = Panel.CreateBox(content)
 
     card.head = CreateFrame("Button", nil, card)
-    card.head:SetHeight(CARD_HEAD)
-    card.head:SetPoint("TOPLEFT", 1, -1)
-    card.head:SetPoint("TOPRIGHT", -1, -1)
+    card.head:SetPoint("TOPLEFT", 4, -4)
+    card.head:SetPoint("TOPRIGHT", -4, -4)
 
-    card.head.bg = card.head:CreateTexture(nil, "BACKGROUND")
-    card.head.bg:SetAllPoints()
-    card.head.bg:SetColorTexture(0, 0, 0, 0.25)
+    card.plate = CreatePlate(card.head)
+    card.plate:SetPoint("TOP", 0, -2)
+    card.title = card.plate.title
 
-    -- A band down the left edge in the colour of the card's own bar:
-    -- the same reading as the bar, at the size you can see from across
-    -- the room, and the one thing keeping a column of identical cards
-    -- from reading as one long list.
-    card.accent = card:CreateTexture(nil, "ARTWORK")
-    card.accent:SetWidth(3)
-    card.accent:SetPoint("TOPLEFT", 1, -1)
-    card.accent:SetPoint("BOTTOMLEFT", 1, 1)
+    -- The one line that sums the block up, under the plate.
+    card.summary = Theme.FontString(card.head, "OVERLAY", "GameFontHighlightSmall")
+    card.summary:SetPoint("TOP", card.plate, "BOTTOM", 0, -1)
+    card.summary:SetJustifyH("CENTER")
+    card.summary:SetTextColor(unpack(Theme.colors.textSoft))
 
-    card.chevron = Theme.FontString(card.head, "OVERLAY", "GameFontNormalSmall")
-    card.chevron:SetPoint("LEFT", 12, 0)
+    card.chevron = Theme.FontString(card.head, "OVERLAY", "GameFontNormal")
+    card.chevron:SetPoint("TOPRIGHT", -(CARD_PAD - 2), -12)
     card.chevron:SetTextColor(unpack(Theme.colors.goldDim))
 
-    card.title = Theme.FontString(card.head, "OVERLAY", "GameFontNormal")
-    card.title:SetPoint("LEFT", 27, 0)
-    card.title:SetTextColor(unpack(Theme.colors.gold))
-
     card.count = Theme.FontString(card.head, "OVERLAY", "GameFontHighlightSmall")
-    card.count:SetPoint("RIGHT", -9, 0)
+    card.count:SetPoint("RIGHT", card.chevron, "LEFT", -10, 0)
     card.count:SetTextColor(unpack(Theme.colors.textMuted))
 
-    -- The same gold rule the tab strip draws, so a card reads as part of
-    -- the same object rather than a box sitting on top of it.
-    card.rule = card.head:CreateTexture(nil, "OVERLAY")
-    card.rule:SetHeight(1)
-    card.rule:SetPoint("BOTTOMLEFT")
-    card.rule:SetPoint("BOTTOMRIGHT")
-    card.rule:SetColorTexture(Theme.colors.divider[1], Theme.colors.divider[2],
-        Theme.colors.divider[3], Theme.colors.divider[4])
-
-    -- Inset a little further than a row is, so the summary sits inside
-    -- the column of rows it is summarising rather than level with it.
-    card.bar = Theme.CreateStatBar(card, { height = 11, labels = true })
-    card.bar:SetPoint("TOPLEFT", CARD_PAD + 3, -(CARD_HEAD + CARD_PAD))
-    card.bar:SetPoint("TOPRIGHT", -(CARD_PAD + 3), -(CARD_HEAD + CARD_PAD))
-
     card.head:SetScript("OnEnter", function(self)
-        self.bg:SetColorTexture(unpack(HEAD_LIT))
+        self:GetParent().chevron:SetTextColor(unpack(Theme.colors.gold))
     end)
     card.head:SetScript("OnLeave", function(self)
-        self.bg:SetColorTexture(unpack(HEAD_BG))
+        self:GetParent().chevron:SetTextColor(unpack(Theme.colors.goldDim))
     end)
     card.head:SetScript("OnClick", function(self)
         local id = self:GetParent()._sectionID
@@ -301,24 +387,25 @@ local function AcquireTile()
         return tile
     end
 
-    tile = CreateFrame("Frame", nil, rail)
+    tile = Panel.CreateBox(rail)
     tile:SetHeight(TILE_H)
-    Theme.ApplyFlatPanel(tile, Theme.colors.bgRaised, Theme.colors.edge)
 
+    -- A band down the inside of the left edge in the reading's colour.
     tile.accent = tile:CreateTexture(nil, "ARTWORK")
     tile.accent:SetWidth(3)
-    tile.accent:SetPoint("TOPLEFT", 1, -1)
-    tile.accent:SetPoint("BOTTOMLEFT", 1, 1)
+    tile.accent:SetPoint("TOPLEFT", 6, -7)
+    tile.accent:SetPoint("BOTTOMLEFT", 6, 7)
 
     tile.value = Theme.FontString(tile, "OVERLAY", "GameFontNormalLarge")
-    tile.value:SetPoint("TOPLEFT", 10, -6)
-    tile.value:SetPoint("TOPRIGHT", -8, -6)
+    tile.value:SetPoint("TOPLEFT", 18, -9)
+    tile.value:SetPoint("TOPRIGHT", -10, -9)
     tile.value:SetJustifyH("LEFT")
 
     tile.label = Theme.FontString(tile, "OVERLAY", "GameFontHighlightSmall")
-    tile.label:SetPoint("BOTTOMLEFT", 10, 7)
-    tile.label:SetPoint("BOTTOMRIGHT", -8, 7)
+    tile.label:SetPoint("BOTTOMLEFT", 18, 10)
+    tile.label:SetPoint("BOTTOMRIGHT", -10, 10)
     tile.label:SetJustifyH("LEFT")
+    tile.label:SetWordWrap(false)
     tile.label:SetTextColor(unpack(Theme.colors.textMuted))
 
     return tile
@@ -354,20 +441,27 @@ local function DrawRail(tab)
         tile.label:SetText(h.label or "")
         tile:Show()
         liveTiles[#liveTiles + 1] = tile
-        y = y + TILE_H + 6
+        y = y + TILE_H + TILE_GAP
     end
 end
 
 ---------------------------------------------------------------------------
--- The hero card
+-- The header box
+--
+-- Whose codex it is, and which page this is, in words. The portrait in
+-- the frame's corner is the character too, so the box need not repeat
+-- it; it carries the name, because a picture is not a name.
 ---------------------------------------------------------------------------
 
 local function UpdateHero()
     if not hero then return end
 
+    local tab = addon:GetSetting("activeTab") or "today"
+    hero.section:SetText(Codex.tabLabels and Codex.tabLabels[tab] or "")
+
     local name = UnitName("player") or "?"
     local realm = GetRealmName and GetRealmName()
-    hero.name:SetText(realm and (name .. " - " .. realm) or name)
+    Theme.SetText(hero.name, realm and (name .. " - " .. realm) or name)
 
     local class, classFile = UnitClass("player")
     local c = classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile]
@@ -377,24 +471,37 @@ local function UpdateHero()
         hero.name:SetTextColor(unpack(Theme.colors.gold))
     end
 
-    local parts = { string.format("Level %d %s", UnitLevel("player") or 1, class or "") }
+    local parts = { string.format("Level %d  |  %s", UnitLevel("player") or 1, class or "") }
     local zone = GetRealZoneText and GetRealZoneText()
     if zone and zone ~= "" then parts[#parts + 1] = zone end
-    hero.sub:SetText(table.concat(parts, "   |   "))
+    parts[#parts + 1] = BazUI:FormatMoney(GetMoney and GetMoney() or 0)
+    hero.sub:SetText(table.concat(parts, "  |  "))
 
-    hero.money:SetText(BazUI:FormatMoney(GetMoney and GetMoney() or 0))
-
-    -- The portrait wears the round-button mask, and a masked texture is
-    -- fussy about what may be done to it; a failure here must not take
-    -- the rest of the card down with it.
-    if SetPortraitTexture then
-        pcall(SetPortraitTexture, hero.portraitTexture, "player")
+    -- The frame's own portrait wears the character. A masked texture is
+    -- fussy about what may be done to it, and a failure here must not
+    -- take the rest of the window down with it.
+    if frame and frame.bazPortrait and SetPortraitTexture then
+        pcall(SetPortraitTexture, frame.bazPortrait, "player")
     end
 end
 
 ---------------------------------------------------------------------------
 -- Drawing one tab
 ---------------------------------------------------------------------------
+
+-- What a block's summary says, in words. A bar used to draw this; the
+-- sentence is the same reading without the picture.
+local function Summary(barDef)
+    if not barDef then return nil end
+    local reading = barDef.text
+    if (not reading or reading == "") and barDef.max then
+        reading = string.format("%s of %s", tostring(barDef.value or 0), tostring(barDef.max))
+    end
+    if barDef.label and reading then
+        return barDef.label .. "  |  " .. reading
+    end
+    return barDef.label or reading
+end
 
 function Panel:Refresh()
     if not frame or not frame:IsShown() then return end
@@ -437,38 +544,24 @@ function Panel:Refresh()
         local collapsed = Codex:IsCollapsed(def.id)
         card.chevron:SetText(collapsed and "+" or "-")
 
-        -- The bar is read before the chrome is drawn, because the chrome
-        -- takes its one colour from it.
         local barDef = (not collapsed) and def.GetBar and def.GetBar() or nil
-        local band = (barDef and barDef.color) or Theme.colors.goldDim
+        local summary = Summary(barDef)
+        card.summary:SetText(summary or "")
+        if barDef and barDef.color then
+            card.summary:SetTextColor(barDef.color[1], barDef.color[2], barDef.color[3])
+        else
+            card.summary:SetTextColor(unpack(Theme.colors.textSoft))
+        end
 
-        card.accent:SetColorTexture(band[1], band[2], band[3], 0.85)
-        card.head.bg:SetColorTexture(unpack(HEAD_BG))
-        card.title:SetTextColor(unpack(Theme.colors.gold))
-        card.rule:SetColorTexture(unpack(Theme.colors.divider))
+        -- The plate, then the sentence under it if there is one.
+        local headH = 2 + PLATE_H + (summary and 18 or 4)
+        card.head:SetHeight(headH)
 
         if collapsed then
-            card.bar:Hide()
             card.count:SetText(def.collapsedHint or "")
-            card:SetHeight(CARD_HEAD + 2)
+            card:SetHeight(headH + 8)
         else
-            local inner = CARD_HEAD
-
-            -- The bar under a heading is the whole block in one reading.
-            if barDef then
-                card.bar:SetLabel(barDef.label)
-                card.bar:SetBarColor(barDef.color)
-                card.bar:SetValues(barDef.value, barDef.max, barDef.text)
-                card.bar:SetBreakpoints(barDef.breakpoints, barDef.max)
-                card.bar:Show()
-                -- What the bar actually is, rather than a number that
-                -- used to be close to it.
-                inner = inner + CARD_PAD + card.bar:GetHeight()
-            else
-                card.bar:Hide()
-            end
-
-            inner = inner + CARD_PAD
+            local inner = headH + 8
 
             local rows = (def.GetRows and def.GetRows()) or {}
             if #rows == 0 then
@@ -476,12 +569,12 @@ function Panel:Refresh()
                 inner = inner + DrawRow(row, {
                     label = def.empty or "Nothing to show.",
                     muted = true,
-                }, inner)
+                }, inner, 1)
                 card.rows[#card.rows + 1] = row
             else
-                for _, data in ipairs(rows) do
+                for i, data in ipairs(rows) do
                     local row = AcquireRow(card)
-                    inner = inner + DrawRow(row, data, inner)
+                    inner = inner + DrawRow(row, data, inner, i)
                     card.rows[#card.rows + 1] = row
                 end
             end
@@ -512,62 +605,22 @@ end
 ---------------------------------------------------------------------------
 
 local function BuildHero(parent)
-    hero = CreateFrame("Frame", nil, parent)
+    hero = Panel.CreateBox(parent)
     hero:SetHeight(HERO_H)
-    Theme.ApplyFlatPanel(hero, Theme.colors.bgRaised, Theme.colors.edge)
-
-    -- A band of the minimap's own frame down the right of the card,
-    -- faded almost away: enough that the hero is not a flat rectangle,
-    -- and the same object the player has in the corner of their screen.
-    --
-    -- The slice is the crown of the ring - the point at the top and the
-    -- arc falling away either side of it - cut to the shape of the band
-    -- it is shown in, so the circle is not squashed into an oval: 855
-    -- pixels of the picture's width by 220 of its height, which is the
-    -- 280 by 72 this sits in.
-    local art = hero:CreateTexture(nil, "ARTWORK")
-    art:SetTexture(BazUI.Skin.MINIMAP_FRAME)
-    art:SetPoint("TOPRIGHT", -1, -1)
-    art:SetPoint("BOTTOMRIGHT", -1, 1)
-    art:SetWidth(280)
-    art:SetAlpha(0.09)
-    art:SetTexCoord(0.04, 0.96, 0, 0.202)
-
-    local portrait = CreateFrame("Button", nil, hero)
-    portrait:SetSize(52, 52)
-    portrait:SetPoint("LEFT", 14, 0)
-    local tex = portrait:CreateTexture(nil, "ARTWORK")
-    tex:SetPoint("CENTER")
-    hero.portraitTexture = tex
-    Theme.ApplyRoundButton(portrait, tex, { size = 52 })
-    portrait:SetScript("OnClick", function()
-        if ToggleCharacter then ToggleCharacter("PaperDollFrame") end
-    end)
-    portrait:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Open the character sheet", unpack(Theme.colors.text))
-        GameTooltip:Show()
-    end)
-    portrait:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    hero.portrait = portrait
 
     hero.name = Theme.FontString(hero, "OVERLAY", "GameFontNormalLarge")
-    hero.name:SetPoint("TOPLEFT", portrait, "TOPRIGHT", 14, -6)
+    hero.name:SetPoint("TOPLEFT", 16, -13)
     hero.name:SetJustifyH("LEFT")
 
     hero.sub = Theme.FontString(hero, "OVERLAY", "GameFontHighlightSmall")
-    hero.sub:SetPoint("TOPLEFT", hero.name, "BOTTOMLEFT", 1, -6)
+    hero.sub:SetPoint("TOPLEFT", hero.name, "BOTTOMLEFT", 0, -6)
     hero.sub:SetJustifyH("LEFT")
     hero.sub:SetTextColor(unpack(Theme.colors.textSoft))
 
-    hero.moneyLabel = Theme.FontString(hero, "OVERLAY", "GameFontHighlightSmall")
-    hero.moneyLabel:SetPoint("TOPRIGHT", -14, -14)
-    hero.moneyLabel:SetText("Purse")
-    hero.moneyLabel:SetTextColor(unpack(Theme.colors.textMuted))
-
-    hero.money = Theme.FontString(hero, "OVERLAY", "GameFontNormal")
-    hero.money:SetPoint("TOPRIGHT", hero.moneyLabel, "BOTTOMRIGHT", 0, -5)
-    hero.money:SetJustifyH("RIGHT")
+    hero.section = Theme.FontString(hero, "OVERLAY", "GameFontNormalLarge")
+    hero.section:SetPoint("RIGHT", -16, 0)
+    hero.section:SetJustifyH("RIGHT")
+    hero.section:SetTextColor(unpack(Theme.colors.gold))
 
     return hero
 end
@@ -575,76 +628,56 @@ end
 local function Build()
     if frame then return frame end
 
-    frame = CreateFrame("Frame", "BazUICodexFrame", UIParent)
-    frame:SetSize(WIDTH, HEIGHT)
-    frame:SetFrameStrata("HIGH")
-    frame:SetClampedToScreen(true)
-    frame:EnableMouse(true)
-    frame:SetMovable(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
-        addon:SetSetting("position", { point = point, relPoint = relPoint, x = x, y = y })
-    end)
-    Theme.ApplyFlatPanel(frame)
-    frame:Hide()
+    frame = BazUI:CreatePortraitWindow("BazUICodexFrame", {
+        title          = "Codex",
+        textured       = true,
+        width          = WIDTH,
+        height         = HEIGHT,
+        strata         = "HIGH",
+        savedAddon     = addon,
+        savedKey       = "position",
+        uiSpecialFrame = true,
+        portraitOnClick = function()
+            if ToggleCharacter then ToggleCharacter("PaperDollFrame") end
+        end,
+        portraitTooltip = { title = "Open the character sheet", anchor = "ANCHOR_RIGHT" },
+    })
+    frame.bazPortrait = (frame.PortraitContainer and frame.PortraitContainer.portrait)
+        or frame.portrait or (frame.GetPortrait and frame:GetPortrait())
     Codex.frame = frame
 
-    -- Escape closes it, like every other BazUI window.
-    BazUI.CloseOnEscape(frame)
-
-    local title = Theme.FontString(frame, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", PAD, -9)
-    title:SetText("CODEX")
-    title:SetTextColor(unpack(Theme.colors.gold))
-
+    -- The version, small, in the title bar where the eye does not rest.
     local version = Theme.FontString(frame, "OVERLAY", "GameFontHighlightSmall")
-    version:SetPoint("TOPRIGHT", -32, -12)
+    version:SetPoint("TOPRIGHT", -36, -8)
     version:SetText(BazUI.VERSION or "")
     version:SetTextColor(unpack(Theme.colors.textMuted))
 
-    local titleRule = frame:CreateTexture(nil, "ARTWORK")
-    titleRule:SetHeight(1)
-    titleRule:SetPoint("TOPLEFT", PAD, -TITLE_H)
-    titleRule:SetPoint("TOPRIGHT", -PAD, -TITLE_H)
-    titleRule:SetColorTexture(Theme.colors.divider[1], Theme.colors.divider[2],
-        Theme.colors.divider[3], Theme.colors.divider[4])
+    -- The leather the pages are laid on; marble where a client lacks it.
+    inset = Theme.CreateInset(frame, { tint = 0.7, ground = "collections" })
+    inset:SetPoint("TOPLEFT", EDGE_L, -TOP)
+    inset:SetPoint("BOTTOMRIGHT", -EDGE_R, EDGE_B)
+    frame.inset = inset
 
-    local close = BazUI.Skin.Theme.CreateCloseButton(frame)
-    close:SetPoint("TOPRIGHT", -2, -2)
-    close:SetScript("OnClick", function() Codex:Hide() end)
+    BuildHero(inset)
+    hero:SetPoint("TOPLEFT", INNER, -INNER)
+    hero:SetPoint("TOPRIGHT", -INNER, -INNER)
 
-    BuildHero(frame)
-    hero:SetPoint("TOPLEFT", PAD, -(TITLE_H + 10))
-    hero:SetPoint("TOPRIGHT", -PAD, -(TITLE_H + 10))
-
-    -- The suite's tab strip, in the look the panels wear.
-    local tabTop = TITLE_H + 10 + HERO_H + 8
-    local tabRow = CreateFrame("Frame", nil, frame)
-    tabRow:SetHeight(TAB_H)
-    tabRow:SetPoint("TOPLEFT", PAD, -tabTop)
-    tabRow:SetPoint("TOPRIGHT", -PAD, -tabTop)
-
-    local strip = BazUI.CreateTabStrip(nil, tabRow, {
-        style = "underline", tabHeight = TAB_H, spacing = 18,
-        dividerParent = tabRow,
-    })
-    strip:SetPoint("BOTTOMLEFT")
-    frame.tabStrip = strip
+    -- The pages, down the right edge, the way the character sheet
+    -- carries its own.
+    local tabs = BazUI.CreateSideTabs(nil, frame)
+    tabs:SetPoint("TOPLEFT", frame, "TOPRIGHT", 0, TABS_Y)
+    frame.sideTabs = tabs
     Codex.tabKeys = {}
+    Codex.tabLabels = {}
 
-    local bodyTop = tabTop + TAB_H + 10
-
-    rail = CreateFrame("Frame", nil, frame)
-    rail:SetPoint("TOPLEFT", PAD, -bodyTop)
-    rail:SetPoint("BOTTOMLEFT", PAD, PAD)
+    rail = CreateFrame("Frame", nil, inset)
+    rail:SetPoint("TOPLEFT", hero, "BOTTOMLEFT", 0, -GAP)
+    rail:SetPoint("BOTTOMLEFT", inset, "BOTTOMLEFT", INNER, INNER)
     rail:SetWidth(RAIL_W)
 
     rail.empty = Theme.FontString(rail, "OVERLAY", "GameFontHighlightSmall")
-    rail.empty:SetPoint("TOPLEFT", 2, -2)
-    rail.empty:SetPoint("TOPRIGHT", -2, -2)
+    rail.empty:SetPoint("TOPLEFT", 4, -4)
+    rail.empty:SetPoint("TOPRIGHT", -4, -4)
     rail.empty:SetJustifyH("LEFT")
     rail.empty:SetText("Nothing to count on this page.")
     rail.empty:SetTextColor(unpack(Theme.colors.textMuted))
@@ -652,17 +685,17 @@ local function Build()
 
     -- A page that takes typing puts its box and its filters up here,
     -- outside the scroll, so they stay put while the list moves.
-    headerHost = CreateFrame("Frame", nil, frame)
+    headerHost = CreateFrame("Frame", nil, inset)
     headerHost:SetPoint("TOPLEFT", rail, "TOPRIGHT", GAP, 0)
-    headerHost:SetPoint("RIGHT", frame, "RIGHT", -(PAD + SCROLLBAR_W), 0)
+    headerHost:SetPoint("RIGHT", inset, "RIGHT", -(INNER + SCROLLBAR_W), 0)
     headerHost:SetHeight(1)
 
-    scroll = CreateFrame("ScrollFrame", nil, frame)
+    scroll = CreateFrame("ScrollFrame", nil, inset)
     scroll:SetPoint("TOPLEFT", headerHost, "BOTTOMLEFT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", -(PAD + SCROLLBAR_W), PAD)
+    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -(INNER + SCROLLBAR_W), INNER)
     scroll:EnableMouseWheel(true)
 
-    local bar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
+    local bar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
     bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 5, 0)
     bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 5, 0)
     ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
@@ -680,25 +713,29 @@ end
 -- module loading late still gets one.
 function Panel:RebuildTabs()
     if not frame then return end
-    local strip = frame.tabStrip
-    strip:ClearTabs()
+    local tabs = frame.sideTabs
+    tabs:ClearTabs()
     Codex.tabKeys = {}
+    Codex.tabLabels = {}
 
     local seen, order = {}, {}
-    local function Want(key, label, sort)
+    local function Want(key, label, sort, icon)
         if seen[key] then return end
         seen[key] = true
-        order[#order + 1] = { key = key, label = label, sort = sort or 100 }
+        order[#order + 1] = {
+            key = key, label = label, sort = sort or 100,
+            icon = icon or TAB_ICONS[key] or TAB_ICON_DEFAULT,
+        }
     end
     -- The two questions the codex exists to answer come first, always,
     -- even before anything has registered against them.
     Want("today",    "Today",    10)
     Want("achieved", "Achieved", 20)
     for _, def in pairs(Codex.sections) do
-        Want(def.tab, def.tabLabel or def.tab:gsub("^%l", string.upper), def.tabOrder)
+        Want(def.tab, def.tabLabel or def.tab:gsub("^%l", string.upper), def.tabOrder, def.tabIcon)
     end
     for key, def in pairs(Codex.customTabs or {}) do
-        Want(key, def.label or key, def.order)
+        Want(key, def.label or key, def.order, def.icon)
     end
     table.sort(order, function(a, b)
         if a.sort ~= b.sort then return a.sort < b.sort end
@@ -708,33 +745,40 @@ function Panel:RebuildTabs()
     local active = addon:GetSetting("activeTab") or "today"
     local activeID
     for _, entry in ipairs(order) do
-        local id = strip:AddTab(entry.label)
+        local id = tabs:AddTab(entry.label, entry.icon)
         Codex.tabKeys[id] = entry.key
+        Codex.tabLabels[entry.key] = entry.label
         if entry.key == active then activeID = id end
     end
-    strip:SetTabSelectedCallback(function(tabID, isUserAction)
+    tabs:SetTabSelectedCallback(function(tabID, isUserAction)
         local key = Codex.tabKeys[tabID]
         if not key then return end
         addon:SetSetting("activeTab", key)
         if isUserAction then Panel:Refresh() end
     end)
-    strip:Layout()
+    tabs:Layout()
     if activeID then
-        strip:SetTabVisuallySelected(activeID)
-        strip.selectedTabID = activeID
+        tabs:SetTabVisuallySelected(activeID)
+        tabs.selectedTabID = activeID
     end
 end
 
 function Panel:ApplySettings()
     if not frame then return end
     frame:SetScale(addon:GetSetting("scale") or 1)
-    Theme.SetFlatPanelAlpha(frame, addon:GetSetting("opacity") or 0.95, 1)
+
+    -- Opacity thins the ground, not the border or the words: the rock
+    -- behind everything and the leather the pages sit on.
+    local opacity = addon:GetSetting("opacity") or 0.95
+    if frame.Bg and frame.Bg.SetAlpha then frame.Bg:SetAlpha(opacity) end
+    if inset then Theme.SetInsetAlpha(inset, opacity) end
+
     frame:ClearAllPoints()
     local pos = addon:GetSetting("position")
     if pos and pos.point then
         frame:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
     else
-        frame:SetPoint("CENTER")
+        frame:SetPoint(HOME_POINT, UIParent, HOME_POINT, 0, HOME_Y)
     end
 end
 
@@ -777,8 +821,10 @@ function Codex:Initialize()
             end
         end
     end
-    -- The hero card is about the player, so it follows the player.
-    for _, event in ipairs({ "PLAYER_MONEY", "PLAYER_LEVEL_UP", "ZONE_CHANGED_NEW_AREA" }) do
+    -- The header box and the portrait are about the player, so they
+    -- follow the player.
+    for _, event in ipairs({ "PLAYER_MONEY", "PLAYER_LEVEL_UP", "ZONE_CHANGED_NEW_AREA",
+                             "PORTRAITS_UPDATED" }) do
         addon:On(event, function() Panel:QueueRefresh() end)
     end
     addon:OnProfileChanged(function()

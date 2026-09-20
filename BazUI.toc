@@ -92,6 +92,7 @@ Core\StatusBar.lua
 Core\Dock.lua
 Core\DockMover.lua
 Core\TabStrip.lua
+Core\SideTabs.lua
 Core\Options\Constants.lua
 Core\Options\WidgetFactories.lua
 Core\Options\LayoutEngine.lua

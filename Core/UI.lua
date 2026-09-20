@@ -214,7 +214,12 @@ function BazUI:CreatePortraitWindow(globalName, opts)
     -- Retail ships the flat Dragonflight portrait chrome; Classic flavours
     -- only have the classic PortraitFrameTemplate. Same SetTitle contract,
     -- different portrait plumbing (handled below).
-    local template = "PortraitFrameFlatTemplate"
+    --
+    -- opts.textured asks for the rock-and-gold frame the talents and the
+    -- character sheet come in, on any client that has it: a window that
+    -- wants to look like the game's own panels rather than the flat
+    -- chrome.
+    local template = opts.textured and "PortraitFrameTemplate" or "PortraitFrameFlatTemplate"
     if not (C_XMLUtil and C_XMLUtil.GetTemplateInfo and C_XMLUtil.GetTemplateInfo(template)) then
         template = "PortraitFrameTemplate"
     end
