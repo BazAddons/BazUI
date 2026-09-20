@@ -306,6 +306,24 @@ local function CallClean(frame, method)
     end
 end
 
+-- Open one of Blizzard's own panels from a click of ours.
+--
+-- ToggleCharacter called plainly runs the character sheet's OnShow as
+-- BazUI, and on Forever that OnShow compares the player's health - a
+-- secret number, which our execution may not compare. The sheet opened
+-- and threw six errors doing it. securecallfunction runs the toggle as
+-- theirs, so what it does on the way up is not ours.
+function BazUI.OpenCharacterSheet(tab)
+    local fn = _G.ToggleCharacter
+    if type(fn) ~= "function" then return false end
+    if securecallfunction then
+        securecallfunction(fn, tab or "PaperDollFrame")
+    else
+        fn(tab or "PaperDollFrame")
+    end
+    return true
+end
+
 function BazUI.SuppressFrame(frame, wanted)
     if not (frame and frame.HookScript and type(wanted) == "function") then
         return false

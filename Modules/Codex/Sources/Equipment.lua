@@ -235,7 +235,7 @@ local function CreateCard(parent)
         GameTooltip:Hide()
     end)
     card:SetScript("OnClick", function()
-        if ToggleCharacter then ToggleCharacter("PaperDollFrame") end
+        BazUI.OpenCharacterSheet("PaperDollFrame")
     end)
     return card
 end

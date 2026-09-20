@@ -63,6 +63,39 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         -- Attunements and keys are written down rather than asked for,
         -- since the client has no way to answer them. This is how you
         -- see whether what is written down is right.
+        -- The client lists only the factions this character has met. It
+        -- will answer for any faction by id, though, so this asks it for
+        -- every id in range and puts the answers in a box to copy from -
+        -- the raw material for writing Forever's faction list down.
+        factions = {
+            desc = "List every faction the client knows, to copy",
+            handler = function()
+                local ask = C_Reputation and C_Reputation.GetFactionDataByID
+                if not ask then
+                    BazUI:Print("Codex: this client cannot be asked for factions by id.")
+                    return
+                end
+                local lines, found = {}, 0
+                for id = 1, 3000 do
+                    local ok, d = pcall(ask, id)
+                    if ok and d and d.name and d.name ~= "" then
+                        found = found + 1
+                        lines[#lines + 1] = string.format("%d\t%s%s%s", id, d.name,
+                            d.isHeader and "\t[header]" or "",
+                            (d.reaction and d.reaction > 0 and (d.currentStanding or 0) ~= 0)
+                                and "\t[met]" or "")
+                    end
+                end
+                BazUI:OpenCopyDialog({
+                    title    = "Factions the client knows",
+                    subtitle = string.format("%d found in ids 1-3000. id, name, [header], [met]", found),
+                    content  = table.concat(lines, "\n"),
+                    editable = false,
+                    width    = 640,
+                    height   = 520,
+                })
+            end,
+        },
         verify = {
             desc = "Check the attunement and key list against the client",
             handler = function()

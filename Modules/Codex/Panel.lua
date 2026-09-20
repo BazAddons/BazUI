@@ -675,7 +675,7 @@ local function Build()
         uiSpecialFrame = true,
         dragTitleOnly  = true,
         portraitOnClick = function()
-            if ToggleCharacter then ToggleCharacter("PaperDollFrame") end
+            BazUI.OpenCharacterSheet("PaperDollFrame")
         end,
         portraitTooltip = { title = "Open the character sheet", anchor = "ANCHOR_RIGHT" },
     })

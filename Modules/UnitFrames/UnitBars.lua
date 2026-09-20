@@ -1464,7 +1464,7 @@ end
 
 local function OpenCharacterTab(tab)
     return function()
-        if _G.ToggleCharacter then _G.ToggleCharacter(tab) end
+        BazUI.OpenCharacterSheet(tab)
     end
 end
 
