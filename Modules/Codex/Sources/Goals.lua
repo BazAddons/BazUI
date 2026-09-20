@@ -85,30 +85,35 @@ Codex:RegisterSection({
     empty  = function()
         local G = Codex.Goals
         local level = UnitLevel("player") or 1
+        local _, class = UnitClass("player")
         local nearest, gap
         for _, entry in ipairs((G and G.entries) or {}) do
-            local mine = not entry.class or entry.class == select(2, UnitClass("player"))
+            local mine = not entry.class or entry.class == class
             local at = entry.level or 1
             if mine and at > level and (not gap or at - level < gap) then
                 nearest, gap = entry, at - level
             end
         end
         if not nearest then
-            return "Nothing on the go, and nothing ahead of you - every goal written down is behind you."
+            return "No goals left. Everything written down here is behind you."
         end
+
+        -- What it asks for, in its own words, joined the way a person
+        -- would say them. The steps already name the level, so the
+        -- sentence does not name it again.
         local wants = {}
         for _, step in ipairs(nearest.steps or {}) do
-            wants[#wants + 1] = (step.label or ""):gsub("^%u", string.lower)
+            local said = (step.label or ""):gsub("^%u", string.lower)
+            if said ~= "" then wants[#wants + 1] = said end
         end
-        local asks = #wants > 0 and (": " .. table.concat(wants, ", ")) or ""
-        local needs = nearest.level or level
-        for _, step in ipairs(nearest.steps or {}) do
-            if step.kind == "level" and step.level then
-                needs = math.max(needs, step.level)
-            end
+        local asks = ""
+        if #wants == 1 then
+            asks = ": " .. wants[1]
+        elseif #wants > 1 then
+            local last = table.remove(wants)
+            asks = ": " .. table.concat(wants, ", ") .. " and " .. last
         end
-        return ("Nothing on the go yet. The next is %s at level %d%s."):format(
-            nearest.name, needs, asks)
+        return ("No goals yet. %s is next%s."):format(nearest.name, asks)
     end,
     events = EVENTS,
 
