@@ -249,14 +249,50 @@ end
 -- where the art is missing.
 local CreatePlate
 function Panel.CreatePlate(parent) return CreatePlate(parent) end
+-- The plate, in three pieces.
+--
+-- A heading may be longer than the character sheet's plate was drawn
+-- for, so the plate has to be able to grow. Stretching the whole
+-- picture grows the carved scrolls at each end along with it, which
+-- both looks wrong and eats the room the words need. So the ends are
+-- drawn at their own size and only the middle is stretched, which is
+-- how every piece of chrome in this game is built.
+local PLATE_CAP  = 24   -- how much of each end is the carved scroll
+local PLATE_TEXT = 22   -- and how far the words stay clear of it
+
 CreatePlate = function(parent)
     local plate = CreateFrame("Frame", nil, parent)
     plate:SetSize(PLATE_W, PLATE_H)
-    if HasAtlas(PLATE_ATLAS) then
-        plate.art = plate:CreateTexture(nil, "ARTWORK")
-        plate.art:SetAtlas(PLATE_ATLAS, false)
-        plate.art:SetAllPoints()
+
+    local info = HasAtlas(PLATE_ATLAS) and C_Texture.GetAtlasInfo(PLATE_ATLAS) or nil
+    if info then
+        local l, r = info.leftTexCoord, info.rightTexCoord
+        local t, b = info.topTexCoord, info.bottomTexCoord
+        local span = r - l
+        local cap  = span * (PLATE_CAP / math.max(info.width, 1))
+
+        local function Piece(x1, x2)
+            local tex = plate:CreateTexture(nil, "ARTWORK")
+            tex:SetTexture(info.file)
+            tex:SetTexCoord(x1, x2, t, b)
+            return tex
+        end
+
+        plate.artLeft = Piece(l, l + cap)
+        plate.artLeft:SetWidth(PLATE_CAP)
+        plate.artLeft:SetPoint("TOPLEFT")
+        plate.artLeft:SetPoint("BOTTOMLEFT")
+
+        plate.artRight = Piece(r - cap, r)
+        plate.artRight:SetWidth(PLATE_CAP)
+        plate.artRight:SetPoint("TOPRIGHT")
+        plate.artRight:SetPoint("BOTTOMRIGHT")
+
+        plate.artMid = Piece(l + cap, r - cap)
+        plate.artMid:SetPoint("TOPLEFT", plate.artLeft, "TOPRIGHT")
+        plate.artMid:SetPoint("BOTTOMRIGHT", plate.artRight, "BOTTOMLEFT")
     end
+
     plate.title = Theme.FontString(plate, "OVERLAY", "GameFontNormal")
     plate.title:SetPoint("CENTER", 0, 1)
     plate.title:SetWordWrap(false)
@@ -264,19 +300,17 @@ CreatePlate = function(parent)
     return plate
 end
 
--- The plate is the character sheet's own size until a heading needs
--- more, and then it takes what it needs up to the width it is given.
--- A name cut to "Stranglethorn Fishing Ex..." is a name nobody can
--- read, and the plate's ends stretch without complaint.
-local PLATE_PAD = 34
-
+-- The character sheet's own size until a heading needs more, and then
+-- as much as it is given. A name cut to "Stranglethorn Fishing Ex..."
+-- is a name nobody can read.
 function Panel.FitPlate(plate, text, maxWidth)
+    local room = PLATE_CAP * 2 + PLATE_TEXT * 2
     plate.title:SetWidth(0)
     Theme.SetText(plate.title, text or "")
-    local wanted = (plate.title:GetStringWidth() or 0) + PLATE_PAD
+    local wanted = (plate.title:GetStringWidth() or 0) + room
     local width = math.max(PLATE_W, math.min(maxWidth or PLATE_W, wanted))
     plate:SetWidth(width)
-    plate.title:SetWidth(width - PLATE_PAD + 10)
+    plate.title:SetWidth(width - room)
 end
 
 ---------------------------------------------------------------------------
