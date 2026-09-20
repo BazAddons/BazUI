@@ -52,6 +52,8 @@ local SCROLLBAR_W   = 16
 local TABS_Y        = -30  -- where the character sheet hangs its tabs
 
 local ROW_H         = 26   -- the character sheet's stat line, near enough
+local ROW_BAR_W     = 180  -- the bar column, where a row asks for one
+local ROW_DETAIL_W  = 170  -- the reading beside it
 local PLATE_W       = 197  -- the heading plate's own size
 local PLATE_H       = 40
 local CARD_PAD      = 10
@@ -80,6 +82,7 @@ Codex.STATE_COLOR = STATE_COLOR
 -- its own, this is the one table to point at it.
 local TAB_ICONS = {
     today    = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    reputation = "Interface\\Icons\\Achievement_Reputation_01",
     achieved = "Interface\\Icons\\Achievement_General",
     items    = "Interface\\Icons\\inv_misc_bag_08",
     wishlist = "Interface\\Icons\\INV_Misc_Note_01",
@@ -246,6 +249,7 @@ local function AcquireRow(parent)
 
     row.detail = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
     row.detail:SetJustifyH("RIGHT")
+    row.detail:SetWordWrap(false)
 
     row:SetScript("OnEnter", function(self)
         self.hover:Show()
@@ -294,11 +298,33 @@ local function DrawRow(row, data, y, index)
     row.detail:SetText(detail or "")
     row.detail:SetTextColor(unpack(c or Theme.colors.textSoft))
 
+    -- A row that asks for a bar gets one in a column of its own, the
+    -- reading beside it, so a list of them lines up like a table. Made
+    -- on the first row that asks, since most never will.
+    local wantsBar = data.progress and data.progress.bar and data.progress.max
+    if wantsBar and not row.bar then
+        row.bar = Theme.CreateStatBar(row, { height = 10 })
+    end
+
     row.label:ClearAllPoints()
     row.detail:ClearAllPoints()
-    row.detail:SetPoint("RIGHT", -10, 0)
     row.label:SetPoint("LEFT", hasIcon and 36 or 11, 0)
-    row.label:SetPoint("RIGHT", row.detail, "LEFT", -10, 0)
+    if wantsBar then
+        row.detail:SetPoint("RIGHT", -10, 0)
+        row.detail:SetWidth(ROW_DETAIL_W)
+        row.bar:ClearAllPoints()
+        row.bar:SetPoint("RIGHT", row.detail, "LEFT", -10, 0)
+        row.bar:SetWidth(ROW_BAR_W)
+        row.bar:SetBarColor(data.progress.color or c or Theme.colors.gold)
+        row.bar:SetValues(data.progress.value or 0, data.progress.max)
+        row.bar:Show()
+        row.label:SetPoint("RIGHT", row.bar, "LEFT", -10, 0)
+    else
+        if row.bar then row.bar:Hide() end
+        row.detail:SetWidth(0)
+        row.detail:SetPoint("RIGHT", -10, 0)
+        row.label:SetPoint("RIGHT", row.detail, "LEFT", -10, 0)
+    end
 
     row._tip     = data.tip
     row._link    = data.link

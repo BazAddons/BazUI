@@ -315,5 +315,6 @@ Modules\Codex\Sources\Achieved.lua
 Modules\Codex\Sources\Items.lua
 Modules\Codex\Sources\Wishlist.lua
 Modules\Codex\Sources\Equipment.lua
+Modules\Codex\Sources\Reputation.lua
 Modules\Codex\Settings.lua
 Modules\Codex\UserGuide.lua
