@@ -317,5 +317,6 @@ Modules\Codex\Sources\Wishlist.lua
 Modules\Codex\Sources\Equipment.lua
 Modules\Codex\Sources\Reputation.lua
 Modules\Codex\Sources\Currencies.lua
+Modules\Codex\Sources\Professions.lua
 Modules\Codex\Settings.lua
 Modules\Codex\UserGuide.lua
