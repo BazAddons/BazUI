@@ -230,7 +230,6 @@ function BazUI:CreatePortraitWindow(globalName, opts)
     f:SetClampedToScreen(true)
     f:SetFrameStrata(opts.strata or "MEDIUM")
     f:SetToplevel(true)
-    f:RegisterForDrag("LeftButton")
     f:Hide()
 
     -- Title + portrait.
@@ -290,11 +289,10 @@ function BazUI:CreatePortraitWindow(globalName, opts)
         end
     end
 
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
+    local function OnDragStop()
+        f:StopMovingOrSizing()
         if savedAddon and savedKey then
-            local point, _, relPoint, x, y = self:GetPoint()
+            local point, _, relPoint, x, y = f:GetPoint()
             savedAddon:SetSetting(savedKey, {
                 point    = point,
                 relPoint = relPoint,
@@ -302,7 +300,28 @@ function BazUI:CreatePortraitWindow(globalName, opts)
                 y        = y,
             })
         end
-    end)
+    end
+
+    -- Where the window can be picked up. By default anywhere on it, the
+    -- way a small tool window behaves. opts.dragTitleOnly confines it to
+    -- the title bar, which is what a big page wants: a page full of
+    -- things to click should not slide away under the cursor.
+    if opts.dragTitleOnly then
+        local handle = CreateFrame("Frame", nil, f)
+        handle:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+        handle:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, 0)
+        handle:SetHeight(opts.titleHeight or 26)
+        handle:SetFrameLevel(f:GetFrameLevel() + 20)
+        handle:EnableMouse(true)
+        handle:RegisterForDrag("LeftButton")
+        handle:SetScript("OnDragStart", function() f:StartMoving() end)
+        handle:SetScript("OnDragStop", OnDragStop)
+        f.bazDragHandle = handle
+    else
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", OnDragStop)
+    end
 
     -- ESC closes by watching the key ourselves. UISpecialFrames makes
     -- Blizzard's panel manager read our global, which taints it.

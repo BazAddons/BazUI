@@ -98,6 +98,14 @@ local function HasAtlas(name)
     return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
 end
 
+-- How tall a page may be before it has to scroll. A page that lays
+-- itself out to fit asks this rather than guessing at the window.
+function Panel.ContentHeight()
+    local h = scroll and scroll:GetHeight()
+    if h and h > 50 then return math.floor(h) end
+    return HEIGHT - TOP - EDGE_B - INNER * 2 - HERO_H - GAP
+end
+
 ---------------------------------------------------------------------------
 -- Boxes
 --
@@ -108,7 +116,7 @@ end
 ---------------------------------------------------------------------------
 
 local BOX_TEMPLATE = "TooltipBackdropTemplate"
-local BOX_FILL     = { 0.02, 0.02, 0.02, 0.50 }
+local BOX_FILL     = { 0.02, 0.02, 0.02, 0.62 }
 
 Panel.BOX_FILL = BOX_FILL
 
@@ -330,19 +338,21 @@ local function AcquireCard()
     card.summary:SetJustifyH("CENTER")
     card.summary:SetTextColor(unpack(Theme.colors.textSoft))
 
-    card.chevron = Theme.FontString(card.head, "OVERLAY", "GameFontNormal")
-    card.chevron:SetPoint("TOPRIGHT", -(CARD_PAD - 2), -12)
-    card.chevron:SetTextColor(unpack(Theme.colors.goldDim))
+    -- The fold toggle is the same arrow the action bars use for a flyout,
+    -- pointing down when the block is open and along when it is folded.
+    card.arrow = card.head:CreateTexture(nil, "OVERLAY")
+    card.arrow:SetPoint("TOPRIGHT", -(CARD_PAD - 2), -12)
+    card.arrow:SetAlpha(0.6)
 
     card.count = Theme.FontString(card.head, "OVERLAY", "GameFontHighlightSmall")
-    card.count:SetPoint("RIGHT", card.chevron, "LEFT", -10, 0)
+    card.count:SetPoint("RIGHT", card.arrow, "LEFT", -8, 0)
     card.count:SetTextColor(unpack(Theme.colors.textMuted))
 
     card.head:SetScript("OnEnter", function(self)
-        self:GetParent().chevron:SetTextColor(unpack(Theme.colors.gold))
+        self:GetParent().arrow:SetAlpha(1)
     end)
     card.head:SetScript("OnLeave", function(self)
-        self:GetParent().chevron:SetTextColor(unpack(Theme.colors.goldDim))
+        self:GetParent().arrow:SetAlpha(0.6)
     end)
     card.head:SetScript("OnClick", function(self)
         local id = self:GetParent()._sectionID
@@ -542,7 +552,7 @@ function Panel:Refresh()
         card.title:SetText(def.title or def.id)
 
         local collapsed = Codex:IsCollapsed(def.id)
-        card.chevron:SetText(collapsed and "+" or "-")
+        BazUI.SetArrowTexture(card.arrow, collapsed and "RIGHT" or "DOWN", 16)
 
         local barDef = (not collapsed) and def.GetBar and def.GetBar() or nil
         local summary = Summary(barDef)
@@ -637,6 +647,7 @@ local function Build()
         savedAddon     = addon,
         savedKey       = "position",
         uiSpecialFrame = true,
+        dragTitleOnly  = true,
         portraitOnClick = function()
             if ToggleCharacter then ToggleCharacter("PaperDollFrame") end
         end,
