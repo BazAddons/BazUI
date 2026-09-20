@@ -60,7 +60,7 @@ addon.KINDS = {
     {
         id    = "tapped",
         label = "Tapped by someone else",
-        desc  = "A mob somebody else got to first, which you can hit but cannot loot or take credit for. The game greys these out and so do we.",
+        desc  = "A mob somebody else got to first, which you can hit but cannot loot or take credit for. Turn its plate down or off here; the colour is left as the reaction colour.",
         -- Above the hostile kinds on purpose: a tapped mob is still
         -- hostile, and knowing it is not yours is the more useful of the
         -- two facts.

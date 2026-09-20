@@ -26,7 +26,7 @@ BazUI:RegisterUserGuide("Nameplates", {
             blocks = {
                 { type = "paragraph", text = "A city guard and something trying to kill you are not the same thing, and they do not have to look the same. The module sorts every plate into one of six kinds and each kind has its own switches." },
                 { type = "table", columns = { "Kind", "What lands in it" }, rows = {
-                    { "Tapped by someone else", "A mob somebody else got to first. Tested before the hostile kinds, because knowing it is not yours is the more useful fact." },
+                    { "Tapped by someone else", "A mob somebody else got to first, which you can hit but cannot loot. Tested before the hostile kinds, because knowing it is not yours is the more useful fact. Use it to turn plates for those mobs down or off - it does not recolour them." },
                     { "Friendly players", "Other players on your side." },
                     { "Hostile players", "Players you can attack." },
                     { "Friendly NPCs", "Guards, vendors, quest givers." },
@@ -58,7 +58,7 @@ BazUI:RegisterUserGuide("Nameplates", {
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Class color on players", "A player's plate takes their class color instead of the hostile/neutral/friendly colors." },
                     { "Replace friendly plates", "Friendly units get a BazUI plate too. Off leaves them with the game's own." },
-                    { "Mark your target", "A gold border on the plate of whatever you have targeted - a border rather than a glow, because a glow at this size is a smudge." },
+                    { "Mark your target", "A gold border on the plate of whatever you have targeted - a border rather than a glow, because a glow at this size is a smudge. It is drawn on the health bar, so a kind you have set to name-only has no border to take." },
                     { "Width / Height", "The health bar. Height is the height of the fill; the border is added around it, so the plate comes out taller than this by however thick your border is." },
                     { "Show level", "The unit's level on the right of the bar. Two question marks mean it is far enough above you that the number stopped being the point." },
                     { "Mark rares and elites", "The unit's rank beside the level: an elite reads 62+, a rare elite 62 Rare+, a world boss ?? Boss. Ordinary mobs are left unmarked, which is what makes a marked one worth a second look. With the level switched off the rank is spelled out on its own." },
@@ -71,7 +71,7 @@ BazUI:RegisterUserGuide("Nameplates", {
             title = "The game's own plates",
             blocks = {
                 { type = "paragraph", text = "Blizzard's plate is not deleted, it is made invisible - and it is held that way, because the game turns its own art back on whenever it feels like it. Ours is hung on the same frame, so it follows the unit exactly as the game intends, including going away when the unit does." },
-                { type = "paragraph", text = "Turn the module off and Blizzard's plates come straight back." },
+                { type = "paragraph", text = "Turn the module off and Blizzard's plates come back at the next reload, which you are prompted for when you throw the switch." },
             },
         },
     },

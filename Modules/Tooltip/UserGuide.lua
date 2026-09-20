@@ -40,14 +40,14 @@ BazUI:RegisterUserGuide("Tooltip", {
                 { type = "table", columns = { "Anchor", "What happens" }, rows = {
                     { "Default / Drawer dock", "Wherever the game and other addons were going to put it. If you have a tooltip dock in a drawer, this is what lets it dock." },
                     { "Follow cursor", "Attached to your mouse, with a horizontal and vertical offset of your own." },
-                    { "Fixed screen position", "Always in one place. Drag the marker, or set the offsets by hand." },
+                    { "Fixed screen position", "Always in one place. Drag the marker, or use |cffffd700Screen horizontal offset|r and |cffffd700Screen vertical offset|r." },
                 } },
                 { type = "h3", text = "Tooltip origin" },
                 { type = "paragraph", text = "Which corner or edge of the tooltip meets the anchor - which is really a choice about |cffffd700which way it grows|r, because a tooltip's height depends on what is in it. Pick Bottom and it grows upward from the marker; pick Top left and it grows down and to the right. |cffffd700Original direction|r leaves that to whatever was going to decide it." },
                 { type = "paragraph", text = "This matters most at the edges of the screen: a tooltip anchored near the bottom wants to grow up, and a long one anchored near the top wants to grow down. It applies to cursor anchoring too." },
                 { type = "h3", text = "Moving the marker" },
                 { type = "list", items = {
-                    "Turn on |cffffd700Unlock anchor|r, or type /baztooltip unlock, and a marker appears.",
+                    "Turn on |cffffd700Unlock anchor|r, or type /baztooltip unlock, and a marker appears. It also switches you to |cffffd700Fixed screen position|r, because that is the only mode with a spot to drag.",
                     "Drag it where you want the tooltip.",
                     "Turn the setting off, right-click the marker, or type /baztooltip lock to put it away.",
                 } },
@@ -63,7 +63,7 @@ BazUI:RegisterUserGuide("Tooltip", {
                     { "Hide tooltips during combat", "Nothing appears while you are fighting." },
                     { "Preview tooltip for 5 seconds", "Raises a sample so you can see a size, an opacity or a position without hunting for something to hover. Unavailable in combat." },
                 } },
-                { type = "note", text = "Nothing here is hidden unless you ask for it. If you want the health bar, keep the health bar." },
+                { type = "note", text = "Every one of these is a switch you can throw back. |cffffd700The profile BazUI ships hides the health bar|r, on the grounds that a unit frame is already telling you that - untick it and it returns." },
             },
         },
 
@@ -73,7 +73,7 @@ BazUI:RegisterUserGuide("Tooltip", {
                 { type = "list", items = {
                     "|cffffd700Comparison tooltips stay beside their item.|r Sending them to your cursor or to a fixed corner would separate the comparison from the thing being compared, which is the whole point of it.",
                     "|cffffd700A docked tooltip uses the drawer's scale|r rather than the one set here, so it fits its dock. Choosing Follow cursor or Fixed screen position pauses docking.",
-                    "|cffffd700Changes apply on the next hover.|r A tooltip already on screen when you changed a setting keeps what it had until it goes away and comes back.",
+                    "|cffffd700Changes apply on the next hover.|r A tooltip on screen when you change a setting is taken away rather than restyled where it stands, so the next thing you point at is the first one wearing the new look.",
                     "|cffffd700Bag tooltips|r are anchored by the game in a way that argues with ours; the module settles that so a bag tooltip lands where you asked rather than throwing an anchoring error.",
                 } },
             },

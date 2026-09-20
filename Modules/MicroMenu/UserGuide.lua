@@ -14,7 +14,8 @@ BazUI:RegisterUserGuide("MicroMenu", {
         {
             title = "What it does",
             blocks = {
-                { type = "paragraph", text = "Character, Spellbook, Talents, Quest Log, Social, Guild, World Map, Game Menu and Help move onto a BazUI bar and are drawn as round icons wearing your skin's border. The Character button shows your portrait instead of a fixed icon." },
+                { type = "paragraph", text = "The game's micro buttons move onto a BazUI bar and are drawn as round icons wearing your skin's border. The Character button shows your portrait instead of a fixed icon." },
+                { type = "paragraph", text = "Which buttons those are is the client's answer, not a list written here: character, spellbook, talents, quests, social, guild, map, the game menu and help on every client, and whatever else yours has - achievements, professions, the group finder, collections, the adventure guide, the shop. On WoW: Forever that includes |cffffd700Legacy|r, which no other client has." },
                 { type = "paragraph", text = "|cffffd700They are still the game's own buttons|r, only moved and redressed. Tooltips, keybinds, the talent reminder flash and the pressed-in look of a window that is already open all keep working, because none of that is being reimplemented here." },
                 { type = "paragraph", text = "That also means the game still decides when a button exists at all: Talents before level 10, Guild while you are in no guild. A button the game is hiding stays hidden here and appears when it unlocks." },
                 { type = "note", text = "|cffffd700Open it with|r /bazmicro, or Options > AddOns > BazUI > Micro Menu." },
@@ -25,6 +26,7 @@ BazUI:RegisterUserGuide("MicroMenu", {
             title = "Moving the bar",
             blocks = {
                 { type = "paragraph", text = "The bar starts at the top center of the screen. Open Edit Mode and drag it anywhere; the layout settings are also on the bar's Edit Mode popup, so you can size it while you are looking at it." },
+                { type = "note", style = "tip", text = "|cffffd700Cannot see it at all?|r The profile BazUI ships starts the bar on mouseover fade, faded all the way to invisible. Put your cursor at the top middle of the screen and it appears. |cffffd700Show only on mouseover|r turns that off, and |cffffd700Faded opacity|r leaves it dimly visible instead of gone." },
                 { type = "paragraph", text = "|cffffd700Reset position|r puts it back at the top center. /bazmicro reset does the same thing without opening anything." },
             },
         },
@@ -42,7 +44,9 @@ BazUI:RegisterUserGuide("MicroMenu", {
                     { "Reset position", "Back to the top center." },
                 } },
                 { type = "h3", text = "Buttons" },
-                { type = "paragraph", text = "One switch per button, in bar order. Turning one off takes it off the bar and closes the gap; it does not disable whatever it opened, which still has its keybind." },
+                { type = "paragraph", text = "One switch per button. Turning one off takes it off the bar and closes the gap; it does not disable whatever it opened, which still has its keybind." },
+                { type = "note", text = "|cffffd700Every button has a row, on every client|r, and the ones this client has no button for are greyed out rather than missing - so the list is the same shape wherever you read it, and a setting you remember is where you remember it." },
+                { type = "note", text = "The switches are listed in a fixed order. The bar itself follows the order the game gives its buttons, so the two lists can read differently." },
                 { type = "note", text = "The bar is always visible while Edit Mode is open, whatever the fade is set to - a bar you cannot see is a bar you cannot drag." },
             },
         },

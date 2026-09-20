@@ -91,7 +91,7 @@ local SPEC = {
           end },
         { key = "rankIcon", label = "Icon in front of the name", type = "toggle",
           section = "general", order = 3.2,
-          desc = "A small mark before the unit's name. Drawn in the bar's own text, so it grows and shrinks with the text rather than needing a size of its own.",
+          desc = "A small mark before the unit's name. Sized against the bar rather than the writing on it, so it fills a tall bar instead of staying a speck beside twelve-pixel text.",
           get = function() return addon:GetSetting("rankIcon") ~= false end,
           set = function(_, value)
               addon:SetSetting("rankIcon", value and true or false)
