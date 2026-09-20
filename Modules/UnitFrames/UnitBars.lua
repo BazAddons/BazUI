@@ -1425,7 +1425,7 @@ local function MirrorTick(frame)
     if not (name and state) then
         if frame._mirror then
             frame._mirror = nil
-            BazUI.Dock:SetShown(frame, false)
+            if not previewing then BazUI.Dock:SetShown(frame, false) end
         end
         return
     end
@@ -1469,6 +1469,31 @@ end
 function UnitBars:MirrorPause(name, paused)
     local state = name and mirrorActive[name]
     if state then state.paused = paused and true or false end
+end
+
+-- Show or hide every mirror bar for what is running now.
+--
+-- This has to be driven by the events, not by the tick. A frame that is
+-- hidden is not given an OnUpdate at all, so a bar waiting for a breath
+-- timer would have waited for ever: the only thing that could have
+-- shown it was the tick that only runs once it is shown. It appeared
+-- solely if you happened to be underwater while Edit Mode had it up.
+function UnitBars:ShowMirrors()
+    local running = MirrorShowing()
+    self:ForKind("mirror", nil, function(bar)
+        local frame = bar.frame
+        if running then
+            -- Cleared so the tick treats this as a new timer and puts
+            -- the right colour and label on before the first frame.
+            frame._mirror = nil
+            frame:SetAlpha(1)
+            BazUI.Dock:SetShown(frame, true)
+            MirrorTick(frame)
+        elseif not previewing then
+            frame._mirror = nil
+            BazUI.Dock:SetShown(frame, false)
+        end
+    end)
 end
 
 -- What the game is already counting, which is how a bar made mid-dive,
@@ -1743,6 +1768,9 @@ function UnitBars:Build(def)
     elseif def.kind == "mirror" then
         frame:SetScript("OnUpdate", function(self) MirrorTick(self) end)
         BazUI.Dock:SetShown(frame, false)
+        -- Made mid-dive, it should come up holding the timer that is
+        -- already counting rather than waiting for the next one.
+        C_Timer.After(0, function() UnitBars:ShowMirrors() end)
     end
 
     -- Every bar is somewhere another bar can dock to.
@@ -2661,8 +2689,10 @@ function UnitBars:WatchAll()
                 wipe(mirrorActive)
                 UnitBars:MirrorSync()
             end
+            UnitBars:ShowMirrors()
         end)
         UnitBars:MirrorSync()
+        UnitBars:ShowMirrors()
     end
 
     if not watchers._player then
