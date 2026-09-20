@@ -248,6 +248,17 @@ local function Rows(list)
     return rows
 end
 
+-- The event told properly at the top of the page is not told again in
+-- the lists below it.
+local function Without(list, skip)
+    if not skip then return list end
+    local out = {}
+    for _, entry in ipairs(list) do
+        if entry.event.title ~= skip.event.title then out[#out + 1] = entry end
+    end
+    return out
+end
+
 local function Blocks()
     local data = Gather()
 
@@ -293,7 +304,8 @@ local function Blocks()
             if from and to then runs = from .. " to " .. to end
         end
         blocks[#blocks + 1] = {
-            key     = "featured",
+            key       = "featured",
+            hideCount = true,
             title   = name,
             column  = 1,
             -- The event's own picture, blown up and faded against the
@@ -331,10 +343,10 @@ local function Blocks()
             key    = "today",
             title  = "Today",
             column = 1,
-            empty  = "Nothing on today.",
+            empty  = "Nothing else on today.",
             GetRows = function()
                 local d = Gather()
-                return d and Rows(d.today) or {}
+                return d and Rows(Without(d.today, featured)) or {}
             end,
             GetHighlight = function()
                 local d = Gather()
@@ -357,19 +369,29 @@ local function Blocks()
             empty  = "Nothing else coming up.",
             GetRows = function()
                 local d = Gather()
-                return d and Rows(d.soon) or {}
+                return d and Rows(Without(d.soon, featured)) or {}
             end,
             GetBar = function()
                 local d = Gather()
-                local n = d and #d.soon or 0
+                local list = d and Without(d.soon, featured) or {}
+                local n = #list
                 if n == 0 then return nil end
                 local holidays = 0
-                for _, entry in ipairs(d.soon) do
+                for _, entry in ipairs(list) do
                     if entry.holiday then holidays = holidays + 1 end
                 end
-                local text = ("%d coming"):format(n)
-                if holidays > 0 then text = text .. ("  |  %d holiday%s"):format(
-                    holidays, holidays == 1 and "" or "s") end
+                -- Saying "3 holidays" beside "3 coming" says nothing;
+                -- the two counts are only worth splitting when they
+                -- actually differ.
+                local text
+                if holidays == n then
+                    text = n == 1 and "1 holiday" or ("%d holidays"):format(n)
+                elseif holidays > 0 then
+                    text = ("%d coming  |  %d holiday%s"):format(n, holidays,
+                        holidays == 1 and "" or "s")
+                else
+                    text = ("%d coming"):format(n)
+                end
                 return { text = text }
             end,
         }

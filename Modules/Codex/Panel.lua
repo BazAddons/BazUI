@@ -902,12 +902,15 @@ function Panel:Refresh()
             elseif def.artSquare then
                 -- An icon is square and small; blown up to the card's
                 -- height against the right edge it reads as a mark on
-                -- the page rather than a stretched photograph.
-                local side = math.max(card:GetHeight() - 8, 48)
+                -- the page rather than a stretched photograph. Sized
+                -- below, once the card's own height is settled - a
+                -- pooled card is still whatever height it was last
+                -- time until then.
                 art.tex:SetTexture(artName)
                 art.tex:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-                art.tex:SetSize(side, side)
+                art.tex:ClearAllPoints()
                 art.tex:SetPoint("RIGHT", -6, 0)
+                card._artSquare = true
             else
                 art.tex:SetTexture(artName)
                 art.tex:SetTexCoord(0, 1, 0, 1)
@@ -957,7 +960,7 @@ function Panel:Refresh()
         end
 
         if collapsed then
-            card.count:SetText(def.collapsedHint or "")
+            card.count:SetText((not def.hideCount) and (def.collapsedHint or "") or "")
             card:SetHeight(headH + 8)
         else
             local inner = headH + 8
@@ -1003,13 +1006,21 @@ function Panel:Refresh()
                 end
             end
 
-            card.count:SetText(#rows > 0 and tostring(#rows) or "")
+            card.count:SetText((not def.hideCount) and #rows > 0 and tostring(#rows) or "")
             if owns then
                 card:SetHeight(inner + room + CARD_PAD)
                 Panel.UpdateScrollHint(card.scroll)
             else
                 card:SetHeight(used + CARD_PAD)
             end
+        end
+
+        -- Now that the card knows how tall it is, the square mark can
+        -- take its height.
+        if card._artSquare and card.artFrame then
+            local side = math.max((card:GetHeight() or 0) - 8, 48)
+            card.artFrame.tex:SetSize(side, side)
+            card._artSquare = nil
         end
 
         card:Show()

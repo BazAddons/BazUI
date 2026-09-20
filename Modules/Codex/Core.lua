@@ -211,6 +211,9 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         def.artFallback  = block.artFallback
         def.artAlpha     = block.artAlpha
         def.artSquare    = block.artSquare
+        -- A block whose rows are not a list of anything has no count
+        -- worth putting in the corner.
+        def.hideCount    = block.hideCount
         def.icon         = block.icon
         def.rowless      = block.rowless
         -- Which column it belongs in, where the block cares. Most do
