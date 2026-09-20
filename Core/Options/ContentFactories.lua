@@ -56,15 +56,24 @@ O.DIVIDER_COLOR   = { 0.40, 0.35, 0.20, 0.6 }
 -- Text preset registry
 ---------------------------------------------------------------------------
 
+-- The space between one line of a paragraph and the next.
+--
+-- The game's font strings set this to nought, which is right for a
+-- button's label and wrong for anything somebody reads a sentence of.
+-- Every wrapped block here - paragraphs, notes, list items, table cells -
+-- takes it, because a page where only some of the text breathes reads
+-- worse than one where none of it does.
+O.TEXT_LEADING = 4
+
 O.TEXT_PRESETS = {
     h1        = { font = "GameFontNormalLarge",     color = O.GOLD,     marginBot = 8,  accent = "underline" },
     h2        = { font = "GameFontHighlightMedium", color = O.GOLD,     marginBot = 4,  accent = "underline" },
     h3        = { font = "GameFontHighlight",       color = O.GOLD,     marginBot = 3 },
     h4        = { font = "GameFontHighlightSmall",  color = O.GOLD,     marginBot = 2 },
-    paragraph = { font = "GameFontHighlight",       color = O.TEXT_NORMAL, marginBot = 4, wrap = true },
-    lead      = { font = "GameFontHighlight",       color = O.WHITE,    marginBot = 6, wrap = true },
-    caption   = { font = "GameFontHighlightSmall",  color = O.DIM,      marginBot = 4, wrap = true, justify = "CENTER" },
-    quote     = { font = "GameFontHighlight",       color = O.DIM,      marginBot = 6, wrap = true, indent = 14, leftBar = true },
+    paragraph = { font = "GameFontHighlight",       color = O.TEXT_NORMAL, marginBot = 4, wrap = true, lead = true },
+    lead      = { font = "GameFontHighlight",       color = O.WHITE,    marginBot = 6, wrap = true, lead = true },
+    caption   = { font = "GameFontHighlightSmall",  color = O.DIM,      marginBot = 4, wrap = true, lead = true, justify = "CENTER" },
+    quote     = { font = "GameFontHighlight",       color = O.DIM,      marginBot = 6, wrap = true, lead = true, indent = 14, leftBar = true },
 }
 
 -- Air above a block, decided by what the block is.
@@ -111,6 +120,7 @@ local function CreateTextWidget(presetName)
         fs:SetText(opt.text or opt.name or "")
         fs:SetTextColor(unpack(preset.color))
         if preset.wrap then fs:SetWordWrap(true) end
+        if preset.lead then fs:SetSpacing(O.TEXT_LEADING) end
 
         local textH = fs:GetStringHeight()
         local totalH = textH + (preset.marginBot or 0)
@@ -167,7 +177,9 @@ local function RenderListItems(parent, items, opts, depth, contentWidth, startY)
     local indentPerLevel = 18
     local indent = depth * indentPerLevel
     local markerWidth = 18
-    local lineSpacing = 4
+    -- Between one item and the next, which has to beat the space between
+    -- two lines inside an item or a wrapped item reads as two items.
+    local lineSpacing = 9
 
     for i, item in ipairs(items or {}) do
         local isNestedList = (type(item) == "table" and item.items)
@@ -211,6 +223,7 @@ local function RenderListItems(parent, items, opts, depth, contentWidth, startY)
             body:SetText(text)
             body:SetTextColor(unpack(O.TEXT_NORMAL))
             body:SetWordWrap(true)
+            body:SetSpacing(O.TEXT_LEADING)
 
             local h = math.max(body:GetStringHeight(), markerFs:GetStringHeight())
             row:SetHeight(h)
@@ -484,6 +497,7 @@ local function CreateNoteWidget(parent, opt, contentWidth)
     body:SetText(opt.text or "")
     body:SetTextColor(unpack(O.TEXT_NORMAL))
     body:SetWordWrap(true)
+    body:SetSpacing(O.TEXT_LEADING)
 
     local h = labelFs:GetStringHeight() + body:GetStringHeight() + 24
     frame:SetHeight(h)
@@ -506,6 +520,7 @@ local function CreateCodeWidget(parent, opt, contentWidth)
     fs:SetText(opt.text or "")
     fs:SetTextColor(unpack(O.CODE_TEXT))
     fs:SetWordWrap(true)
+    fs:SetSpacing(O.TEXT_LEADING - 1)
 
     local h = fs:GetStringHeight() + 20
     frame:SetHeight(h)
@@ -548,8 +563,8 @@ end
 -- Column widths: opt.columnWidths as fractions of the content width;
 -- otherwise a two-column table gives the first (label) column 38% and
 -- wider tables split evenly.
-local MIN_ROW_H = 24
-local CELL_PAD  = 7
+local MIN_ROW_H = 26
+local CELL_PAD  = 9
 -- How far a cell's text sits in from the left of its column, and the gap
 -- kept clear on its right so a wrapped line never runs into the next
 -- column's first letter.
@@ -616,6 +631,7 @@ local function CreateTableWidget(parent, opt, contentWidth)
             fs:SetJustifyV("TOP")
             fs:SetWordWrap(true)
             fs:SetNonSpaceWrap(true)
+            fs:SetSpacing(O.TEXT_LEADING)
             fs:SetText(tostring(cell or ""))
             fs:SetTextColor(unpack(O.TEXT_NORMAL))
             cells[c] = fs
