@@ -5,33 +5,12 @@
 
 if not BazUI or not BazUI.RegisterUserGuide then return end
 
--- Screenshots live in Media/ as 16:9 PNGs. The client only finds a PNG
--- when the path carries the extension - without it SetTexture looks for
--- BLP and TGA and misses in silence.
-local IMG_W, IMG_H = 640, 360
-
-local function Image(file, caption)
-    return {
-        type = "image",
-        texture = "Interface\\AddOns\\BazUI\\Modules\\Bars\\Media\\" .. file .. ".png",
-        width = IMG_W,
-        height = IMG_H,
-        caption = caption,
-    }
-end
-
--- Image beside text. A width between 0 and 1 is read as a fraction of
--- the page; the height follows from 16:9.
-local function ImageRow(file, caption, blocks, side)
-    return {
-        type = "imageRow",
-        texture = "Interface\\AddOns\\BazUI\\Modules\\Bars\\Media\\" .. file .. ".png",
-        imageWidth = 0.5,
-        imageSide = side or "left",
-        caption = caption,
-        blocks = blocks,
-    }
-end
+-- No screenshots here. The ones this page used to carry were taken in
+-- the retail build BazBars grew up in, and showed a window that is not
+-- the window a Forever player has in front of them. A picture of the
+-- wrong interface is worse than none: it is the one part of a manual a
+-- reader trusts without reading. Words until there are shots of this
+-- client to put back.
 
 BazUI:RegisterUserGuide("Bars", {
     title = "Bars",
@@ -43,9 +22,8 @@ BazUI:RegisterUserGuide("Bars", {
             title = "What it does",
             blocks = {
                 { type = "paragraph", text = "These bars sit alongside the game's own rather than replacing them, and they do not use the 120 action slots the game gives you. The same spell can be on a default bar and on one of these at the same time; you never have to move something to make room." },
-                Image("one-bar", "One bar at its largest - 24 by 24 is 576 buttons. Nothing stops you having more than one."),
                 { type = "list", items = {
-                    "|cffffd700As many bars as you want|r, each up to 24 by 24.",
+                    "|cffffd700As many bars as you want|r, each up to 24 by 24 - 576 buttons on a single bar, if you want one that size.",
                     "|cffffd700The game's own look|r - the same art, cooldown sweeps, proc glows and range tinting.",
                     "|cffffd700Quick Keybind|r: hover a button, press a key, done.",
                     "|cffffd700Macro text per button|r, with #showtooltip.",
@@ -60,14 +38,12 @@ BazUI:RegisterUserGuide("Bars", {
         {
             title = "Making a bar",
             blocks = {
-                ImageRow("bar-create-button", "The Create button sits at the bottom of the Edit Mode panel.", {
-                    { type = "list", items = {
-                        "Open Edit Mode.",
-                        "Click |cffffd700Create|r at the bottom of the panel and pick an action bar. Every kind of thing BazUI can make is on that one menu.",
-                        "The new bar appears in the middle of the screen.",
-                        "Drag it where you want it, then click it to open its settings.",
-                    } },
-                }),
+                { type = "list", items = {
+                    "Open Edit Mode.",
+                    "Click |cffffd700Create|r at the bottom of the panel and pick an action bar. Every kind of thing BazUI can make is on that one menu.",
+                    "The new bar appears in the middle of the screen.",
+                    "Drag it where you want it, then click it to open its settings.",
+                } },
                 { type = "note", text = "|cffffd700/bb create|r does the same from chat, and takes a size: |cffffd700/bb create 6 2|r for six across and two down." },
                 { type = "paragraph", text = "Each bar is its own thing - its own size, position, arrangement and contents. Make as many as the screen will hold." },
             },
@@ -84,9 +60,7 @@ BazUI:RegisterUserGuide("Bars", {
                     { "Equipment sets", "From the character pane." },
                     { "Mounts", "On clients with a mount journal, including Random Favorite Mount." },
                 } },
-                ImageRow("item-tracking", "Item buttons count what is in your bags, live.", {
-                    { type = "paragraph", text = "An item button's count updates the moment your bags change - herbs and ore while you are farming, potions through a fight, reagents before you set out." },
-                }, "right"),
+                { type = "paragraph", text = "An item button's count updates the moment your bags change - herbs and ore while you are farming, potions through a fight, reagents before you set out." },
                 { type = "h3", text = "Taking things off" },
                 { type = "list", items = {
                     "|cffffd700Shift and drag|r a button off the bar.",
@@ -140,9 +114,7 @@ BazUI:RegisterUserGuide("Bars", {
         {
             title = "Setting a bar up",
             blocks = {
-                ImageRow("bar-settings-popup", "A bar's settings in Edit Mode. The selected bar is highlighted; everything about it is on this panel.", {
-                    { type = "paragraph", text = "In Edit Mode, click a bar to select it, then click again for its settings. Everything about that one bar is here - the same settings as the full options page, in reach of the bar you are looking at." },
-                }),
+                { type = "paragraph", text = "In Edit Mode, click a bar to select it, then click again for its settings. The selected bar is highlighted, and everything about that one bar is on the panel that opens - the same settings as the full options page, in reach of the bar you are looking at." },
                 { type = "h3", text = "Layout" },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Name", "What the bar is called in the lists and menus." },
@@ -183,23 +155,19 @@ BazUI:RegisterUserGuide("Bars", {
                     { "Duplicate This Bar", "A copy with every button on it." },
                     { "Delete This Bar", "Gone, after it asks." },
                 } },
-                ImageRow("bar-editor", "The Bar Options page - the same settings with every bar in one place.", {
-                    { type = "paragraph", text = "|cffffd700Options > AddOns > BazUI > Bars > Bar Options|r is the same settings laid out fully, with a dropdown at the top to pick a bar and New, Duplicate and Delete beside it." },
-                }, "right"),
+                { type = "paragraph", text = "|cffffd700Options > AddOns > BazUI > Bars > Bar Options|r is the same settings laid out fully, with every bar in one place: a dropdown at the top to pick one, and New, Duplicate and Delete beside it." },
             },
         },
 
         {
             title = "Keybinds",
             blocks = {
-                ImageRow("quick-keybinding", "Quick Keybind Mode: hover a button, press the key you want.", {
-                    { type = "paragraph", text = "|cffffd700Quick Keybind Mode|r is on a bar's Actions list. Turn it on, hover a button, and press the key you want on it. Escape clears a binding." },
-                    { type = "list", items = {
-                        "Keys and modifier combinations - Shift+E, Ctrl+1, and so on.",
-                        "Middle mouse, mouse 4 and mouse 5.",
-                        "Left and right clicks are reserved; they press the button.",
-                    } },
-                }),
+                { type = "paragraph", text = "|cffffd700Quick Keybind Mode|r is on a bar's Actions list. Turn it on, hover a button, and press the key you want on it. Escape clears a binding." },
+                { type = "list", items = {
+                    "Keys and modifier combinations - Shift+E, Ctrl+1, and so on.",
+                    "Middle mouse, mouse 4 and mouse 5.",
+                    "Left and right clicks are reserved; they press the button.",
+                } },
                 { type = "note", text = "If the key you press is already bound to something of the game's, that binding is taken and you are told in chat which one. Clearing the BazUI binding later gives it back." },
                 { type = "paragraph", text = "|cffffd700Show keybind text|r on the General page decides whether the key appears in the corner of the button." },
             },
