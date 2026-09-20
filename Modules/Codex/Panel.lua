@@ -984,6 +984,33 @@ local function BuildHero(parent)
     hero.section:SetJustifyH("RIGHT")
     hero.section:SetTextColor(unpack(Theme.colors.gold))
 
+    -- The game's calendar has no home in this interface, so the codex
+    -- gives it one: a button on the header, beside the page's name.
+    local cal = CreateFrame("Button", nil, hero)
+    cal:SetSize(26, 26)
+    cal:SetPoint("RIGHT", hero.section, "LEFT", -14, 0)
+    cal.icon = cal:CreateTexture(nil, "ARTWORK")
+    cal.icon:SetAllPoints()
+    cal.icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
+    cal.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    cal.icon:SetAlpha(0.7)
+    cal:SetScript("OnEnter", function(self)
+        self.icon:SetAlpha(1)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("Calendar", unpack(Theme.colors.text))
+        GameTooltip:AddLine("Open the game's calendar.", 0.9, 0.9, 0.9, true)
+        GameTooltip:Show()
+    end)
+    cal:SetScript("OnLeave", function(self)
+        self.icon:SetAlpha(0.7)
+        GameTooltip:Hide()
+    end)
+    cal:SetScript("OnClick", function()
+        if Codex.OpenCalendar then Codex.OpenCalendar() end
+    end)
+    cal:SetShown(_G.ToggleCalendar ~= nil)
+    hero.calendar = cal
+
     return hero
 end
 

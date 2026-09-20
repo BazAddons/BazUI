@@ -322,5 +322,6 @@ Modules\Codex\Sources\Currencies.lua
 Modules\Codex\Sources\Professions.lua
 Modules\Codex\Sources\Instances.lua
 Modules\Codex\Sources\Legacy.lua
+Modules\Codex\Sources\Events.lua
 Modules\Codex\Settings.lua
 Modules\Codex\UserGuide.lua
