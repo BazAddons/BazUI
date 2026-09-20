@@ -7,9 +7,9 @@ if not BazUI or not BazUI.RegisterUserGuide then return end
 
 BazUI:RegisterUserGuide("UnitFrames", {
     title = "Unit Frames",
-    intro = "Health, power, casting, experience and reputation, as bars you "
-        .. "make yourself and put where you want them. There are no portraits, "
-        .. "and that is what lets any bar dock to any other.",
+    intro = "Health, power, casting, timers, experience and reputation, as "
+        .. "bars you make yourself and put where you want them. A portrait is "
+        .. "a bar too, which is what lets any of them dock to any other.",
 
     pages = {
         {
@@ -17,6 +17,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
             blocks = {
                 { type = "paragraph", text = "A new profile starts with five bars: your health, power and casting stacked on the left, and your target's health and power on the right. Nothing else exists until you make it. The game's own player frame, target frame and casting bar are hidden to make room - you can have any of them back, one switch each." },
                 { type = "paragraph", text = "A bar is one reading of one unit. That is the whole model, and everything else follows from it: a health bar and a power bar are two bars that happen to sit together, not one frame with two parts. Because they are separate, anything can dock to anything - a power bar under a health bar, a cast bar under that, the whole stack under an action bar." },
+                { type = "paragraph", text = "Two of them read nothing at all and are bars in every other sense. A |cffffd700portrait|r is the unit's face, and it docks to the left of a health bar the way the game's own frames are arranged. A |cffffd700blank|r bar shows no value and exists to carry a name and the little marks - the crown, the raid icon, the combat swords - under the bars they belong to." },
                 { type = "note", text = "|cffffd700Open it with|r /bazframes, or Options > AddOns > BazUI > Unit Frames." },
             },
         },
@@ -28,10 +29,20 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "list", items = {
                     "|cffffd700The Bars page.|r Options > AddOns > BazUI > Unit Frames > Bars, then New bar. It arrives as a player health bar in the middle of the screen; change what it reads afterwards.",
                     "|cffffd700Edit Mode.|r Right-click an empty patch of screen in Edit Mode and pick Bars and readouts. You choose the reading and the unit up front, so the bar arrives as the thing you wanted.",
-                    "|cffffd700Party frames (all four).|r In that same Edit Mode menu. Makes eight bars in one go - health and power for each of the four party slots, power docked under health, each pair docked under the last. The shape is the same every time and nobody wants to place eight bars to find out whether they like it.",
+                    "|cffffd700Party frames (all four).|r In that same Edit Mode menu. Makes eight bars in one go - health and power for each of the four party slots, power docked under health. Each member is a stack of their own, placed under the last rather than chained to it, so deleting one member's bars leaves the other three alone.",
                 } },
                 { type = "h3", text = "Reads / Of" },
-                { type = "paragraph", text = "|cffffd700Reads|r is what the bar shows: Health, Power, Casting, XP or Reputation. |cffffd700Of|r is whose - Player, Target, Pet, any of Party 1 to 4, or any of their pets. XP and Reputation are always yours, so they have no Of." },
+                { type = "paragraph", text = "|cffffd700Reads|r is what the bar shows. |cffffd700Of|r is whose - Player, Target, Pet, any of Party 1 to 4, or any of their pets. The ones that are always about you have no Of." },
+                { type = "table", columns = { "Reads", "What it shows", "Asks whose?" }, rows = {
+                    { "Health", "The unit's health.", "Yes" },
+                    { "Power", "Mana, rage, energy - whatever that unit runs on.", "Yes" },
+                    { "Casting", "What the unit is casting, and how long is left. Invisible between casts.", "Yes" },
+                    { "Mirror", "Breath, fatigue and feign death. See its own page.", "No" },
+                    { "Portrait", "The unit's face, flat or as a 3D model.", "Yes" },
+                    { "Blank", "No value at all. A name and the marks.", "Yes" },
+                    { "XP", "Your experience, with rested drawn beyond the fill.", "No" },
+                    { "Reputation", "Whichever faction you are watching.", "No" },
+                } },
                 { type = "h3", text = "Copying a whole stack" },
                 { type = "paragraph", text = "Set up Party 1 the way you want it, then in Edit Mode select its bottom bar and use |cffffd700Copy this and everything under it|r. Pick which unit the copy should read, and you get the same arrangement pointed at somebody else. Anything that was meant to dock and came out loose is named in chat, because on screen a broken copy looks exactly like a working one." },
                 { type = "paragraph", text = "|cffffd700Duplicate|r, in the same place, copies one bar rather than a stack." },
@@ -42,7 +53,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
             title = "Docking",
             blocks = {
                 { type = "paragraph", text = "A floating bar stays where you put it. A docked bar attaches to something else and takes its size from it, which is how a row of bars stays a row when you resize the thing above it. Above or below, a bar takes its host's width; to the left or right, its height." },
-                { type = "paragraph", text = "Drag a bar near the edge of an action bar or another bar in Edit Mode and it docks there. Or set it on the bar's page:" },
+                { type = "paragraph", text = "Drag a bar near the edge of an action bar or another bar in Edit Mode and it docks there. Or set it by hand, on the panel that opens when you click the bar in Edit Mode:" },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Dock to", "Floating, or the name of an action bar or another bar." },
                     { "On the", "Which side of its host: above, below, left of or right of it." },
@@ -50,7 +61,10 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "Aligned", "Which end of its host it sits at: left, center or right above and below, top, middle or bottom to the side. Only asked when it is not taking the whole of it." },
                     { "Space beside", "Pixels between two bars sharing a line. One number for the line, so setting it on either of the two is enough." },
                     { "Gap", "Pixels between this bar and the one it is docked to. Each bar owns the space above it, so a chain is spaced by setting each bar in turn." },
+                    { "Counts toward stack width", "Off, this bar is left out when something docking above or below the stack measures it - so a portrait beside a health bar does not make the power bar underneath any wider." },
+                    { "Counts toward stack height", "The same sideways, so a casting bar on top of an action bar does not make a health bar beside it any taller." },
                 } },
+                { type = "note", text = "|cffffd700The Bars page is the shorter list.|r Options > AddOns > BazUI > Unit Frames > Bars can dock a bar above or below its host and set how much of the width it takes. All four sides, the sideways measurements and the alignments that go with them are on the Edit Mode panel, where you can see what you are doing." },
                 { type = "note", text = "A health bar aligned left and a power bar aligned right, both taking half the width of the same action bar, is the arrangement most people end up with. It is two bars, not a special mode." },
                 { type = "note", text = "The same trick sideways: dock your health to the left of a two-row action bar and your target's to the right, both taking half of it, and each pair fills the height of the bar it is beside." },
                 { type = "paragraph", text = "Delete a bar and anything docked to it goes back to floating rather than disappearing with it." },
@@ -63,6 +77,9 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "h3", text = "Width and height" },
                 { type = "paragraph", text = "|cffffd700Height|r is the height of the fill - the colored part. The border is added around it, so the bar on screen comes out taller than this number by however thick your border is. Set a 20 and you get 20 pixels of color, whatever the skin is doing." },
                 { type = "paragraph", text = "|cffffd700Width|r only appears on a bar that is not docked, or one set to keep its own width. A docked bar is measured from its host." },
+                { type = "note", text = "The Edit Mode panel allows a much taller bar than the Bars page does, which matters for the sideways arrangements above: a bar standing beside a two-row action bar needs the height of both rows. Set that one in Edit Mode." },
+                { type = "h3", text = "Nudging it" },
+                { type = "paragraph", text = "The Edit Mode panel has arrow controls that move a bar a pixel at a time. A docked bar keeps the nudge as an offset from where its host put it, so it survives the host being resized." },
                 { type = "h3", text = "Fills from" },
                 { type = "paragraph", text = "Which end the bar empties towards. Two bars sharing a line often want opposite ends so they drain towards each other." },
                 { type = "h3", text = "Text" },
@@ -71,6 +88,17 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "Text says", "Everything, Current / Max, Current, Percent, Name, Name and percent, Level, or Name and level. Everything spells out the name, the values and the exact percent." },
                     { "When hovered", "A second wording, used while your cursor is on the bar. Same as usual leaves it alone." },
                     { "Tenth marks", "Divider lines across the fill. Ten of them marks the tenths of a level, which is what an experience bar usually wants." },
+                } },
+                { type = "note", text = "|cffffd700On WoW: Forever, a percentage is not always available.|r This client hands an addon your health and mana as sealed numbers - they can be put in a bar, but not divided into a percentage. Where that happens, any wording asking for a percent falls back to the pair of numbers, which is the nearest honest thing. Name and percent is the wording every new bar starts on, so this is worth knowing before you go looking for a setting that is wrong." },
+                { type = "h3", text = "How the writing looks" },
+                { type = "paragraph", text = "On the Edit Mode panel, under Text:" },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Size text to the bar", "The text grows and shrinks with the bar. Off, it stays at the size below however tall the bar is." },
+                    { "Text size", "6 to 36, when the text is not sizing itself." },
+                    { "Edge", "The outline drawn around each letter, which is what keeps writing readable over a bar that changes colour under it." },
+                    { "Drop shadow", "A soft shadow behind the text. Reads gentler than an outline, and the two can be worn together." },
+                    { "Text colour", "Whatever you like. The default follows the theme." },
+                    { "Sits", "Which end of the bar the writing reads from." },
                 } },
                 { type = "h3", text = "Experience bars" },
                 { type = "paragraph", text = "|cffffd700Hide at maximum level|r is on by default: an experience bar has nothing to show once you stop earning any. Rested experience is drawn as a second, lighter segment beyond the fill." },
@@ -89,6 +117,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "Icon in front of the name", "A small mark before the name." },
                     { "Rank written beside the name", "Rare, Elite and so on, spelled out." },
                     { "Show the unit's level", "The level beside the name." },
+                    { "Resting mark", "The game's animated zZ on your own health bar while you are somewhere that rests you. This is the answer for every player health bar that has not been told otherwise; each bar has its own switch under Visibility in Edit Mode." },
                     { "Clicking a bar opens what it shows", "Reputation opens the reputation panel, experience opens the character panel." },
                     { "Fade units out of range", "A party member you cannot reach fades, so you know before you start casting." },
                     { "Faded opacity", "How far they fade. Only shown when fading is on." },
@@ -108,7 +137,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
         {
             title = "Rares, elites and levels",
             blocks = {
-                { type = "paragraph", text = "The game sorts its NPCs into ranks and says which is which by putting a dragon around the portrait. |cffffd700These bars have no portraits|r - that is the thing that lets any bar dock to any other - so the rank has to be marked on the bar itself. There are three ways, each on its own switch, and you can have any of them, all of them, or none." },
+                { type = "paragraph", text = "The game sorts its NPCs into ranks and says which is which by putting a dragon around the portrait. A bar has no dragon to hang anything on, and a portrait here is its own separate bar that a unit may not even have, so the rank is marked on the bar itself. There are three ways, each on its own switch, and you can have any of them, all of them, or none." },
                 { type = "paragraph", text = "|cffffd700Ordinary mobs are never marked|r, whichever you pick. Marking everything would be the same as marking nothing." },
                 { type = "h3", text = "A glow around the bar" },
                 { type = "paragraph", text = "The default. A soft halo around the health bar, colored by rank, which costs the bar's text nothing and reads without being read. It does not pulse: a pulse says something has just happened, and a mob being rare is not news, it is a fact about the mob." },
@@ -144,6 +173,52 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "note", text = "|cffffd700??|r is the game declining to put a number on it, which it does for anything far enough above you that the number stopped being the point." },
                 { type = "paragraph", text = "The words appear in any wording that shows a name - Name, Name and percent, Everything. The wordings that are deliberately just a number stay just a number. The icon leads whatever the bar says, and the glow does not care which wording you use." },
                 { type = "paragraph", text = "Nameplates say the same thing in the same words, worked out in the same place, so a plate and a target bar looking at one mob can never disagree about what it is. Plates say it in words only: a glow around something that small is a smudge, which is the same reason your target's plate is marked with a border rather than a glow." },
+            },
+        },
+
+        {
+            title = "The little marks",
+            blocks = {
+                { type = "paragraph", text = "Five small signs the game normally draws on its own portrait frames. Each one is a switch on a bar's Edit Mode panel, under Marks, so you decide which bar wears which - and with two health bars on screen you can have a mark on one of them and not the other." },
+                { type = "table", columns = { "Mark", "It means" }, rows = {
+                    { "Resting", "The zZ, while you are in an inn or a city." },
+                    { "In combat", "The crossed swords, while the unit is fighting." },
+                    { "Group leader", "The crown, when this unit leads the group." },
+                    { "Raid marker", "The skull, cross, square and the rest, when one is on this unit." },
+                    { "Away", "Shown while the unit is marked away or busy." },
+                } },
+                { type = "paragraph", text = "Health bars and blank bars can wear them. A blank bar exists for exactly this: a strip under a stack holding the name and the marks, with no value on it competing for the space." },
+            },
+        },
+
+        {
+            title = "Portraits",
+            blocks = {
+                { type = "paragraph", text = "A portrait is a bar with a face in it instead of a fill. It docks like anything else, so the usual arrangement is a portrait to the left of a health bar with the power bar under both." },
+                { type = "paragraph", text = "It arrives square, 40 by 40, because a face stretched the width of a health bar is a smeared face and nobody wants to find that out by making one." },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "3D portrait", "The unit's model, framed head and shoulders the way the game's own portraits are, instead of the flat picture." },
+                    { "Keep square", "Whichever side the dock sets, the other follows, so the portrait is never stretched. Floating, the height is its size." },
+                } },
+                { type = "note", text = "A portrait says nothing by default. Whose face it is, is the picture." },
+            },
+        },
+
+        {
+            title = "Mirror bars",
+            blocks = {
+                { type = "note", style = "tip", text = "|cffffd700New to the term?|r A mirror timer is the game's name for the bars it floats at the top of the screen when something is counting down against you: your |cffffd700breath|r underwater, |cffffd700fatigue|r when you swim too far out to sea, and the timer while you are |cffffd700feigning death|r. They are called mirror timers because the game and the server keep the same count on both sides." },
+                { type = "paragraph", text = "The game draws all of them in the casting bar's art, at the top of the screen, where nothing else of yours is. A mirror bar is the same information as one of your own bars: it docks where you want, takes your skin, and colours itself by which timer is running." },
+                { type = "table", columns = { "Timer", "Colour" }, rows = {
+                    { "Breath", "Blue" },
+                    { "Fatigue", "Orange" },
+                    { "Feign death", "Grey" },
+                } },
+                { type = "paragraph", text = "The bar names the timer in words as well, and counts down beside it. With more than one running it shows the one that will kill you first, so drowning beats being tired." },
+                { type = "h3", text = "Making one" },
+                { type = "paragraph", text = "Edit Mode, |cffffd700Create|r, |cffffd700Bars and readouts|r, |cffffd700Mirror bar|r. It needs no unit: there is only ever one set of these and they are always yours." },
+                { type = "note", text = "Making your first one hides the game's own timer bars, and says so in chat. |cffffd700Hide the game's timer bars|r on the General Settings page is the switch, and it is left alone until then - with no bar of your own and the game's hidden, you would drown with nothing to tell you." },
+                { type = "paragraph", text = "It is invisible until something is counting, like a casting bar. It still holds its place in a stack, so nothing under it jumps the moment you go underwater. To see it while you are arranging things, turn on |cffffd700Preview units that are not there|r - a mirror bar joins the preview with a breath timer part run." },
             },
         },
 
@@ -187,7 +262,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
         {
             title = "Blizzard's frames",
             blocks = {
-                { type = "paragraph", text = "One switch per frame, on the General Settings page, and each one is worded as what ticking it does: ticked means hidden. All six start ticked, because BazUI is meant to be the interface rather than sit on top of the game's - untick any of them to have the game's frame back. Nothing replaces these but the bars you make, so ticking one hides the game's frame whether or not you have built something to take its place." },
+                { type = "paragraph", text = "One switch per frame, on the General Settings page, and each one is worded as what ticking it does: ticked means hidden. Most start ticked, because BazUI is meant to be the interface rather than sit on top of the game's - untick any of them to have the game's frame back. Nothing replaces these but the bars you make, so ticking one hides the game's frame whether or not you have built something to take its place." },
                 { type = "table", columns = { "Frame", "Hidden by default?" }, rows = {
                     { "Player frame", "Yes - the starter bars replace it." },
                     { "Target frame", "Yes - the starter bars replace it." },
@@ -195,6 +270,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "Party frames", "Yes - so make party bars before you group, or a group will have nothing showing it at all. Untick this to get the game's back." },
                     { "Pet casting bar", "Yes." },
                     { "Raid manager tab", "Yes. The tab at the left edge that slides out with target markers, group filters and ready check." },
+                    { "The game's timer bars", "No, to begin with. Breath, fatigue and feign death. Making a mirror bar ticks this for you; see the Mirror bars page." },
                 } },
                 { type = "note", text = "Hiding a frame is protected by the game, so a switch thrown during a fight is answered when the fight ends. Nothing is lost; it just waits." },
             },
@@ -220,8 +296,11 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "table", columns = { "Command", "What it does" }, rows = {
                     { "/bazframes", "Opens this module's settings. /bazplayer does the same." },
                     { "/bazframes preview", "Turns the placeholder bars on or off." },
-                    { "/bazframes stacks", "Prints every bar and what it is docked to. Worth running when a layout is not coming out the way you expect." },
+                    { "/bazframes stacks", "Prints every bar and every aura row with what it is docked to. Worth running when a layout is not coming out the way you expect." },
+                    { "/bazframes paint", "Prints why a bar is drawing the way it is: its colour, its value and its texture, which are the three ways a bar ends up black." },
+                    { "/bazframes stock", "Prints what happened to each of the game's own frames the switches above cover, which answers a switch that reads as on with the frame still on screen." },
                     { "/bazframes reset", "Deletes every bar and starts again with the usual five. Asks first." },
+                    { "/bazframes settings", "Opens the settings page. Every BazUI command takes this, and |cffffd700help|r." },
                 } },
                 { type = "note", text = "Aura rows are a separate module: /bazauras reset does those." },
             },

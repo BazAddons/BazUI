@@ -39,6 +39,22 @@ local previewing = false
 -- Offline is here because a placeholder bar wears it before there is a
 -- unit to ask about. The rest of the unit colours live in Core/Units.lua.
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
+
+-- The game's mirror timers, by the name it calls each one. Blizzard
+-- draws all of them in the casting bar's own art, which is fine until
+-- you are drowning and fatigued at once and the two bars look alike.
+-- A colour each, and the bar says which it is in words as well.
+local MIRROR_COLORS = {
+    BREATH     = { 0.25, 0.55, 0.95, 1 },
+    EXHAUSTION = { 0.95, 0.55, 0.15, 1 },
+    FEIGNDEATH = { 0.60, 0.60, 0.65, 1 },
+    DEATH      = { 0.80, 0.20, 0.20, 1 },
+}
+local MIRROR_FALLBACK_COLOR = { 0.40, 0.60, 0.90, 1 }
+
+-- Which one a single bar shows when more than one is running. Drowning
+-- kills you sooner than tiredness does.
+local MIRROR_ORDER = { "BREATH", "DEATH", "EXHAUSTION", "FEIGNDEATH" }
 local CHANNEL_COLOR = { 0.45, 0.68, 0.85, 1 }
 local FAILED_COLOR  = { 0.85, 0.30, 0.30, 1 }
 
@@ -47,6 +63,9 @@ UnitBars.KINDS = {
     health   = "Health",
     power    = "Power",
     cast     = "Casting",
+    -- The game's own name for the breath, fatigue and feign death bars,
+    -- and the one most players already know them by.
+    mirror   = "Mirror",
     xp       = "XP",
     rep      = "Reputation",
     -- Two that show no value at all. They are bars in every other sense:
@@ -163,7 +182,8 @@ function UnitBars:Add(kind, unit)
         -- name on it is a puzzle.
         textFormat = (kind == "blank") and "name"
             or (kind == "xp" or kind == "rep") and "detailed"
-            or ((kind == "power" or kind == "cast") and "current" or "namePercent"),
+            or ((kind == "power" or kind == "cast" or kind == "mirror")
+                and "current" or "namePercent"),
         ticks      = (kind == "xp") and 10 or 0,
         dock       = { host = "float", edge = "BOTTOM" },
         position   = { point = "CENTER", relPoint = "CENTER", x = 0, y = -160 },
@@ -171,6 +191,19 @@ function UnitBars:Add(kind, unit)
     def.name = self:DefaultName(kind, unit)
     defs[#defs + 1] = def
     self:Save()
+
+    -- Making a mirror bar is asking for the game's own breath and
+    -- fatigue bars to be replaced, so the first one takes them down.
+    -- Only where the switch has never been touched: somebody who has
+    -- turned it on or off has said what they want, and this is not a
+    -- second opinion.
+    if kind == "mirror" and addon:GetSetting("hideMirrorTimers") == nil then
+        addon:SetSetting("hideMirrorTimers", true)
+        self:SuppressStock()
+        addon:Print("The game's own timer bars are hidden now. "
+            .. "Blizzard's Frames has the switch.")
+    end
+
     self:Build(def)
     -- A bar made while absent units are being previewed joins the
     -- preview now rather than at the next time something turns it on.
@@ -359,6 +392,17 @@ UnitBars.STOCK = {
         desc    = "The casting bar for your pet.",
         default = true,
         frames = { "PetCastingBarFrame" },
+    },
+    {
+        key     = "hideMirrorTimers",
+        label   = "Hide the game's timer bars",
+        desc    = "The breath, fatigue and feign death bars the game floats at the top of the screen. Left alone until you make a mirror bar of your own - with neither of them you would drown without warning - and turned on for you the first time you make one.",
+        default = false,
+        -- The container on clients that pool them, and the three old
+        -- globals for the ones that do not. A name that is not there
+        -- costs nothing.
+        frames  = { "MirrorTimerContainer",
+                    "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" },
     },
     {
         key     = "hideRaidManager",
@@ -1344,6 +1388,105 @@ local function CastName(display, name, channel)
     return text
 end
 
+---------------------------------------------------------------------------
+-- Mirror timers
+--
+-- Breath, fatigue and feign death. The game hands them over as one
+-- event each, in milliseconds, and keeps the count itself - we ask it
+-- how much is left rather than counting down ourselves, so a timer
+-- that pauses (a breath bar does, the moment your head is above water)
+-- stays where the game left it without any arithmetic of our own.
+--
+-- What is running is kept here rather than on the bar, because it is
+-- one fact about the player and any number of bars may be showing it.
+---------------------------------------------------------------------------
+
+local mirrorActive = {}
+
+local function MirrorClock(seconds)
+    if seconds >= 60 then
+        return ("%d:%02d"):format(seconds / 60, seconds % 60)
+    end
+    return ("%d"):format(seconds)
+end
+
+-- The timer a bar should be showing, or nil when there is nothing to
+-- show. Priority order, so drowning beats being tired.
+local function MirrorShowing()
+    for _, name in ipairs(MIRROR_ORDER) do
+        if mirrorActive[name] then return name, mirrorActive[name] end
+    end
+    -- Anything the client has that this list does not.
+    return next(mirrorActive)
+end
+
+local function MirrorTick(frame)
+    local name, state = MirrorShowing()
+    if not (name and state) then
+        if frame._mirror then
+            frame._mirror = nil
+            BazUI.Dock:SetShown(frame, false)
+        end
+        return
+    end
+
+    -- Asked every frame, the same way the game asks itself. A paused
+    -- timer simply keeps answering the same number.
+    local left = BazUI.Secret.Read(function()
+        local ms = _G.GetMirrorTimerProgress and _G.GetMirrorTimerProgress(name)
+        return (type(ms) == "number") and ms or nil
+    end, nil)
+    if not left then left = state.value end
+    if not left or left < 0 then left = 0 end
+
+    if frame._mirror ~= name then
+        frame._mirror = name
+        frame:SetFillColor(MIRROR_COLORS[name] or MIRROR_FALLBACK_COLOR)
+        frame:SetAlpha(1)
+        BazUI.Dock:SetShown(frame, true)
+    end
+
+    local span = state.max or 0
+    frame:SetValue(span > 0 and (left / span) or 0)
+    frame:SetFormattedText("%s  %s", state.label or "Timer",
+        MirrorClock(left / 1000))
+end
+
+-- One event for all of them, so the bars themselves hold no state.
+function UnitBars:MirrorStart(name, value, maxvalue, paused, label)
+    if not name or name == "UNKNOWN" then return end
+    mirrorActive[name] = {
+        value = value, max = maxvalue, label = label or name,
+        paused = paused and true or false,
+    }
+end
+
+function UnitBars:MirrorStop(name)
+    if not name then return end
+    mirrorActive[name] = nil
+end
+
+function UnitBars:MirrorPause(name, paused)
+    local state = name and mirrorActive[name]
+    if state then state.paused = paused and true or false end
+end
+
+-- What the game is already counting, which is how a bar made mid-dive,
+-- or one arriving with a reload, finds the breath timer already running.
+function UnitBars:MirrorSync()
+    if not _G.GetMirrorTimerInfo then return end
+    for index = 1, 3 do
+        BazUI.Secret.Read(function()
+            local name, value, maxvalue, _, paused, label =
+                _G.GetMirrorTimerInfo(index)
+            if name and name ~= "UNKNOWN" then
+                UnitBars:MirrorStart(name, value, maxvalue, paused, label)
+            end
+            return true
+        end, nil)
+    end
+end
+
 function UnitBars:SyncCast(bar)
     if bar.def.kind ~= "cast" then return end
     local unit, frame = bar.def.unit, bar.frame
@@ -1597,6 +1740,9 @@ function UnitBars:Build(def)
     if def.kind == "cast" then
         frame:SetScript("OnUpdate", function(self) CastTick(self) end)
         BazUI.Dock:SetShown(frame, false)
+    elseif def.kind == "mirror" then
+        frame:SetScript("OnUpdate", function(self) MirrorTick(self) end)
+        BazUI.Dock:SetShown(frame, false)
     end
 
     -- Every bar is somewhere another bar can dock to.
@@ -1736,7 +1882,10 @@ function UnitBars:Apply(bar)
         order   = def.id,
         gap     = def.gap,
         offset  = dock.offset,
-        reserve = def.kind == "cast",
+        -- A bar that is invisible most of the time still holds its
+        -- place in the stack, or everything under it jumps the moment
+        -- you go underwater.
+        reserve = def.kind == "cast" or def.kind == "mirror",
     })
 
     -- A docked bar is placed by its host; the saved position is only for
@@ -2314,6 +2463,17 @@ function UnitBars:SetPreview(on)
                 bar.frame:SetFillColor(CAST_COLOR)
                 bar.frame:SetText("Casting  1.4")
             end
+
+        -- And a mirror bar is invisible until you are drowning, which
+        -- is not a state to have to get into to arrange your interface.
+        elseif def.kind == "mirror" and not bar.frame._mirror then
+            BazUI.Dock:SetShown(bar.frame, previewing)
+            if previewing then
+                bar.frame:SetAlpha(1)
+                bar.frame:SetValue(0.62)
+                bar.frame:SetFillColor(MIRROR_COLORS.BREATH)
+                bar.frame:SetText("Breath  0:42")
+            end
         end
     end
 end
@@ -2478,6 +2638,33 @@ function UnitBars:WatchAll()
 
     self:WatchRange()
 
+    -- The mirror timers are one player fact rather than a unit's, so
+    -- they get their own watcher rather than a place in the unit list.
+    if not watchers._mirror then
+        watchers._mirror = CreateFrame("Frame")
+        for _, event in ipairs({
+            "MIRROR_TIMER_START", "MIRROR_TIMER_STOP", "MIRROR_TIMER_PAUSE",
+            "PLAYER_ENTERING_WORLD",
+        }) do
+            pcall(watchers._mirror.RegisterEvent, watchers._mirror, event)
+        end
+        watchers._mirror:SetScript("OnEvent", function(_, event, ...)
+            if event == "MIRROR_TIMER_START" then
+                local name, value, maxvalue, _, paused, label = ...
+                UnitBars:MirrorStart(name, value, maxvalue, paused, label)
+            elseif event == "MIRROR_TIMER_STOP" then
+                UnitBars:MirrorStop(...)
+            elseif event == "MIRROR_TIMER_PAUSE" then
+                local name, paused = ...
+                UnitBars:MirrorPause(name, paused)
+            else
+                wipe(mirrorActive)
+                UnitBars:MirrorSync()
+            end
+        end)
+        UnitBars:MirrorSync()
+    end
+
     if not watchers._player then
         watchers._player = CreateFrame("Frame")
         for _, event in ipairs({
@@ -2524,7 +2711,7 @@ end
 -- rest are about you and need no such question.
 ---------------------------------------------------------------------------
 
-local KIND_ORDER = { "health", "power", "cast", "portrait", "blank", "xp", "rep" }
+local KIND_ORDER = { "health", "power", "cast", "mirror", "portrait", "blank", "xp", "rep" }
 local UNIT_ORDER = {
     "player", "target", "pet",
     "party1", "party2", "party3", "party4",

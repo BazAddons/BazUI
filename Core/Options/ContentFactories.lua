@@ -67,6 +67,36 @@ O.TEXT_PRESETS = {
     quote     = { font = "GameFontHighlight",       color = O.DIM,      marginBot = 6, wrap = true, indent = 14, leftBar = true },
 }
 
+-- Air above a block, decided by what the block is.
+--
+-- Blocks used to stack with the same two pixels between every pair of
+-- them, which is the gap a settings page wants between two rows of
+-- controls and nothing like the gap a page of prose wants before a
+-- heading. Reading works on grouping: a heading belongs to what comes
+-- after it, so the space above it has to be clearly larger than the
+-- space below it, or the eye cannot tell which paragraph the heading
+-- is introducing.
+--
+-- Nothing is added above the first block on a page, which already has
+-- the page's own top padding.
+O.BLOCK_MARGIN_TOP = {
+    h1        = 18,
+    h2        = 14,
+    h3        = 11,
+    h4        = 9,
+    paragraph = 5,
+    lead      = 5,
+    caption   = 3,
+    quote     = 9,
+    list      = 6,
+    note      = 10,
+    code      = 9,
+    table     = 10,
+    image     = 10,
+    imageRow  = 10,
+    collapsible = 10,
+}
+
 local function CreateTextWidget(presetName)
     return function(parent, opt, contentWidth)
         local preset = O.TEXT_PRESETS[presetName]
@@ -415,6 +445,9 @@ end
 -- Note (callout) block
 ---------------------------------------------------------------------------
 
+-- The gap between the box edge and its text, on every side.
+local NOTE_INSET = 14
+
 local function CreateNoteWidget(parent, opt, contentWidth)
     local style = opt.style or "info"
     local bgColor = O.NOTE_BG[style] or O.NOTE_BG.info
@@ -434,20 +467,25 @@ local function CreateNoteWidget(parent, opt, contentWidth)
 
     -- Label (e.g. "TIP", "WARNING")
     local labelFs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    labelFs:SetPoint("TOPLEFT", 14, -8)
+    labelFs:SetPoint("TOPLEFT", NOTE_INSET, -9)
     labelFs:SetText(label)
     labelFs:SetTextColor(borderColor[1], borderColor[2], borderColor[3], 1)
 
     -- Body text
+    --
+    -- The inset is the same on both sides. It used to be 14 on the left
+    -- and whatever was left over on the right, which came to 8, and a
+    -- box with uneven margins reads as a box whose text is falling out
+    -- of it.
     local body = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    body:SetPoint("TOPLEFT", labelFs, "BOTTOMLEFT", 0, -2)
-    body:SetWidth(contentWidth - 22)
+    body:SetPoint("TOPLEFT", labelFs, "BOTTOMLEFT", 0, -4)
+    body:SetWidth(contentWidth - NOTE_INSET * 2)
     body:SetJustifyH("LEFT")
     body:SetText(opt.text or "")
     body:SetTextColor(unpack(O.TEXT_NORMAL))
     body:SetWordWrap(true)
 
-    local h = labelFs:GetStringHeight() + body:GetStringHeight() + 18
+    local h = labelFs:GetStringHeight() + body:GetStringHeight() + 24
     frame:SetHeight(h)
     return frame, h
 end
@@ -462,14 +500,14 @@ local function CreateCodeWidget(parent, opt, contentWidth)
     BazUI.Skin.Theme.ApplyFlatPanel(frame, O.CODE_BG, O.CODE_BORDER)
 
     local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    fs:SetPoint("TOPLEFT", 10, -8)
-    fs:SetWidth(contentWidth - 20)
+    fs:SetPoint("TOPLEFT", 12, -10)
+    fs:SetWidth(contentWidth - 24)
     fs:SetJustifyH("LEFT")
     fs:SetText(opt.text or "")
     fs:SetTextColor(unpack(O.CODE_TEXT))
     fs:SetWordWrap(true)
 
-    local h = fs:GetStringHeight() + 16
+    local h = fs:GetStringHeight() + 20
     frame:SetHeight(h)
     return frame, h
 end
@@ -510,8 +548,13 @@ end
 -- Column widths: opt.columnWidths as fractions of the content width;
 -- otherwise a two-column table gives the first (label) column 38% and
 -- wider tables split evenly.
-local MIN_ROW_H = 22
-local CELL_PAD  = 5
+local MIN_ROW_H = 24
+local CELL_PAD  = 7
+-- How far a cell's text sits in from the left of its column, and the gap
+-- kept clear on its right so a wrapped line never runs into the next
+-- column's first letter.
+local CELL_INSET = 10
+local CELL_GUTTER = 12
 
 local function ColumnWidths(opt, nCols, contentWidth)
     local fractions = opt.columnWidths
@@ -542,7 +585,7 @@ local function CreateTableWidget(parent, opt, contentWidth)
         if #row > nCols then nCols = #row end
     end
     local colW, colX = ColumnWidths(opt, nCols, contentWidth)
-    local headerH = 24
+    local headerH = 26
 
     -- Header row
     if #cols > 0 then
@@ -554,8 +597,8 @@ local function CreateTableWidget(parent, opt, contentWidth)
 
         for i, col in ipairs(cols) do
             local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fs:SetPoint("TOPLEFT", colX[i] + 8, -6)
-            fs:SetWidth(colW[i] - 12)
+            fs:SetPoint("TOPLEFT", colX[i] + CELL_INSET, -7)
+            fs:SetWidth(colW[i] - CELL_INSET - CELL_GUTTER)
             fs:SetJustifyH("LEFT")
             fs:SetText(col)
             fs:SetTextColor(unpack(O.GOLD))
@@ -567,8 +610,8 @@ local function CreateTableWidget(parent, opt, contentWidth)
         local cells, rowH = {}, MIN_ROW_H
         for c, cell in ipairs(row) do
             local fs = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            fs:SetPoint("TOPLEFT", colX[c] + 8, y - CELL_PAD)
-            fs:SetWidth(colW[c] - 12)
+            fs:SetPoint("TOPLEFT", colX[c] + CELL_INSET, y - CELL_PAD)
+            fs:SetWidth(colW[c] - CELL_INSET - CELL_GUTTER)
             fs:SetJustifyH("LEFT")
             fs:SetJustifyV("TOP")
             fs:SetWordWrap(true)
@@ -643,19 +686,18 @@ end
 -- propagate naturally. Returns the bottom Y offset (negative).
 local function RenderBlockList(parent, blocks, contentWidth, startY)
     local y = startY or 0
-    local prev = nil
-    for i, block in ipairs(blocks or {}) do
+    local first = true
+    for _, block in ipairs(blocks or {}) do
         local factory = O.widgetFactories[block.type]
         if factory then
-            local widget, h = factory(parent, block, contentWidth)
-            if prev then
-                widget:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
-            else
-                widget:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
+            if not first then
+                y = y - (O.BLOCK_MARGIN_TOP[block.type] or 0)
             end
+            local widget, h = factory(parent, block, contentWidth)
+            widget:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
             widget:Show()
             y = y - h - O.SPACING
-            prev = widget
+            first = false
         end
     end
     return y
