@@ -476,6 +476,11 @@ local function DrawRow(row, data, y, index)
     row:SetPoint("TOPRIGHT", -CARD_PAD, -y)
     row:SetHeight(ROW_H)
     Panel.SetRowBand(row, index)
+    -- Most rows are one line and say so by not wrapping; a row that is
+    -- a sentence rather than an entry asks to, and takes the height it
+    -- needs. Without this an empty block's explanation is cut off at
+    -- the width of the card.
+    row.label:SetWordWrap(data.wrap and true or false)
 
     local hasIcon = data.icon ~= nil
     row.icon:SetShown(hasIcon)
@@ -528,6 +533,12 @@ local function DrawRow(row, data, y, index)
     row._link    = data.link
     row._onClick = data.onClick
     row:Show()
+
+    if data.wrap then
+        local height = math.max(ROW_H, math.ceil((row.label:GetStringHeight() or 12) + 14))
+        row:SetHeight(height)
+        return height
+    end
     return ROW_H
 end
 
@@ -1009,10 +1020,19 @@ function Panel:Refresh()
             if not shown and def.rowless then
                 used = used - 4
             elseif not shown then
+                -- An empty block says what would fill it, and where it
+                -- can, what the nearest thing is. A line that only says
+                -- "nothing here" wastes the one row it has.
+                local empty = def.empty
+                if type(empty) == "function" then
+                    local ok, said = pcall(empty)
+                    empty = ok and said or nil
+                end
                 local row = AcquireRow(body)
                 used = used + DrawRow(row, {
-                    label = def.empty or "Nothing to show.",
+                    label = empty or "Nothing to show.",
                     muted = true,
+                    wrap  = true,
                 }, used, 1)
                 card.rows[#card.rows + 1] = row
             else
@@ -1042,7 +1062,10 @@ function Panel:Refresh()
 
         card:Show()
         liveCards[#liveCards + 1] = card
-        colLast[col] = card
+        -- A folded block is the one thing that must not take the slack
+        -- at the foot of the page: the whole point of folding it is
+        -- that it becomes a heading and nothing else.
+        colLast[col] = (not collapsed) and card or nil
         colY[col] = y + card:GetHeight() + CARD_GAP
     end
 

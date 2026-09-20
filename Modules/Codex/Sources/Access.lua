@@ -50,7 +50,20 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Open to you",
     order  = 8,
-    empty  = "Nothing attuned or keyed yet that you are not already saved to.",
+    empty  = function()
+        local A = Access()
+        local best
+        for _, state in ipairs((A and A.All and A.All()) or {}) do
+            if not state.ready and (not best or (state.fraction or 0) > (best.fraction or 0)) then
+                best = state
+            end
+        end
+        if not best then
+            return "Nothing open to you yet. Attunements start in your fifties; this fills in as you reach them."
+        end
+        return ("Nothing open to you yet. Closest is %s: %d of %d steps done."):format(
+            best.entry.name, best.done or 0, best.total or 0)
+    end,
     events = {
         "PLAYER_ENTERING_WORLD", "UPDATE_INSTANCE_INFO", "BAG_UPDATE_DELAYED",
         "QUEST_TURNED_IN", "UPDATE_FACTION", "PLAYER_LEVEL_UP",
@@ -110,7 +123,20 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Working towards",
     order  = 30,
-    empty  = "Nothing started. Attunements and keys show up here once you begin one.",
+    empty  = function()
+        local A = Access()
+        local level = UnitLevel("player") or 1
+        local nearest, gap
+        for _, entry in ipairs((A and A.entries) or {}) do
+            local at = entry.level or 1
+            if at > level and (not gap or at - level < gap) then nearest, gap = entry, at - level end
+        end
+        if not nearest then
+            return "Nothing started. Take the first step of any attunement and it appears here."
+        end
+        return ("Nothing started. The first you can reach is %s at level %d."):format(
+            nearest.name, nearest.level or level)
+    end,
     events = {
         "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN",
         "UPDATE_FACTION", "PLAYER_LEVEL_UP",

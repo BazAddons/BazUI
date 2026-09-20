@@ -77,7 +77,30 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Goals",
     order  = 20,
-    empty  = "Nothing on the go. Goals appear as your character grows into them.",
+    -- Not "goals appear as you grow into them", which tells nobody
+    -- anything: the nearest one, by name, and what it wants.
+    empty  = function()
+        local G = Codex.Goals
+        local level = UnitLevel("player") or 1
+        local nearest, gap
+        for _, entry in ipairs((G and G.entries) or {}) do
+            local mine = not entry.class or entry.class == select(2, UnitClass("player"))
+            local at = entry.level or 1
+            if mine and at > level and (not gap or at - level < gap) then
+                nearest, gap = entry, at - level
+            end
+        end
+        if not nearest then
+            return "Nothing on the go, and nothing ahead of you - every goal written down is behind you."
+        end
+        local wants = {}
+        for _, step in ipairs(nearest.steps or {}) do
+            wants[#wants + 1] = (step.label or ""):gsub("^%u", string.lower)
+        end
+        local asks = #wants > 0 and (": " .. table.concat(wants, ", ")) or ""
+        return ("Nothing on the go yet. The next is %s at level %d%s."):format(
+            nearest.name, nearest.level or level, asks)
+    end,
     events = EVENTS,
 
     GetHighlight = function()
@@ -119,7 +142,7 @@ Codex:RegisterSection({
     tab    = "progress",
     title  = "Goals",
     order  = 5,
-    empty  = "Nothing finished yet.",
+    empty  = "Nothing finished yet. A goal moves here the moment its last step is done.",
     events = EVENTS,
 
     GetHighlight = function()

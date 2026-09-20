@@ -363,7 +363,7 @@ local function Sync()
     if #blocks == 0 then
         blocks[1] = {
             key = "_none", title = "Professions",
-            empty = "No professions learned yet.",
+            empty = "No professions learned yet. A trainer in any capital will teach you two.",
             GetRows = function() return {} end,
         }
     end

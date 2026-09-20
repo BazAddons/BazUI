@@ -346,7 +346,20 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "For your level",
     order  = 7,
-    empty  = "No dungeon is tuned for your level right now.",
+    empty  = function()
+        local level = UnitLevel("player") or 1
+        local byKind = ByKind()
+        local nearest, gap
+        for _, entry in ipairs(byKind.dungeon or {}) do
+            local at = entry.level
+            if at and at > level and (not gap or at - level < gap) then nearest, gap = entry, at - level end
+        end
+        if not nearest then
+            return "No dungeon is tuned for your level. You have outgrown every one written down."
+        end
+        return ("No dungeon is tuned for level %d. %s opens at %d, %d level%s away."):format(
+            level, nearest.name, nearest.level, gap, gap == 1 and "" or "s")
+    end,
     events = { "PLAYER_LEVEL_UP", "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD" },
     GetRows = function()
         local rows, locks = {}, Lockouts()

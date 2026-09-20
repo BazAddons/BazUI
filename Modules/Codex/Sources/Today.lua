@@ -13,6 +13,10 @@ local WEEK = 604800
 
 -- Lockouts and resets are measured in days, which a clock reads badly;
 -- the suite's own span format is what everything here shows.
+-- Declared before the lockout block needs it: the body is further down,
+-- beside the other reset reading.
+local SecondsUntil
+
 local function Duration(seconds)
     return BazUI:FormatSpan(seconds)
 end
@@ -46,7 +50,13 @@ Codex:RegisterSection({
     tab    = "today",
     title  = "Saved instances",
     order  = 10,
-    empty = "Nothing saved. Every raid is open to you.",
+    empty = function()
+        local weekly = SecondsUntil("GetSecondsUntilWeeklyReset")
+        local clears = weekly and (" A lockout runs until the weekly reset, %s from now.")
+            :format(Duration(weekly)) or ""
+        return "Nothing saved, so every raid is open to you. Killing a boss in one saves you to it."
+            .. clears
+    end,
     events = { "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD", "BOSS_KILL" },
 
     GetHighlight = function()
@@ -105,7 +115,7 @@ Codex:RegisterSection({
 -- bar is of, so each row says so.
 ---------------------------------------------------------------------------
 
-local function SecondsUntil(fn)
+function SecondsUntil(fn)
     local dt = C_DateAndTime
     if not (dt and dt[fn]) then return nil end
     local ok, secs = pcall(dt[fn])

@@ -39,7 +39,7 @@ Codex:RegisterSection({
     tab    = "progress",
     title  = "Titles",
     order  = 10,
-    empty = "No titles earned yet.",
+    empty = "No titles earned yet. Titles come from reputations, rare feats and the battlegrounds.",
     events = { "KNOWN_TITLES_UPDATE", "PLAYER_ENTERING_WORLD" },
 
     GetHighlight = function()
@@ -124,7 +124,13 @@ Codex:RegisterSection({
     tab    = "progress",
     title  = "Mounts",
     order  = 20,
-    empty = "No mounts yet.",
+    empty = function()
+        local level = UnitLevel("player") or 1
+        if level < 40 then
+            return ("No mounts yet. Riding opens at level 40, %d away, and costs about 100 gold all in."):format(40 - level)
+        end
+        return "No mounts yet. Any capital's riding trainer will sell you one."
+    end,
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "NEW_MOUNT_ADDED",
                "MOUNT_JOURNAL_USABILITY_CHANGED", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
@@ -151,7 +157,7 @@ Codex:RegisterSection({
     tab    = "progress",
     title  = "Pets",
     order  = 30,
-    empty = "No pets yet.",
+    empty = "No pets yet. Vendors in the capitals sell a few; others drop or come from quests.",
     events = { "COMPANION_LEARNED", "COMPANION_UPDATE", "PLAYER_ENTERING_WORLD" },
     GetHighlight = function()
         local n = CompanionCount("CRITTER")
