@@ -48,7 +48,6 @@ local INNER         = 16   -- inside the inset's border, clear of the filigree
 local HERO_H        = 64
 local GAP           = 12
 local COLUMNS       = 2
-local SCROLLBAR_W   = 16
 local TABS_Y        = -30  -- where the character sheet hangs its tabs
 
 local ROW_H         = 26   -- the character sheet's stat line, near enough
@@ -60,7 +59,6 @@ local CARD_PAD      = 10
 local CARD_GAP      = 12
 local TILE_H        = 58
 local TILE_GAP      = 8
-local TILE_MAX_W    = 260
 
 local frame, inset, scroll, content, hero, headerHost
 local rowPool, cardPool, tilePool = {}, {}, {}
@@ -90,12 +88,24 @@ local TAB_ICONS = {
 }
 local TAB_ICON_DEFAULT = "Interface\\Icons\\INV_Misc_Book_09"
 
+-- Show the arrow while there is page below the fold, and keep the view
+-- honest when a page shrinks under a scroll that has run past its end.
+function Panel.UpdateScrollHint()
+    if not scroll then return end
+    local viewport = scroll:GetHeight() or 0
+    local most = math.max(0, (scroll.bazContentH or 0) - viewport)
+    if (scroll:GetVerticalScroll() or 0) > most then
+        scroll:SetVerticalScroll(most)
+    end
+    scroll.hint:SetShown(most > 1 and (scroll:GetVerticalScroll() or 0) < most - 1)
+end
+
 local function ContentWidth()
     -- The scroll frame knows better than arithmetic does, once it has
     -- been laid out; before that, the arithmetic.
     local w = scroll and scroll:GetWidth()
     if w and w > 50 then return math.floor(w) end
-    return WIDTH - EDGE_L - EDGE_R - INNER * 2 - SCROLLBAR_W
+    return WIDTH - EDGE_L - EDGE_R - INNER * 2
 end
 
 local function HasAtlas(name)
@@ -599,21 +609,25 @@ local function DrawStrip(tab, width)
 
     if #highlights == 0 then return 0 end
 
+    -- The strip fills the page, however many tiles there are: the last
+    -- one ends where the page ends. Pixels left over by the division go
+    -- to the last tile rather than leaving a gap.
     local n = #highlights
-    local tileW = math.min(TILE_MAX_W, math.floor((width - TILE_GAP * (n - 1)) / n))
+    local tileW = math.floor((width - TILE_GAP * (n - 1)) / n)
     local x = 0
-    for _, h in ipairs(highlights) do
+    for i, h in ipairs(highlights) do
         local tile = AcquireTile()
+        local w = (i == n) and (width - x) or tileW
         tile:ClearAllPoints()
         tile:SetPoint("TOPLEFT", x, 0)
-        tile:SetSize(tileW, TILE_H)
+        tile:SetSize(w, TILE_H)
         tile.value:SetText(tostring(h.value))
         tile.value:SetTextColor(unpack(h.color or Theme.colors.gold))
         tile.accent:SetColorTexture(unpack(h.color or Theme.colors.goldDim))
         tile.label:SetText(h.label or "")
         tile:Show()
         liveTiles[#liveTiles + 1] = tile
-        x = x + tileW + TILE_GAP
+        x = x + w + TILE_GAP
     end
     return TILE_H + CARD_GAP
 end
@@ -698,8 +712,12 @@ function Panel:Refresh()
     headerHost:SetHeight(headerHeight)
 
     if custom then
+        -- Render is what sets height, so it is read after.
         custom.Render(content, width)
-        content:SetHeight(math.max(custom.height or 1, 1))
+        local used = math.max(custom.height or 1, 1)
+        content:SetHeight(used)
+        scroll.bazContentH = used
+        Panel.UpdateScrollHint()
         return
     end
 
@@ -819,7 +837,10 @@ function Panel:Refresh()
     -- scroll by exactly that much.
     local tallest = 1
     for c = 1, COLUMNS do tallest = math.max(tallest, colY[c] - CARD_GAP) end
-    content:SetHeight(math.max(tallest, 1))
+    tallest = math.max(tallest, 1)
+    content:SetHeight(tallest)
+    scroll.bazContentH = tallest
+    Panel.UpdateScrollHint()
 end
 
 function Panel:QueueRefresh()
@@ -906,19 +927,32 @@ local function Build()
     -- outside the scroll, so they stay put while the list moves.
     headerHost = CreateFrame("Frame", nil, inset)
     headerHost:SetPoint("TOPLEFT", hero, "BOTTOMLEFT", 0, -GAP)
-    headerHost:SetPoint("RIGHT", inset, "RIGHT", -(INNER + SCROLLBAR_W), 0)
+    headerHost:SetPoint("RIGHT", inset, "RIGHT", -INNER, 0)
     headerHost:SetHeight(1)
 
+    -- No scroll bar. A bar has to be given room whether the page needs
+    -- it or not, and a page that keeps its columns a bar's width short
+    -- of the header above them looks like a mistake on every page that
+    -- fits. The wheel scrolls, and the arrow below says when there is
+    -- more.
     scroll = CreateFrame("ScrollFrame", nil, inset)
     scroll:SetPoint("TOPLEFT", headerHost, "BOTTOMLEFT", 0, 0)
-    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -(INNER + SCROLLBAR_W), INNER)
+    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -INNER, INNER)
     scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local most = math.max(0, (self.bazContentH or 0) - (self:GetHeight() or 0))
+        local to = math.max(0, math.min(most, (self:GetVerticalScroll() or 0) - delta * 48))
+        self:SetVerticalScroll(to)
+        Panel.UpdateScrollHint()
+    end)
 
-    local bar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
-    bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 5, 0)
-    bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 5, 0)
-    ScrollUtil.InitScrollFrameWithScrollBar(scroll, bar)
-    Theme.AutoFadeScrollBar(bar, scroll)
+    -- What a scroll bar was really for: knowing there is more. One
+    -- arrow at the foot of the page, only while there is.
+    scroll.hint = scroll:CreateTexture(nil, "OVERLAY")
+    scroll.hint:SetPoint("BOTTOM", inset, "BOTTOM", 0, 4)
+    BazUI.SetArrowTexture(scroll.hint, "DOWN", 20)
+    scroll.hint:SetAlpha(0.45)
+    scroll.hint:Hide()
 
     content = CreateFrame("Frame", nil, scroll)
     content:SetWidth(ContentWidth())
