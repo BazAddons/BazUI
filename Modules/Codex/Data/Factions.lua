@@ -29,28 +29,28 @@ Factions.build = "1.60.1.69893"
 
 Factions.entries = {
     -- Alliance
-    { id = 69, group = "Alliance" },   -- Darnassus
-    { id = 54, group = "Alliance" },   -- Gnomeregan Exiles
-    { id = 47, group = "Alliance" },   -- Ironforge
-    { id = 72, group = "Alliance" },   -- Stormwind
+    { id = 69, group = "Alliance", side = "Alliance" },   -- Darnassus
+    { id = 54, group = "Alliance", side = "Alliance" },   -- Gnomeregan Exiles
+    { id = 47, group = "Alliance", side = "Alliance" },   -- Ironforge
+    { id = 72, group = "Alliance", side = "Alliance" },   -- Stormwind
 
     -- Horde
-    { id = 530, group = "Horde" },   -- Darkspear Trolls
-    { id = 76, group = "Horde" },   -- Orgrimmar
-    { id = 81, group = "Horde" },   -- Thunder Bluff
-    { id = 68, group = "Horde" },   -- Undercity
+    { id = 530, group = "Horde", side = "Horde" },   -- Darkspear Trolls
+    { id = 76, group = "Horde", side = "Horde" },   -- Orgrimmar
+    { id = 81, group = "Horde", side = "Horde" },   -- Thunder Bluff
+    { id = 68, group = "Horde", side = "Horde" },   -- Undercity
 
     -- Alliance Forces
-    { id = 890, group = "Alliance Forces" },   -- Silverwing Sentinels
-    { id = 730, group = "Alliance Forces" },   -- Stormpike Guard
-    { id = 509, group = "Alliance Forces" },   -- The League of Arathor
-    { id = 2799, group = "Alliance Forces" },   -- Theramore Expeditionary Force
+    { id = 890, group = "Alliance Forces", side = "Alliance" },   -- Silverwing Sentinels
+    { id = 730, group = "Alliance Forces", side = "Alliance" },   -- Stormpike Guard
+    { id = 509, group = "Alliance Forces", side = "Alliance" },   -- The League of Arathor
+    { id = 2799, group = "Alliance Forces", side = "Alliance" },   -- Theramore Expeditionary Force
 
     -- Horde Forces
-    { id = 2798, group = "Horde Forces" },   -- Darkspear Raiders
-    { id = 729, group = "Horde Forces" },   -- Frostwolf Clan
-    { id = 510, group = "Horde Forces" },   -- The Defilers
-    { id = 889, group = "Horde Forces" },   -- Warsong Outriders
+    { id = 2798, group = "Horde Forces", side = "Horde" },   -- Darkspear Raiders
+    { id = 729, group = "Horde Forces", side = "Horde" },   -- Frostwolf Clan
+    { id = 510, group = "Horde Forces", side = "Horde" },   -- The Defilers
+    { id = 889, group = "Horde Forces", side = "Horde" },   -- Warsong Outriders
 
     -- Steamwheedle Cartel
     { id = 21, group = "Steamwheedle Cartel" },   -- Booty Bay

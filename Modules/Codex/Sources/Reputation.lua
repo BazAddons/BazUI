@@ -193,12 +193,19 @@ local function Rows(group)
         local done = f.standing >= EXALTED
         rows[#rows + 1] = {
             label  = f.name,
-            detail = f.unmet and (StandingName(f.standing) .. "   |   not yet met")
+            detail = f.unmet and "not yet met"
                 or done and StandingName(f.standing)
                 or ("%s   %s / %s"):format(StandingName(f.standing),
                     BazUI:FormatNumber(f.into), BazUI:FormatNumber(f.span)),
             state  = f.unmet and nil or (done and "done" or "open"),
             muted  = f.unmet or nil,
+            -- Where you would start with them, and why the bar is not
+            -- empty: the game grants your race a base standing before
+            -- you have ever spoken to anyone.
+            tip    = f.unmet and (f.name .. "|nNot yet met. You would start at "
+                .. StandingName(f.standing) .. ", "
+                .. BazUI:FormatNumber(f.into) .. " of " .. BazUI:FormatNumber(f.span)
+                .. " into it - the standing your race is granted before you have done anything.") or nil,
             progress = {
                 bar   = true,
                 value = done and 1 or f.into,
@@ -223,8 +230,13 @@ local function Summary(group)
     for _, f in ipairs(group.factions) do
         if f.unmet then unmet = unmet + 1 else n = n + 1 end
     end
-    local text = ("%d faction%s"):format(n, n == 1 and "" or "s")
-    if unmet > 0 then text = text .. ("  |  %d not yet met"):format(unmet) end
+    local text
+    if n == 0 then
+        text = ("%d not yet met"):format(unmet)
+    else
+        text = ("%d faction%s"):format(n, n == 1 and "" or "s")
+        if unmet > 0 then text = text .. ("  |  %d not yet met"):format(unmet) end
+    end
     if exalted > 0 then
         text = text .. ("  |  %d exalted"):format(exalted)
     elseif top then
