@@ -808,20 +808,43 @@ BazUI:QueueForLogin(function()
                     type = "description",
                     name = "Unticking one stops it loading at all, in this profile. It takes a reload either way: what a module builds at login cannot be put back without one.",
                 },
-                bazFont = {
+                fontFace = {
                     order = 3,
-                    type = "toggle",
-                    name = "Use the BazUI font",
-                    desc = "DorisPP, the face BazUI ships, on unit frames, auras, the XP bar and the drawer's widgets. Chat has its own switch.",
-                    get = function() return BazUIDB.useFont ~= false end,
+                    type = "select",
+                    name = "Interface font",
+                    desc = "The face BazUI draws with, on unit frames, auras, the "
+                        .. "XP bar and the drawer's widgets. Chat has its own switch."
+                        .. "\n\nBazUI is DorisPP, the face the addon ships. Game "
+                        .. "default leaves every piece of text with the face the game "
+                        .. "gave it. The rest are the game's own.\n\nThe list is what "
+                        .. "this client actually has: a Russian client is offered the "
+                        .. "Cyrillic cuts and not BazUI's own face, which has no "
+                        .. "Cyrillic in it.",
+                    values = function()
+                        local out = {}
+                        for _, face in ipairs(BazUI.Skin.Theme.FontFaces()) do
+                            out[face.key] = face.label
+                        end
+                        return out
+                    end,
+                    sorting = function()
+                        local out = {}
+                        for _, face in ipairs(BazUI.Skin.Theme.FontFaces()) do
+                            out[#out + 1] = face.key
+                        end
+                        return out
+                    end,
+                    get = function()
+                        return BazUIDB.fontFace
+                            or (BazUIDB.useFont == false and "game")
+                            or "baz"
+                    end,
                     set = function(_, val)
-                        BazUIDB.useFont = val
-                        -- Mirrored font objects re-point in place, so
-                        -- everything drawn through one changes at once.
+                        -- Written out in full rather than left to a
+                        -- default, so that picking the game's font is not
+                        -- read back later as never having chosen.
+                        BazUIDB.fontFace = val
                         BazUI.Skin.Theme.RefreshFontObjects()
-                        -- Modules that set their fonts on every apply
-                        -- change straight away; the rest draw their text
-                        -- once, at login.
                         local auras = BazUI:GetModule("Auras")
                         if auras and auras.ApplySettings then auras:ApplySettings() end
                         local frames = BazUI:GetModule("UnitFrames")
@@ -840,7 +863,7 @@ BazUI:QueueForLogin(function()
                     end,
                 },
                 fontFallback = {
-                    order = 4,
+                    order = 5,
                     type = "toggle",
                     name = "Borrow the game's font where ours cannot spell",
                     desc = "The BazUI face carries a Latin alphabet and nothing else, "
@@ -850,7 +873,11 @@ BazUI:QueueForLogin(function()
                         .. "text, with everything around it unchanged. A chat window is "
                         .. "the exception: it wears one face for every line it holds, so "
                         .. "one such message takes the whole window over.",
-                    disabled = function() return BazUIDB.useFont == false end,
+                    -- Only means anything while our own face is the one
+                    -- drawing: a face of the game's spells everything.
+                    disabled = function()
+                        return not BazUI.Skin.Theme.IsFontEnabled()
+                    end,
                     get = function() return BazUIDB.fontFallback ~= false end,
                     set = function(_, val)
                         BazUIDB.fontFallback = val

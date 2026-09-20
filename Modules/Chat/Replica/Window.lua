@@ -112,7 +112,7 @@ local FALLBACKS = {
 
 -- Read fresh each time rather than copied once: a skin can point the
 -- suite's face somewhere else, and that happens after this file loads.
-local function ChatFontFile() return BazUI.Skin.Theme.FONT_FILE end
+local function ChatFontFile() return BazUI.Skin.Theme.FaceOverride() end
 local customFont
 local fontProbe
 
@@ -138,8 +138,9 @@ local MIN_FONT_SIZE, MAX_FONT_SIZE = 6, 32
 local function ChatFontObject(useCustom, scale)
     local blizzard = _G.ChatFontNormal
     if not blizzard then return nil end
-    -- The suite-wide switch turns the face off everywhere, chat included.
-    if not BazUI.Skin.Theme.IsFontEnabled() then useCustom = false end
+    -- Nothing to put on it when the game's own face is the one chosen:
+    -- chat keeps whatever Blizzard gave it.
+    if not ChatFontFile() then useCustom = false end
     -- And so does a line our face cannot spell.
     if faceCannotDraw then useCustom = false end
     local blizzFace, blizzSize, flags = blizzard:GetFont()
@@ -1491,15 +1492,24 @@ end
 -- What the chat face is doing right now, for /bc font.
 function Window:FontStatus()
     local blizzard = _G.ChatFontNormal
-    fontProbe = fontProbe or CreateFont("BazUIChatFontProbe")
-    fontProbe:SetFont(ChatFontFile(), 14, "")
-    local loaded = fontProbe:GetFont()
+
+    -- Nil when the face chosen is the game's own, which is not a file at
+    -- all - chat keeps whatever Blizzard handed it. Nothing to probe,
+    -- and nothing that could fail to load.
+    local file = ChatFontFile()
+    local loaded
+    if file then
+        fontProbe = fontProbe or CreateFont("BazUIChatFontProbe")
+        fontProbe:SetFont(file, 14, "")
+        loaded = fontProbe:GetFont()
+    end
+
     local f = windows[1]
     local inUse, inUseSize
     if f then inUse, inUseSize = f:GetFont() end
     return {
-        file      = ChatFontFile(),
-        loadable  = loaded and loaded:lower() == ChatFontFile():lower() or false,
+        file      = file or "the game's own",
+        loadable  = (not file) or (loaded and loaded:lower() == file:lower()) or false,
         setting   = (WindowDB(1) or {}).customFont ~= false,
         scale     = (WindowDB(1) or {}).fontScale or FALLBACKS.fontScale,
         inUse     = inUse,

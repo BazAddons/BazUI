@@ -358,8 +358,16 @@ end
 
 -- Values render sorted by label unless the table carries `sorting`
 -- (an array of keys) the way AceConfig allows.
+--
+-- A function is allowed there for the same reason it is allowed for
+-- `values`: a list worked out at draw time needs an order worked out at
+-- draw time as well, or the two disagree and the order is quietly
+-- dropped. Which is what happened to the font picker, whose faces depend
+-- on what the client has.
 local function OrderedKeys(opt, values)
-    if type(opt.sorting) == "table" then return opt.sorting end
+    local sorting = opt.sorting
+    if type(sorting) == "function" then sorting = sorting() end
+    if type(sorting) == "table" then return sorting end
     local keys = {}
     for k in pairs(values) do keys[#keys + 1] = k end
     table.sort(keys, function(a, b) return tostring(values[a]) < tostring(values[b]) end)

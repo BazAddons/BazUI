@@ -372,15 +372,27 @@ local SHIPPED_FONT = "Interface\\AddOns\\BazUI\\Skin\\Assets\\DORISBR.TTF"
 Theme.FONT_FILE = SHIPPED_FONT
 
 local fontProbe, fontLoadable
+-- Whether the client speaks a language our face has letters for.
+local localeDrawable
+-- The faces this client can draw with, worked out once.
+local faceList
 
 -- Whether the client can actually read the file. Fixed for the session.
+-- Whether the client has this file and will draw with it.
+--
+-- A Font object's SetFont reports nothing, so the face is read back: a
+-- path the client cannot load leaves the old one in place.
+local function Loadable(path)
+    if type(path) ~= "string" or path == "" then return false end
+    fontProbe = fontProbe or CreateFont("BazUIFontProbe")
+    fontProbe:SetFont(path, 12, "")
+    local applied = fontProbe:GetFont()
+    return (applied and applied:lower() == path:lower()) or false
+end
+
 function Theme.IsFontLoadable()
     if fontLoadable == nil then
-        fontProbe = fontProbe or CreateFont("BazUIFontProbe")
-        -- A Font object's SetFont reports nothing, so read the face back.
-        fontProbe:SetFont(Theme.FONT_FILE, 12, "")
-        local applied = fontProbe:GetFont()
-        fontLoadable = (applied and applied:lower() == Theme.FONT_FILE:lower()) or false
+        fontLoadable = Loadable(Theme.FONT_FILE)
     end
     return fontLoadable
 end
@@ -393,21 +405,178 @@ function Theme.SetFontFile(path)
     if path == Theme.FONT_FILE then return end
     Theme.FONT_FILE = path
     fontLoadable = nil
+    localeDrawable = nil
+    faceList = nil
     Theme.RefreshFontObjects()
 end
 
--- The global switch, on unless the user turned it off.
-function Theme.IsFontEnabled()
-    return not BazUIDB or BazUIDB.useFont ~= false
+---------------------------------------------------------------------------
+-- The faces the game itself ships
+--
+-- Every client has several, and which file is which changes with the
+-- language. Friz Quadrata is FRIZQT__.TTF on an English client and
+-- FRIZQT___CYR.TTF on a Russian one; a Korean client has neither and
+-- uses 2002.TTF. Offering the wrong file would hand somebody a face that
+-- draws their own language as boxes, which is the whole complaint this
+-- is answering.
+--
+-- So each face names a file per alphabet, and a client is only offered
+-- the ones it has a file for. The first three are roles rather than
+-- files - whatever this client uses for body text, for a unit's name and
+-- for damage numbers - which makes them right everywhere without this
+-- list having to know how. Read through _G because they are the game's
+-- names, not ours, and a client that lacks one should get nil rather
+-- than a lint error.
+--
+-- Everything is checked against the client before it is offered, so a
+-- file that has moved or gone simply does not appear in the list.
+---------------------------------------------------------------------------
+
+local CJK_LOCALES = { koKR = true, zhCN = true, zhTW = true }
+
+local function Alphabet()
+    local locale = (GetLocale and GetLocale()) or "enUS"
+    if CJK_LOCALES[locale] then return "cjk" end
+    if locale == "ruRU" then return "cyrillic" end
+    return "roman"
 end
 
--- The face to draw with: ours when it is wanted and readable, the
--- game's otherwise.
-function Theme.FontFile()
-    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then
-        return Theme.FONT_FILE
+-- Arial Narrow is one file for both alphabets: Blizzard uses it for the
+-- roman and the russian member of the same font family, so it carries
+-- both. Morpheus and Skurri have a separate Cyrillic cut, and neither
+-- has anything for CJK - those clients are offered the roles only, which
+-- is honest, because that is all the game has for them either.
+local FACES = {
+    { key = "baz",    label = "BazUI",        ours = true },
+    { key = "game",   label = "Game default", role = "STANDARD_TEXT_FONT" },
+    { key = "name",   label = "Unit names",   role = "UNIT_NAME_FONT" },
+    { key = "damage", label = "Damage",       role = "DAMAGE_TEXT_FONT" },
+    { key = "narrow", label = "Narrow",
+      roman = "Fonts\\ARIALN.TTF",   cyrillic = "Fonts\\ARIALN.TTF" },
+    { key = "morpheus", label = "Morpheus",
+      roman = "Fonts\\MORPHEUS.TTF", cyrillic = "Fonts\\MORPHEUS_CYR.TTF" },
+    { key = "skurri", label = "Skurri",
+      roman = "Fonts\\skurri.ttf",   cyrillic = "Fonts\\skurri_CYR.ttf" },
+}
+
+local function FacePath(face)
+    -- Ours is only on the list where it can be read at all: a client
+    -- whose language it has no letters for is not offered it, which is
+    -- the whole of what the old "use the BazUI font" tick box had to say
+    -- on a Russian client anyway.
+    if face.ours then
+        return Theme.IsLocaleDrawable() and Theme.FONT_FILE or nil
     end
-    return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
+    if face.role then return _G[face.role] end
+    return face[Alphabet()]
+end
+
+-- The faces this client can actually draw with, in order.
+--
+-- A face whose file is the one a face above it already named is left
+-- out: on most clients the unit-name face and the damage face are the
+-- same file as the default, and three entries reading the same is a
+-- choice that is not one.
+function Theme.FontFaces()
+    if faceList then return faceList end
+
+    faceList = {}
+    local seen = {}
+    for index = 1, #FACES do
+        local face = FACES[index]
+        local file = FacePath(face)
+        if type(file) == "string" and file ~= "" and not seen[file:lower()]
+            and Loadable(file) then
+            seen[file:lower()] = true
+            faceList[#faceList + 1] = {
+                key = face.key, label = face.label, path = file,
+            }
+        end
+    end
+    return faceList
+end
+
+-- Which face is wanted, as a key into the list above.
+--
+-- Before the list there was a tick box, and unticking it meant the
+-- game's font. That answer is still honoured for anyone who set it, so
+-- an existing profile opens on the face it has always had.
+local function ChosenKey()
+    if BazUIDB and BazUIDB.fontFace then return BazUIDB.fontFace end
+    if BazUIDB and BazUIDB.useFont == false then return "game" end
+    return "baz"
+end
+
+-- The face to force, or nil for "leave every string with the face it
+-- came with".
+--
+-- Nil is what the game default means here, and it is not the same as
+-- naming the standard font: a mirrored font object keeps whatever
+-- Blizzard gave it, which for a chat object or a damage number is not
+-- the body face. Saying "the game's" should hand those back untouched
+-- rather than flatten them all to one file.
+function Theme.FaceOverride()
+    local key = ChosenKey()
+    if key == "game" then return nil end
+
+    local faces = Theme.FontFaces()
+    for index = 1, #faces do
+        if faces[index].key == key then return faces[index].path end
+    end
+    return nil
+end
+
+-- Whether the face in use is our own, for the places that only want to
+-- know that much.
+function Theme.IsFontEnabled()
+    return Theme.FaceOverride() == Theme.FONT_FILE
+end
+
+---------------------------------------------------------------------------
+-- A language our face cannot spell
+--
+-- The per-string fallback further down is the right shape for a name:
+-- one Chinese guild member in an English client is one string drawn in
+-- another face, with everything around it unchanged.
+--
+-- It is the wrong shape for a Russian client. There every word in the
+-- interface is Cyrillic - our own labels included, since they come from
+-- the game's translations - and our face can draw none of it. Swapping
+-- string by string would mean swapping all of them, so the honest answer
+-- is not to use our face at all on that client.
+--
+-- Asked of the game's own words rather than of a list of locales,
+-- because the real question is whether this face covers this alphabet,
+-- and the face changes with the skin. Several words, and one of them
+-- failing is enough: guessing "use the game's font" costs some style,
+-- guessing the other way costs the interface.
+---------------------------------------------------------------------------
+
+-- Short, always translated, and on every client BazUI ships to. Read
+-- through _G because they are the game's strings rather than ours.
+local LOCALE_WORDS = {
+    "CHARACTER", "SPELLBOOK", "GAMEOPTIONS_MENU",
+    "INVENTORY_TOOLTIP", "COMBAT", "LOOT",
+}
+
+function Theme.IsLocaleDrawable()
+    if localeDrawable ~= nil then return localeDrawable end
+
+    localeDrawable = true
+    for index = 1, #LOCALE_WORDS do
+        local word = _G[LOCALE_WORDS[index]]
+        if type(word) == "string" and word ~= "" and not Theme.CanDraw(word) then
+            localeDrawable = false
+            break
+        end
+    end
+    return localeDrawable
+end
+
+-- The face to draw a string we are making from scratch, where there is
+-- no existing face to leave alone.
+function Theme.FontFile()
+    return Theme.FaceOverride() or Theme.FallbackFontFile()
 end
 
 ---------------------------------------------------------------------------
@@ -500,7 +669,14 @@ function Theme.IsFontFallbackEnabled()
     return not BazUIDB or BazUIDB.fontFallback ~= false
 end
 
+-- The game's face to use where ours is not used: because the player
+-- picked another, because our face cannot spell the string, or because
+-- it cannot spell the language.
 function Theme.FallbackFontFile()
+    -- A game face already spells everything, so if that is what was
+    -- chosen there is nothing to borrow and it answers for itself.
+    local chosen = Theme.FaceOverride()
+    if chosen and chosen ~= Theme.FONT_FILE then return chosen end
     return STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF"
 end
 
@@ -583,8 +759,7 @@ local function BuildFontObject(key, blizzardName, color)
     end
 
     local baseFace, size, flags = base:GetFont()
-    local face = baseFace
-    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then face = Theme.FONT_FILE end
+    local face = Theme.FaceOverride() or baseFace
     obj:SetFont(face, size or 12, flags or "")
     if color then
         obj:SetTextColor(color[1], color[2], color[3], color[4] or 1)
@@ -740,10 +915,7 @@ local function DrawAdopted(name)
     if not (object and original and object.GetFont) then return end
 
     local _, size, flags = object:GetFont()
-    local face = original.face
-    if Theme.IsFontEnabled() and Theme.IsFontLoadable() then
-        face = Theme.FONT_FILE
-    end
+    local face = Theme.FaceOverride() or original.face
     object:SetFont(face, size or original.size or 12, flags or original.flags or "")
 end
 

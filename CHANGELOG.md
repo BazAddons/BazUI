@@ -1,28 +1,21 @@
-## 009
+## 010
 
-**The bag works in a fight.** It opens, closes, gets dragged around and
-rearranges itself while you are in combat, the way every other window
-does. Before this it refused - and on 008 it refused loudly, with an
-error, which is the worst way to say no.
+**BazUI is readable on Russian, Korean and Chinese clients.** It shipped
+with a font that has a Latin alphabet in it and nothing else, and used
+that font for every label it drew - so on those clients the whole addon
+came out as rows of empty boxes. It now notices that its own face cannot
+spell the language the client is in, and uses the game's font instead.
 
-The cause was ours. A bag slot was built as a secure button so that
-clicking one could use what was in it. That made every frame around it
-protected, and the game does not let an addon open, close, move or lay
-out a protected frame during combat. It turns out the game's own bag slot
-already does all of that from an ordinary button - using, selling at a
-vendor, picking up, splitting, linking, and putting a waiting spell onto
-an item. Ours now leaves that alone instead of reinventing it, and about
-a hundred and twenty lines of working around the problem went with it.
-
-Nothing you do with a bag slot has changed. If anything it should be a
-little more like the bag you already know.
+**And you can choose the font.** One list in Settings, holding the face
+BazUI ships and the faces the game does. It only offers what your client
+actually has: a Russian client is offered the Cyrillic cuts of Morpheus
+and Skurri, a Korean one the faces Korean is written in, and neither is
+offered BazUI's own.
 
 ### Changed
 
-- **An item you run out of clears its own bar slot.** Drink the last
-  water and the button empties, rather than leaving an icon that cannot
-  be clicked and reads zero. A trinket you are wearing does not count as
-  gone, and neither does a wand with charges left. Putting the last of
-  something in the bank does clear it - it is not in your bags any more,
-  and a slot you cannot use until your next bank visit is worse than one
-  you refill by dragging.
+- **The "Use the BazUI font" tick box is now an entry in that list.** One
+  decision, one control. Whatever you had set carries over.
+- **"Game default" leaves text alone** rather than forcing one file on
+  everything - a damage number and a chat line do not wear the same face
+  in the game either, and now they still do not.
