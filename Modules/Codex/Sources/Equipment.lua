@@ -632,10 +632,12 @@ local function Render(content, width)
     p.summary:SetPoint("TOPLEFT", p.modelBox, "BOTTOMLEFT", 0, -CARD_GAP)
     p.summary:SetWidth(MODEL_W)
 
-    -- The stats column stands as tall as the page.
+    -- The stats column ends where the other three end, whichever of
+    -- them reaches furthest.
+    local pageH = math.max(tallest, modelH + CARD_GAP + summaryH)
     p.stats:ClearAllPoints()
     p.stats:SetPoint("TOPLEFT", statsX, 0)
-    p.stats:SetSize(width - statsX, math.max(tallest, modelH + CARD_GAP + summaryH))
+    p.stats:SetSize(width - statsX, pageH)
     FillStats(p.stats, (width - statsX) - 12)
 
     if p.model:IsShown() then
@@ -659,9 +661,8 @@ local function Render(content, width)
         sums.durability.value:SetTextColor(unpack(Theme.colors.textMuted))
     end
 
-    local used = math.max(tallest, modelH + CARD_GAP + summaryH)
-    p:SetHeight(used)
-    Codex.customTabs[TAB].height = used
+    p:SetHeight(pageH)
+    Codex.customTabs[TAB].height = pageH
 end
 
 Codex.customTabs[TAB] = {

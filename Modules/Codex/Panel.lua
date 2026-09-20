@@ -784,8 +784,9 @@ function Panel:Refresh()
 
         local card = AcquireCard()
         card._sectionID = def.id
+        card._x = (col - 1) * (colW + CARD_GAP)
         card:ClearAllPoints()
-        card:SetPoint("TOPLEFT", (col - 1) * (colW + CARD_GAP), -y)
+        card:SetPoint("TOPLEFT", card._x, -y)
         card:SetWidth(colW)
         card.title:SetText(def.title or def.id)
 
@@ -925,21 +926,26 @@ function Panel:Refresh()
     -- with each other and with the window. Only a little short: a page
     -- that is half empty would rather have two ordinary blocks than
     -- two tall hollow ones.
+    --
+    -- The block is anchored to the foot rather than given a computed
+    -- height. A height has to come out exact against a viewport nobody
+    -- measured in whole pixels, and when it did not, the block simply
+    -- stayed where it was; an anchor cannot miss.
     if tallest <= viewport + 1 then
+        tallest = viewport
+        content:SetHeight(viewport)
         local slack = viewport * SLACK_SHARE
         for c = 1, COLUMNS do
             local card = colLast[c]
             local gap = viewport - (colY[c] - CARD_GAP)
             if card and gap > 1 and gap <= slack then
-                card:SetHeight(card:GetHeight() + gap)
+                card:SetPoint("BOTTOMLEFT", content, "BOTTOMLEFT", card._x, 0)
                 if card.scroll and card.scroll:IsShown() then
                     card.scroll:SetHeight((card.scroll:GetHeight() or 0) + gap)
                     Panel.UpdateScrollHint(card.scroll)
                 end
-                colY[c] = colY[c] + gap
             end
         end
-        tallest = math.max(tallest, 1)
     end
 
     content:SetHeight(tallest)
