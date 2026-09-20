@@ -203,6 +203,13 @@ function Codex:SyncGroupSections(prefix, common, blocks)
         def.GetRows      = block.GetRows
         def.GetBar       = block.GetBar
         def.GetHighlight = block.GetHighlight
+        -- What a block may wear: a picture behind, an icon on the
+        -- heading, and leave to stand with no rows under it.
+        def.art          = block.art
+        def.artFallback  = block.artFallback
+        def.artAlpha     = block.artAlpha
+        def.icon         = block.icon
+        def.rowless      = block.rowless
     end
     for id in pairs(self.sections) do
         if id:sub(1, #prefix) == prefix and not wanted[id] then

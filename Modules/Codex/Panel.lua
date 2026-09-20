@@ -225,6 +225,70 @@ local function CreatePlate(parent)
 end
 
 ---------------------------------------------------------------------------
+-- The skill bar
+--
+-- The profession book's own rank bar: a stone trough, a fill in the
+-- profession's colours, a carved frame, the reading lettered across it.
+-- Blizzard animates the fill as a flipbook; here it is the first frame,
+-- still. Built from the same atlases so it is the same bar, and hidden
+-- where a client has not got them.
+---------------------------------------------------------------------------
+
+local SKILLBAR_W, SKILLBAR_H = 453, 18
+local SKILLBAR_FILL_FRAME_H  = 34   -- one frame of the flipbook sheet
+
+function Panel.CreateSkillBar(parent)
+    local bar = CreateFrame("Frame", nil, parent)
+    bar:SetSize(SKILLBAR_W, SKILLBAR_H)
+
+    bar.bg = bar:CreateTexture(nil, "ARTWORK", nil, 1)
+    bar.bg:SetPoint("TOPLEFT")
+    BazUI.SetAtlasOrTexture(bar.bg, "Professions-skillbar-bg", nil, true)
+
+    bar.fill = bar:CreateTexture(nil, "ARTWORK", nil, 2)
+    bar.fill:SetSize(SKILLBAR_W - 12, SKILLBAR_H)
+    bar.fill:SetPoint("TOPLEFT", 5, -3)
+
+    bar.mask = bar:CreateMaskTexture()
+    bar.mask:SetPoint("LEFT", bar.fill, "LEFT", 1, 0)
+    if HasAtlas("Professions-skillbar-mask") then
+        bar.mask:SetAtlas("Professions-skillbar-mask", true)
+    else
+        bar.mask:SetTexture("Interface\\Buttons\\WHITE8x8")
+        bar.mask:SetHeight(SKILLBAR_H)
+    end
+    bar.fill:AddMaskTexture(bar.mask)
+
+    bar.border = bar:CreateTexture(nil, "ARTWORK", nil, 3)
+    bar.border:SetPoint("TOPLEFT")
+    BazUI.SetAtlasOrTexture(bar.border, "Professions-skillbar-frame", nil, true)
+
+    bar.text = bar:CreateFontString(nil, "OVERLAY", "Number12FontOutline")
+    bar.text:SetPoint("CENTER", 0, -3)
+
+    bar.usable = HasAtlas("Professions-skillbar-bg") and HasAtlas("Professions-skillbar-frame")
+    return bar
+end
+
+-- kit is the profession's art name (Alchemy, FirstAid, ...); the fill
+-- falls back to the plain blue where there is no art for it.
+function Panel.SetSkillBar(bar, kit, value, max, text)
+    local name = kit and ("Skillbar_Fill_Flipbook_" .. kit)
+    if not (name and HasAtlas(name)) then name = "Skillbar_Fill_Flipbook_DefaultBlue" end
+    local info = C_Texture.GetAtlasInfo(name)
+    if info then
+        bar.fill:SetAtlas(name, false)
+        -- One frame of the sheet: two columns across, height/34 rows down.
+        local rows = math.max(1, math.floor(info.height / SKILLBAR_FILL_FRAME_H + 0.5))
+        local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+        bar.fill:SetTexCoord(l, l + (r - l) / 2, t, t + (b - t) / rows)
+    end
+    local progress = (max and max > 0) and math.min(1, math.max(0, (value or 0) / max)) or 0
+    bar.mask:SetWidth(math.max(1, bar:GetWidth() * progress))
+    bar.text:SetText(text or "")
+end
+
+---------------------------------------------------------------------------
 -- Rows
 ---------------------------------------------------------------------------
 
@@ -388,6 +452,43 @@ local function AcquireCard()
 
     card.rows = {}
     return card
+end
+
+-- A picture behind a card: the profession book's faded workshop, say.
+-- Drawn at its own size against the right edge and clipped to the
+-- card, because stretching an illustration to a card's width is how
+-- you get a wide cauldron.
+local function CardArt(card)
+    if card.artFrame then return card.artFrame end
+    local clip = CreateFrame("Frame", nil, card)
+    clip:SetPoint("TOPLEFT", 4, -4)
+    clip:SetPoint("BOTTOMRIGHT", -4, 4)
+    clip:SetFrameLevel(card:GetFrameLevel() + 1)
+    clip:SetClipsChildren(true)
+    local inner = CreateFrame("Frame", nil, clip)
+    inner:SetAllPoints()
+    clip.tex = inner:CreateTexture(nil, "BACKGROUND")
+    clip.tex:SetPoint("RIGHT", 0, 0)
+    card.artFrame = clip
+    return clip
+end
+
+-- A framed icon on the heading's left, in the profession book's own
+-- square frame where the client has it.
+local function CardIcon(card)
+    if card.iconTex then return card.iconTex end
+    card.iconTex = card.head:CreateTexture(nil, "ARTWORK")
+    card.iconTex:SetSize(40, 40)
+    card.iconTex:SetPoint("TOPLEFT", CARD_PAD, -4)
+    card.iconTex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    card.iconRing = card.head:CreateTexture(nil, "OVERLAY")
+    card.iconRing:SetPoint("CENTER", card.iconTex, "CENTER")
+    if HasAtlas("Profession-square-frame") then
+        card.iconRing:SetAtlas("Profession-square-frame", true)
+    else
+        card.iconRing:Hide()
+    end
+    return card.iconTex
 end
 
 local function ReleaseAll()
@@ -581,7 +682,24 @@ function Panel:Refresh()
         BazUI.SetArrowTexture(card.arrow, collapsed and "RIGHT" or "DOWN", 16)
 
         local barDef = (not collapsed) and def.GetBar and def.GetBar() or nil
-        local summary = Summary(barDef)
+
+        -- A block may ask for the profession book's bar instead of a
+        -- sentence; it gets the sentence where the client lacks the art.
+        local skinned = barDef and barDef.kit ~= nil
+        if skinned then
+            card.skill = card.skill or Panel.CreateSkillBar(card.head)
+            if card.skill.usable then
+                Panel.SetSkillBar(card.skill, barDef.kit, barDef.value, barDef.max, barDef.text)
+                card.skill:ClearAllPoints()
+                card.skill:SetPoint("TOP", card.plate, "BOTTOM", 0, -6)
+                card.skill:Show()
+            else
+                skinned = false
+            end
+        end
+        if card.skill and not skinned then card.skill:Hide() end
+
+        local summary = (not skinned) and Summary(barDef) or nil
         card.summary:SetText(summary or "")
         if barDef and barDef.color then
             card.summary:SetTextColor(barDef.color[1], barDef.color[2], barDef.color[3])
@@ -589,8 +707,32 @@ function Panel:Refresh()
             card.summary:SetTextColor(unpack(Theme.colors.textSoft))
         end
 
-        -- The plate, then the sentence under it if there is one.
-        local headH = 2 + PLATE_H + (summary and 18 or 4)
+        -- The picture behind, if the block brought one the client has.
+        local artName = def.art and (HasAtlas(def.art) and def.art
+            or (def.artFallback and HasAtlas(def.artFallback) and def.artFallback))
+        if artName then
+            local art = CardArt(card)
+            art.tex:SetAtlas(artName, true)
+            art.tex:SetAlpha(def.artAlpha or 1)
+            art:Show()
+        elseif card.artFrame then
+            card.artFrame:Hide()
+        end
+
+        -- And the icon on the left, if it brought one.
+        if def.icon then
+            local icon = CardIcon(card)
+            icon:SetTexture(def.icon)
+            icon:Show()
+            if card.iconRing then card.iconRing:SetShown(HasAtlas("Profession-square-frame")) end
+        elseif card.iconTex then
+            card.iconTex:Hide()
+            if card.iconRing then card.iconRing:Hide() end
+        end
+
+        -- The plate, then what sits under it: the bar, the sentence, or
+        -- nothing.
+        local headH = 2 + PLATE_H + (skinned and (SKILLBAR_H + 18) or (summary and 18 or 4))
         card.head:SetHeight(headH)
 
         if collapsed then
@@ -600,7 +742,9 @@ function Panel:Refresh()
             local inner = headH + 8
 
             local rows = (def.GetRows and def.GetRows()) or {}
-            if #rows == 0 then
+            if #rows == 0 and def.rowless then
+                inner = inner - 4
+            elseif #rows == 0 then
                 local row = AcquireRow(card)
                 inner = inner + DrawRow(row, {
                     label = def.empty or "Nothing to show.",

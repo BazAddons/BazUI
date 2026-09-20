@@ -2,14 +2,15 @@
 ---------------------------------------------------------------------------
 -- BazUI Codex: Professions and skills
 --
--- Everything the character has learned to do, grouped the way Forever's
--- skills sheet groups it: class skills, professions, secondary skills,
--- weapons, armour, languages. One row per skill with its rank, and a
--- bar where a rank is climbing towards a cap - a skill is a fraction of
--- the way to its next tier, which is what a bar is for.
+-- Every profession as a card of its own, wearing the profession book's
+-- own furniture: the faded workshop behind it, the framed icon, and
+-- the rank bar in that profession's colours. Then everything else the
+-- character has learned - class skills, weapons, armour, languages -
+-- grouped the way Forever's skills sheet groups them, one row per
+-- skill with a bar where a rank is climbing to its cap.
 --
--- Retail has no skills sheet, so there the page is the professions
--- alone, read from the profession list every client has.
+-- Retail has no skills sheet, so there the page is the profession
+-- cards alone, read from the profession list every client has.
 --
 -- Cooldowns are not here yet. Which recipes have one is a thing that
 -- has to be written down, since the client will not say until the
@@ -27,12 +28,48 @@ local COMMON = {
 }
 local PREFIX = "skl."
 
+-- The skills sheet's groups that are professions rather than skills.
+-- Matched by the game's own header words so a localised client agrees.
+local function IsProfessionGroup(header)
+    return header == (TRADE_SKILLS or "Professions")
+        or header == (SECONDARY_SKILLS or "Secondary Skills")
+end
+
+-- The profession's art name: the key of its Enum.Profession value, which
+-- is how the profession book names its atlases.
+local KITS = (Enum and Enum.Profession and tInvert) and tInvert(Enum.Profession) or {}
+
 ---------------------------------------------------------------------------
--- Reading the skills sheet (Forever)
+-- Reading
 ---------------------------------------------------------------------------
 
 local function HasSkillSheet()
     return C_SkillInfo and C_SkillInfo.GetNumSkillLines and C_SkillInfo.GetSkillLineInfo
+end
+
+-- What the trade skill side knows about a skill line: its art kit and
+-- its icon. Nil where the line is not a profession.
+local function TradeInfo(skillLineID)
+    if not (skillLineID and C_TradeSkillUI and C_TradeSkillUI.GetProfessionInfoBySkillLineID) then
+        return nil
+    end
+    local ok, info = pcall(C_TradeSkillUI.GetProfessionInfoBySkillLineID, skillLineID)
+    if ok and info and (info.profession or info.professionName) then return info end
+    return nil
+end
+
+-- The profession list's icons, by skill line, since the skills sheet
+-- has no pictures of its own.
+local function ProfessionIcons()
+    local icons = {}
+    if not (GetProfessions and GetProfessionInfo) then return icons end
+    for _, index in pairs({ GetProfessions() }) do
+        if type(index) == "number" then
+            local _, texture, _, _, _, _, skillLine = GetProfessionInfo(index)
+            if skillLine then icons[skillLine] = texture end
+        end
+    end
+    return icons
 end
 
 local function ScanSkills()
@@ -57,8 +94,6 @@ local function ScanSkills()
             end
         end
     end
-    -- A header with nothing under it is a group the game has collapsed
-    -- or one this character has nothing in; either way not a block.
     local out = {}
     for _, g in ipairs(groups) do
         if #g.skills > 0 then out[#out + 1] = g end
@@ -66,20 +101,16 @@ local function ScanSkills()
     return out, collapsed
 end
 
----------------------------------------------------------------------------
--- Reading the profession list (both clients)
----------------------------------------------------------------------------
-
 local function ScanProfessions()
     if not (GetProfessions and GetProfessionInfo) then return {} end
     local skills = {}
-    local indices = { GetProfessions() }
-    for _, index in pairs(indices) do
+    for _, index in pairs({ GetProfessions() }) do
         if type(index) == "number" then
-            local name, icon, rank, maxRank = GetProfessionInfo(index)
+            local name, icon, rank, maxRank, _, _, skillLine, modifier = GetProfessionInfo(index)
             if name then
                 skills[#skills + 1] = {
-                    name = name, icon = icon, rank = rank or 0, maxRank = maxRank or 0, modifier = 0,
+                    name = name, icon = icon, rank = rank or 0, maxRank = maxRank or 0,
+                    modifier = modifier or 0, skillID = skillLine,
                 }
             end
         end
@@ -144,42 +175,81 @@ end
 -- Blocks
 ---------------------------------------------------------------------------
 
-local groupsNow, collapsedNow = {}, 0
+local professionsNow, groupsNow, collapsedNow = {}, {}, 0
 
 local function Highlight()
     local capped, total = 0, 0
-    for _, g in ipairs(groupsNow) do
-        for _, s in ipairs(g.skills) do
-            if s.maxRank > 1 then
-                total = total + 1
-                if s.rank >= s.maxRank then capped = capped + 1 end
-            end
+    for _, p in ipairs(professionsNow) do
+        if p.maxRank > 1 then
+            total = total + 1
+            if p.rank >= p.maxRank then capped = capped + 1 end
         end
     end
     if total == 0 then return nil end
     return {
         value = capped,
-        label = ("skills at cap of %d"):format(total),
+        label = ("professions at cap of %d"):format(total),
         color = capped > 0 and Codex.STATE_COLOR.done or nil,
     }
 end
 
+-- One card per profession, in the profession book's clothes.
+local function ProfessionBlock(p, index, icons)
+    local trade = TradeInfo(p.skillID)
+    local kit = trade and trade.profession and KITS[trade.profession] or nil
+    local icon = p.icon or icons[p.skillID]
+    local text = ("%s %d/%d"):format(p.name, p.rank, p.maxRank)
+    if p.modifier and p.modifier > 0 then
+        text = ("%s %d/%d  (+%d)"):format(p.name, p.rank, p.maxRank, p.modifier)
+    end
+    return {
+        key     = "prof." .. p.name,
+        title   = p.name,
+        order   = index,
+        icon    = icon,
+        art     = "Profession-overview-Card-" .. p.name,
+        artFallback = "Profession-overview-Card",
+        artAlpha = 0.9,
+        rowless = true,
+        GetRows = function() return {} end,
+        GetBar  = function()
+            return { kit = kit or "DefaultBlue", value = p.rank, max = p.maxRank, text = text }
+        end,
+        GetHighlight = index == 1 and Highlight or nil,
+    }
+end
+
 local function Sync()
+    local blocks = {}
+    professionsNow, groupsNow, collapsedNow = {}, {}, 0
+
     if HasSkillSheet() then
-        groupsNow, collapsedNow = ScanSkills()
+        local groups, collapsed = ScanSkills()
+        collapsedNow = collapsed
+        for _, g in ipairs(groups) do
+            if IsProfessionGroup(g.header) then
+                for _, s in ipairs(g.skills) do professionsNow[#professionsNow + 1] = s end
+            else
+                groupsNow[#groupsNow + 1] = g
+            end
+        end
     else
-        groupsNow, collapsedNow = { { header = "Professions", skills = ScanProfessions() } }, 0
+        professionsNow = ScanProfessions()
     end
 
-    local blocks = {}
+    local icons = ProfessionIcons()
+    for index, p in ipairs(professionsNow) do
+        blocks[#blocks + 1] = ProfessionBlock(p, index, icons)
+    end
+
     for index, g in ipairs(groupsNow) do
         blocks[#blocks + 1] = {
             key   = g.header,
             title = g.header,
+            order = 100 + index,
             empty = "Nothing learned here yet.",
             GetRows = function() return Rows(g.skills) end,
             GetBar  = function() return Summary(g.skills) end,
-            GetHighlight = index == 1 and Highlight or nil,
         }
     end
 
@@ -195,6 +265,7 @@ local function Sync()
         blocks[#blocks + 1] = {
             key   = "_collapsed",
             title = "Not shown",
+            order = 1000,
             GetRows = function()
                 return { {
                     label = ("%d group%s collapsed in the game's skills sheet."):format(
