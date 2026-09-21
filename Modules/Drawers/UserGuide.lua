@@ -16,7 +16,26 @@ BazUI:RegisterUserGuide("Drawers", {
             blocks = {
                 { type = "paragraph", text = "The drawer sits against the left or right edge of your screen and holds a column of widgets. It slides away when you are not using it and the chrome around it fades, leaving what is in it readable." },
                 { type = "paragraph", text = "The minimap lives here, along with the minimap buttons every addon adds, the quest tracker, and about twenty small readouts - a clock, coordinates, your gold, durability, free bag slots, a notepad, a calculator. Anything publishing a LibDataBroker feed turns up as a widget too." },
+                { type = "note", style = "tip", text = "|cffffd700You do not have to have a drawer at all.|r Turn |cffffd700Use drawers|r off on the General page and every widget you switch on sits loose on the screen instead, wherever you drag it. See |cffffd700No drawer at all|r below." },
                 { type = "note", text = "|cffffd700Open it with|r /bwd, or Options > AddOns > BazUI > Drawers." },
+            },
+        },
+
+        {
+            title = "No drawer at all",
+            blocks = {
+                { type = "paragraph", text = "|cffffd700Use drawers|r, at the top of the General page, is the whole feature. On, your widgets live in a drawer at the side of the screen. Off, each one sits wherever you drag it, and the drawer, its tabs and its edge strip are not drawn." },
+                { type = "paragraph", text = "It is not a separate mode with its own rules. A widget in a drawer and a widget on the screen were always two states of the same thing, and with no drawer there is simply nothing to be in - so every widget you switch on is loose, and the Widgets page is the whole of the setup." },
+                { type = "h3", text = "Working that way" },
+                { type = "list", items = {
+                    "Switch a widget on from the |cffffd700Widgets|r page.",
+                    "Open |cffffd700BazUI Edit Mode|r and drag it where you want it.",
+                    "|cffffd700Scale|r, on the same panel, decides how big it draws. In a drawer that was the drawer's job, so it only applies out here.",
+                } },
+                { type = "note", text = "Everything about the drawer greys out while it is off, and your drawers are kept exactly as they were. Switching it back on gives you them back, widgets and all." },
+                { type = "h3", text = "Size" },
+                { type = "paragraph", text = "A docked widget is scaled to fill the drawer's width, which is why it never had a size of its own. Loose on the screen there is nothing to fill, so each one carries a |cffffd700Scale|r of its own - on its page under Widgets, and on its BazUI Edit Mode panel, both the same setting." },
+                { type = "note", text = "The minimap is the exception, and deliberately: it has its own |cffffd700Map Scale|r, because the map has to stay concentric with the ring drawn around it, so it scales the map rather than the frame holding it. It gets that one control and not the general one." },
             },
         },
 
@@ -96,6 +115,7 @@ BazUI:RegisterUserGuide("Drawers", {
                     "|cffffd700The Drawers page|r decides which drawers each one appears in. The same widget can be in more than one.",
                 } },
                 { type = "note", text = "The drawer you started with holds |cffffd700whatever is switched on|r, so a widget you have just enabled appears in it straight away. A drawer you made yourself starts empty, and you tick into it the ones you want." },
+                { type = "note", style = "warning", text = "A widget that is switched on but is |cffffd700in no drawer|r has nowhere to be drawn, so it is not drawn. If one has gone missing while drawers are on, that is the first thing to check: |cffffd700Drawers|r, then |cffffd700Widgets in this drawer|r." },
                 { type = "h3", text = "The buttons on a title bar" },
                 { type = "paragraph", text = "Put your cursor on a widget's title bar and its status text is replaced by four controls." },
                 { type = "table", columns = { "Button", "What it does" }, rows = {
@@ -270,6 +290,8 @@ BazUI:RegisterUserGuide("Drawers", {
                     { "/bwd feeds", "Lists every LibDataBroker feed in chat." },
                     { "/bwd feeds rescan", "Looks again for feeds that were missed." },
                     { "/bwd fade", "Prints what each widget's title bar is doing about fading, for when one will not fade with the rest." },
+                    { "/bwd float", "Prints where each loose widget thinks it should be against where it actually is." },
+                    { "/bwd map", "Prints everything about where the minimap has got to, for when it is not where you expect." },
                     { "/bwd settings", "Opens the settings page. Every BazUI command takes this, and |cffffd700help|r." },
                 } },
             },
