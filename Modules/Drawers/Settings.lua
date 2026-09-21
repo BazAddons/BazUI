@@ -55,10 +55,8 @@ local function GetSettingsOptionsTable()
         modeHeader = { order = 1, type = "header", name = "Drawers" },
         useDrawers = {
             order = 2, type = "toggle", name = "Use drawers",
-            desc = "Off, there is no drawer: every widget you switch on sits "
-                .. "on the screen where you drag it in Edit Mode, and the "
-                .. "drawer, its tabs and its edge strip are not drawn. "
-                .. "Turning it back on puts your drawer back as it was.",
+            desc = "On, your widgets live in a drawer at the side of the "
+                .. "screen. Off, each one sits wherever you drag it.",
             get = function() return addon:UsingDrawers() end,
             set = function(_, val)
                 addon:SetSetting("useDrawers", val and true or false)
@@ -70,9 +68,9 @@ local function GetSettingsOptionsTable()
         },
         noDrawersNote = {
             order = 3, type = "description",
-            name = "Drawers are off. Everything below is about the drawer, so "
-                .. "it waits here until you switch them back on. Your widgets "
-                .. "are on the Widgets page.",
+            name = "Nothing below applies while drawers are off. Switch "
+                .. "widgets on from the Widgets page, then drag them where "
+                .. "you want them in Edit Mode. The drawer you had is kept.",
             hidden = function() return addon:UsingDrawers() end,
         },
 
@@ -638,8 +636,8 @@ local function GetDrawersOptionsTable()
             offNote = {
                 order = -1, type = "description",
                 name = "Drawers are switched off, so none of these are on "
-                    .. "screen. They are kept as they are: turn drawers back "
-                    .. "on under General and yours comes back.",
+                    .. "screen. They are kept as they are. Switch drawers "
+                    .. "back on under General to use them again.",
                 hidden = function() return addon:UsingDrawers() end,
             },
             createDrawer = {
