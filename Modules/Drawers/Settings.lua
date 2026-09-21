@@ -70,7 +70,8 @@ local function GetSettingsOptionsTable()
             order = 3, type = "description",
             name = "Nothing below applies while drawers are off. Switch "
                 .. "widgets on from the Widgets page, then drag them where "
-                .. "you want them in Edit Mode. The drawer you had is kept.",
+                .. "you want them in BazUI Edit Mode. The drawer you had "
+                .. "is kept.",
             hidden = function() return addon:UsingDrawers() end,
         },
 
@@ -217,6 +218,11 @@ local function GetSettingsOptionsTable()
             order = 41, type = "description",
             name = "Force one value on every widget. A widget's own setting is grayed out while its override is on.",
         },
+        widgetsOffNote = {
+            order = 41.5, type = "description",
+            name = "These are about fading with the drawer, so they do nothing while drawers are off.",
+            hidden = function() return addon:UsingDrawers() end,
+        },
     }
 
     for i, def in ipairs(WIDGET_OVERRIDES) do
@@ -228,6 +234,7 @@ local function GetSettingsOptionsTable()
         end
         args["same_" .. key] = {
             order = 41 + i * 2, type = "toggle", name = def.label,
+            disabled = DrawerSettingOff,
             get = function() return Override().enabled == true end,
             set = function(_, val)
                 if Override().value == nil then addon:SetGlobalOverride(key, "value", true) end
@@ -238,6 +245,7 @@ local function GetSettingsOptionsTable()
         }
         args["value_" .. key] = {
             order = 42 + i * 2, type = "toggle", name = def.valueLabel,
+            disabled = DrawerSettingOff,
             hidden = function() return Override().enabled ~= true end,
             get = function() return Override().value ~= false end,
             set = function(_, val) addon:SetGlobalOverride(key, "value", val) end,
@@ -300,7 +308,7 @@ local function BuildWidgetGroup(widget, index)
         placementHeader = { order = 1, type = "header", name = "Placement" },
         floating = {
             order = 2, type = "toggle", name = "Floating",
-            desc = "Detached from the drawer. Move it in Edit Mode.",
+            desc = "Detached from the drawer. Move it in BazUI Edit Mode.",
             get = Floating,
             disabled = FloatingLocked,
             set = function(_, val)
@@ -360,7 +368,9 @@ local function BuildWidgetGroup(widget, index)
                 addon:SetWidgetSetting(id, "fadeTitleBar", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = function() return Overridden("fadeTitleBar") end,
+            disabled = function()
+                return NoDrawers() or Overridden("fadeTitleBar")
+            end,
         },
         fadeBackground = {
             order = 7, type = "toggle", name = "Fade the background with the drawer",
@@ -372,7 +382,9 @@ local function BuildWidgetGroup(widget, index)
                 addon:SetWidgetSetting(id, "fadeBackground", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = function() return Overridden("fadeBackground") end,
+            disabled = function()
+                return NoDrawers() or Overridden("fadeBackground")
+            end,
         },
     }
 
@@ -517,6 +529,7 @@ local function BuildDrawerGroup(drawerDef, drawerId, index)
         labelInput = {
             order = 2, type = "input", name = "Name",
             desc = "Shown in the tab's tooltip.",
+            disabled = NoDrawers,
             get = function()
                 local def = addon:GetDrawer(drawerId)
                 return def and def.label or ""
@@ -528,6 +541,7 @@ local function BuildDrawerGroup(drawerDef, drawerId, index)
         },
         chooseIcon = {
             order = 3, type = "execute", name = "Choose icon",
+            disabled = NoDrawers,
             desc = "|T" .. DrawerIcon(drawerDef) .. ":18:18:0:0:64:64:4:60:4:60|t  The icon on this drawer's tab.",
             func = function()
                 BazUI:ShowIconPicker(function(iconId)
@@ -577,6 +591,7 @@ local function BuildDrawerGroup(drawerDef, drawerId, index)
             order = 10 + i,
             type = "toggle",
             name = WidgetDisplayName(wid, entry.widget),
+            disabled = NoDrawers,
             get = function() return addon:IsWidgetInDrawer(drawerId, wid) end,
             set = function(_, val)
                 if val then
@@ -644,6 +659,7 @@ local function GetDrawersOptionsTable()
                 order = 0,
                 type = "execute",
                 name = "New drawer",
+                disabled = NoDrawers,
                 func = function()
                     local id = "drawer_" .. time()
                     addon:CreateDrawer(id, "New Drawer")
