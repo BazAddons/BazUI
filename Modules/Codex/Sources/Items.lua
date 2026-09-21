@@ -376,9 +376,14 @@ local pendingHits = {}   -- what the header resolved, for the list to draw
 -- columns leave.
 ---------------------------------------------------------------------------
 
+-- Weights rather than widths. A fixed width leaves the columns bunched
+-- against the right edge of the row with a lake of nothing between
+-- them and the name, which is what the first cut of this looked like.
+-- A weight is a share of what the row has to give, so the columns
+-- spread across it and the spacing holds at any window size.
 local COLUMN = {
     type = {
-        title = "Type", width = 108, justify = "LEFT",
+        title = "Type", weight = 2.0, justify = "LEFT",
         text = function(rec)
             if not rec.subclassID then return "" end
             return SubclassName(rec.classID or 0, rec.subclassID)
@@ -386,7 +391,7 @@ local COLUMN = {
         rank = function(rec) return (rec.classID or 0) * 100 + (rec.subclassID or 0) end,
     },
     slot = {
-        title = "Slot", width = 104, justify = "LEFT",
+        title = "Slot", weight = 1.6, justify = "LEFT",
         text = function(rec)
             if not (rec.slot and rec.slot > 0) then return "" end
             return SlotName(FoldSlot(rec.slot))
@@ -394,14 +399,14 @@ local COLUMN = {
         rank = function(rec) return rec.slot or 0 end,
     },
     ilvl = {
-        title = "iLvl", width = 46, justify = "RIGHT", numeric = true,
+        title = "iLvl", weight = 0.7, justify = "RIGHT", numeric = true,
         text = function(rec)
             return (rec.ilvl and rec.ilvl > 0) and tostring(rec.ilvl) or ""
         end,
         rank = function(rec) return rec.ilvl or 0 end,
     },
     req = {
-        title = "Req", width = 46, justify = "RIGHT", numeric = true,
+        title = "Req", weight = 0.7, justify = "RIGHT", numeric = true,
         text = function(rec)
             return (rec.minLvl and rec.minLvl > 0) and tostring(rec.minLvl) or ""
         end,
@@ -435,25 +440,41 @@ local function ActiveColumns()
     return out
 end
 
--- Where everything sits, measured in from the right edge of the card.
--- The name gets what is left. Worked out once per render and handed to
--- the header and every row, so a column and its heading cannot drift
--- apart.
-local RIGHT_PAD, STAR_W, MET_W, OWNED_W, COL_GAP = 10, 18, 16, 74, 8
+-- Where everything sits. Worked out once per render and handed to the
+-- header and every row, so a column and its heading cannot drift apart.
+--
+-- The marks at the right are fixed: a star is a star at any width. The
+-- name and the columns share what is left, by weight, with a generous
+-- gap between them - so the row reads as a table with air in it rather
+-- than a name and then a huddle.
+local ICON_LEFT, ICON_W, ICON_GAP = 8, 20, 10
+local STAR_W, MET_W, OWNED_W = 18, 16, 86
+local EDGE_GAP, FLEX_GAP = 8, 20
+local NAME_WEIGHT = 4.0
 
-local function ColumnLayout(keys)
-    local layout = { star = RIGHT_PAD }
-    layout.met = layout.star + STAR_W + COL_GAP
-    layout.owned = layout.met + MET_W + COL_GAP
-    local right = layout.owned + OWNED_W + COL_GAP
-    layout.columns = {}
-    for i = #keys, 1, -1 do
-        local key = keys[i]
-        local width = COLUMN[key].width
-        layout.columns[key] = { right = right, width = width }
-        right = right + width + COL_GAP
+local function ColumnLayout(keys, rowWidth)
+    local layout = { columns = {} }
+
+    -- From the right edge inward.
+    layout.star = EDGE_GAP
+    layout.met = layout.star + STAR_W + EDGE_GAP
+    layout.owned = layout.met + MET_W + EDGE_GAP
+    local rightEdge = layout.owned + OWNED_W + FLEX_GAP
+
+    local left = ICON_LEFT + ICON_W + ICON_GAP
+    local room = math.max((rowWidth or 600) - left - rightEdge - FLEX_GAP * #keys, 120)
+
+    local weight = NAME_WEIGHT
+    for _, key in ipairs(keys) do weight = weight + COLUMN[key].weight end
+
+    layout.nameLeft = left
+    layout.nameWidth = math.floor(room * NAME_WEIGHT / weight)
+    local x = left + layout.nameWidth + FLEX_GAP
+    for _, key in ipairs(keys) do
+        local width = math.floor(room * COLUMN[key].weight / weight)
+        layout.columns[key] = { left = x, width = width }
+        x = x + width + FLEX_GAP
     end
-    layout.nameRight = right + 2
     return layout
 end
 
@@ -941,19 +962,14 @@ end
 local function FillHeader(keys, layout)
     for _, head in pairs(page.heads) do head:Hide() end
 
-    local function Place(key, title, justify, width, right)
+    local function Place(key, title, justify, left, width)
         local head = AcquireHead(key)
         head.key = key
         head.text:SetText(title)
         head.text:SetJustifyH(justify)
         head:ClearAllPoints()
-        if width then
-            head:SetWidth(width)
-            head:SetPoint("RIGHT", page.head, "RIGHT", -right, 0)
-        else
-            head:SetPoint("LEFT", page.head, "LEFT", 28, 0)
-            head:SetPoint("RIGHT", page.head, "RIGHT", -right, 0)
-        end
+        head:SetWidth(width)
+        head:SetPoint("LEFT", page.head, "LEFT", left, 0)
         head.text:SetTextColor(unpack(sortKey == key and Theme.colors.gold or Theme.colors.textMuted))
 
         head.arrow:ClearAllPoints()
@@ -961,19 +977,19 @@ local function FillHeader(keys, layout)
         if sortKey == key then
             BazUI.SetArrowTexture(head.arrow, sortDesc and "DOWN" or "UP", 10)
             if justify == "RIGHT" then
-                head.arrow:SetPoint("RIGHT", head.text, "LEFT", -3, 0)
+                head.arrow:SetPoint("RIGHT", head, "RIGHT", -(head.text:GetStringWidth() or 0) - 5, 0)
             else
-                head.arrow:SetPoint("LEFT", head.text, "LEFT",
-                    math.min(head.text:GetStringWidth() or 0, head:GetWidth() or 0) + 3, 0)
+                head.arrow:SetPoint("LEFT", head, "LEFT", (head.text:GetStringWidth() or 0) + 5, 0)
             end
         end
         head:Show()
     end
 
-    Place("name", "Name", "LEFT", nil, layout.nameRight)
+    Place("name", "Name", "LEFT", layout.nameLeft - ICON_LEFT - ICON_W - ICON_GAP + 28,
+        layout.nameWidth)
     for _, key in ipairs(keys) do
         local col, spot = COLUMN[key], layout.columns[key]
-        Place(key, col.title, col.justify, spot.width, spot.right)
+        Place(key, col.title, col.justify, spot.left - 10, spot.width)
     end
 end
 
@@ -1034,7 +1050,7 @@ local function FillRows()
             end
             fs:ClearAllPoints()
             fs:SetWidth(spot.width)
-            fs:SetPoint("RIGHT", -spot.right, 0)
+            fs:SetPoint("LEFT", spot.left, 0)
             fs:SetJustifyH(col.justify)
             fs:SetText(rec and col.text(rec) or "")
             fs:SetTextColor(unpack(Theme.colors.textMuted))
@@ -1042,8 +1058,8 @@ local function FillRows()
         end
 
         row.label:ClearAllPoints()
-        row.label:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
-        row.label:SetPoint("RIGHT", row, "RIGHT", -layout.nameRight, 0)
+        row.label:SetWidth(layout.nameWidth)
+        row.label:SetPoint("LEFT", layout.nameLeft, 0)
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
             or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -1090,7 +1106,8 @@ local function Render(content, width)
     -- this page's to decide.
     p.hits = SortHits(pendingHits or {}, question)
     p.keys = ActiveColumns()
-    p.layout = ColumnLayout(p.keys)
+    -- The row spans the card, which is inset ten pixels either side.
+    p.layout = ColumnLayout(p.keys, width - 20)
 
     -- The card is the page: as tall as the room below the header, and
     -- no taller, so the panel has nothing of its own to scroll.
