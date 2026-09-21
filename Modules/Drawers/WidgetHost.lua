@@ -566,6 +566,18 @@ function WidgetHost:FloatWidget(widget)
     self:PlaceFloating(widget)
     f:Show()
 
+    -- Tell the widget it is on its own, the way releasing a slot does.
+    --
+    -- A widget's contract is OnDock when it is parented into a slot and
+    -- OnUndock when it is taken out of one, and floating used to satisfy
+    -- that only by accident: you docked first, then floated, so the slot
+    -- release fired OnUndock on the way past. With no drawer a widget
+    -- floats from login and is never in a slot at all, so neither hook
+    -- ran - and the minimap does its reattach in OnUndock, so the map
+    -- came up parented to nothing that had been told to hold it, with
+    -- the wrapper still at the alpha it was born with.
+    if widget.OnUndock then pcall(widget.OnUndock, widget) end
+
     -- Register with BazUI Edit Mode so the user can drag + configure it.
     -- The popup that opens on click is built from the widget's own
     -- GetOptionsArgs so the settings that appear match what's in the
