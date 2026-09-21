@@ -39,7 +39,7 @@ BazUI:RegisterSettingsSpec("Codex", {
         { key = "indexItems", label = "Remember items this character meets", type = "toggle",
           section = "items", order = 1, get = Get("indexItems"), set = Set("indexItems") },
         { key = "indexNote", type = "note", section = "items", order = 2,
-          text = "The client cannot search every item in the game, so searching by name looks through the items this character has actually carried, worn, banked or looked up. Looking an item up by its link or its number always works and needs none of this." },
+          text = "The list you see before you type is what this character has met: carried, worn, banked or looked up. On WoW: Forever, typing a name searches every item in the game; elsewhere it searches that list. A link or an item number looks up anything, anywhere, and needs none of this." },
         { key = "clearIndex", label = "Forget remembered items", type = "execute", section = "items", order = 3,
           confirm = true,
           confirmText = "Empty the list of items this character has met? Lookups by link or number are unaffected.",

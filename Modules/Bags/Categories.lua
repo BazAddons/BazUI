@@ -860,12 +860,17 @@ end
 -- Returns true if `itemID` passes ALL (or ANY, depending on matchMode)
 -- of the tags on `categoryKey`. False if the category has no tags or
 -- the item info isn't cached yet.
-function Categories.MatchesCategory(itemID, categoryKey)
+--
+-- `meta` is optional: a caller that already knows the item's type and
+-- quality - the Codex, from the shipped item catalogue - hands them in
+-- and the client is not asked. Without it the client is, and an item
+-- it has not loaded matches nothing.
+function Categories.MatchesCategory(itemID, categoryKey, meta)
     local cats = addon:GetSetting("categories") or {}
     local cat  = cats[categoryKey]
     if not cat or not cat.tags or #cat.tags == 0 then return false end
 
-    local meta = ItemMeta(itemID)
+    meta = meta or ItemMeta(itemID)
     if not meta then return false end
 
     local mode = cat.matchMode or "all"
@@ -1048,7 +1053,7 @@ local function FallbackKey(preferred)
     return preferred
 end
 
-function Categories.Classify(itemID, quality, classID)
+function Categories.Classify(itemID, quality, classID, meta)
     -- 1. Manual pin override always wins.
     local pins = addon:GetSetting("itemCategories")
     if pins and itemID and pins[itemID] then
@@ -1070,7 +1075,7 @@ function Categories.Classify(itemID, quality, classID)
         local cats = addon:GetSetting("categories") or {}
         local cat  = cats[entry.key]
         if cat and cat.tags and #cat.tags > 0 then
-            if Categories.MatchesCategory(itemID, entry.key) then
+            if Categories.MatchesCategory(itemID, entry.key, meta) then
                 return entry.key
             end
         end
