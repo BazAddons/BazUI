@@ -60,6 +60,11 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         transitionStyle = "instant", -- "instant", "fade", "slide"
         activeDrawer = "default",
         drawers = {},                -- populated by migration on first load
+
+        -- Whether there is a drawer at all. Off, every enabled widget
+        -- floats on the screen and the drawer, its tabs and its edge
+        -- strip are not drawn - see UsingDrawers below.
+        useDrawers = true,
     },
 
     slash = { "/bwd" },
@@ -84,6 +89,39 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                         bar and string.format("%.2f", bar:GetEffectiveAlpha() or -1) or "-",
                         bar and tostring(bar:IsShown()) or "-"))
                 end
+            end,
+        },
+        float = {
+            desc = "Print where each floating widget thinks it should be",
+            handler = function()
+                addon:Print(addon:UsingDrawers()
+                    and "Drawers are on." or "Drawers are off: everything floats.")
+                local any = false
+                for _, w in ipairs(BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}) do
+                    if addon:IsWidgetFloating(w.id) then
+                        any = true
+                        local pos = addon:GetWidgetPosition(w.id)
+                        local saved = pos
+                            and (pos.point
+                                and ("%s %s %.0f, %.0f"):format(pos.point,
+                                    pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
+                                or ("centre offset %.0f, %.0f"):format(pos.x or 0, pos.y or 0))
+                            or "nothing saved"
+                        -- Not `w.frame and w.frame:GetPoint()`: an `and`
+                        -- keeps only the first return, so every value
+                        -- after the point would come back nil.
+                        local now = "no frame"
+                        if w.frame then
+                            local point, _, relPoint, x, y = w.frame:GetPoint()
+                            now = point
+                                and ("%s %s %.0f, %.0f"):format(point,
+                                    relPoint or "?", x or 0, y or 0)
+                                or "unanchored"
+                        end
+                        print(("  %s | saved: %s | now: %s"):format(w.id, saved, now))
+                    end
+                end
+                if not any then addon:Print("  Nothing is floating.") end
             end,
         },
         feeds = {
@@ -232,6 +270,10 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 function addon:ApplySettings()
     local drawer = self.Drawer
     if not (drawer and drawer.frame) then return end
+
+    -- Whether there is a drawer at all, before anything that arranges
+    -- one: with it off the rest is arranging something nobody sees.
+    if drawer.ApplyDrawerless then drawer:ApplyDrawerless() end
 
     -- Side, width and where it sits.
     drawer:ApplySide()
@@ -470,6 +512,13 @@ end
 function addon:GetSortedWidgets()
     local allWidgets = BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}
     local drawer = self:GetActiveDrawerDef()
+
+    -- With no drawers, membership is not a question anybody asked: every
+    -- widget that is on is on screen.
+    if not self:UsingDrawers() then
+        drawer = { widgets = "*" }
+    end
+
     if not drawer or not drawer.widgets then return {} end
 
     local copy = {}
@@ -626,7 +675,22 @@ end
 -- own saved anchor and registered with BazUI Edit Mode for drag).
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- Drawers, or no drawers
+--
+-- With the drawer switched off there is nothing to dock into, so every
+-- enabled widget floats. That is expressed here rather than branched on
+-- in twenty places: IsWidgetFloating is the question the widget host,
+-- the settings page and the reorder code all already ask, so answering
+-- it differently is most of the feature.
+---------------------------------------------------------------------------
+
+function addon:UsingDrawers()
+    return self:GetSetting("useDrawers") ~= false
+end
+
 function addon:IsWidgetFloating(id)
+    if not self:UsingDrawers() then return true end
     local map = self:GetSetting("widgetFloating")
     return (map and map[id]) and true or false
 end

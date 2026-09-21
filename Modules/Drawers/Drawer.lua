@@ -240,6 +240,27 @@ end
 -- when the user changes the side in settings.
 ---------------------------------------------------------------------------
 
+-- The drawer, its tabs and its edge strip, shown or not.
+--
+-- Hidden rather than never built: the switch is a live one, and a player
+-- who turns drawers back on should get the drawer they had rather than
+-- one that needs a reload to exist.
+function Drawer:ApplyDrawerless()
+    local f = self.frame; if not f then return end
+    local using = addon:UsingDrawers()
+
+    if InCombatLockdown() and f:IsProtected() then
+        Drawer._placePending = true
+        return
+    end
+
+    f:SetShown(using)
+    if self._tabStrip then self._tabStrip:SetShown(using) end
+    if self._edgeHotZone then
+        self._edgeHotZone:SetShown(using and self.collapsed == true)
+    end
+end
+
 function Drawer:ApplySide()
     local f = self.frame; if not f then return end
 
@@ -301,6 +322,7 @@ function Drawer:ApplySide()
 
     -- Refresh tab strip positioning for the current side
     self:RefreshTabs()
+    self:ApplyDrawerless()
 end
 
 ---------------------------------------------------------------------------
@@ -818,8 +840,9 @@ function Drawer:ApplyEdgeHotZone()
     end
     hz:SetWidth(reveal)
 
-    -- Only relevant while the drawer is collapsed
-    hz:SetShown(self.collapsed == true)
+    -- Only relevant while the drawer is collapsed, and never when there
+    -- is no drawer for it to reveal.
+    hz:SetShown(addon:UsingDrawers() and self.collapsed == true)
 end
 
 ---------------------------------------------------------------------------

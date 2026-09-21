@@ -120,9 +120,18 @@ function WidgetHost:Initialize(parent)
                 end
             end
         end
+        -- A fight can have refused a placement outright; everything
+        -- that is floating gets its spot confirmed now either way.
+        self:PlaceAllFloating()
     end)
 
     self:Reflow()
+
+    -- And once the interface has finished coming up. Widgets register
+    -- across several frames of the login, and a few of them anchor
+    -- their own frame as they do, so the last word has to be ours.
+    C_Timer.After(0, function() self:PlaceAllFloating() end)
+    C_Timer.After(1, function() self:PlaceAllFloating() end)
 end
 
 ---------------------------------------------------------------------------
@@ -482,6 +491,54 @@ local function BuildEditModeConfig(widget)
     return settings, actions
 end
 
+-- Where a floating widget goes, and the only code that decides it.
+--
+-- The saved shape is whatever GetPoint gave us at the time: a point, the
+-- point on the screen it hangs off, and an offset. Anchored to UIParent
+-- rather than to whatever the frame happened to be attached to when it
+-- was saved, because the only thing a floating widget is ever attached
+-- to is the screen.
+function WidgetHost:PlaceFloating(widget)
+    if not (widget and widget.frame) then return false end
+    if InCombatLockdown() and widget.frame:IsProtected() then return false end
+
+    local pos = addon:GetWidgetPosition(widget.id)
+    local f = widget.frame
+    f:ClearAllPoints()
+    if pos and pos.point then
+        f:SetPoint(pos.point, UIParent, pos.relPoint or pos.point,
+            pos.x or 0, pos.y or 0)
+    elseif pos and pos.x and pos.y then
+        -- The shape BazUI Edit Mode saves for everything else: the
+        -- frame's centre as a screen-pixel offset from the middle.
+        local es = f:GetEffectiveScale()
+        f:SetPoint("CENTER", UIParent, "CENTER", pos.x / es, pos.y / es)
+    else
+        f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
+    return true
+end
+
+-- Put every floating widget back where it belongs.
+--
+-- Logging in used to leave them stacked in the middle of the screen. The
+-- placement itself was right; what was wrong is that it happened once,
+-- at whatever point in the boot order the widget registered, and
+-- anything that anchored the frame afterwards won - a widget that
+-- anchors itself at Init so it has a resolved position before the dock
+-- arrives, which several of them do for good reasons of their own.
+--
+-- So we place them again once the interface has settled, and again when
+-- a fight that refused it ends. Placing a frame that is already in the
+-- right spot costs nothing.
+function WidgetHost:PlaceAllFloating()
+    for _, widget in ipairs(BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}) do
+        if widget._floating then
+            self:PlaceFloating(widget)
+        end
+    end
+end
+
 function WidgetHost:FloatWidget(widget)
     if not widget or not widget.frame then return end
 
@@ -505,14 +562,8 @@ function WidgetHost:FloatWidget(widget)
     f:SetParent(UIParent)
     f:SetScale(1.0)
     f:SetSize(widget.designWidth or 200, widget.designHeight or 60)
-    f:ClearAllPoints()
-
-    local pos = addon:GetWidgetPosition(id)
-    if pos and pos.point then
-        f:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
-    else
-        f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    end
+    widget._floating = true
+    self:PlaceFloating(widget)
     f:Show()
 
     -- Register with BazUI Edit Mode so the user can drag + configure it.
@@ -928,6 +979,15 @@ function WidgetHost:Reflow()
     local allWidgets = addon.GetSortedWidgets and addon:GetSortedWidgets()
         or (BazUI.GetDockableWidgets and BazUI:GetDockableWidgets())
         or {}
+
+    -- No drawers: every enabled widget floats and no slot is built. The
+    -- loop below already does this, because IsWidgetFloating answers
+    -- true for everything while the drawer is off - but a widget that
+    -- was in no drawer at all would never have been in this list, so it
+    -- is gathered from the registry instead of from drawer membership.
+    if not addon:UsingDrawers() then
+        allWidgets = BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}
+    end
 
     -- Split: disabled widgets are hidden entirely, floating widgets are
     -- handled by FloatWidget (reparented to UIParent, Edit Mode

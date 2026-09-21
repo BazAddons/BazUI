@@ -29,6 +29,17 @@ local function Locked()
     return addon:GetSetting("locked") and true or false
 end
 
+-- Every drawer setting is about a drawer, so with drawers off they are
+-- all disabled in place rather than taken away: the page keeps its
+-- shape, and a setting somebody remembers is where they remember it.
+local function NoDrawers()
+    return not addon:UsingDrawers()
+end
+
+local function DrawerSettingOff()
+    return Locked() or NoDrawers()
+end
+
 local function FadeOff()
     return addon:GetSetting("fadeEnabled") == false
 end
@@ -41,6 +52,30 @@ local WIDGET_OVERRIDES = {
 
 local function GetSettingsOptionsTable()
     local args = {
+        modeHeader = { order = 1, type = "header", name = "Drawers" },
+        useDrawers = {
+            order = 2, type = "toggle", name = "Use drawers",
+            desc = "Off, there is no drawer: every widget you switch on sits "
+                .. "on the screen where you drag it in Edit Mode, and the "
+                .. "drawer, its tabs and its edge strip are not drawn. "
+                .. "Turning it back on puts your drawer back as it was.",
+            get = function() return addon:UsingDrawers() end,
+            set = function(_, val)
+                addon:SetSetting("useDrawers", val and true or false)
+                if addon.ApplySettings then addon:ApplySettings() end
+                Refresh(PAGE_GENERAL)
+                Refresh(PAGE_WIDGETS)
+                Refresh(PAGE_DRAWERS)
+            end,
+        },
+        noDrawersNote = {
+            order = 3, type = "description",
+            name = "Drawers are off. Everything below is about the drawer, so "
+                .. "it waits here until you switch them back on. Your widgets "
+                .. "are on the Widgets page.",
+            hidden = function() return addon:UsingDrawers() end,
+        },
+
         layoutHeader = { order = 10, type = "header", name = "Layout" },
         side = {
             order = 11, type = "select", name = "Screen side",
@@ -50,6 +85,7 @@ local function GetSettingsOptionsTable()
             set = function(_, val)
                 if addon.Drawer then addon.Drawer:SetSide(val) end
             end,
+            disabled = NoDrawers,
         },
         width = {
             order = 12, type = "range", name = "Width",
@@ -65,6 +101,7 @@ local function GetSettingsOptionsTable()
             set = function(_, val)
                 if addon.Drawer then addon.Drawer:SetWidth(val) end
             end,
+            disabled = NoDrawers,
         },
         widgetSpacing = {
             order = 13, type = "range", name = "Space between widgets",
@@ -74,6 +111,7 @@ local function GetSettingsOptionsTable()
                 addon:SetSetting("widgetSpacing", val)
                 if addon.WidgetHost and addon.WidgetHost.Reflow then addon.WidgetHost:Reflow() end
             end,
+            disabled = NoDrawers,
         },
 
         appearanceHeader = { order = 20, type = "header", name = "Appearance" },
@@ -90,7 +128,7 @@ local function GetSettingsOptionsTable()
                 addon:SetSetting("backgroundOpacity", val)
                 if addon.Drawer then addon.Drawer:ApplyAppearance() end
             end,
-            disabled = Locked,
+            disabled = DrawerSettingOff,
         },
         frameOpacity = {
             order = 23, type = "range", name = "Frame opacity",
@@ -101,7 +139,7 @@ local function GetSettingsOptionsTable()
                 addon:SetSetting("frameOpacity", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = Locked,
+            disabled = DrawerSettingOff,
         },
 
         fadingHeader = { order = 30, type = "header", name = "Fading" },
@@ -114,7 +152,7 @@ local function GetSettingsOptionsTable()
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
                 Refresh(PAGE_GENERAL)
             end,
-            disabled = Locked,
+            disabled = DrawerSettingOff,
         },
         fadedOpacity = {
             order = 32, type = "range", name = "Faded opacity",
@@ -125,21 +163,21 @@ local function GetSettingsOptionsTable()
                 addon:SetSetting("fadedOpacity", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = Locked, hidden = FadeOff,
+            disabled = DrawerSettingOff, hidden = FadeOff,
         },
         fadeDelay = {
             order = 33, type = "range", name = "Fade after",
             min = 0, max = 5, step = 0.1, format = "%.1f s",
             get = function() return addon:GetSetting("fadeDelay") or 1.0 end,
             set = function(_, val) addon:SetSetting("fadeDelay", val) end,
-            disabled = Locked, hidden = FadeOff,
+            disabled = DrawerSettingOff, hidden = FadeOff,
         },
         fadeDuration = {
             order = 34, type = "range", name = "Fade takes",
             min = 0.05, max = 2, step = 0.05, format = "%.2f s",
             get = function() return addon:GetSetting("fadeDuration") or 0.3 end,
             set = function(_, val) addon:SetSetting("fadeDuration", val) end,
-            disabled = Locked, hidden = FadeOff,
+            disabled = DrawerSettingOff, hidden = FadeOff,
         },
         alwaysShowInCombat = {
             order = 35, type = "toggle", name = "Stay fully visible in combat",
@@ -148,7 +186,7 @@ local function GetSettingsOptionsTable()
                 addon:SetSetting("disableFadeInCombat", val)
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
             end,
-            disabled = Locked, hidden = FadeOff,
+            disabled = DrawerSettingOff, hidden = FadeOff,
         },
         fadeTabWhenClosed = {
             order = 36, type = "toggle", name = "Fade the tab while the drawer is closed",
@@ -159,7 +197,7 @@ local function GetSettingsOptionsTable()
                 if addon.Drawer then addon.Drawer:EvaluateFade(true) end
                 Refresh(PAGE_GENERAL)
             end,
-            disabled = Locked, hidden = FadeOff,
+            disabled = DrawerSettingOff, hidden = FadeOff,
         },
         edgeRevealPx = {
             order = 37, type = "range", name = "Reveal the tab within",
@@ -172,7 +210,7 @@ local function GetSettingsOptionsTable()
                     addon.Drawer:ApplyEdgeHotZone()
                 end
             end,
-            disabled = Locked,
+            disabled = DrawerSettingOff,
             hidden = function() return FadeOff() or addon:GetSetting("fadeTabWhenClosed") == false end,
         },
 
@@ -249,6 +287,8 @@ end
 local function BuildWidgetGroup(widget, index)
     local id = widget.id
     local function Floating() return addon:IsWidgetFloating(id) end
+    -- Floating is not a choice when there is no drawer to be in.
+    local function FloatingLocked() return not addon:UsingDrawers() end
     local function Overridden(key)
         local o = addon:GetSetting("widgetGlobalOverrides")
         return o and o[key] and o[key].enabled or false
@@ -264,6 +304,7 @@ local function BuildWidgetGroup(widget, index)
             order = 2, type = "toggle", name = "Floating",
             desc = "Detached from the drawer. Move it in Edit Mode.",
             get = Floating,
+            disabled = FloatingLocked,
             set = function(_, val)
                 if addon.WidgetHost and addon.WidgetHost.SetWidgetFloating then
                     addon.WidgetHost:SetWidgetFloating(id, val)
@@ -576,6 +617,13 @@ local function GetDrawersOptionsTable()
         name = "Drawers",
         type = "group",
         args = {
+            offNote = {
+                order = -1, type = "description",
+                name = "Drawers are switched off, so none of these are on "
+                    .. "screen. They are kept as they are: turn drawers back "
+                    .. "on under General and yours comes back.",
+                hidden = function() return addon:UsingDrawers() end,
+            },
             createDrawer = {
                 order = 0,
                 type = "execute",
