@@ -17,10 +17,10 @@
 --   Nothing           every item in the game, in name order, for
 --                     browsing - by category, with the tabs. The list
 --                     is virtual, so seventeen thousand rows cost the
---                     same as twenty. What this character has met -
+--                     same as twenty. An item this character has met -
 --                     carried, worn, banked, or looked up by the client
---                     for any reason - is the Met tab, and is the whole
---                     list where there is no catalogue.
+--                     for any reason - wears a mark on its row. Where
+--                     there is no catalogue the met items are the list.
 --
 -- A row is drawn from the client's own data the moment it has any, and
 -- from the catalogue until then - so a search result is never a bare
@@ -161,14 +161,6 @@ local function Sorted(ids, index)
     return ids
 end
 
--- Everything the character has met, by name.
-local function Met()
-    local index = Index()
-    local ids = {}
-    for itemID in pairs(index) do ids[#ids + 1] = itemID end
-    return Sorted(ids, index)
-end
-
 -- What the page shows before you type anything: every item there is,
 -- where the catalogue is for this client, and otherwise what you have
 -- met. The box narrows a list that is already there rather than
@@ -176,7 +168,10 @@ end
 local function Everything()
     local cat = Catalogue()
     if cat then return cat.All() end
-    return Met()
+    local index = Index()
+    local ids = {}
+    for itemID in pairs(index) do ids[#ids + 1] = itemID end
+    return Sorted(ids, index)
 end
 
 ---------------------------------------------------------------------------
@@ -367,8 +362,31 @@ local function AcquireRow(parent)
         GameTooltip:Hide()
     end)
 
+    -- The mark for an item this character has met. Drawn on the row
+    -- rather than filtered into a tab of its own: the question "have I
+    -- seen this" is asked about the item in front of you, and a mark
+    -- answers it there. A frame rather than a bare texture so it can
+    -- say in words what it means.
+    row.met = CreateFrame("Frame", nil, row)
+    row.met:SetSize(16, 16)
+    row.met:SetPoint("RIGHT", row.star, "LEFT", -6, 0)
+    row.met.tex = row.met:CreateTexture(nil, "ARTWORK")
+    row.met.tex:SetAllPoints()
+    row.met.tex:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+    row.met.tex:SetAlpha(0.85)
+    row.met:SetScript("OnEnter", function(self)
+        self:GetParent().hover:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Seen on this character", unpack(Theme.colors.text))
+        GameTooltip:Show()
+    end)
+    row.met:SetScript("OnLeave", function(self)
+        self:GetParent().hover:Hide()
+        GameTooltip:Hide()
+    end)
+
     row.owned = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
-    row.owned:SetPoint("RIGHT", row.star, "LEFT", -8, 0)
+    row.owned:SetPoint("RIGHT", row.met, "LEFT", -6, 0)
     row.owned:SetJustifyH("RIGHT")
     row.label:SetPoint("RIGHT", row.owned, "LEFT", -10, 0)
 
@@ -472,9 +490,6 @@ local function RebuildCategories()
     end
 
     Add("all", "All")
-    -- Only where All means the whole game; otherwise the two are the
-    -- same list and a second tab would be a puzzle.
-    if Catalogue() then Add("met", "Met") end
     for _, cat in ipairs(BagCategories() or {}) do
         Add(cat.key, cat.name or cat.key)
     end
@@ -521,16 +536,7 @@ local function RenderHeader(host, width)
 
     local hits, note = Resolve(query)
     local category = addon:GetSetting("itemCategory") or "all"
-    if category == "met" then
-        local index = Index()
-        local kept = {}
-        for _, itemID in ipairs(hits) do
-            if index[itemID] then kept[#kept + 1] = itemID end
-        end
-        hits = kept
-    elseif category ~= "all" then
-        hits = InCategory(hits, category)
-    end
+    if category ~= "all" then hits = InCategory(hits, category) end
     pendingHits = hits
 
     -- The count already sits in the rail, so this line is kept for the
@@ -538,9 +544,7 @@ local function RenderHeader(host, width)
     if note then
         headerNote = note
     elseif #hits == 0 then
-        if category == "met" and IndexSize() == 0 then
-            headerNote = "Nothing met yet. Items join this tab as you carry, wear, bank and loot them."
-        elseif IndexSize() > 0 or Catalogue() then
+        if IndexSize() > 0 or Catalogue() then
             headerNote = "Nothing in this category matches."
         else
             headerNote = "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
@@ -655,6 +659,7 @@ local function FillRows()
         Codex.Panel.SetRowBand(row, i)
         row.itemID = itemID
         SetStar(row)
+        row.met:SetShown(Index()[itemID] ~= nil)
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
             or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -737,7 +742,7 @@ Codex.customTabs.items = {
             highlights[#highlights + 1] = { value = catalogue.Count(), label = "items in the game" }
         end
         local key = addon:GetSetting("itemCategory")
-        if key and key ~= "all" and key ~= "met" then
+        if key and key ~= "all" then
             for _, cat in ipairs(BagCategories()) do
                 if cat.key == key then
                     highlights[#highlights + 1] = {

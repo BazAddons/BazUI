@@ -39,7 +39,7 @@ BazUI:RegisterSettingsSpec("Codex", {
         { key = "indexItems", label = "Remember items this character meets", type = "toggle",
           section = "items", order = 1, get = Get("indexItems"), set = Set("indexItems") },
         { key = "indexNote", type = "note", section = "items", order = 2,
-          text = "On WoW: Forever the Items tab lists every item in the game, and the Met tab is the ones this character has carried, worn, banked or looked up - which is what this switch keeps. Elsewhere the met list is the whole tab. A link or an item number looks up anything, anywhere, and needs none of this." },
+          text = "On WoW: Forever the Items tab lists every item in the game, and a tick on a row means this character has carried, worn, banked or looked it up - which is what this switch keeps. Elsewhere those items are the whole tab. A link or an item number looks up anything, anywhere, and needs none of this." },
         { key = "clearIndex", label = "Forget remembered items", type = "execute", section = "items", order = 3,
           confirm = true,
           confirmText = "Empty the list of items this character has met? Lookups by link or number are unaffected.",
