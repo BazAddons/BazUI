@@ -33,6 +33,20 @@ local Theme = BazUI.Skin.Theme
 local ROW_H = 26   -- a banded row, the same one the rest of the codex draws
 local WHEEL = 3    -- rows per notch of the wheel
 
+-- The game's own star, the one the reputation pane marks a watched
+-- faction with. A sheet of four; the hollow one and the filled one.
+local STAR_FILE   = "Interface\\Common\\ReputationStar"
+local STAR_EMPTY  = { 0, 0.5, 0, 0.5 }
+local STAR_FILLED = { 0.5, 1, 0.5, 1 }
+
+-- Draw a row's star for whether the item is wanted.
+local function SetStar(row)
+    local wanted = row.itemID and Codex.Wishlist and Codex.Wishlist.Has(row.itemID)
+    row.star.tex:SetTexCoord(unpack(wanted and STAR_FILLED or STAR_EMPTY))
+    row.star.tex:SetAlpha(wanted and 1 or 0.35)
+    row.star.wanted = wanted and true or false
+end
+
 Codex.customTabs = Codex.customTabs or {}
 
 ---------------------------------------------------------------------------
@@ -312,8 +326,41 @@ local function AcquireRow(parent)
     row.label:SetJustifyH("LEFT")
     row.label:SetWordWrap(false)
 
+    -- The star. Hollow and faint until you want the thing; filled and
+    -- bright once you do. One click either way, and the Wishlist page
+    -- follows in the same redraw.
+    row.star = CreateFrame("Button", nil, row)
+    row.star:SetSize(18, 18)
+    row.star:SetPoint("RIGHT", -8, 0)
+    row.star.tex = row.star:CreateTexture(nil, "ARTWORK")
+    row.star.tex:SetAllPoints()
+    row.star.tex:SetTexture(STAR_FILE)
+    row.star:SetScript("OnClick", function(self)
+        local r = self:GetParent()
+        if not (r.itemID and Codex.Wishlist) then return end
+        Codex.Wishlist.Toggle(r.itemID)
+        SetStar(r)
+    end)
+    row.star:SetScript("OnEnter", function(self)
+        local r = self:GetParent()
+        r.hover:Show()
+        self.tex:SetAlpha(1)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.wanted and "On your wishlist" or "Want it",
+            unpack(Theme.colors.text))
+        GameTooltip:AddLine(self.wanted and "Click to take it off." or "Click to add it to the Wishlist.",
+            0.9, 0.9, 0.9, true)
+        GameTooltip:Show()
+    end)
+    row.star:SetScript("OnLeave", function(self)
+        local r = self:GetParent()
+        r.hover:Hide()
+        SetStar(r)
+        GameTooltip:Hide()
+    end)
+
     row.owned = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
-    row.owned:SetPoint("RIGHT", -12, 0)
+    row.owned:SetPoint("RIGHT", row.star, "LEFT", -8, 0)
     row.owned:SetJustifyH("RIGHT")
     row.label:SetPoint("RIGHT", row.owned, "LEFT", -10, 0)
 
@@ -587,6 +634,7 @@ local function FillRows()
         row:SetPoint("TOPRIGHT", -10, -y)
         Codex.Panel.SetRowBand(row, i)
         row.itemID = itemID
+        SetStar(row)
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
             or "Interface\\Icons\\INV_Misc_QuestionMark")

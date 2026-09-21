@@ -72,6 +72,39 @@ local function Remove(itemID)
 end
 
 ---------------------------------------------------------------------------
+-- For the rest of the codex
+--
+-- The box at the top of this page takes text, because that is what a
+-- person has. The Items page has the item itself, so it wants a way in
+-- that does not go through parsing a link: is it wanted, and toggle
+-- that. Save refreshes the panel, so a star clicked on the Items page
+-- redraws both pages in the same pass.
+---------------------------------------------------------------------------
+
+Codex.Wishlist = Codex.Wishlist or {}
+
+function Codex.Wishlist.Has(itemID)
+    itemID = tonumber(itemID)
+    return itemID ~= nil and List()[itemID] ~= nil
+end
+
+-- Returns whether the item is wanted afterwards.
+function Codex.Wishlist.Toggle(itemID)
+    itemID = tonumber(itemID)
+    if not itemID then return false end
+    local list = List()
+    if list[itemID] then
+        list[itemID] = nil
+        Save(list)
+        return false
+    end
+    if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
+    list[itemID] = { added = time() }
+    Save(list)
+    return true
+end
+
+---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
 
