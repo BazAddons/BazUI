@@ -571,7 +571,7 @@ function MinimapWidget:GetOptionsArgs()
             order     = 12,
             type      = "range",
             name      = "Map Scale",
-            desc      = "How much of the drawer's width the minimap takes. Below 100% it sits smaller, centered, with room to spare either side. For a map bigger than that, widen the drawer.",
+            desc      = "How big the map draws. In a drawer this is how much of the drawer's width it takes, and below 100% it sits centred with room either side. Floating, it is simply the size of the map.",
             min       = MAP_SCALE_MIN,
             max       = MAP_SCALE_MAX,
             step      = 0.05,
@@ -651,6 +651,11 @@ function MinimapWidget:Init()
     widgetInfo = {
         id           = WIDGET_ID,
         label        = "Minimap",
+        -- The map scales itself rather than letting the frame around it
+        -- be scaled, so that the map and the ring drawn round it stay
+        -- concentric. Map Scale below is the one control; the host does
+        -- not offer its own on top of it.
+        ownsScale    = true,
         designWidth  = wrapperW,
         designHeight = wrapperH,
         frame        = wrapper,

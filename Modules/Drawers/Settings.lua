@@ -312,6 +312,24 @@ local function BuildWidgetGroup(widget, index)
                 Refresh(PAGE_WIDGETS)
             end,
         },
+        scale = {
+            order = 2.5, type = "range", name = "Scale",
+            desc = "How big it draws. Docked, the drawer decides this by "
+                .. "fitting the widget to its width, so it only applies "
+                .. "while the widget is floating.",
+            min = 0.5, max = 2.0, step = 0.05, isPercent = true,
+            format = function(v) return ("%d%%"):format(math.floor(v * 100 + 0.5)) end,
+            get = function() return addon:GetWidgetScale(id) end,
+            set = function(_, val)
+                if addon.WidgetHost and addon.WidgetHost.SetWidgetScale then
+                    addon.WidgetHost:SetWidgetScale(id, val)
+                end
+            end,
+            -- Not offered for a widget that scales its own contents: its
+            -- own control is further down this page.
+            hidden = function() return addon:WidgetOwnsScale(id) end,
+            disabled = function() return not Floating() end,
+        },
         collapsed = {
             order = 3, type = "toggle", name = "Collapsed",
             desc = "Only the title bar shows in the drawer.",

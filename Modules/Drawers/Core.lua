@@ -31,6 +31,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         widgetGlobalOverrides = {},   -- [key] = { enabled = bool, value = <any> } (BazUI global page)
         widgetFloating = {},          -- [widgetId] = true when detached from the drawer into free Edit Mode
         widgetPositions = {},         -- [widgetId] = { point, relPoint, x, y } for floating widgets
+        widgetScale = {},             -- [widgetId] = number, how big a floating widget draws
         widgetEnabled = {},           -- [widgetId] = false to disable the widget entirely (default true)
         widgetDockedToBottom = {},    -- [widgetId] = true to dock at the drawer's bottom edge (stacks upward)
         broker = {                    -- LibDataBroker feed widgets (Widgets/Broker.lua)
@@ -730,6 +731,41 @@ function addon:SetWidgetDockedToBottom(id, val)
     -- declared defaultDockToBottom = true.
     map[id] = val and true or false
     self:SetSetting("widgetDockedToBottom", map)
+end
+
+---------------------------------------------------------------------------
+-- How big a floating widget draws
+--
+-- Docked, the drawer decides: a widget is scaled to fill the drawer's
+-- width, which is why there was never a scale to set. Floating there is
+-- nothing to fill, so the number has to come from somewhere, and with
+-- no drawer at all that is every widget on screen.
+--
+-- A widget that scales its own contents says so with `ownsScale` and is
+-- left alone - the minimap is the one, because the map has to stay
+-- concentric with the ring drawn around it, so it scales the map rather
+-- than the frame holding it. Offering both would be two scales
+-- multiplying together, which is the conflict this avoids.
+---------------------------------------------------------------------------
+
+function addon:GetWidgetScale(id)
+    local map = self:GetSetting("widgetScale")
+    local v = map and tonumber(map[id])
+    if not v or v <= 0 then return 1 end
+    return v
+end
+
+function addon:SetWidgetScale(id, value)
+    local map = self:GetSetting("widgetScale") or {}
+    value = tonumber(value) or 1
+    map[id] = (value == 1) and nil or value
+    self:SetSetting("widgetScale", map)
+end
+
+-- Whether this widget's size is ours to set at all.
+function addon:WidgetOwnsScale(id)
+    local w = BazUI.GetDockableWidget and BazUI:GetDockableWidget(id)
+    return (w and w.ownsScale) and true or false
 end
 
 function addon:GetWidgetPosition(id)

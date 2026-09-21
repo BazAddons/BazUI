@@ -427,6 +427,26 @@ local function BuildEditModeConfig(widget)
     -- pixel-positioned via the Edit Mode popup
     table.insert(settings, { type = "nudge" })
 
+    -- And how big it draws, for the same reason: floating, nothing else
+    -- decides. A widget that scales its own contents is skipped here and
+    -- brings its own control through GetOptionsArgs below, so there is
+    -- exactly one scale on this panel either way and the two can never
+    -- disagree.
+    if not widget.ownsScale then
+        local id = widget.id
+        table.insert(settings, {
+            type = "slider",
+            key = "bazScale",
+            label = "Scale",
+            min = 0.5, max = 2.0, step = 0.05,
+            format = function(v) return ("%d%%"):format(math.floor(v * 100 + 0.5)) end,
+            get = function() return addon:GetWidgetScale(id) end,
+            set = function(v)
+                if addon.WidgetHost then addon.WidgetHost:SetWidgetScale(id, v) end
+            end,
+        })
+    end
+
     for _, entry in ipairs(sorted) do
         local key, opt = entry.key, entry.opt
 
@@ -560,7 +580,10 @@ function WidgetHost:FloatWidget(widget)
 
     local f = widget.frame
     f:SetParent(UIParent)
-    f:SetScale(1.0)
+    -- Docked, Reflow scales the widget to fill the drawer. Floating,
+    -- there is nothing to fill, so it draws at whatever size the player
+    -- asked for - and 1 for a widget that scales its own insides.
+    f:SetScale(widget.ownsScale and 1 or addon:GetWidgetScale(id))
     f:SetSize(widget.designWidth or 200, widget.designHeight or 60)
     widget._floating = true
     self:PlaceFloating(widget)
@@ -706,6 +729,25 @@ function WidgetHost:SetWidgetEnabled(widgetId, enabled)
 
     if addon.Drawer and addon.Drawer.EvaluateFade then
         addon.Drawer:EvaluateFade(true)
+    end
+end
+
+-- Live scale change for a floating widget.
+--
+-- The frame is placed again afterwards: a position saved as an offset
+-- from the middle of the screen is divided by the frame's effective
+-- scale to land, so changing the scale without re-placing walks the
+-- widget across the screen.
+function WidgetHost:SetWidgetScale(widgetId, value)
+    addon:SetWidgetScale(widgetId, value)
+
+    local widget = BazUI.GetDockableWidget and BazUI:GetDockableWidget(widgetId)
+    if not (widget and widget.frame) then return end
+    if widget.ownsScale then return end
+
+    if addon:IsWidgetFloating(widgetId) then
+        widget.frame:SetScale(addon:GetWidgetScale(widgetId))
+        self:PlaceFloating(widget)
     end
 end
 
