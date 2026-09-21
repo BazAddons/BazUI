@@ -63,7 +63,25 @@ BazUI:RegisterUserGuide("Nameplates", {
                     { "Show level", "The unit's level on the right of the bar. Two question marks mean it is far enough above you that the number stopped being the point." },
                     { "Mark rares and elites", "The unit's rank beside the level: an elite reads 62+, a rare elite 62 Rare+, a world boss ?? Boss. Ordinary mobs are left unmarked, which is what makes a marked one worth a second look. With the level switched off the rank is spelled out on its own." },
                     { "Name size", "The name above the bar." },
+                    { "Last names", "Players on WoW: Forever have a surname, and it shows by default because it is part of their name. Off leaves the first name only. This has nothing to do with realms - on this client the second half of a name is a surname, not a server, which is the opposite of how retail reads it." },
+                    { "Guild name", "The guild in angle brackets above the name, where it is furthest from the health bar - a guild tag is the least urgent thing on a plate. An NPC's title comes through the same way, so a bartender reads <Bartender>, which is what the game's own plates do. The plate grows by a line to make room rather than drawing over whatever is above it." },
                 } },
+            },
+        },
+
+        {
+            title = "Focus",
+            blocks = {
+                { type = "paragraph", text = "Twenty plates on screen and one of them matters. These make that one easier to find without taking any of the others away." },
+                { type = "table", columns = { "Setting", "What it does" }, rows = {
+                    { "Fade everything else", "How solid the plates that are not your target look. At 100 nothing fades. With no target selected nothing fades either - there would be nothing for the rest to be quieter than, and a screen of uniformly faded plates reads as broken rather than focused." },
+                    { "Enlarge your target", "How much bigger your target's plate is drawn. It grows about the unit rather than out of a corner, so the plate stays over what it belongs to, and the name and level grow with it." },
+                    { "Height above the unit", "Moves every plate up or down from where the game puts it. For when names sit in front of what you are trying to see rather than above it." },
+                    { "Only show in combat", "Plates appear when you are fighting and go away when you are not. Your own target is always shown either way - you picked it deliberately, and a plate that vanishes the moment you click something is not a quiet interface." },
+                    { "Mark what is attacking you", "A red rim around the plate of any hostile unit currently on you. This is what threat is really being asked about, so it gets a mark rather than a shade - a hue shift on the health bar competes with the color you are already reading, and at plate size orange and red are not far apart with six of them stacked up. It sits outside the gold target border rather than replacing it, because the mob you are fighting is usually also the one hitting you and both are worth seeing. On content where the game hides threat values the rim simply does not appear, rather than guessing." },
+                    { "Color by threat", "A hostile unit's bar takes the game's own threat colors rather than plain red, so you can see at a glance which mob is on you and which is about to be. Friendly units keep their normal color - they have no threat table, and painting a guard grey because you are not tanking it would be nonsense." },
+                } },
+                { type = "note", text = "The first three change how plates look, never which units have one. |cffffd700Only show in combat|r is the exception, and it still never hides your target." },
             },
         },
 

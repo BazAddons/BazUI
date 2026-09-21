@@ -852,7 +852,9 @@ end
 -- level handed over separately - otherwise "Name and level" with the
 -- level setting on would say it twice.
 local function LabelFor(unit, wording)
-    local name = UnitName(unit) or ""
+    -- Through the shared helper: UnitName drops the surname on this
+    -- client, because it returns it separately. See BazUI.UnitDisplayName.
+    local name = BazUI.UnitDisplayName(unit)
     if LEVEL_WORDINGS[wording] then return name end
 
     local rank = addon:GetSetting("rankWord") == true
@@ -1076,7 +1078,8 @@ local function UpdatePower(bar)
     -- saying it again underneath would only be saying it twice. A power
     -- bar asked outright for the level still gets it.
     local wording = TextFormat(bar)
-    SetBarText(bar, wording, current, maximum, UnitName(unit), LevelText(unit))
+    SetBarText(bar, wording, current, maximum,
+        BazUI.UnitDisplayName(unit), LevelText(unit))
 end
 
 -- A portrait, which is the one bar kind whose content is a picture.

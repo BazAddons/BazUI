@@ -23,17 +23,23 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         orientation  = "horizontal",  -- or "vertical"
         buttonSize   = 30,
         spacing      = 6,
-        position     = nil,           -- { x, y } from BazUI Edit Mode; nil = bottom right
         buttons      = {},            -- [key] = false hides that button
-        mouseoverFade = false,        -- fade the bar out until the cursor is over it
-        fadeAlpha    = 0,             -- opacity (percent) while faded; 0 = hidden
+        -- Where it sits, whether it floats, how it fades: all the
+        -- drawer's, because the micro menu is a drawer widget. See
+        -- Bar.lua and DESIGN-elements.md.
     },
     slash = { "/bazmicro" },
-    defaultHandler = function() BazUI:OpenOptionsPanel(MODULE_NAME) end,
+    -- The settings live on the drawer's widget page now, so this opens
+    -- that rather than a module page with nothing on it.
+    defaultHandler = function() BazUI:OpenOptionsPanel("Drawers") end,
     commands = {
         reset = {
-            desc = "Move the micro menu back to the top center",
-            handler = function() addon:ResetPosition() end,
+            desc = "Where the micro menu lives now",
+            handler = function()
+                addon:Print("The micro menu is a drawer widget - where it "
+                    .. "sits is set in |cffffd700/bazdrawers|r, or by dragging "
+                    .. "it in Edit Mode.")
+            end,
         },
         debug = {
             desc = "Print the bar's current state",

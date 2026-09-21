@@ -336,6 +336,38 @@ local function BuildWidgetGroup(widget, index)
             hidden = function() return addon:WidgetOwnsScale(id) end,
             disabled = function() return not Floating() end,
         },
+        floatFade = {
+            order = 2.6, type = "toggle", name = "Fade when not hovered",
+            desc = "While floating, sit at the opacity below until the "
+                .. "cursor is over it. A docked widget fades with its "
+                .. "drawer instead; this is for the ones with no drawer to "
+                .. "fade with. Edit Mode always shows it solid so you can "
+                .. "still find it.",
+            get = function()
+                return addon:GetWidgetSetting(id, "floatFade") == true
+            end,
+            set = function(_, val)
+                addon:SetWidgetSetting(id, "floatFade", val and true or false)
+            end,
+            disabled = function() return not Floating() end,
+        },
+        floatFadeAlpha = {
+            order = 2.7, type = "range", name = "Faded opacity",
+            desc = "How visible it is when the cursor is elsewhere. Zero "
+                .. "hides it completely, which is the point for something "
+                .. "you only reach for occasionally.",
+            min = 0, max = 100, step = 5,
+            get = function()
+                return tonumber(addon:GetWidgetSetting(id, "floatFadeAlpha")) or 0
+            end,
+            set = function(_, val)
+                addon:SetWidgetSetting(id, "floatFadeAlpha", val)
+            end,
+            disabled = function()
+                return not Floating()
+                    or addon:GetWidgetSetting(id, "floatFade") ~= true
+            end,
+        },
         collapsed = {
             order = 3, type = "toggle", name = "Collapsed",
             desc = "Only the title bar shows in the drawer.",

@@ -92,6 +92,8 @@ function WidgetHost:Initialize(parent)
         end)
     end
 
+    self:StartFloatFade()
+
     -- Combat-deferral. Some widgets parent secure children (e.g. the
     -- Trinket Tracker uses SecureActionButtonTemplate buttons), so any
     -- structural change to their frame during combat lockdown - Hide,
@@ -813,6 +815,81 @@ function WidgetHost:ApplyFadeTargets(chromeAlpha, fullAlpha)
             slot.contentBg:SetAlpha(fadeBg and chromeAlpha or fullAlpha)
         end
     end
+end
+
+---------------------------------------------------------------------------
+-- Mouseover fade, for widgets that are floating
+--
+-- A docked widget fades with its drawer; a floating one has no drawer to
+-- fade with, so until now it was simply always there. That is fine for a
+-- clock and wrong for a strip of buttons you use twice an hour.
+--
+-- Here rather than in each widget, because it is a property of being
+-- floating rather than of being any particular thing - the micro menu
+-- carried its own copy of this, with its own ticker and easing, and that
+-- copy is what made it worth writing once.
+--
+-- One ticker for all of them, which bails on the first check when nothing
+-- wants fading. Edit Mode forces everything solid: a widget you cannot
+-- see is a widget you cannot drag, and hunting for an invisible frame is
+-- the worst possible first minute with this feature.
+---------------------------------------------------------------------------
+
+local FADE_TICK = 0.08
+local FADE_IN, FADE_OUT = 0.15, 0.3
+
+function WidgetHost:WantsFloatFade(widget)
+    if not (widget and widget.frame and widget._floating) then return false end
+    return addon:GetWidgetSetting(widget.id, "floatFade") == true
+end
+
+function WidgetHost:FloatFadeTarget(widget)
+    if BazUI.IsEditMode and BazUI:IsEditMode() then return 1 end
+    if widget.frame:IsMouseOver() then return 1 end
+    local pct = tonumber(addon:GetWidgetSetting(widget.id, "floatFadeAlpha"))
+    return math.max(0, math.min(100, pct or 0)) / 100
+end
+
+function WidgetHost:StepFloatFade(elapsed)
+    local any = false
+    for _, widget in ipairs(BazUI:GetDockableWidgets() or {}) do
+        if self:WantsFloatFade(widget) then
+            any = true
+            local frame = widget.frame
+            local want = self:FloatFadeTarget(widget)
+            local now = frame:GetAlpha() or 1
+            if math.abs(want - now) < 0.01 then
+                frame:SetAlpha(want)
+            else
+                -- Out slower than in. Reaching for something should feel
+                -- immediate; leaving it should not snap away while your
+                -- cursor is still on its way somewhere else.
+                local seconds = (want > now) and FADE_IN or FADE_OUT
+                local step = elapsed / seconds
+                frame:SetAlpha(want > now and math.min(want, now + step)
+                    or math.max(want, now - step))
+            end
+        elseif widget._floating and widget.frame
+            and widget._floatFaded then
+            -- Turned off while faded: put it back rather than leaving a
+            -- widget stuck at ten percent with no control still showing.
+            widget.frame:SetAlpha(1)
+        end
+        widget._floatFaded = self:WantsFloatFade(widget)
+    end
+    return any
+end
+
+function WidgetHost:StartFloatFade()
+    if self._fadeWatcher then return end
+    local since = 0
+    self._fadeWatcher = CreateFrame("Frame")
+    self._fadeWatcher:SetScript("OnUpdate", function(_, elapsed)
+        since = since + elapsed
+        if since < FADE_TICK then return end
+        self:StepFloatFade(since)
+        since = 0
+    end)
 end
 
 ---------------------------------------------------------------------------

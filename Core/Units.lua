@@ -194,6 +194,43 @@ function BazUI.UnitRank(unit)
     return BazUI.UNIT_RANKS[UnitClassification(unit)]
 end
 
+-- What to call a unit, for whoever is drawing one.
+--
+-- WoW: Forever gives players a surname, and it arrives as a SECOND RETURN
+-- VALUE rather than inside the first:
+--
+--   local name, surname = UnitName(unit)
+--
+-- So `UnitName(unit)` on its own is the first name and nothing else, and
+-- every frame in the addon built on it was quietly showing half of
+-- everybody's name. Note that this is the opposite of retail, where the
+-- second return is the realm - code that treats it as one gets a plausible
+-- looking wrong answer rather than an error.
+--
+-- Blizzard's NameUtil knows the separator, the RegionalUniqueNames rule
+-- and the cross-realm shape, so the joining and splitting is theirs. Ours
+-- is one place to ask, so a fix lands everywhere at once.
+--
+--   opts.surname = false   the first name on its own
+function BazUI.UnitDisplayName(unit, opts)
+    if not unit then return "" end
+    local NameUtil = _G.NameUtil
+    local want = not (opts and opts.surname == false)
+
+    if NameUtil then
+        local fn = want and NameUtil.FormatUnitNameForDisplay
+            or NameUtil.GetUnitFirstName
+        if fn then
+            local ok, text = pcall(fn, unit)
+            if ok and text and text ~= "" then return text end
+        end
+    end
+
+    -- No NameUtil is a client without surnames, where the one return is
+    -- the whole name and there is nothing to join or take off.
+    return UnitName(unit) or ""
+end
+
 -- The level and the rank as one piece of text, for whoever is drawing a
 -- unit. Nil when there is nothing worth saying, so a caller can leave
 -- the field out rather than print an empty one.

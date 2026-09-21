@@ -28,6 +28,26 @@ addon = BazUI:RegisterModule("Nameplates", {
         width        = 110,
         height       = 10,
         nameSize     = 9,
+        -- Surnames are a Forever thing and are part of somebody's
+        -- name, so they show unless asked otherwise. Guild tags are a
+        -- second line on every plate and stay off until wanted.
+        showSurname  = true,
+        showGuild    = false,
+
+        -- Focus. All four start as "do nothing", so the module looks
+        -- exactly as it did before these existed until somebody asks for
+        -- something. A percentage rather than a fraction because that is
+        -- what the slider shows and a setting should hold the number the
+        -- player read.
+        -- The one exception to "everything here starts off". Whether a
+        -- mob is on you is the question threat exists to answer and is
+        -- worth knowing before you are asked.
+        aggroMark      = true,
+        threatColor    = false,
+        nonTargetAlpha = 100,
+        targetScale    = 100,
+        offsetY        = 0,
+        combatOnly     = false,
         showLevel    = true,
         -- Rare and elite said in words beside the level, the same way
         -- the unit bars say it.

@@ -295,8 +295,29 @@ local function Merged(id)
         xp    = (mine and mine.xp) or (shipped and shipped.xp) or 0,
         money = (mine and mine.money) or (shipped and shipped.money) or 0,
     }
-    row.from        = mine and mine.from
-    row.to          = mine and mine.to
+    -- Where it is given and handed in.
+    --
+    -- Yours first, always: you stood there, so you have a zone, a subzone,
+    -- a name and a coordinate. Failing that, the shipped catalogue's
+    -- borrowed answer - a name and a zone, no numbers - which is enough to
+    -- walk towards and is marked so nobody reads it as more than that.
+    --
+    -- The client has nothing to offer in between. A quest's place does not
+    -- reach you until somebody is holding it out to you, so for the four
+    -- thousand nobody has met a borrowed guess is not a shortcut past a
+    -- better answer; it is the only answer there is.
+    local place = Catalog() and Codex.Quests.Place and Codex.Quests.Place(id)
+
+    local function Borrowed(npc)
+        if not (place and npc) then return nil end
+        return { npc = npc, zone = place.zone, listed = true }
+    end
+
+    row.from        = (mine and mine.from) or Borrowed(place and place.giver)
+    row.to          = (mine and mine.to) or Borrowed(place and place.turnIn)
+    row.zone        = (mine and mine.from and mine.from.zone) or (place and place.zone)
+    row.minLevel    = place and place.minLevel
+    row.faction     = place and place.faction
     row.description = mine and mine.description
     row.summary     = mine and mine.summary
     row.progress    = mine and mine.progress
@@ -489,6 +510,67 @@ local function Gather()
         return x < y
     end)
 
+    -- Tell apart the ones that share a name.
+    --
+    -- A title is not an identity. "The Adventurer" is seven different
+    -- quests on this client - the camping chain, one per starting zone,
+    -- each with its own giver and its own words - and a list showing name,
+    -- level and experience draws all seven as the same row seven times.
+    -- That reads as a bug in the addon rather than as a fact about the
+    -- game, which is the worst way for a true thing to look.
+    --
+    -- Only where there is an actual clash, and only as much as it takes:
+    -- the zone if they have different ones, the id if they do not. A
+    -- qualifier on a name that was never ambiguous is just noise.
+    local byTitle = {}
+    for _, row in ipairs(out) do
+        local same = byTitle[row.title]
+        if same then same[#same + 1] = row else byTitle[row.title] = { row } end
+        row.qualifier = nil
+    end
+    for _, group in pairs(byTitle) do
+        if #group > 1 then
+            -- Asked per row rather than for the group as a whole.
+            --
+            -- Starting zones are full of this: every race gets its own
+            -- "Bounty on Murlocs" or "A Rogue's Deal", and the zone is
+            -- exactly what tells them apart - Elwynn from Durotar from
+            -- Tirisfal. Requiring EVERY quest in the group to have a
+            -- distinct zone threw that away the moment two of eight
+            -- shared one, and sent all eight to bare ids.
+            --
+            -- So each row gets the zone if its zone is its own within the
+            -- group, and the id if it is not. A mixed group reads fine:
+            -- the ones that can be named by place are, and only the
+            -- genuinely indistinguishable fall back to a number.
+            -- Zone first, then who gives it, then the id.
+            --
+            -- Measured rather than guessed, over all 5,014: of the 1,805
+            -- quests that share a title with another, the zone alone names
+            -- 158 and the giver names a further 572. The rest have neither
+            -- to offer - a dozen shaman "Call of Water" quests all filed
+            -- under the same place with no giver recorded - and a number is
+            -- the only honest thing left. It is at least a number you can
+            -- look up.
+            local zones, givers = {}, {}
+            for _, row in ipairs(group) do
+                local giver = row.from and row.from.npc
+                if row.zone then zones[row.zone] = (zones[row.zone] or 0) + 1 end
+                if giver then givers[giver] = (givers[giver] or 0) + 1 end
+            end
+            for _, row in ipairs(group) do
+                local giver = row.from and row.from.npc
+                if row.zone and zones[row.zone] == 1 then
+                    row.qualifier = row.zone
+                elseif giver and givers[giver] == 1 then
+                    row.qualifier = giver
+                else
+                    row.qualifier = "#" .. row.id
+                end
+            end
+        end
+    end
+
     hits, hitsFor = out, question
     return out
 end
@@ -621,9 +703,21 @@ end
 -- The list, down the left
 ---------------------------------------------------------------------------
 
+-- Whose quest it is, said the way the game says it.
+--
+-- One letter rather than an icon: the row is one line of text and a
+-- faction crest at that size is a smudge. A and H in the game's own two
+-- colours read instantly and cost nothing.
+local SIDE = {
+    A = { "A", { 0.40, 0.65, 0.95 } },
+    H = { "H", { 0.85, 0.30, 0.28 } },
+    B = { "-", { 0.50, 0.48, 0.44 } },
+}
+
 local COLUMNS = {
-    { key = "level", title = "Lvl", width = 40, justify = "RIGHT" },
-    { key = "xp",    title = "XP",  width = 58, justify = "RIGHT" },
+    { key = "faction", title = "Side", width = 30, justify = "CENTER" },
+    { key = "level",   title = "Lvl",  width = 40, justify = "RIGHT" },
+    { key = "xp",      title = "XP",   width = 58, justify = "RIGHT" },
 }
 
 -- Is TomTom here, and will it take a waypoint?
@@ -824,7 +918,12 @@ local function FillRows()
             row.mark:Hide()
         end
 
-        row.label:SetText(quest.title)
+        -- The qualifier only exists on a name that clashes with another
+        -- in this list, and is drawn quietly - it is a disambiguator, not
+        -- a second piece of information.
+        row.label:SetText(quest.qualifier
+            and ("%s  |cff7a7266%s|r"):format(quest.title, quest.qualifier)
+            or quest.title)
         row.label:ClearAllPoints()
         row.label:SetPoint("LEFT", row, "LEFT", 29, 0)
         row.label:SetPoint("RIGHT", row, "RIGHT", -nameRight, 0)
@@ -837,8 +936,16 @@ local function FillRows()
             fs:SetWidth(column.width)
             fs:SetPoint("RIGHT", row, "RIGHT", -spots[column.key], 0)
             local value = quest[column.key]
-            fs:SetText((value and value > 0) and tostring(value) or "")
-            fs:SetTextColor(unpack(Theme.colors.textMuted))
+
+            -- The side is a letter in a colour, not a number in a column.
+            if column.key == "faction" then
+                local side = SIDE[value]
+                fs:SetText(side and side[1] or "")
+                fs:SetTextColor(unpack(side and side[2] or Theme.colors.textMuted))
+            else
+                fs:SetText(value and value ~= 0 and tostring(value) or "")
+                fs:SetTextColor(unpack(Theme.colors.textMuted))
+            end
         end
 
         -- The banding is the row's position in the list, not its state.
@@ -980,6 +1087,13 @@ local function AcquirePlace(index)
         if TomTomReady() and self.where.x then
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine("Click to point TomTom at it.", 0.5, 0.8, 0.5)
+        elseif self.where.listed then
+            -- No coordinate means no waypoint, and saying so beats a click
+            -- that quietly does nothing. The place is worth knowing anyway.
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("Somebody else's note, not the game's. It fills "
+                .. "in properly the first time this quest is offered to you.",
+                0.6, 0.58, 0.5, true)
         end
         GameTooltip:Show()
     end)
@@ -1114,6 +1228,21 @@ local function LayoutDetail(quest, width)
     facts[#facts + 1] = (state == "done" and "Completed")
         or (state == "doing" and "In your log")
         or "Not done"
+
+    -- Where this record comes from, said on the same line as the level
+    -- and the tag, because it is a fact about the quest of exactly that
+    -- order and belongs where you already look.
+    --
+    -- Anything we have not watched happen is conjecture. The catalogue
+    -- shipped with the addon was filled out from public databases for
+    -- every quest nobody has met, and a public database is somebody
+    -- else's reading of the game rather than the game. It is worth far
+    -- more than a blank page and it is not worth as much as having been
+    -- there, and a player is entitled to know which one they are reading.
+    local firsthand = quest.textFromGame and quest.numbersFromGame
+    facts[#facts + 1] = firsthand and "|cff55cc66Seen in game|r"
+        or "|cff998866Unconfirmed|r"
+
     Put(table.concat(facts, "  |  "), "GameFontHighlightSmall",
         Theme.colors.textMuted, 5)
 
@@ -1156,6 +1285,11 @@ local function LayoutDetail(quest, width)
         local at = where.spot and (where.spot .. ", " .. where.zone) or where.zone
         if where.x then
             at = ("%s   (%.1f, %.1f)"):format(at, where.x, where.y)
+        elseif where.listed then
+            -- Said on the line itself, not in a legend somewhere above it.
+            -- This is the half a player acts on, and "he is in Duskwood"
+            -- and "he is at 31.0, 66.2 in Duskwood" are different promises.
+            at = at .. "   |cff998866unconfirmed|r"
         end
         row.at:SetText(at)
         row.at:SetTextColor(unpack(Theme.colors.textMuted))
@@ -1184,8 +1318,11 @@ local function LayoutDetail(quest, width)
         quest.description and Theme.colors.text or Theme.colors.textMuted,
         HEADING_GAP)
 
+    -- Said again here, and said plainly, because this is the part
+    -- somebody reads and then acts on.
     if quest.description and not quest.textFromGame then
-        Put("From a public database, not yet seen in game.",
+        Put("Somebody else's reading of the game, not the game. It will be "
+            .. "replaced the moment this quest is offered to you.",
             "GameFontHighlightSmall", Theme.colors.textMuted, 6)
     end
 
@@ -1376,7 +1513,14 @@ local function LayoutRewards(quest, width)
         if #list > 0 then used = used + PLATE_H end
     end
 
-    Say("Rewards", "GameFontNormalSmall", Theme.colors.gold, 0)
+    -- Numbers have their own provenance, separate from the words: a
+    -- quest can have been met by somebody who wrote down its story while
+    -- the experience and coin still came from a database. This is also
+    -- the half a player is most likely to plan around, so an unconfirmed
+    -- figure has to say so where the figure is, not somewhere above it.
+    Say(quest.numbersFromGame and "Rewards"
+        or "Rewards  |cff998866- unconfirmed|r",
+        "GameFontNormalSmall", Theme.colors.gold, 0)
 
     if #choices > 0 then
         Say("You will be able to choose one of these:",

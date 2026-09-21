@@ -73,8 +73,42 @@ local CHROME_KEYS = {
 -- hides behind the main menu bar art (and pops out once that art goes).
 local BLIZZARD_FRAMES = { "MicroMenuContainer", "MicroButtonAndBagsBar", "MainMenuBarPerformanceBarFrame" }
 
-local FADE_TICK = 0.1
-local FADE_IN, FADE_OUT = 0.15, 0.3
+local WIDGET_ID = "bazdrawer_micromenu"
+addon.WIDGET_ID = WIDGET_ID
+
+---------------------------------------------------------------------------
+-- Settings
+--
+-- In the drawer's per-widget store, not this module's own, because the
+-- micro menu is a widget: its settings belong on the same page as every
+-- other widget's rather than on a module page of their own.
+--
+-- Read falls back to the old module setting when the new one is unset, so
+-- a profile that predates the move keeps its answers without a migration
+-- pass, and the first change writes to the new home. Nothing has to be
+-- converted and nothing is lost if this is rolled back.
+---------------------------------------------------------------------------
+
+function addon:Opt(key, default)
+    local drawers = BazUI:GetModule("Drawers")
+    if drawers and drawers.GetWidgetSetting then
+        local value = drawers:GetWidgetSetting(WIDGET_ID, key)
+        if value ~= nil then return value end
+    end
+    local legacy = self:GetSetting(key)
+    if legacy ~= nil then return legacy end
+    return default
+end
+
+function addon:SetOpt(key, value)
+    local drawers = BazUI:GetModule("Drawers")
+    if drawers and drawers.SetWidgetSetting then
+        drawers:SetWidgetSetting(WIDGET_ID, key, value)
+    else
+        self:SetSetting(key, value)
+    end
+    self:ApplySettings()
+end
 
 local bar, hiddenParent
 local adopted = {}    -- key -> { button, def, icon, regions, origParent, origW, origH, active }
@@ -235,9 +269,9 @@ local function Adopt(def)
 end
 
 -- Switch one adopted button between our bar and Blizzard's grid.
-local function SetActive(entry, active, size)
+local function SetActive(entry, active, size, skinned)
     local b = entry.button
-    if active then
+    if active and skinned then
         entry.active = true
         SetChromeHidden(entry, true)
         b:SetSize(size, size)
@@ -246,6 +280,22 @@ local function SetActive(entry, active, size)
         if b._bazRingObject then b._bazRingObject:Show() end
         b._bazDisc:Show()
         RefreshState(entry)
+    elseif active then
+        -- On our bar, wearing its own clothes.
+        --
+        -- Adopted so we still lay it out, but none of the skinning: the
+        -- stock chrome stays up, our ring and disc stay down, and the
+        -- button keeps the shape Blizzard drew it. Sized by height alone
+        -- so the row lines up, with the width following the art rather
+        -- than squashed square - a micro button is not square and forcing
+        -- it to be looks like a bug rather than a choice.
+        entry.active = true
+        SetChromeHidden(entry, false)
+        if b._bazRingObject then b._bazRingObject:Hide() end
+        if b._bazDisc then b._bazDisc:Hide() end
+        entry.icon:Hide()
+        local scale = (entry.origH and entry.origH > 0) and (size / entry.origH) or 1
+        b:SetSize((entry.origW or size) * scale, size)
     else
         entry.active = false
         if b._bazRingObject then b._bazRingObject:Hide() end
@@ -274,136 +324,123 @@ end
 
 function addon:Layout()
     if not bar then return end
-    local size       = self:GetSetting("buttonSize") or 30
-    local spacing    = self:GetSetting("spacing") or 6
-    local horizontal = (self:GetSetting("orientation") or "horizontal") ~= "vertical"
-    local prefs      = self:GetSetting("buttons") or {}
+    local size       = self:Opt("buttonSize", 30)
+    local spacing    = self:Opt("spacing", 6)
+    local horizontal = self:Opt("orientation", "horizontal") ~= "vertical"
+    local rows       = math.max(1, math.floor(tonumber(self:Opt("rows", 1)) or 1))
+    local prefs      = self:Opt("buttons", nil) or {}
 
-    local n = 0
+    -- Which buttons are actually going on the bar, gathered before any of
+    -- them is placed. The wrapping below needs the count first, and
+    -- Blizzard hides buttons the character cannot use yet - talents before
+    -- level ten, guild without a guild - so the number is not known until
+    -- they have all been asked.
+    local shown = {}
     for _, listed in ipairs(addon:Buttons()) do
-        local def = listed.def
-        local entry = adopted[def.key]
+        local entry = adopted[listed.def.key]
         if entry and entry.active then
             local b = entry.button
-            if prefs[def.key] == false then
+            if prefs[listed.def.key] == false then
                 if b:GetParent() ~= hiddenParent then b:SetParent(hiddenParent) end
             else
                 if b:GetParent() ~= bar then b:SetParent(bar) end
-                -- Blizzard hides buttons the character can't use yet
-                -- (talents before level 10, guild without a guild); skip those.
-                if b:IsShown() then
-                    b:ClearAllPoints()
-                    if horizontal then
-                        b:SetPoint("LEFT", bar, "LEFT", n * (size + spacing), 0)
-                    else
-                        b:SetPoint("TOP", bar, "TOP", 0, -n * (size + spacing))
-                    end
-                    n = n + 1
-                end
+                if b:IsShown() then shown[#shown + 1] = b end
             end
         end
     end
 
-    local length = math.max(1, n * size + math.max(0, n - 1) * spacing)
-    if horizontal then bar:SetSize(length, size) else bar:SetSize(size, length) end
-end
+    local n = #shown
+    if n == 0 then
+        bar:SetSize(1, size)
+        return
+    end
 
--- Two position shapes: the starter profile anchors the bar to a screen
--- edge ({ point, relPoint, x, y }), and BazUI Edit Mode saves the bar's
--- center as a screen-pixel offset from the center of UIParent ({ x, y }).
-local function ApplyPosition()
-    bar:ClearAllPoints()
-    local pos = addon:GetSetting("position")
-    if pos and pos.point then
-        bar:SetPoint(pos.point, UIParent, pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
-    elseif pos and pos.x and pos.y then
-        local es = bar:GetEffectiveScale()
-        bar:SetPoint("CENTER", UIParent, "CENTER", pos.x / es, pos.y / es)
-    else
-        bar:SetPoint("TOP", UIParent, "TOP", 0, -4)
+    -- Rows, filled evenly rather than filling one and leaving a stub.
+    -- Ten buttons in two rows is five and five, not eight and two.
+    rows = math.min(rows, n)
+    local perLine = math.ceil(n / rows)
+
+    -- Measured rather than assumed, because an unskinned button keeps its
+    -- own width and those differ from each other.
+    local lineLength, longest = 0, 0
+    local line, placed = 0, 0
+
+    for index, b in ipairs(shown) do
+        if placed == perLine then
+            longest = math.max(longest, lineLength - spacing)
+            lineLength, placed = 0, 0
+            line = line + 1
+        end
+
+        b:ClearAllPoints()
+        local across = line * (size + spacing)
+        if horizontal then
+            b:SetPoint("TOPLEFT", bar, "TOPLEFT", lineLength, -across)
+        else
+            b:SetPoint("TOPLEFT", bar, "TOPLEFT", across, -lineLength)
+        end
+
+        local run = horizontal and (b:GetWidth() or size) or (b:GetHeight() or size)
+        lineLength = lineLength + run + spacing
+        placed = placed + 1
+        if index == n then longest = math.max(longest, lineLength - spacing) end
+    end
+
+    local lines = line + 1
+    local across = lines * size + math.max(0, lines - 1) * spacing
+    local w, h = math.max(1, longest), across
+    if not horizontal then w, h = across, math.max(1, longest) end
+    bar:SetSize(w, h)
+
+    -- Tell the drawer what shape we are now.
+    --
+    -- A widget declares the size it was drawn for and the host scales it
+    -- to the shelf: scale = usableWidth / designWidth. Ours is not fixed -
+    -- nine buttons at 30 is a different object from five at 44, two rows
+    -- is a different object again, and turning the menu vertical swaps the
+    -- axes entirely - so the numbers are re-declared whenever the layout
+    -- changes rather than once at registration.
+    local widget = BazUI.GetDockableWidget and BazUI:GetDockableWidget(WIDGET_ID)
+    if widget and (widget.designWidth ~= w or widget.designHeight ~= h) then
+        widget.designWidth  = w
+        widget.designHeight = h
+
+        -- Only a widget on a shelf needs the shelf laid out again.
+        --
+        -- A reflow re-places every floating widget at its saved position,
+        -- and this runs from a ticker every fifth of a second - so asking
+        -- for one here meant that any flicker in a button's visibility
+        -- yanked the frame back out from under a drag in progress. Dragging
+        -- it upward felt like the screen was fighting you, because it was.
+        --
+        -- A floating widget is anchored by its own centre and does not care
+        -- what size it is; nothing needs re-laying out. A docked one shares
+        -- a row with its neighbours and does.
+        if not widget._floating then
+            local drawers = BazUI:GetModule("Drawers")
+            if drawers and drawers.WidgetHost and drawers.WidgetHost.Reflow then
+                drawers.WidgetHost:Reflow()
+            end
+        end
     end
 end
 
-function addon:ResetPosition()
-    self:SetSetting("position", nil)
-    if bar then ApplyPosition() end
-end
-
 ---------------------------------------------------------------------------
--- Mouseover fade
+-- Position, fade and Edit Mode
 --
--- With the option on, the bar sits at its faded opacity (fully hidden by
--- default) until the cursor is over it. IsMouseOver covers the child
--- buttons too, so moving between them never flickers. A short ticker
--- polls only while the option is on, and Edit Mode forces the bar
--- visible so it can still be found and dragged.
+-- All three used to live here: a position setting with two shapes, a
+-- mouseover fade with its own ticker and easing, and an Edit Mode
+-- registration. None of it does any more.
+--
+-- The micro menu is a drawer widget now, so the drawer owns where it
+-- sits, whether it floats, how it fades and what its handle says. That
+-- is not tidiness - it is nine fixed round buttons with one correct size,
+-- which is exactly what a drawer widget is and exactly what an action bar
+-- is not. See DESIGN-elements.md.
+--
+-- What is left in this file is the part nobody else can do: taking
+-- Blizzard's buttons, keeping them working, and arranging them.
 ---------------------------------------------------------------------------
-
-local editing = false
-local fadeTarget = 1
-
--- The cursor counts as over the bar when it is over the bar's rect or
--- any button on it (a button can extend past the bar while it resizes).
-local function Hovered()
-    if bar:IsMouseOver(6, -6, -6, 6) then return true end
-    for _, entry in pairs(adopted) do
-        if entry.active and entry.button:GetParent() == bar and entry.button:IsMouseOver() then
-            return true
-        end
-    end
-    return false
-end
-
-local function WantedAlpha()
-    if editing or not addon:GetSetting("mouseoverFade") then return 1 end
-    if Hovered() then return 1 end
-    return (addon:GetSetting("fadeAlpha") or 0) / 100
-end
-
--- Alpha is eased toward the target every frame by this module alone, so
--- it always converges on what the settings say; nothing can leave the
--- bar stuck invisible.
-local function StepFade(elapsed)
-    local current = bar:GetAlpha()
-    if current == fadeTarget then return end
-    local duration = fadeTarget > current and FADE_IN or FADE_OUT
-    local step = elapsed / duration
-    if fadeTarget > current then
-        bar:SetAlpha(math.min(fadeTarget, current + step))
-    else
-        bar:SetAlpha(math.max(fadeTarget, current - step))
-    end
-end
-
-local function UpdateFade()
-    if not bar then return end
-    fadeTarget = WantedAlpha()
-end
-
-local function SetFadeTicker(on)
-    if on then
-        bar._bazFadeElapsed = FADE_TICK   -- poll on the first frame
-        bar:SetScript("OnUpdate", function(self, elapsed)
-            self._bazFadeElapsed = self._bazFadeElapsed + elapsed
-            if self._bazFadeElapsed >= FADE_TICK then
-                self._bazFadeElapsed = 0
-                UpdateFade()
-            end
-            StepFade(elapsed)
-        end)
-    else
-        bar:SetScript("OnUpdate", nil)
-        fadeTarget = 1
-        bar:SetAlpha(1)
-    end
-    UpdateFade()
-end
-
-function addon:SetEditing(value)
-    editing = value and true or false
-    UpdateFade()
-    if bar and not bar:GetScript("OnUpdate") then bar:SetAlpha(1) end
-end
 
 -- /bazmicro debug: what the bar is doing right now.
 function addon:PrintDebug()
@@ -414,15 +451,16 @@ function addon:PrintDebug()
         if entry.active then active = active + 1 end
         if entry.active and entry.button:GetParent() == bar and entry.button:IsShown() then shown = shown + 1 end
     end
-    self:Print(("bar shown=%s alpha=%.2f target=%.2f size=%dx%d anchor=%s/%s/%s %.0f,%.0f ticker=%s editing=%s buttons active=%d visible=%d"):format(
-        tostring(bar:IsShown()), bar:GetAlpha(), fadeTarget, bar:GetWidth(), bar:GetHeight(),
+    self:Print(("bar shown=%s alpha=%.2f size=%dx%d anchor=%s/%s/%s %.0f,%.0f buttons active=%d visible=%d"):format(
+        tostring(bar:IsShown()), bar:GetAlpha(), bar:GetWidth(), bar:GetHeight(),
         tostring(point), rel and rel:GetName() or "?", tostring(relPoint), x or 0, y or 0,
-        tostring(bar:GetScript("OnUpdate") ~= nil), tostring(editing), active, shown))
-    local pos = self:GetSetting("position")
-    self:Print(("settings: enabled=%s mouseoverFade=%s fadeAlpha=%s size=%s spacing=%s position=%s"):format(
-        tostring(self:GetSetting("enabled")), tostring(self:GetSetting("mouseoverFade")), tostring(self:GetSetting("fadeAlpha")),
-        tostring(self:GetSetting("buttonSize")), tostring(self:GetSetting("spacing")),
-        pos and (pos.point and ("%s %s %s,%s"):format(pos.point, pos.relPoint or pos.point, pos.x, pos.y) or ("center %.0f,%.0f"):format(pos.x or 0, pos.y or 0)) or "nil"))
+        active, shown))
+    self:Print(("settings: enabled=%s size=%s spacing=%s orientation=%s"):format(
+        tostring(self:GetSetting("enabled")), tostring(self:GetSetting("buttonSize")),
+        tostring(self:GetSetting("spacing")), tostring(self:GetSetting("orientation"))))
+    -- Where it sits and how it fades are the drawer's business now, and
+    -- /bazdrawers has the answer for every widget rather than this one.
+    self:Print("Placement is the drawer's: see /bazdrawers.")
 end
 
 local function SetBlizzardHidden(hide)
@@ -447,7 +485,8 @@ end
 function addon:ApplySettings()
     if not bar then return end
     local enabled = self:GetSetting("enabled") ~= false
-    local size = self:GetSetting("buttonSize") or 30
+    local size = self:Opt("buttonSize", 30)
+    local skinned = self:Opt("skin", true) ~= false
 
     if not enabled then
         -- Bring Blizzard's container back first so its grid can lay the
@@ -455,11 +494,10 @@ function addon:ApplySettings()
         SetBlizzardHidden(false)
         for _, def in ipairs(DEFS) do
             local entry = adopted[def.key]
-            if entry then SetActive(entry, false, size) end
+            if entry then SetActive(entry, false, size, skinned) end
         end
         RelayoutBlizzard()
         bar:Hide()
-        SetFadeTicker(false)
         return
     end
 
@@ -471,13 +509,11 @@ function addon:ApplySettings()
     for _, listed in ipairs(self:Buttons()) do wanted[listed.def.key] = true end
     for _, def in ipairs(DEFS) do
         local entry = adopted[def.key]
-        if entry then SetActive(entry, wanted[def.key] == true, size) end
+        if entry then SetActive(entry, wanted[def.key] == true, size, skinned) end
     end
     bar:Show()
     self:Layout()
-    ApplyPosition()
-    SetFadeTicker(self:GetSetting("mouseoverFade") and true or false)
-    SetBlizzardHidden(self:GetSetting("hideBlizzard") ~= false)
+    SetBlizzardHidden(self:Opt("hideBlizzard", true) ~= false)
 end
 
 function addon:UpdatePortraits()
@@ -515,13 +551,31 @@ function addon:Initialize()
 
     for _, def in ipairs(DEFS) do Adopt(def) end
 
-    BazUI:RegisterEditModeFrame(bar, {
-        label       = "Micro Menu",
-        addonName   = self.MODULE_NAME,
-        positionKey = "position",
-        settings    = BazUI:BuildEditModeArrayFromSpec(self.MODULE_NAME),
-        onEnter     = function() addon:SetEditing(true) end,
-        onExit      = function() addon:SetEditing(false) end,
+    -- A drawer widget, not a frame of our own to place.
+    --
+    -- Everything the suite already knows how to do to a placeable thing -
+    -- float it, dock it into a drawer, scale it, fade it on mouseover,
+    -- give it a handle in Edit Mode and a settings popup - is the
+    -- drawer's, and it does all of it better than the copy that used to
+    -- be in this file.
+    self:Layout()
+    BazUI:RegisterDockableWidget({
+        id           = WIDGET_ID,
+        label        = "Micro Menu",
+        designWidth  = math.max(1, bar:GetWidth() or 1),
+        designHeight = math.max(1, bar:GetHeight() or 1),
+        frame        = bar,
+        GetDesiredHeight = function() return math.max(1, bar:GetHeight() or 1) end,
+        GetStatusText    = function()
+            local shown = 0
+            for _, entry in pairs(adopted) do
+                if entry.active and entry.button:GetParent() == bar then
+                    shown = shown + 1
+                end
+            end
+            return shown .. " buttons"
+        end,
+        GetOptionsArgs = function() return addon:WidgetOptions() end,
     })
 
     -- Blizzard's own state, mirrored on a ticker rather than by hooking

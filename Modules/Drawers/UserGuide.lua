@@ -35,6 +35,8 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "note", text = "Everything about the drawer grays out while it is off, and your drawers are kept exactly as they were. Switching it back on gives you them back, widgets and all." },
                 { type = "h3", text = "Size" },
                 { type = "paragraph", text = "A docked widget is scaled to fill the drawer's width, which is why it never had a size of its own. Loose on the screen there is nothing to fill, so each one carries a |cffffd700Scale|r of its own - on its page under Widgets, and on its BazUI Edit Mode panel, both the same setting." },
+                { type = "paragraph", text = "|cffffd700Fade when not hovered|r is the same idea for visibility. A docked widget fades with its drawer; a floating one has no drawer to fade with, so it carries its own switch and its own |cffffd700Faded opacity|r. Zero hides it completely until the cursor finds it, which is what you want for something you reach for twice an hour." },
+                { type = "note", text = "Edit Mode always draws a floating widget solid, whatever its fade says. A widget you cannot see is a widget you cannot drag." },
                 { type = "note", text = "The minimap is the exception, and deliberately: it has its own |cffffd700Map Scale|r, because the map has to stay concentric with the ring drawn around it, so it scales the map rather than the frame holding it. It gets that one control and not the general one." },
             },
         },

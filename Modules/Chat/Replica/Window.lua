@@ -1300,15 +1300,15 @@ function Window:Create(index, opts)
     -- in sync with the right-click popup + the Tabs options page.
     if addon.Channels then
         addon.Channels:Subscribe(f, index)
-        -- Manual Guild MOTD recovery on the primary window only. The
-        -- actual GUILD_MOTD event fired before we registered for it
-        -- (during cold login while guild data was still loading), so
-        -- we fetch the cached value from C_GuildInfo.GetMOTD() and
-        -- AddMessage it to window 1. Restricting to window 1 keeps the
-        -- MOTD from showing up multiple times for users who split
-        -- Guild chat to its own tab; window 1 is the user's primary
-        -- view either way. Live MOTD changes during the session still
-        -- come through the registered GUILD_MOTD event normally.
+        -- Guild MOTD recovery on the primary window only. The real
+        -- GUILD_MOTD may have fired before we registered for it, during
+        -- cold login while guild data was still loading, so Channels
+        -- asks the server to send guild data again and renders whatever
+        -- GUILD_MOTD then carries. Restricting to window 1 keeps the
+        -- MOTD from showing up several times for anyone who splits
+        -- Guild chat to its own tab; window 1 is the primary view
+        -- either way. Live changes during the session come through the
+        -- same event.
         local wsBlock = WindowDB(index)
         if index == 1 and wsBlock and addon.Channels.DisplayInitialMOTD then
             addon.Channels:DisplayInitialMOTD(f, wsBlock)
@@ -1638,10 +1638,10 @@ function Window:CreateAll()
     end
 
     -- Initial Guild MOTD render. Called HERE rather than from inside
-    -- Window:Create because TryRenderInitialMOTD looks up windows[1]
-    -- via addon.Window:Get(1), and that table isn't populated until
+    -- Window:Create because the listener renders into windows[1] via
+    -- addon.Window:Get(1), and that table isn't populated until
     -- Window:Create returns. By moving the call here we guarantee
-    -- windows[1] is available when GetMOTD() is queried.
+    -- window 1 exists by the time the server answers.
     if addon.Channels and addon.Channels.TryRenderInitialMOTD then
         addon.Channels:TryRenderInitialMOTD()
     end

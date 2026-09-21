@@ -389,23 +389,23 @@ end
 -- it on every /reload. Live MOTD changes (officer typing /gmotd) DO
 -- still fire the event, which our subscribed frame catches.
 --
--- Fix: after Subscribe, call ChatFrameUtil.DisplayGMOTD with the
--- cached MOTD from C_GuildInfo.GetMOTD(). Mirrors the recovery path
--- Blizzard uses inside ChatFrameMixin:ConfigEventHandler when it
--- handles UPDATE_CHAT_WINDOWS for late-registered frames. May need
--- to defer if GetMOTD() returns "" (guild data still loading); the
--- live GUILD_MOTD event will fire when ready and the chat frame
--- catches it via the normal mixin path, so deferring isn't strictly
--- required - we just attempt now and let the live event handle the
--- async case if needed.
+-- The obvious fix was to read the cached value back with
+-- C_GuildInfo.GetMOTD, the way Blizzard recovers it themselves inside
+-- ChatFrameMixin:ConfigEventHandler. We cannot: that function is
+-- protected on this client and an addon calling it is refused. See the
+-- long note further down.
+--
+-- So instead we ask the server to send guild data again and wait for it
+-- to push GUILD_MOTD, which carries the text and needs no permission.
 -- Module-scoped MOTD listener. Created once, runs through the session
 -- until it successfully displays the cached/initial Guild MOTD on
 -- window 1, then tears itself down. Listens for three events to cover
 -- cold login, /reload, and zone changes:
 --   * GUILD_MOTD            - server pushes the MOTD (cold login or
 --                             /gmotd change). arg1 is the text.
---   * PLAYER_GUILD_UPDATE   - guild membership data finalised; we can
---                             re-fetch C_GuildInfo.GetMOTD().
+--   * PLAYER_GUILD_UPDATE   - guild membership data finalised. Not a
+--                             source of the text, only a sign that
+--                             asking the server again might now work.
 --   * PLAYER_ENTERING_WORLD - belt-and-braces fallback in case neither
 --                             of the above fires (e.g. silent retail
 --                             builds where the GUILD_MOTD event isn't
@@ -423,26 +423,34 @@ end
 -- addon Lua state resets - kept firing alongside the new one. Result
 -- before this fix: MOTD rendered TWICE on the next /reload (once from
 -- each generation of listener), three times after two /reloads, etc.
--- The guild's message of the day, asked for as the game asks for it.
+-- The message of the day is listened for, never asked for.
 --
--- C_GuildInfo.GetMOTD is protected on this client, so calling it from
--- our code is refused outright: "AddOn 'BazUI' tried to call the
--- protected function GetMOTD()". It has nothing to do with combat or
--- with any frame - it is the call itself.
+-- C_GuildInfo.GetMOTD is protected on this client. Not tainted -
+-- protected, which is a different thing: it is about WHO may call it, and
+-- the answer is the game and nobody else. An addon calling it is refused
+-- whatever else is true, in or out of combat, from any frame.
 --
--- securecallfunction runs it as the game's own, which is allowed, and
--- the pcall is for the clients where the function is missing rather than
--- protected. Every reader goes through here; there used to be two places
--- calling it directly and both were blocked.
-local function GuildMOTD()
-    if not (C_GuildInfo and C_GuildInfo.GetMOTD) then return nil end
-    if securecallfunction then
-        local ok, motd = pcall(securecallfunction, C_GuildInfo.GetMOTD)
-        return ok and motd or nil
-    end
-    local ok, motd = pcall(C_GuildInfo.GetMOTD)
-    return ok and motd or nil
-end
+-- securecallfunction does not help here, and believing it would was the
+-- second version of this bug. That call launders OUR taint off a
+-- function so Blizzard's code can go on trusting it; it does not make us
+-- Blizzard. A protected function called through it is still an addon
+-- calling a protected function:
+--
+--   ADDON_ACTION_BLOCKED: AddOn 'BazUI' tried to call the protected
+--   function 'UNKNOWN()'
+--
+-- and the poll below asked twenty times per login.
+--
+-- So there is no getter any more. GUILD_MOTD carries the text in its
+-- first argument - the game telling us, unprompted, which needs no
+-- permission at all. Every path waits for that event and nothing reads
+-- the value directly.
+--
+-- What this costs: the event fires on a cold login and when the message
+-- changes, but some builds do not re-fire it on /reload. On those, the
+-- message is missing until it next changes or you log in again. That is
+-- the whole price, and a line of chat missing after a reload beats an
+-- error the player cannot do anything about.
 
 local LISTENER_NAME = "BazUIChatGuildMOTDListener"
 local motdListener = _G[LISTENER_NAME] or CreateFrame("Frame", LISTENER_NAME)
@@ -473,16 +481,20 @@ end
 motdListener:SetScript("OnEvent", function(self, event, arg1)
     if self._displayed then return end
 
-    local motd
-    if event == "GUILD_MOTD" then
-        motd = arg1
-    else
-        if IsInGuild and IsInGuild() then
-            motd = GuildMOTD()
+    -- Only the event that carries the text. The others are registered
+    -- because they mean guild data has arrived and are a good moment to
+    -- ask the server to send the message again - see below - but none of
+    -- them can be turned into the message itself without asking, and
+    -- asking is what we may not do.
+    if event ~= "GUILD_MOTD" then
+        if event == "PLAYER_ENTERING_WORLD" and IsInGuild and IsInGuild()
+            and C_GuildInfo and C_GuildInfo.GuildRoster then
+            pcall(C_GuildInfo.GuildRoster)
         end
+        return
     end
 
-    if RenderMOTDOnWindow1(motd) then
+    if RenderMOTDOnWindow1(arg1) then
         self._displayed = true
         self:UnregisterAllEvents()
     end
@@ -492,56 +504,18 @@ end)
 -- windows are registered, and again as a backwards-compat shim from
 -- Window:Create.
 --
--- The hard part is /reload: GUILD_MOTD doesn't re-fire (server only
--- pushes on changes), and GetMOTD() may return "" for a beat or two
--- while guild data settles even though the cache is technically warm.
--- So we:
---   1) Try once immediately (works for the common case).
---   2) Kick C_GuildInfo.GuildRoster() to ask the server for a refresh,
---      which makes it dispatch GUILD_ROSTER_UPDATE / GUILD_MOTD that
---      our listener catches.
---   3) Poll every 0.5s for ~10s as a belt-and-suspenders fallback in
---      case neither event fires (some classic-era / private server
---      builds drop GUILD_MOTD entirely on /reload).
--- All three paths share `_displayed`, so whichever wins first stops
--- the others.
+-- This used to try the getter at once and then poll it every half second
+-- for ten seconds, which on this client is twenty blocked calls and no
+-- message. All it does now is ask the server to send guild data again;
+-- the reply arrives as GUILD_MOTD and the listener above renders it.
+--
+-- Nothing here reports success, because nothing here can know. The
+-- listener is the only thing that ever sees the text.
 function Channels:TryRenderInitialMOTD()
     if motdListener._displayed then return end
-    if not (C_GuildInfo and C_GuildInfo.GetMOTD) then return end
-
-    local function attempt()
-        if motdListener._displayed then return true end
-        local motd = GuildMOTD()
-        if RenderMOTDOnWindow1(motd) then
-            motdListener._displayed = true
-            motdListener:UnregisterAllEvents()
-            return true
-        end
-        return false
-    end
-
-    -- Immediate try. Done if it lands.
-    if attempt() then return end
-
-    -- Ask the server to re-send guild data. The reply triggers
-    -- GUILD_ROSTER_UPDATE (and on cold login, GUILD_MOTD), both of
-    -- which our listener handles.
-    if C_GuildInfo.GuildRoster then
-        pcall(C_GuildInfo.GuildRoster)
-    end
-
-    -- Polling fallback: try every 0.5s for up to 10s. Stops as soon
-    -- as anything else (event listener, another retry) flips _displayed.
-    local tries = 0
-    local function retry()
-        if motdListener._displayed then return end
-        tries = tries + 1
-        if attempt() then return end
-        if tries < 20 then
-            C_Timer.After(0.5, retry)
-        end
-    end
-    C_Timer.After(0.5, retry)
+    if not (IsInGuild and IsInGuild()) then return end
+    if not (C_GuildInfo and C_GuildInfo.GuildRoster) then return end
+    pcall(C_GuildInfo.GuildRoster)
 end
 
 -- Backwards-compat shim for the old call site inside Window:Create.

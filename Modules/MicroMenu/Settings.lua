@@ -2,109 +2,115 @@
 ---------------------------------------------------------------------------
 -- BazUI Micro Menu: settings
 --
--- One spec feeds both the Options panel (Options > AddOns > BazUI >
--- Micro Menu) and the BazUI Edit Mode popup for the bar.
+-- Widget options, not a module page.
+--
+-- The micro menu is a drawer widget, so its settings belong where every
+-- other widget's are: Drawers > Widgets > Micro Menu, and the same list
+-- again in the Edit Mode popup when you click it. One table feeds both,
+-- because the host builds the popup from GetOptionsArgs.
+--
+-- Everything reads and writes through addon:Opt / addon:SetOpt, which put
+-- the values in the drawer's per-widget store and fall back to this
+-- module's old settings while a profile still has them. See Bar.lua.
 ---------------------------------------------------------------------------
 
 local addon = BazUI:GetModule("MicroMenu")
-local MODULE_NAME = addon.MODULE_NAME
-local both = { options = true, editMode = true }
 
-local function Get(key)
-    return function() return addon:GetSetting(key) end
-end
-
-local function Set(key)
-    return function(_, value)
-        addon:SetSetting(key, value)
-        addon:ApplySettings()
-    end
-end
-
-local function GetBool(key)
-    return function() return addon:GetSetting(key) ~= false end
-end
-
-local function SetBool(key)
-    return function(_, value)
-        addon:SetSetting(key, value and true or false)
-        addon:ApplySettings()
-    end
-end
-
-local entries = {
-    { key = "hideBlizzard", label = "Hide Blizzard's micro menu", type = "toggle", section = "general", order = 2,
-      desc = "Park the stock micro menu container in the bottom right. Its buttons live on the BazUI bar either way.",
-      get = GetBool("hideBlizzard"), set = SetBool("hideBlizzard") },
-
-    { key = "orientation", label = "Orientation", type = "select", section = "layout", order = 1, surfaces = both,
-      values = { horizontal = "Horizontal", vertical = "Vertical" }, get = Get("orientation"), set = Set("orientation") },
-    { key = "buttonSize", label = "Button size", type = "slider", section = "layout", order = 2, surfaces = both,
-      min = 22, max = 44, step = 1, get = Get("buttonSize"), set = Set("buttonSize") },
-    { key = "spacing", label = "Spacing", type = "slider", section = "layout", order = 3, surfaces = both,
-      min = 0, max = 16, step = 1, get = Get("spacing"), set = Set("spacing") },
-    { key = "mouseoverFade", label = "Show only on mouseover", type = "toggle", section = "layout", order = 4, surfaces = both,
-      desc = "Fade the bar out until the cursor is over it. The bar stays visible while Edit Mode is open.",
-      get = function() return addon:GetSetting("mouseoverFade") and true or false end, set = SetBool("mouseoverFade") },
-    { key = "fadeAlpha", label = "Faded opacity", type = "slider", section = "layout", order = 5, surfaces = both,
-      desc = "How visible the bar stays when faded, in percent. 0 hides it completely; hover the spot to bring it back.",
-      min = 0, max = 90, step = 5, get = function() return addon:GetSetting("fadeAlpha") or 0 end, set = Set("fadeAlpha") },
-    { key = "resetPosition", label = "Reset position", type = "execute", section = "layout", order = 6,
-      func = function() addon:ResetPosition() end },
-}
-
--- One toggle per button, in bar order.
---
--- Every button either client has, including the ones this one does not.
--- A switch for a button that is not here grays out rather than
--- disappearing, so the list is the same shape wherever you read it and
--- nobody goes looking for a row that moved.
---
--- Grayed on whether this client uses the button, not on whether the frame
--- exists. Both clients define every button either of them has, so the
--- second question answers yes for things that are nowhere on screen - a
--- switch offering to show Achievements on Forever, which has none.
-for i, def in ipairs(addon.DEFS) do
-    entries[#entries + 1] = {
-        key = "btn_" .. def.key, label = def.label, type = "toggle", section = "buttons", order = i,
-        desc = "Whether this button is on the bar.",
-        disabled = function()
-            for _, listed in ipairs(addon:Buttons()) do
-                if listed.def.key == def.key then return false end
-            end
-            return true
-        end,
-        get = function()
-            local prefs = addon:GetSetting("buttons")
-            return not prefs or prefs[def.key] ~= false
-        end,
-        set = function(_, value)
-            local prefs = addon:GetSetting("buttons") or {}
-            prefs[def.key] = value and true or false
-            addon:SetSetting("buttons", prefs)
-            addon:ApplySettings()
-        end,
+local function Toggle(order, name, key, default, desc)
+    return {
+        order = order, type = "toggle", name = name, desc = desc, width = "full",
+        get = function() return addon:Opt(key, default) ~= false end,
+        set = function(_, value) addon:SetOpt(key, value and true or false) end,
     }
 end
 
-BazUI:RegisterSettingsSpec(MODULE_NAME, {
-    sections = {
-        general = { label = "",           order = 1 },
-        layout  = { label = "Layout",     order = 2 },
-        buttons = { label = "Buttons",    order = 3 },
-    },
-    entries = entries,
-})
+function addon:WidgetOptions()
+    local args = {
+        layoutHeader = { order = 10, type = "header", name = "Layout" },
 
-BazUI:QueueForModule("MicroMenu", function()
-    -- The module entry itself never renders: its pages are tabs.
-    BazUI:RegisterOptionsTable(MODULE_NAME, function()
-        return { name = "Micro Menu", type = "group", args = {} }
-    end)
-    BazUI:AddToSettings(MODULE_NAME, "Micro Menu")
+        orientation = {
+            order = 11, type = "select", name = "Orientation",
+            desc = "Which way the buttons run. Rows become columns when it "
+                .. "is vertical.",
+            values = { horizontal = "Horizontal", vertical = "Vertical" },
+            get = function() return addon:Opt("orientation", "horizontal") end,
+            set = function(_, value) addon:SetOpt("orientation", value) end,
+        },
 
-    BazUI:RegisterOptionsTable(MODULE_NAME .. "-Settings", function()
-        return BazUI:BuildOptionsTableFromSpec(MODULE_NAME, { name = "General" })
-    end)
-    BazUI:AddToSettings(MODULE_NAME .. "-Settings", "General", MODULE_NAME)
-end)
+        rows = {
+            order = 12, type = "range", name = "Rows",
+            desc = "Wrap the buttons over more than one row. Ten buttons in "
+                .. "two rows is five and five - the rows are filled evenly "
+                .. "rather than filling one and leaving a stub.",
+            min = 1, max = 4, step = 1,
+            get = function() return addon:Opt("rows", 1) end,
+            set = function(_, value) addon:SetOpt("rows", value) end,
+        },
+
+        buttonSize = {
+            order = 13, type = "range", name = "Button size",
+            min = 16, max = 64, step = 1,
+            get = function() return addon:Opt("buttonSize", 30) end,
+            set = function(_, value) addon:SetOpt("buttonSize", value) end,
+        },
+
+        spacing = {
+            order = 14, type = "range", name = "Spacing",
+            min = 0, max = 24, step = 1,
+            get = function() return addon:Opt("spacing", 6) end,
+            set = function(_, value) addon:SetOpt("spacing", value) end,
+        },
+
+        appearanceHeader = { order = 20, type = "header", name = "Appearance" },
+
+        skin = Toggle(21, "BazUI skin", "skin", true,
+            "Round icons in the suite's ring, which is how the rest of the "
+            .. "addon draws a button. Off leaves Blizzard's own art alone - "
+            .. "the buttons still sit on this widget and still move with it, "
+            .. "they simply keep the shape the game drew them. They are not "
+            .. "square, so an unskinned row is sized by height and each "
+            .. "button keeps its own width."),
+
+        hideBlizzard = Toggle(22, "Hide Blizzard's micro menu", "hideBlizzard",
+            true,
+            "Park the stock micro menu container in the bottom right. Its "
+            .. "buttons live on this widget either way."),
+
+        buttonsHeader = { order = 30, type = "header", name = "Buttons" },
+    }
+
+    -- Only the buttons this client actually has.
+    --
+    -- These used to be listed for both clients with the absent ones grayed
+    -- out, on the usual rule that a setting which does not apply is
+    -- disabled in place rather than hidden - so nobody goes hunting for a
+    -- row that moved.
+    --
+    -- That rule is about a setting that does not apply *right now*:
+    -- something another switch has turned off, which you could turn back
+    -- on. It does not cover a button this client will never have. Forever
+    -- has no Achievements, no Housing, no Social; a switch for them is not
+    -- a choice you could ever make, and four dead rows in a list of
+    -- fourteen is not honesty, it is clutter that reads as broken.
+    --
+    -- addon:Buttons() is the client's own answer, already in the order the
+    -- client puts them in, so the list here matches the bar exactly.
+    for index, listed in ipairs(addon:Buttons()) do
+        local def = listed.def
+        args["btn_" .. def.key] = {
+            order = 30 + index, type = "toggle", name = def.label, width = "full",
+            desc = "Whether this button is on the bar.",
+            get = function()
+                local prefs = addon:Opt("buttons", nil)
+                return not prefs or prefs[def.key] ~= false
+            end,
+            set = function(_, value)
+                local prefs = addon:Opt("buttons", nil) or {}
+                prefs[def.key] = value and true or false
+                addon:SetOpt("buttons", prefs)
+            end,
+        }
+    end
+
+    return args
+end

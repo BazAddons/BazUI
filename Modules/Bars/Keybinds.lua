@@ -498,13 +498,16 @@ function Keybinds:ExitMode()
         end
     end
 
-    -- Restore Edit Mode overlays if still in Edit Mode
-    -- Asked through securecallfunction: even a question put to one of
-    -- Blizzard's frames stores as ours on this client, and this one is
-    -- the Edit Mode manager. See BazUI.SecureCall.
-    if BazUI.SecureCall(_G.EditModeManagerFrame, "IsEditModeActive") then
-        for id, frame in pairs(addon.Bar:GetAll()) do
-            frame._bazEditOverlay:Show()
+    -- Put our own handles back, if OUR Edit Mode is still open.
+    --
+    -- This asked Blizzard's Edit Mode manager, which is the wrong question
+    -- with the right shape: leaving the keybind editor while THEIR Edit
+    -- Mode was open put BazUI drag handles back on every action bar, so
+    -- our bars were suddenly draggable from inside their interface - the
+    -- one place they should not be. The two arrange different things.
+    if BazUI:IsEditMode() then
+        for _, frame in pairs(addon.Bar:GetAll()) do
+            if frame._bazEditOverlay then frame._bazEditOverlay:Show() end
         end
     end
 end

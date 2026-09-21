@@ -104,6 +104,7 @@ BazUI:RegisterSettingsSpec("Nameplates", {
     sections = {
         general = { label = "General", order = 1 },
         size    = { label = "Size and Text", order = 2 },
+        focus   = { label = "Focus", order = 3 },
     },
     entries = {
         { key = "showPlate", label = "Nameplates", type = "toggle",
@@ -148,6 +149,79 @@ BazUI:RegisterSettingsSpec("Nameplates", {
         { key = "nameSize", label = "Name size", type = "slider",
           section = "size", order = 4, min = 6, max = 18, step = 1,
           get = Get("nameSize"), set = Set("nameSize") },
+        { key = "showSurname", label = "Last names", type = "toggle",
+          section = "size", order = 5,
+          desc = "Players on WoW: Forever have a surname. Off shows the "
+              .. "first name only, which is shorter and is what you say "
+              .. "out loud anyway. Nothing to do with realm names - on "
+              .. "this client the second half of a name is a surname.",
+          get = Bool("showSurname", true), set = Set("showSurname") },
+        { key = "showGuild", label = "Guild name", type = "toggle",
+          section = "size", order = 6,
+          desc = "The guild in angle brackets above the name. An NPC's "
+              .. "title - <Bartender>, <Stable Master> - comes through "
+              .. "here too, which is how the game's own plates show it. "
+              .. "The plate grows by a line to make room.",
+          get = Bool("showGuild", false), set = Set("showGuild") },
+
+        ---------------------------------------------------------------
+        -- Focus
+        --
+        -- What to do about the twenty plates that are not the one you
+        -- care about. Every setting here is presentation - nothing
+        -- appears or changes color, things simply step back - so none of
+        -- it can hide a unit you were relying on seeing. Except the last
+        -- one, which says so.
+        ---------------------------------------------------------------
+        { key = "nonTargetAlpha", label = "Fade everything else", type = "slider",
+          section = "focus", order = 1, min = 20, max = 100, step = 5,
+          desc = "How solid the plates that are not your target look. At "
+              .. "100 nothing fades. With no target at all nothing fades "
+              .. "either - there would be nothing for the rest to be "
+              .. "quieter than.",
+          get = Get("nonTargetAlpha"), set = Set("nonTargetAlpha") },
+        { key = "targetScale", label = "Enlarge your target", type = "slider",
+          section = "focus", order = 2, min = 100, max = 160, step = 5,
+          desc = "How much bigger your target's plate is drawn, as a "
+              .. "percentage. It grows about the unit rather than from a "
+              .. "corner, so the plate stays over what it belongs to. The "
+              .. "name and the level grow with it.",
+          get = Get("targetScale"), set = Set("targetScale") },
+        { key = "offsetY", label = "Height above the unit", type = "slider",
+          section = "focus", order = 3, min = -40, max = 60, step = 2,
+          desc = "Move every plate up or down from where the game puts "
+              .. "it. Useful when names sit in front of what you are "
+              .. "trying to see rather than above it.",
+          get = Get("offsetY"), set = Set("offsetY") },
+        { key = "combatOnly", label = "Only show in combat", type = "toggle",
+          section = "focus", order = 4,
+          desc = "Plates appear when you are fighting and go away when "
+              .. "you are not. Your own target is always shown, in or out "
+              .. "of combat - you picked it deliberately, and a plate that "
+              .. "vanishes the moment you click something is not a quiet "
+              .. "interface.",
+          get = Bool("combatOnly", false), set = Set("combatOnly") },
+        { key = "aggroMark", label = "Mark what is attacking you", type = "toggle",
+          section = "focus", order = 4.5,
+          desc = "A red rim on the plate of any hostile unit that is "
+              .. "currently on you. This is the question threat is really "
+              .. "asking, so it gets a mark of its own rather than a shade "
+              .. "of the health bar - it shows outside the gold target "
+              .. "border, because the mob you are fighting is usually also "
+              .. "the one hitting you and both facts are worth having.",
+          get = Bool("aggroMark", true), set = Set("aggroMark") },
+        { key = "threatColor", label = "Color by threat", type = "toggle",
+          section = "focus", order = 5,
+          desc = "A hostile unit's health bar takes the game's own threat "
+              .. "colors instead of plain red: whether it is on you, "
+              .. "coming for you, or on somebody else. Friendly units are "
+              .. "left alone - they have no threat table and coloring a "
+              .. "guard by it would be nonsense.",
+          get = Bool("threatColor", false), set = Set("threatColor") },
+        { key = "focusHelp", type = "note", section = "focus", order = 9, style = "info",
+          text = "These change how plates look, not which units have "
+              .. "them. The one exception is Only show in combat, and it "
+              .. "still never hides your target." },
 
         { key = "help", type = "note", section = "size", order = 9, style = "info",
           text = "How many plates you see, how far away, and whether "

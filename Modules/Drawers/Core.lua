@@ -878,6 +878,12 @@ local DEFAULT_ENABLED_WIDGETS = {
     bazdrawer_minimap         = true,
     bazdrawer_minimapbuttons  = true,
     bazdrawer_questtracker    = true,
+    -- The micro menu is on by default because it always was: it used to
+    -- be its own module with its own always-on bar, and becoming a widget
+    -- must not quietly demote it to something you have to go and switch
+    -- on. A fresh profile that lost the character sheet button would be
+    -- a regression wearing a refactor's clothes.
+    bazdrawer_micromenu       = true,
 }
 
 function addon:IsWidgetEnabled(id)

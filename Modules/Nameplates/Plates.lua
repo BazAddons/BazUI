@@ -61,6 +61,129 @@ BazUI:RegisterDependency({
 -- where the frame really is protected, so combat does not stop it here.
 local suppressed = setmetatable({}, { __mode = "k" })
 
+---------------------------------------------------------------------------
+-- What to call a unit
+--
+-- WoW: Forever gives players a surname, which is not a thing the retail
+-- API has: here UnitName returns name AND surname, where on retail the
+-- second return is the realm. So "Baz Rockbottom" is one player, not a
+-- player from a realm called Rockbottom, and anything that treats the
+-- second value as a realm gets it wrong in a way that looks plausible.
+--
+-- Blizzard's own NameUtil does the splitting and knows the separator, the
+-- RegionalUniqueNames rule behind it and the shape of a cross-realm name.
+-- Borrowed rather than reimplemented: a pattern of ours would be a second
+-- opinion about somebody's name, and it would be wrong first.
+---------------------------------------------------------------------------
+
+-- The surname arrives as a SECOND RETURN VALUE, not inside the first one.
+--
+--   local name, surname = UnitName(unit)
+--
+-- so `UnitName(unit)` on its own is the first name and nothing else, and a
+-- plate built on it can never show a surname however the setting is set.
+-- That is exactly the bug this file shipped with: the comment above was
+-- right and the code below it took one value and dropped the other.
+--
+-- Both directions go through NameUtil now, which is the point of borrowing
+-- it - FormatUnitNameForDisplay joins them with the client's own separator
+-- and GetUnitFirstName splits them back off.
+local function PlateName(unit)
+    return BazUI.UnitDisplayName(unit, {
+        surname = Setting("showSurname") ~= false,
+    })
+end
+
+-- The guild, in the game's own angle brackets, and only for players.
+--
+-- An NPC's "guild" is its title - <Bartender>, <Stable Master> - which the
+-- game shows on its own plates and is worth having, so both come through
+-- here. GetGuildInfo answers for either.
+local function PlateGuild(unit)
+    if Setting("showGuild") ~= true then return nil end
+    if not (unit and _G.GetGuildInfo) then return nil end
+    local ok, guild = pcall(_G.GetGuildInfo, unit)
+    if not (ok and guild and guild ~= "") then return nil end
+    return "<" .. guild .. ">"
+end
+
+---------------------------------------------------------------------------
+-- Threat
+--
+-- Whether this mob is hitting you, said in the colour of its health bar.
+--
+-- The whole thing is done without ever looking at the number, which is not
+-- fussiness - on this client it is the only way it works at all.
+-- UnitThreatSituation is declared
+--
+--   SecretWhenUnitThreatStateRestricted = true
+--
+-- so the status it hands back can be a secret value, and comparing one of
+-- those is an error rather than a wrong answer. `status > 2` would be fine
+-- in a duel and blow up in a raid, which is the worst kind of bug to own.
+--
+-- GetThreatStatusColor takes the status and gives back a colour, and is
+-- declared SecretArguments = "AllowedWhenUntainted" - it is built to be
+-- handed one of these. So the status goes straight from the one function
+-- to the other and we never hold an opinion about what it was. Same rule
+-- as the health bar: pass it along, never inspect it. See
+-- Core/StatusBar.lua and BazUI.Secret.
+---------------------------------------------------------------------------
+
+local function ThreatColor(unit)
+    if Setting("threatColor") ~= true then return nil end
+    if not (unit and _G.UnitThreatSituation and _G.GetThreatStatusColor) then
+        return nil
+    end
+
+    -- Only things that can actually be fighting you. A friendly NPC has no
+    -- threat table, and painting a guard grey because you are not tanking
+    -- it would be nonsense.
+    if UnitReaction and (UnitReaction("player", unit) or 0) > 4 then return nil end
+
+    local ok, status = pcall(_G.UnitThreatSituation, "player", unit)
+    if not ok or status == nil then return nil end
+
+    local fine, r, g, b = pcall(_G.GetThreatStatusColor, status)
+    if not fine or r == nil then return nil end
+
+    -- Handed back as a table, because that is what every colour in the
+    -- suite is and what SetFillColor takes. Three loose numbers went in
+    -- as one and it indexed a number.
+    return { r, g, b, 1 }
+end
+
+-- Is this one actually on me?
+--
+-- The question the whole threat business exists to answer, and the only
+-- one worth a mark of its own: a colour shift competes with the reaction
+-- colour you are already reading, and at nameplate size orange and red
+-- are not far apart when six of them are stacked up.
+--
+-- isTanking is a plain bool and needs no arithmetic, which is what makes
+-- it usable here where the status number is not. It can still be a secret
+-- on restricted content - UnitDetailedThreatSituation is declared
+-- SecretWhenUnitThreatValuesRestricted - so the test is wrapped and an
+-- error means "I do not know", which shows nothing rather than guessing.
+--
+-- Three answers, not two. nil is not false: false says the mob is on
+-- somebody else, nil says we could not find out, and a marker that
+-- vanishes in a raid should not look the same as one saying you are safe.
+local function HasAggro(unit)
+    if Setting("aggroMark") == false then return nil end
+    if not (unit and _G.UnitDetailedThreatSituation) then return nil end
+    if UnitReaction and (UnitReaction("player", unit) or 0) > 4 then return nil end
+
+    local ok, tanking = pcall(function()
+        local isTanking = _G.UnitDetailedThreatSituation("player", unit)
+        -- Forced to a real boolean inside the pcall, so a secret value
+        -- fails here rather than at some later `if` we have not guarded.
+        return isTanking and true or false
+    end)
+    if not ok then return nil end
+    return tanking
+end
+
 local function SuppressStock(plate)
     local frame = plate and plate.UnitFrame
     if not frame then return end
@@ -113,6 +236,17 @@ local function Build()
     plate.name:SetJustifyH("CENTER")
     plate.name:SetWordWrap(false)
 
+    -- Above the name, not below it.
+    --
+    -- Below would put it between the name and the health bar, which is
+    -- where the eye goes for the thing that matters. A guild tag is the
+    -- least urgent line on the plate, so it sits furthest from the bar.
+    plate.guild = Theme.FontString(plate, "OVERLAY", "GameFontNormalSmall")
+    plate.guild:SetPoint("BOTTOM", plate.name, "TOP", 0, 1)
+    plate.guild:SetJustifyH("CENTER")
+    plate.guild:SetWordWrap(false)
+    plate.guild:Hide()
+
     -- On the bar rather than beside it: a plate is as wide as it is and
     -- the name has already taken the width above.
     -- Against the fill rather than the frame, so it stays inside the bar
@@ -127,6 +261,18 @@ local function Build()
     plate.mark:SetPoint("TOPLEFT", plate.health, -2, 2)
     plate.mark:SetPoint("BOTTOMRIGHT", plate.health, 2, -2)
     plate.mark:Hide()
+
+    -- Outside the target mark rather than instead of it.
+    --
+    -- The two say different things and both can be true at once - the mob
+    -- you are fighting is usually also the mob on you - so one cannot
+    -- replace the other. Gold reads "selected", red reads "this one is
+    -- hitting you", and drawn at a wider inset the red shows as a rim
+    -- around the gold instead of fighting it for the same pixels.
+    plate.aggro = plate:CreateTexture(nil, "BACKGROUND", nil, -1)
+    plate.aggro:SetPoint("TOPLEFT", plate.health, -4, 4)
+    plate.aggro:SetPoint("BOTTOMRIGHT", plate.health, 4, -4)
+    plate.aggro:Hide()
 
     Theme.TrackBorder(plate, RelayoutPlate)
 
@@ -179,7 +325,16 @@ function Plates:UpdateHealth(ours)
     -- have them - one this code may pass along but never compare or
     -- divide - so the widget does the measuring. See Core\StatusBar.lua.
     ours.health:SetValue(UnitHealth(unit), UnitHealthMax(unit))
-    ours.health:SetFillColor(BazUI.UnitColor(unit, {
+
+    -- Threat wins over reaction when it has an answer, because "this one
+    -- is on you" is the more urgent fact than "this one is hostile" - you
+    -- already knew that from the fact that it is hitting you.
+    -- The one fact worth a mark of its own, kept on the same events as
+    -- the bar colour so the two can never disagree about a mob.
+    local aggro = HasAggro(unit)
+    ours.aggro:SetShown(aggro == true and wants.bar)
+
+    ours.health:SetFillColor(ThreatColor(unit) or BazUI.UnitColor(unit, {
         classColor = wants.classColor,
         reaction   = true,
     }))
@@ -191,7 +346,7 @@ function Plates:UpdateName(ours)
     local wants = Wants(unit)
 
     ours.name:SetShown(wants.name)
-    BazUI.Skin.Theme.SetText(ours.name, UnitName(unit) or "")
+    BazUI.Skin.Theme.SetText(ours.name, PlateName(unit))
     ours.name:SetTextColor(unpack(BazUI.UnitColor(unit, {
         classColor = wants.classColor,
         reaction   = true,
@@ -209,17 +364,45 @@ function Plates:UpdateName(ours)
         ours.level:SetText(text)
         ours.level:SetTextColor(unpack(BazUI.Skin.Theme.colors.text))
     end
+
+    -- Guild last, because whether it is shown decides how tall the plate
+    -- has to be and Apply asks this same question straight afterwards.
+    local guild = wants.name and PlateGuild(unit) or nil
+    ours.guild:SetShown(guild ~= nil)
+    if guild then
+        BazUI.Skin.Theme.SetText(ours.guild, guild)
+        ours.guild:SetTextColor(unpack(BazUI.Skin.Theme.colors.textMuted))
+    end
 end
 
 function Plates:UpdateTarget(ours)
     local unit = ours and ours.unit
+    local isTarget = unit and BazUI.Secret.IsUnit(unit, "target") or false
+
     -- The mark is drawn around the health bar, so a kind showing only a
     -- name has nothing to put it around. Its name still takes the target
     -- color from the theme, which is what marks it there.
     local wanted = Setting("targetMark") ~= false
-        and unit and BazUI.Secret.IsUnit(unit, "target")
+        and isTarget
         and addon:UnitWants(unit, "showBar")
     ours.mark:SetShown(wanted and true or false)
+
+    -- Emphasis: everything that is not what you are looking at steps back.
+    --
+    -- Both of these read as "no target means no emphasis", which is the
+    -- only sane answer - with nothing selected there is nothing for the
+    -- rest to be quieter than, and a screen of uniformly faded plates
+    -- would look broken rather than focused.
+    local fade = tonumber(Setting("nonTargetAlpha")) or 100
+    local grow = tonumber(Setting("targetScale")) or 100
+    local anyTarget = UnitExists and UnitExists("target") or false
+
+    ours:SetAlpha((isTarget or not anyTarget) and 1 or (fade / 100))
+
+    -- Scale is set on the plate rather than the bar so the name and the
+    -- level grow with it. The plate is anchored by its centre, so this
+    -- expands about the unit and does not shunt it sideways.
+    ours:SetScale((isTarget and grow or 100) / 100)
 end
 
 -- Whose plate shows: ours, the game's, or neither.
@@ -244,6 +427,21 @@ function Plates:Decide(ours)
     if not (unit and host) then return end
 
     if not addon:UnitWants(unit, "showPlate") then
+        SuppressStock(host)
+        ours:Hide()
+        return
+    end
+
+    -- Out of combat, off - if you asked for that.
+    --
+    -- The stock plate stays suppressed rather than being handed back, so
+    -- this hides plates instead of swapping ours for Blizzard's. Your own
+    -- target is the exception: you selected it deliberately, and a plate
+    -- that vanishes the moment you click something is not a quiet
+    -- interface, it is a broken one.
+    if Setting("combatOnly") == true
+        and not InCombatLockdown()
+        and not BazUI.Secret.IsUnit(unit, "target") then
         SuppressStock(host)
         ours:Hide()
         return
@@ -285,33 +483,64 @@ function Plates:Apply(ours)
     -- where the bar would have been. The name and the level move down
     -- onto the plate itself, since there is no longer a bar for them to
     -- sit above and inside.
+    -- Room for a second line of text when there is one, so a guild tag
+    -- is not drawn over whatever is above the plate.
+    local nameRoom = NAME_ROOM
+    if ours.guild:IsShown() then
+        nameRoom = nameRoom + (tonumber(Setting("nameSize")) or 9)
+    end
+
     local chrome = ours.health:GetInset() * 2
     if hasBar then
-        ours:SetSize(width + chrome, height + chrome + NAME_ROOM)
+        ours:SetSize(width + chrome, height + chrome + nameRoom)
         ours.health:SetBarSize(width, height)
         ours.name:ClearAllPoints()
         ours.name:SetPoint("BOTTOM", ours.health, "TOP", 0, 2)
         ours.level:ClearAllPoints()
         ours.level:SetPoint("RIGHT", ours.health.fill, "RIGHT", -3, 0)
     else
-        ours:SetSize(width + chrome, NAME_ROOM)
+        ours:SetSize(width + chrome, nameRoom)
         ours.name:ClearAllPoints()
-        ours.name:SetPoint("CENTER")
+        ours.name:SetPoint("CENTER", 0, ours.guild:IsShown() and -4 or 0)
         -- Beside the name rather than inside a bar that is not there.
         ours.level:ClearAllPoints()
         ours.level:SetPoint("LEFT", ours.name, "RIGHT", 3, 0)
     end
 
+    -- Where it sits on the unit. Re-anchored on every apply rather than
+    -- only when the plate was acquired, so moving the slider shows up on
+    -- plates that are already out.
+    ours:ClearAllPoints()
+    ours:SetPoint("CENTER", ours:GetParent(), "CENTER",
+        0, tonumber(Setting("offsetY")) or 0)
+
     -- Painted on every apply rather than once when the plate was built,
     -- so a change of palette reaches plates already pooled.
     ours.mark:SetColorTexture(unpack(BazUI.Skin.Theme.colors.gold))
+    ours.aggro:SetColorTexture(0.85, 0.12, 0.10, 1)
     ours.name:SetFont(BazUI.Skin.Theme.FontFile(),
         tonumber(Setting("nameSize")) or 9, "OUTLINE")
     ours.level:SetFont(BazUI.Skin.Theme.FontFile(),
         math.max(7, (tonumber(Setting("nameSize")) or 9) - 1), "OUTLINE")
+    ours.guild:SetFont(BazUI.Skin.Theme.FontFile(),
+        math.max(6, (tonumber(Setting("nameSize")) or 9) - 2), "OUTLINE")
+
+    -- Name before the rest, again.
+    --
+    -- The sizing above asks whether the guild line is shown, and
+    -- UpdateName is what answers that - so run once more now that the
+    -- fonts are set, and re-size if the answer changed. Cheaper than
+    -- threading the decision through both, and it cannot drift.
+    self:UpdateName(ours)
+    local wantRoom = NAME_ROOM
+        + (ours.guild:IsShown() and (tonumber(Setting("nameSize")) or 9) or 0)
+    if hasBar then
+        ours:SetSize(width + chrome, height + chrome + wantRoom)
+    else
+        ours:SetSize(width + chrome, wantRoom)
+    end
 
     self:UpdateHealth(ours)
-    self:UpdateName(ours)
     self:UpdateTarget(ours)
 end
 
@@ -408,7 +637,47 @@ function Plates:Initialize()
         if ours then self:Apply(ours) end
     end)
 
+    -- A new target changes three things at once: which plate wears the
+    -- mark, which ones step back, and - with "only in combat" on - which
+    -- ones exist at all, because your own target is exempt from that.
+    -- Decide is the only one of those that can add or remove a plate, so
+    -- it has to run too rather than just the repaint.
     addon:On("PLAYER_TARGET_CHANGED", function()
-        for _, ours in pairs(active) do self:UpdateTarget(ours) end
+        for _, ours in pairs(active) do
+            self:Decide(ours)
+            self:UpdateTarget(ours)
+        end
     end)
+
+    -- Threat changing is a repaint of the bar and nothing else, so this
+    -- is the cheap update rather than a whole Apply. Both events, because
+    -- the situation one does not fire for every change of position on the
+    -- list and the list one does not always carry a unit.
+    addon:On("UNIT_THREAT_SITUATION_UPDATE", function(_, unit)
+        local ours = Find(unit)
+        if ours then self:UpdateHealth(ours) end
+    end)
+    addon:On("UNIT_THREAT_LIST_UPDATE", function(_, unit)
+        local ours = unit and Find(unit)
+        if ours then
+            self:UpdateHealth(ours)
+        elseif Setting("threatColor") == true then
+            for _, plate in pairs(active) do self:UpdateHealth(plate) end
+        end
+    end)
+
+    -- Combat starting and ending is the whole point of "only in combat".
+    for _, event in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
+        addon:On(event, function()
+            for _, ours in pairs(active) do
+                -- Leaving combat drops every threat colour back to the
+                -- unit's own, so the bars are repainted either way.
+                self:UpdateHealth(ours)
+                if Setting("combatOnly") == true then
+                    self:Decide(ours)
+                    self:UpdateTarget(ours)
+                end
+            end
+        end)
+    end
 end

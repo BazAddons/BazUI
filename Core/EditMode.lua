@@ -485,10 +485,24 @@ end
 local INSPECTOR_TOP    = 108
 local INSPECTOR_BOTTOM = 42
 
--- Which edge it sits on. Right by default; it moves to the left only to
--- get out of the way of whatever is selected, and a pin overrides both.
-local inspectorSide   = "RIGHT"
-local inspectorPinned = nil
+-- Which edge it sits on, and whether it is allowed to move.
+--
+-- Left and pinned to start with. Unpinned it hops edges to get out of the
+-- way of whatever you select, which is clever and is the wrong kind of
+-- clever for a panel you are reading: you go to click a control and it has
+-- moved to the other side of the screen because the thing you selected
+-- happened to be on the right. Somewhere predictable beats somewhere
+-- optimal.
+--
+-- Left rather than right because the frame list sits on the right, and two
+-- panels down one edge with the game between them is worse than one on
+-- each.
+--
+-- The buttons are still there. Unpin it and it goes back to hopping;
+-- neither choice survives a reload, which is deliberate - this is a
+-- preference about one session's fiddling, not a setting.
+local inspectorSide   = "LEFT"
+local inspectorPinned = "LEFT"
 
 -- Declared here, defined further down. The inspector's own buttons are
 -- built before either of them and need to call them, and a local is only
@@ -1898,9 +1912,24 @@ local function ExitEditMode()
     BazUI:Fire("BAZ_EDITMODE_EXIT")
 end
 
+-- Theirs and ours are two different things, and only one may be open.
+--
+-- This used to open ours whenever theirs opened, on the reasoning that
+-- somebody rearranging their interface probably means all of it. In
+-- practice it puts two grids on the screen, two panels down the side, and
+-- two sets of handles over frames that answer to only one of them - and
+-- since Blizzard's dialog is the one with Save and Revert on it, it reads
+-- as though those buttons apply to our frames. They do not.
+--
+-- So ours yields. Theirs opening closes ours, and ours refuses to open
+-- while theirs is up rather than fighting it for the screen. Nothing here
+-- reaches into their frames to close them: we have our own way in now -
+-- the minimap button, the game menu, /baz edit - so getting out of theirs
+-- first costs a click and keeps this entirely on our side of the line.
 if EventRegistry then
-    EventRegistry:RegisterCallback("EditMode.Enter", EnterEditMode)
-    EventRegistry:RegisterCallback("EditMode.Exit", ExitEditMode)
+    EventRegistry:RegisterCallback("EditMode.Enter", function()
+        ExitEditMode()
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -1920,6 +1949,16 @@ function BazUI:EnterEditMode()
         BazUI:Print("The interface cannot be rearranged during combat.")
         return false
     end
+
+    -- Asked through securecallfunction: even a question put to one of
+    -- Blizzard's frames stores as ours on this client, and this one is the
+    -- Edit Mode manager. See BazUI.SecureCall.
+    if BazUI.SecureCall(_G.EditModeManagerFrame, "IsEditModeActive") then
+        BazUI:Print("Blizzard's Edit Mode is open. Close that first - the two "
+            .. "arrange different things and only one can be open at a time.")
+        return false
+    end
+
     EnterEditMode()
     return true
 end
