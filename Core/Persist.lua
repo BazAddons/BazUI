@@ -56,6 +56,18 @@ local ACCOUNT_KEY = "BazUI"
 local CHAR_PREFIX = "BazUI@"
 -- Somebody else's saved variables, rescued the same way. See "Guests".
 local GUEST_PREFIX = "BazUI#"
+-- Which addons we look after, in a key of its own.
+--
+-- It used to live inside our own account table, and that was wrong twice
+-- over. Our account table is handed back to Blizzard the moment the
+-- client starts reading our account file - and it took the guest list
+-- with it, so every addon we were carrying was quietly dropped by our own
+-- good news. The client reading OUR file says nothing about theirs.
+--
+-- It is also read at a guest's ADDON_LOADED, long before our own tables
+-- are adopted, so it has no business being in a table whose whole point
+-- is that it is not settled until login.
+local GUEST_LIST_KEY = GUEST_PREFIX .. "guests"
 
 Persist.HOST = HOST
 
@@ -170,10 +182,44 @@ end
 -- a reading.
 ---------------------------------------------------------------------------
 
+-- Two files, asked separately.
+--
+-- This used to be one question, put to the per-character counter and
+-- answered for the whole system. It is not one system. On build 69913 a
+-- character came back with THREE previous loads in its own file while the
+-- account file was absent at PLAYER_LOGIN - the channel holding one
+-- counter was working and the channel holding every setting was not.
+--
+-- The single question read the working half, concluded the client was
+-- healthy, and handed the host table back. Everything the account file
+-- carries - profiles, bars, layout, the lot - was then being kept nowhere
+-- at all, and reset on the next reload. A character whose own file had
+-- never been written got the opposite answer and worked fine, which is
+-- why this looked like a problem with new characters.
+--
+-- So each channel is asked about itself, and each is adopted or left
+-- alone on its own answer. A client where one works and the other does
+-- not is no longer a client we get wrong; it is two answers.
+local function ReadsFile(globalName)
+    local tbl = _G[globalName]
+    return type(tbl) == "table" and tonumber(rawget(tbl, "loads")) ~= nil
+end
+
+function Persist:ClientReadsAccount()
+    if self.readsAccount ~= nil then return self.readsAccount end
+    return ReadsFile("BazUIDB")
+end
+
+function Persist:ClientReadsChar()
+    if self.readsChar ~= nil then return self.readsChar end
+    return ReadsFile("BazUICharDB")
+end
+
+-- The old name, kept because the settings page and the guest system ask
+-- it. A guest has settings in both scopes, so guests are worth carrying
+-- while EITHER channel is broken.
 function Persist:ClientReadsVariables()
-    if self.clientReads ~= nil then return self.clientReads end
-    local char = _G.BazUICharDB
-    return type(char) == "table" and tonumber(char.loads) ~= nil
+    return self:ClientReadsAccount() and self:ClientReadsChar()
 end
 
 ---------------------------------------------------------------------------
@@ -189,32 +235,39 @@ function Persist:Adopt()
     local report = { host = HostTable() ~= nil }
 
     -- Settled here, before a single write of ours, and true for the rest
-    -- of the session. See ClientReadsVariables.
-    self.clientReads = self:ClientReadsVariables()
-    report.clientReads = self.clientReads
-
-    -- A working client: use what it gave us, and hand back anything we
-    -- left in the host table on a client that was not working. That makes
-    -- this self-cleaning in both directions - a retail install carries one
-    -- login's worth of our data at most, and a Forever client that gets
-    -- fixed tidies up after itself the first time it reads a file.
-    if self:ClientReadsVariables() then
-        local dropped = self:Forget()
-        report.account = "saved variables work on this client"
-        report.char    = report.account
-        report.dropped = dropped
-        report.charKey = CharKey()
-        self.report = report
-        return _G.BazUIDB, _G.BazUICharDB
-    end
-
-    local account, accountHow = Resolve("BazUIDB", ACCOUNT_KEY, {})
-    report.account = accountHow
+    -- of the session. See ReadsFile.
+    self.readsAccount = self:ClientReadsAccount()
+    self.readsChar    = self:ClientReadsChar()
+    self.clientReads  = self.readsAccount and self.readsChar
+    report.clientReads  = self.clientReads
+    report.readsAccount = self.readsAccount
+    report.readsChar    = self.readsChar
 
     local charKey = CharKey()
-    local char, charHow = Resolve("BazUICharDB", charKey, {})
-    report.char = charHow
     report.charKey = charKey
+    report.dropped = 0
+
+    -- A channel the client reads needs none of this, and whatever we left
+    -- in the host table for it is handed back. That makes this
+    -- self-cleaning in both directions - a retail install carries one
+    -- login's worth of our data at most, and a Forever client that gets
+    -- fixed tidies up after itself the first time it reads a file.
+    local account, char
+    if self.readsAccount then
+        report.account = "saved variables work for the account file"
+        report.dropped = report.dropped + self:Drop(ACCOUNT_KEY)
+        account = _G.BazUIDB
+    else
+        account, report.account = Resolve("BazUIDB", ACCOUNT_KEY, {})
+    end
+
+    if self.readsChar then
+        report.char = "saved variables work for the character file"
+        report.dropped = report.dropped + self:Drop(charKey)
+        char = _G.BazUICharDB
+    else
+        char, report.char = Resolve("BazUICharDB", charKey, {})
+    end
 
     self.report = report
     return account, char
@@ -227,13 +280,54 @@ function Persist:Describe()
     if not r.host then
         return HOST .. " is not there - settings are in the saved variables only"
     end
-    if r.dropped then
-        return ("%s%s"):format(tostring(r.account),
-            (r.dropped > 0) and (", and " .. r.dropped .. " table"
-                .. ((r.dropped == 1) and " was" or "s were") .. " handed back") or "")
+    -- Both channels always, because they can disagree, and a report that
+    -- says one thing about "the saved variables" is the report that hid
+    -- this bug for a week.
+    return ("account: %s; character (%s): %s%s")
+        :format(tostring(r.account), tostring(r.charKey or "unknown"),
+            tostring(r.char),
+            ((r.dropped or 0) > 0)
+                and (" - " .. r.dropped .. " table"
+                    .. ((r.dropped == 1) and " was" or "s were") .. " handed back")
+                or "")
+end
+
+-- The numbers behind the decision, for /baz sv.
+--
+-- Describe() says what happened in words; this says why. A stamp that is
+-- not climbing is a table nobody is saving, and a host entry that is
+-- missing for one character and present for another is the whole answer
+-- to "it works on my main and not on my alt".
+function Persist:Detail()
+    local host = HostTable()
+    local charKey = CharKey()
+    local lines = {}
+
+    lines[#lines + 1] = ("this character is stored under %s"):format(
+        tostring(charKey or "|cffff4444no key - UnitName was not ready|r"))
+    lines[#lines + 1] = ("client reads the account file: %s, the character file: %s"):format(
+        tostring(self.readsAccount), tostring(self.readsChar))
+
+    local function Line(label, key)
+        if not (host and key) then return end
+        local hosted = rawget(host, key)
+        if type(hosted) ~= "table" then
+            lines[#lines + 1] = ("%s (%s): |cffff4444nothing in the host table|r")
+                :format(label, key)
+            return
+        end
+        local count = 0
+        for _ in pairs(hosted) do count = count + 1 end
+        lines[#lines + 1] = ("%s (%s): stamp %d, %d key%s%s"):format(
+            label, key, Stamp(hosted), count, (count == 1) and "" or "s",
+            (hosted == _G[(key == ACCOUNT_KEY) and "BazUIDB" or "BazUICharDB"])
+                and ", and it is the live table" or
+                " |cffff4444but the live table is a different one|r")
     end
-    return ("account: %s; character (%s): %s")
-        :format(tostring(r.account), tostring(r.charKey or "unknown"), tostring(r.char))
+    Line("account", ACCOUNT_KEY)
+    Line("character", charKey)
+
+    return lines
 end
 
 -- Everything of ours the host is carrying, for the diagnostic command and
@@ -252,6 +346,14 @@ function Persist:Keys()
     end
     table.sort(keys)
     return keys
+end
+
+-- One key back, for a channel the client turns out to read after all.
+function Persist:Drop(key)
+    local host = HostTable()
+    if not (host and key and rawget(host, key) ~= nil) then return 0 end
+    host[key] = nil
+    return 1
 end
 
 -- Hands the host table back to Blizzard. The settings in memory are
@@ -367,12 +469,30 @@ end
 -- The list lives in the host table rather than in BazUIDB, because it has
 -- to be readable at a guest's ADDON_LOADED and BazUIDB is not adopted
 -- until login. One table, read early, replaced late.
-local function GuestList()
+--
+-- `create` for the two callers that are writing to it. Everyone else gets
+-- an empty table they may not keep, so a read never leaves a key behind.
+local function GuestList(create)
     local host = HostTable()
-    local mine = host and host[ACCOUNT_KEY]
-    if type(mine) ~= "table" then return {} end
-    local list = rawget(mine, "persistGuests")
-    if type(list) ~= "table" then return {} end
+    if not host then return {} end
+
+    local list = rawget(host, GUEST_LIST_KEY)
+    if type(list) ~= "table" then
+        -- Where it used to live. Moved rather than abandoned, so anybody
+        -- who switched TomTom on before this keeps their switch.
+        local mine = rawget(host, ACCOUNT_KEY)
+        local old = (type(mine) == "table") and rawget(mine, "persistGuests")
+        if type(old) == "table" then
+            list = old
+            host[GUEST_LIST_KEY] = list
+            mine.persistGuests = nil
+        elseif create then
+            list = {}
+            host[GUEST_LIST_KEY] = list
+        else
+            return {}
+        end
+    end
     return list
 end
 
@@ -393,7 +513,7 @@ end
 -- guest's own handler for the same event.
 function Persist:RestoreGuest(addOnName)
     local host = HostTable()
-    if not host or self:ClientReadsVariables() then return end
+    if not host then return end
 
     local globals = GuestGlobals(addOnName)
     if not globals then return end
@@ -406,6 +526,15 @@ function Persist:RestoreGuest(addOnName)
         -- handed over a real file has told us this is not needed, and
         -- overwriting it would be us losing somebody's settings rather
         -- than saving them.
+        --
+        -- This test, and not a question about whether the client reads
+        -- files at all. It used to stand behind one: if BazUI's own saved
+        -- variables came back, guests were skipped wholesale. But the
+        -- files fail one at a time - an account file that will not load
+        -- while a per-character file does, ours working and theirs not -
+        -- so the only honest question is the one asked here, of this
+        -- global, right now. Empty means the client did not hand it over,
+        -- whoever else it obliged.
         if type(hosted) == "table" and _G[global] == nil then
             _G[global] = hosted
             restored = restored + 1
@@ -425,7 +554,23 @@ end
 -- global holds is final.
 function Persist:ReattachGuests()
     local host = HostTable()
-    if not host or self:ClientReadsVariables() then return end
+    if not host then return end
+
+    -- A client that reads both of its own files needs none of this, and
+    -- filling Blizzard's machine file with other addons' saved variables
+    -- on a healthy install is rude. So this is also where the guests go
+    -- home: the day Forever is fixed, the first logout tidies them away
+    -- and nobody has to remember to switch anything off.
+    if self:ClientReadsVariables() then
+        for _, key in ipairs(self:Keys()) do
+            if key:sub(1, #GUEST_PREFIX) == GUEST_PREFIX
+                and key ~= GUEST_LIST_KEY then
+                host[key] = nil
+            end
+        end
+        return
+    end
+
     for addOnName in pairs(GuestList()) do
         local globals = GuestGlobals(addOnName)
         for _, global in ipairs(globals or {}) do
@@ -442,8 +587,6 @@ end
 function Persist:AddGuest(addOnName, globals)
     local host = HostTable()
     if not host then return false, "there is no host table on this client" end
-    local mine = host[ACCOUNT_KEY]
-    if type(mine) ~= "table" then return false, "BazUI's own settings are not in the host table yet" end
 
     local loaded = C_AddOns and C_AddOns.GetAddOnInfo and C_AddOns.GetAddOnInfo(addOnName)
     if not loaded then return false, "no addon called " .. addOnName end
@@ -455,8 +598,7 @@ function Persist:AddGuest(addOnName, globals)
             .. addOnName .. " " .. addOnName .. "DB"
     end
 
-    mine.persistGuests = rawget(mine, "persistGuests") or {}
-    mine.persistGuests[addOnName] = globals
+    GuestList(true)[addOnName] = globals
     -- Capture what it is holding now, so the first logout already has it
     -- rather than waiting for a second one.
     self:ReattachGuests()
@@ -465,9 +607,8 @@ end
 
 function Persist:RemoveGuest(addOnName)
     local host = HostTable()
-    local mine = host and host[ACCOUNT_KEY]
-    local list = (type(mine) == "table") and rawget(mine, "persistGuests")
-    if type(list) ~= "table" or not list[addOnName] then return false end
+    local list = GuestList()
+    if not host or not list[addOnName] then return false end
     local globals = list[addOnName]
     list[addOnName] = nil
     if host then

@@ -116,6 +116,34 @@ function addon:NoteDragFromButton()
     carried = CursorKey()
 end
 
+-- The same note, for a drag off one of Blizzard's own bars.
+--
+-- Asked of the cursor rather than taken from their buttons. "action" and
+-- "petaction" are the game's own words for something lifted out of a bar
+-- slot, and nothing but a bar slot produces them - so this covers every
+-- bar they have, including the ones that only exist while you are on a
+-- vehicle or in a special encounter, without knowing any of their names.
+--
+-- This used to be a HookScript on each of their buttons, and that is what
+-- was wrong. On WoW: Forever a cooldown carries a secret number, which
+-- the client will only hand to untainted code - and our script on their
+-- frame was enough to make their own cooldown update count as ours. The
+-- override bar threw on every swap:
+--
+--   ActionButton.lua:881: bad argument #1 to 'SetCooldown'
+--   Secret values are only allowed during untainted execution
+--
+-- The lesson is the one already written down for frame method hooks: on
+-- this client, do not put anything of ours on a frame of theirs that
+-- handles the player's own numbers. Ask the game instead.
+local BAR_CURSOR = { action = true, petaction = true }
+
+local function NoteBlizzardBarDrag()
+    if not GetCursorInfo then return end
+    local kind = GetCursorInfo()
+    if kind and BAR_CURSOR[kind] then carried = CursorKey() end
+end
+
 -- Whether what is on the cursor right now came off an action bar.
 local function CameFromABar()
     return carried ~= nil and CursorKey() == carried
@@ -660,6 +688,7 @@ BazUI:QueueForLogin(function()
     watcher:SetScript("OnEvent", function()
         ForgetCarry()
         if GetCursorInfo and GetCursorInfo() then
+            NoteBlizzardBarDrag()
             if Enabled() then Track() end
         else
             carried = nil
@@ -667,31 +696,4 @@ BazUI:QueueForLogin(function()
         end
     end)
 
-    -- Blizzard's action buttons, which never run our drag handler.
-    --
-    -- This was the hole: dragging off one of the game's own bars looked
-    -- to us exactly like dragging out of the spellbook, so clearing a
-    -- slot there made a bar. Every name the two clients use, asked for
-    -- rather than assumed - one that does not exist costs nothing.
-    --
-    -- HookScript on their frames rather than a hook on PickupAction:
-    -- hooking one of their globals taints it, and they call that one from
-    -- everywhere.
-    local BLIZZARD_BARS = {
-        "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton",
-        "MultiBarRightButton", "MultiBarLeftButton",
-        "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
-        "PetActionButton", "StanceButton", "ShapeshiftButton",
-        "BonusActionButton", "OverrideActionBarButton",
-    }
-    for _, prefix in ipairs(BLIZZARD_BARS) do
-        for index = 1, 12 do
-            local btn = _G[prefix .. index]
-            if btn and btn.HookScript then
-                btn:HookScript("OnDragStart", function()
-                    carried = CursorKey()
-                end)
-            end
-        end
-    end
 end)

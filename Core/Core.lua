@@ -129,7 +129,12 @@ local function ReadyVariables()
     -- the question it was made for - has the client started reading saved
     -- variables - rather than quietly becoming a readout of the place we
     -- moved them to.
+    -- Both files, because they fail independently: a character came back
+    -- with three previous loads while the account file was absent. Read
+    -- before Persist runs and written after, so each goes on answering the
+    -- question it was made for about its own file. See Core/Persist.lua.
     local t = BazUI._svTrace
+    t.accountLoads = (type(_G.BazUIDB) == "table" and _G.BazUIDB.loads) or 0
     _G.BazUICharDB = _G.BazUICharDB or {}
     t.charLoads = _G.BazUICharDB.loads or 0
 
@@ -143,6 +148,8 @@ local function ReadyVariables()
 
     _G.BazUICharDB = _G.BazUICharDB or {}
     _G.BazUICharDB.loads = (_G.BazUICharDB.loads or 0) + 1
+    _G.BazUIDB = _G.BazUIDB or {}
+    _G.BazUIDB.loads = (_G.BazUIDB.loads or 0) + 1
 
     for _, entry in ipairs(variablesQueue) do entry() end
     wipe(variablesQueue)
@@ -1455,13 +1462,17 @@ function BazUI:ReportSavedVariables()
         print("  shape " .. i .. ": " .. shape)
     end
 
-    print(("  per-character file remembered %s previous load%s"):format(
-        tostring(t.charLoads), (t.charLoads == 1) and "" or "s"))
+    print(("  account file remembered %s previous load%s, the per-character file %s"):format(
+        tostring(t.accountLoads), (t.accountLoads == 1) and "" or "s",
+        tostring(t.charLoads)))
 
     -- Where the settings really are on a client that will not read its
     -- own. See Core/Persist.lua.
     if BazUI.Persist then
         print("  host table (" .. BazUI.Persist.HOST .. "): " .. BazUI.Persist:Describe())
+        for _, line in ipairs(BazUI.Persist:Detail()) do
+            print("    " .. line)
+        end
         local keys = BazUI.Persist:Keys()
         print("  it is holding " .. #keys .. " table"
             .. ((#keys == 1) and "" or "s") .. " of ours"

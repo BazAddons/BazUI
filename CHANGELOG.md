@@ -1,67 +1,51 @@
-## 016
+## 017
 
-**Every quest in the game, in the codex.**
+**Your settings were still going missing. Update.**
 
-There is a new **Quests** tab in the codex holding all 6,600 quests WoW:
-Forever ships, split into **Incomplete**, **In progress** and **Complete**.
-Search it by name, by objective, by what it pays. Click one and you get
-the whole thing: what it asks, the objectives, the giver's words, the
-gold, the experience, and the rewards as icons you can hover for the real
-tooltip.
+Version 015 moved BazUI's settings somewhere WoW: Forever will actually
+read them back. It worked, and then on some characters it quietly stopped.
 
-The interesting part is that it keeps learning. Every quest you are
-offered, work on, or hand in is written down as the game itself said it,
-and what the game says always wins over what shipped in the file. Play
-normally and the catalog fills in behind you.
+The reason is that Forever does not have one saved-variables bug, it has
+two, and they are not always both switched on. On this build a character's
+own file often loads perfectly well while the account file — the one
+holding your profiles, your bars, your layout, all of it — does not.
+BazUI only ever checked the first, decided the client was healthy, and
+handed everything back. The settings then lived nowhere at all and reset
+on the next reload.
 
-### New
+It looked like a problem with new characters. It was not. A character that
+had never been written to got the right answer by luck; one that had been
+around a while got the wrong one, and because the account file is shared,
+that one character was enough to take the rest of your account with it.
 
-- **It remembers where you were standing.** Take a quest and BazUI notes
-  the zone, the spot and the coordinates, along with the name of whoever
-  handed it to you. Hand it in and it notes the other end. Both show up
-  under **Where** on the quest, and with TomTom installed you can click
-  either one to point the arrow at it.
-- **Right-click a quest** for track, untrack, share with the group, link
-  it in chat, set a waypoint, or abandon it. Abandon asks first.
-- **Action bars can have a background.** A toggle in each bar's own
-  inspector. Docked bars measure the wider edges and move with them, so
-  turning it on does not shove your layout around.
-- **Middle-click the minimap button** to enter BazUI Edit Mode. Left is
-  still the codex, right is still the settings.
-- **The codex equipment page takes drag and drop.** Drag a weapon onto
-  the slot and you are wearing it; drag it off and it is in your bag. The
-  slots that will take what you are holding light up while you hold it.
-- **The flight map** joins the draggable windows.
-- **The reputation bar** has the **Takes** and **Aligned** options the
-  experience bar already had.
-
-### Changed
-
-- **The Action Bars options page is gone.** Everything it did lives in
-  each bar's inspector in Edit Mode, where you are pointing at the bar
-  you mean instead of picking its number off a list. One place to edit a
-  bar, and it is the bar.
-- **No enchant** on the equipment page is now a small icon rather than a
-  line of text that ran into everything around it. Lit means enchanted,
-  dim means not, and the tooltip says which.
+Both files are now asked about separately, and each is looked after on its
+own answer. Nothing to switch on, and nothing to redo.
 
 ### Fixed
 
-- **Edit Mode no longer taints Blizzard's.** Selecting one of our frames
-  cleared their selection by calling their code directly, which was
-  enough to get their next layout pass refused with an error about
-  MainActionBar, a frame BazUI has never touched. Same fix for the guild
-  message of the day, which was failing outright, and for the codex
-  portrait, which threw an error instead of opening the character sheet.
-- **Right-clicking a flyout** opened the flyout and cast the ability on
-  it. Now it only opens the flyout.
-- **Flyout cooldowns** spammed the error frame. They do not.
-- **Clicking a window brings it forward** again. The bag sat in a layer
-  above the game's own panels, so the character sheet could never come
-  out from behind it. The bag's **Frame layer** setting explains the
-  trade now, and Medium is the sociable one.
-- **TomTom's arrow** was being adopted as a minimap button and stuffed
-  into the drawer. It is an arrow. It stays where it is.
-- **A bar dragged onto another bar** kept the inspector it had while it
-  was floating, missing the settings that only apply once docked. Same
-  for aura rows.
+- **Other addons' settings stopped being kept**, for the same reason one
+  level up. The list of addons BazUI was carrying was stored inside its
+  own account table, so handing that table back deleted the list — and an
+  addon that is not on the list is not looked after. The list now lives on
+  its own, where nothing else can take it with it. **If TomTom or another
+  addon has been forgetting itself, switch it back on** in Quality of Life
+  > Other addons' settings; the switch is off rather than broken.
+- **A guest addon no longer waits on BazUI's own file.** Whether the game
+  hands us our settings says nothing about whether it hands TomTom its
+  own, and the two are asked separately now. TomTom alone keeps three
+  files and they can fail one at a time.
+- **Dragging an ability off one of the game's own action bars** threw an
+  error on the vehicle and encounter bars, tens of times a fight. BazUI
+  was listening on Blizzard's buttons to notice the drag, and on this
+  client that is enough to stop the game handing its own cooldowns to its
+  own code. It asks the cursor instead, which is better anyway: it covers
+  every bar in the game rather than the ones we knew the names of.
+
+### Notes
+
+- `/baz sv` now reports the two files separately, along with the key this
+  character is stored under and whether anything is actually in it. If
+  settings ever go missing again, that is the command to run.
+- The day Forever reads a file properly, BazUI hands that file's copy back
+  and stops keeping it — one file at a time, on its own. Guests go home at
+  the first logout after. There is nothing to undo.
