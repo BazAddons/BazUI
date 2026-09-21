@@ -92,6 +92,52 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                 end
             end,
         },
+        map = {
+            desc = "Print everything about where the minimap has got to",
+            handler = function()
+                local function Frame(label, f)
+                    if not f then print(("  %s: absent"):format(label)) return end
+                    local parent = f:GetParent()
+                    local point, _, relPoint, x, y = f:GetPoint()
+                    print(("  %s: %s parent=%s shown=%s alpha=%.2f eff=%.2f"):format(
+                        label,
+                        ("%.0fx%.0f @%.2f"):format(f:GetWidth() or 0, f:GetHeight() or 0, f:GetScale() or 1),
+                        parent and (parent:GetName() or "unnamed") or "none",
+                        tostring(f:IsShown()), f:GetAlpha() or -1, f:GetEffectiveAlpha() or -1))
+                    print(("      strata=%s level=%s visible=%s at %s"):format(
+                        tostring(f:GetFrameStrata()), tostring(f:GetFrameLevel()),
+                        tostring(f:IsVisible()),
+                        point and ("%s->%s %.0f,%.0f"):format(point, relPoint or "?", x or 0, y or 0)
+                            or "unanchored"))
+                end
+
+                addon:Print(addon:UsingDrawers() and "Drawers on." or "Drawers off.")
+                local w = BazUI.GetDockableWidget and BazUI:GetDockableWidget("bazdrawer_minimap")
+                if not w then
+                    addon:Print("  The minimap widget is not registered.")
+                    return
+                end
+                print(("  enabled=%s floating(setting)=%s _floating=%s inDrawer=%s"):format(
+                    tostring(addon:IsWidgetEnabled(w.id)),
+                    tostring((addon:GetSetting("widgetFloating") or {})[w.id] and true or false),
+                    tostring(w._floating and true or false),
+                    tostring(addon:IsWidgetInDrawer(addon:GetActiveDrawerId(), w.id))))
+                local pos = addon:GetWidgetPosition(w.id)
+                print(("  saved position: %s"):format(pos
+                    and (pos.point and ("%s %s %.0f,%.0f"):format(pos.point,
+                            pos.relPoint or "?", pos.x or 0, pos.y or 0)
+                        or ("centre offset %.0f,%.0f"):format(pos.x or 0, pos.y or 0))
+                    or "none"))
+                print(("  design: %.0fx%.0f"):format(w.designWidth or 0, w.designHeight or 0))
+                Frame("wrapper ", w.frame)
+                Frame("Minimap ", _G.Minimap)
+                Frame("Backdrop", _G.MinimapBackdrop)
+                Frame("Cluster ", _G.MinimapCluster)
+                local host = addon.WidgetHost
+                print(("  slot: %s"):format(host and host.slots
+                    and tostring(host.slots[w.id] ~= nil) or "?"))
+            end,
+        },
         float = {
             desc = "Print where each floating widget thinks it should be",
             handler = function()
