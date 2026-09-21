@@ -819,7 +819,7 @@ end
 -- there is nothing to find.
 --
 -- Drawn over the icon but under the counts, and at two thirds alpha, so
--- what is being crossed out is still recognisable - the point is to say
+-- what is being crossed out is still recognizable - the point is to say
 -- "this one", not to hide which one.
 local TOSS_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-NotReady"
 

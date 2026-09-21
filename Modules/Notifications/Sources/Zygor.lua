@@ -249,7 +249,7 @@ BNC:RegisterModule({
     name  = MODULE_NAME,
     icon  = MODULE_ICON,
     -- The orange off their own mark, so a forwarded notification is
-    -- recognisably theirs in a panel full of ours.
+    -- recognizably theirs in a panel full of ours.
     color = { 0.95, 0.45, 0.15, 1.0 },
 })
 

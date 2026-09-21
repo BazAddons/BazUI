@@ -260,7 +260,7 @@ function Layouts.RenderPerBag(ctx)
             y = y - DIVIDER_HEIGHT - DIVIDER_GAP_BELOW
 
             if not collapsed then
-                -- Collect (bagID, slotID) pairs for this bag, honouring
+                -- Collect (bagID, slotID) pairs for this bag, honoring
                 -- the user's Hide Empty Slots setting.
                 local items = {}
                 for slotID = 1, n do

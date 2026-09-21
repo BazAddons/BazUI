@@ -15,7 +15,8 @@
 --                     client (retail, today) a name falls back to what
 --                     this character has met.
 --   Nothing           every item in the game, in name order, for
---                     browsing - by category, with the tabs. The list
+--                     browsing - by class, subclass and slot, which is
+--                     the tree the auction house browses by. The list
 --                     is virtual, so seventeen thousand rows cost the
 --                     same as twenty. An item this character has met -
 --                     carried, worn, banked, or looked up by the client
@@ -64,19 +65,6 @@ local function Catalog()
     local Items = Codex.Items
     if Items and Items.Available and Items.Available() then return Items end
     return nil
-end
-
--- What the classifier would have asked the client for, from the
--- catalog instead. Missing what the table does not carry - bind type,
--- equip slot, stack size - so a custom rule on one of those simply does
--- not match until the item has been loaded, which is the fail-safe way
--- round.
-local function CatalogueMeta(rec)
-    return {
-        name = rec.name, quality = rec.quality,
-        ilvl = rec.ilvl, minLvl = rec.minLvl,
-        classID = rec.classID, subclassID = rec.subclassID,
-    }
 end
 
 local function IndexSize()
@@ -175,74 +163,130 @@ local function Everything()
 end
 
 ---------------------------------------------------------------------------
--- Categories
+-- The tree
 --
--- Bags already owns a category model and the classifier that places an
--- item in one, and those categories are the player's own: renamed,
--- reordered, added to. The codex asks Bags rather than growing a second
--- set of names that would drift away from the first.
+-- The game's own: class, then subclass, and for armor the slot, which is
+-- the tree the auction house browses by. Weapon splits into Daggers,
+-- Staves, Swords; Armor into Cloth, Leather, Mail, Plate and then into
+-- Head, Chest, Legs. The names come from the client in your language,
+-- so nothing is written down; the counts come from the catalog. With no
+-- catalog there is no tree, only All, because the tree is built by
+-- counting what there is.
+--
+-- The Bags categories used to be the tabs here. They are about how you
+-- sort a bag, and Equipment as a bag category is not Armor as a class;
+-- for browsing the whole game the game's taxonomy is the right one.
 ---------------------------------------------------------------------------
 
-local classified = {}   -- [itemID] = categoryKey, for this session
+local ARMOR = 4
 
-local function BagsCategories()
-    local bags = BazUI:GetModule("Bags")
-    return bags and bags.Categories or nil
+-- Slots the auction house folds together: a robe is a chest piece, and
+-- the right-hand ranged slot is the ranged slot.
+local SLOT_FOLD = { [20] = 5, [26] = 15 }
+
+local function FoldSlot(inv)
+    return SLOT_FOLD[inv] or inv
 end
 
-local function BagCategories()
-    local cats = BagsCategories()
-    if not (cats and cats.GetAll) then return {} end
-    local ok, list = pcall(cats.GetAll)
-    if not (ok and list) then return {} end
-    -- The bag has categories for its empty slots. An item lookup has no
-    -- empty slots to look up.
-    local out = {}
-    for _, cat in ipairs(list) do
-        if not (type(cat.key) == "string" and cat.key:find("^empty")) then
-            out[#out + 1] = cat
+local function ClassName(classID)
+    local name = C_Item and C_Item.GetItemClassInfo and C_Item.GetItemClassInfo(classID)
+        or (_G.GetItemClassInfo and _G.GetItemClassInfo(classID))
+    return name or ("Class " .. classID)
+end
+
+local function SubclassName(classID, subclassID)
+    local name = C_Item and C_Item.GetItemSubClassInfo and C_Item.GetItemSubClassInfo(classID, subclassID)
+        or (_G.GetItemSubClassInfo and _G.GetItemSubClassInfo(classID, subclassID))
+    return name or ("Type " .. subclassID)
+end
+
+local function SlotName(inv)
+    local name = C_Item and C_Item.GetItemInventorySlotInfo and C_Item.GetItemInventorySlotInfo(inv)
+        or (_G.GetItemInventorySlotInfo and _G.GetItemInventorySlotInfo(inv))
+    return name or ("Slot " .. inv)
+end
+
+-- Counted once from the catalog: which classes there are, which
+-- subclasses each has, which slots each armor type comes in.
+local tree
+
+local function ById(a, b) return a.id < b.id end
+
+local function BuildTree()
+    if tree then return tree end
+    local cat = Catalog()
+    if not cat then return nil end
+
+    local classes, order = {}, {}
+    for _, rec in pairs(cat.Load()) do
+        local c = classes[rec.classID]
+        if not c then
+            c = { id = rec.classID, count = 0, subs = {}, subOrder = {} }
+            classes[rec.classID] = c
+            order[#order + 1] = c
         end
-    end
-    return out
-end
+        c.count = c.count + 1
 
-local function CategoryOf(itemID)
-    if classified[itemID] then return classified[itemID] end
-    local cats = BagsCategories()
-    if not (cats and cats.Classify) then return nil end
+        local sc = c.subs[rec.subclassID]
+        if not sc then
+            sc = { id = rec.subclassID, count = 0, slots = {}, slotOrder = {} }
+            c.subs[rec.subclassID] = sc
+            c.subOrder[#c.subOrder + 1] = sc
+        end
+        sc.count = sc.count + 1
 
-    -- The classifier reads the item's type and quality, which the
-    -- client only has once the item is loaded. The catalog has both,
-    -- so an item the client has never seen is classified from that and
-    -- the server is not asked - a search across the whole game would
-    -- otherwise be thousands of requests for items nobody pointed at.
-    if not C_Item.GetItemInfo(itemID) then
-        local cat = Catalog()
-        local rec = cat and cat.Get(itemID)
-        if rec then
-            local ok, key = pcall(cats.Classify, itemID, rec.quality, rec.classID, CatalogueMeta(rec))
-            if ok and key then
-                classified[itemID] = key
-                return key
+        if rec.classID == ARMOR and rec.slot and rec.slot > 0 then
+            local inv = FoldSlot(rec.slot)
+            local sl = sc.slots[inv]
+            if not sl then
+                sl = { id = inv, count = 0 }
+                sc.slots[inv] = sl
+                sc.slotOrder[#sc.slotOrder + 1] = sl
             end
-            return nil
+            sl.count = sl.count + 1
         end
-        -- No catalog for this client: wait for the item and ask
-        -- again, rather than cache a wrong answer for the session.
-        if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
-        return nil
     end
 
-    local ok, key = pcall(cats.Classify, itemID)
-    if not ok or not key then return nil end
-    classified[itemID] = key
-    return key
+    table.sort(order, ById)
+    for _, c in ipairs(order) do
+        table.sort(c.subOrder, ById)
+        for _, sc in ipairs(c.subOrder) do table.sort(sc.slotOrder, ById) end
+    end
+    tree = { classes = order, byClass = classes }
+    return tree
 end
 
-local function InCategory(ids, key)
+-- What is picked. Numbers, or nil for "all of them" at that level.
+local function Picked()
+    return tonumber(addon:GetSetting("itemClass")),
+           tonumber(addon:GetSetting("itemSubclass")),
+           tonumber(addon:GetSetting("itemSlot"))
+end
+
+local function Pick(class, subclass, slot)
+    addon:SetSetting("itemClass", class)
+    addon:SetSetting("itemSubclass", subclass)
+    addon:SetSetting("itemSlot", slot)
+end
+
+-- The hits that are inside whatever is picked. A straight pass over
+-- the list against the catalog, seventeen thousand comparisons at the
+-- most, which is nothing.
+local function Narrow(hits)
+    local class, subclass, slot = Picked()
+    if not class then return hits end
+    local cat = Catalog()
+    if not cat then return hits end
+    local byID = cat.Load()
     local out = {}
-    for _, itemID in ipairs(ids) do
-        if CategoryOf(itemID) == key then out[#out + 1] = itemID end
+    for _, itemID in ipairs(hits) do
+        local rec = byID[itemID]
+        if rec and rec.classID == class
+            and (not subclass or rec.subclassID == subclass)
+            and (not slot or (rec.slot and FoldSlot(rec.slot) == slot))
+        then
+            out[#out + 1] = itemID
+        end
     end
     return out
 end
@@ -452,19 +496,25 @@ local function BuildHeader(host)
     header.box:SetPoint("TOPLEFT", 0, 0)
     header.box:SetPoint("TOPRIGHT", 0, 0)
 
-    -- The categories are the ones from your bags, including any you
-    -- made yourself: one classifier, one set of names, one place to
-    -- change them.
-    local strip = BazUI.CreateTabStrip(nil, header, {
-        style = "panel", tabHeight = 20, spacing = 3,
-        minTabWidth = 44, maxTabWidth = 110,
-    })
-    strip:SetPoint("TOPLEFT", header.box, "BOTTOMLEFT", 0, -6)
-    header.strip = strip
-    header.stripKeys = {}
+    -- Three strips, one per level of the tree: class, subclass, and for
+    -- armor the slot. Each appears when the level above has a pick.
+    header.strips = {}
+    local above = header.box
+    for level = 1, 3 do
+        local strip = BazUI.CreateTabStrip(nil, header, {
+            style = "panel", tabHeight = 20, spacing = 3,
+            minTabWidth = 44, maxTabWidth = 130,
+        })
+        strip:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -6)
+        strip.keys = {}
+        strip:Hide()
+        header.strips[level] = strip
+        above = strip
+    end
+    header.strip = header.strips[1]
 
     header.note = Theme.FontString(header, "OVERLAY", "GameFontHighlightSmall")
-    header.note:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 2, -7)
+    header.note:SetPoint("TOPLEFT", header.strip, "BOTTOMLEFT", 2, -7)
     header.note:SetPoint("RIGHT", header, "RIGHT", -2, 0)
     header.note:SetJustifyH("LEFT")
     header.note:SetJustifyV("TOP")
@@ -475,36 +525,91 @@ local function BuildHeader(host)
     return header
 end
 
-local function RebuildCategories()
-    local strip = header.strip
+-- Fill one strip with a list of { id, label }, an All in front, and
+-- select the one that is picked. `onPick` gets the id, or nil for All.
+local function FillStrip(strip, entries, picked, onPick)
     strip:ClearTabs()
-    header.stripKeys = {}
-
-    local active = addon:GetSetting("itemCategory") or "all"
+    strip.keys = {}
     local activeID
 
-    local function Add(key, label)
-        local id = strip:AddTab(label)
-        header.stripKeys[id] = key
-        if key == active then activeID = id end
+    local function Add(id, label)
+        local tabID = strip:AddTab(label)
+        strip.keys[tabID] = id or false
+        if id == picked then activeID = tabID end
     end
 
-    Add("all", "All")
-    for _, cat in ipairs(BagCategories() or {}) do
-        Add(cat.key, cat.name or cat.key)
-    end
+    Add(nil, "All")
+    for _, e in ipairs(entries) do Add(e.id, e.label) end
 
     strip:SetTabSelectedCallback(function(tabID, isUserAction)
-        local key = header.stripKeys[tabID]
-        if not key then return end
-        addon:SetSetting("itemCategory", key)
-        if isUserAction then Codex.Panel:QueueRefresh() end
+        if not isUserAction then return end
+        local id = strip.keys[tabID]
+        onPick(id or nil)
     end)
     strip:Layout()
     if activeID then
         strip:SetTabVisuallySelected(activeID)
         strip.selectedTabID = activeID
     end
+end
+
+-- Lay the tree out across the strips for what is picked. Called on
+-- every header render, since a pick changes which strips exist.
+local function RebuildTree()
+    local t = BuildTree()
+    local class, subclass, slot = Picked()
+    local s1, s2, s3 = header.strips[1], header.strips[2], header.strips[3]
+
+    if not t then
+        -- No catalog: nothing to browse by, so no strips at all.
+        s1:Hide(); s2:Hide(); s3:Hide()
+        return 0
+    end
+
+    local shown = 1
+    local entries = {}
+    for _, c in ipairs(t.classes) do
+        entries[#entries + 1] = { id = c.id, label = ClassName(c.id) }
+    end
+    FillStrip(s1, entries, class, function(id)
+        Pick(id, nil, nil)
+        Codex.Panel:QueueRefresh()
+    end)
+    s1:Show()
+
+    local c = class and t.byClass[class]
+    if c and #c.subOrder > 1 then
+        entries = {}
+        for _, sc in ipairs(c.subOrder) do
+            entries[#entries + 1] = { id = sc.id, label = SubclassName(class, sc.id) }
+        end
+        FillStrip(s2, entries, subclass, function(id)
+            Pick(class, id, nil)
+            Codex.Panel:QueueRefresh()
+        end)
+        s2:Show()
+        shown = 2
+    else
+        s2:Hide()
+    end
+
+    local sc = c and subclass and c.subs[subclass]
+    if class == ARMOR and sc and #sc.slotOrder > 1 then
+        entries = {}
+        for _, sl in ipairs(sc.slotOrder) do
+            entries[#entries + 1] = { id = sl.id, label = SlotName(sl.id) }
+        end
+        FillStrip(s3, entries, slot, function(id)
+            Pick(class, subclass, id)
+            Codex.Panel:QueueRefresh()
+        end)
+        s3:Show()
+        shown = 3
+    else
+        s3:Hide()
+    end
+
+    return shown
 end
 
 -- The header resolves the query and hands the result down to the list,
@@ -517,54 +622,48 @@ local function RenderHeader(host, width)
     h:SetWidth(width)
     h:Show()
 
-    if not h._categoriesBuilt then
-        h._categoriesBuilt = true
-        RebuildCategories()
-    end
-
-    local hasCategories = #(BagCategories() or {}) > 0
-    h.strip:SetShown(hasCategories)
-
-    -- Categories are the player's to add to, so the row has no fixed
-    -- width and wraps to a second line rather than running off the edge.
-    local stripHeight = 0
-    if hasCategories then
-        h.strip:SetWrapWidth(width)
-        h.strip:Layout()
-        stripHeight = math.ceil(h.strip:GetHeight() or 20)
+    -- The strips, for what is picked. Each wraps to a second line
+    -- rather than running off the edge, so their heights are read back.
+    local shown = RebuildTree()
+    local stripsHeight = 0
+    local last = h.box
+    for level = 1, shown do
+        local strip = h.strips[level]
+        strip:SetWrapWidth(width)
+        strip:Layout()
+        stripsHeight = stripsHeight + 6 + math.ceil(strip:GetHeight() or 20)
+        last = strip
     end
 
     local hits, note = Resolve(query)
-    local category = addon:GetSetting("itemCategory") or "all"
-    if category ~= "all" then hits = InCategory(hits, category) end
+    hits = Narrow(hits)
     pendingHits = hits
 
-    -- The count already sits in the rail, so this line is kept for the
-    -- times there is something to say that the rail cannot say.
+    -- What you are looking at, always: how many rows this is, and of
+    -- how many when it is a part of something. The tiles say how many
+    -- items there are in all; this says how many are in front of you.
+    local cat = Catalog()
+    local total = cat and cat.Count() or IndexSize()
     if note then
         headerNote = note
     elseif #hits == 0 then
-        if IndexSize() > 0 or Catalog() then
-            headerNote = "Nothing in this category matches."
-        else
-            headerNote = "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
-        end
+        headerNote = (total == 0)
+            and "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
+            or "Nothing matches."
+    elseif #hits == total then
+        headerNote = string.format("%s items", BreakUpLargeNumbers(#hits))
     else
-        headerNote = nil
+        headerNote = string.format("%s of %s items", BreakUpLargeNumbers(#hits), BreakUpLargeNumbers(total))
     end
 
     h.note:ClearAllPoints()
-    h.note:SetPoint("TOPLEFT", hasCategories and h.strip or h.box, "BOTTOMLEFT", 2, -7)
+    h.note:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 2, -7)
     h.note:SetPoint("RIGHT", h, "RIGHT", -2, 0)
     h.note:SetText(headerNote or "")
-    h.note:SetShown(headerNote ~= nil)
+    h.note:Show()
+    local noteHeight = 7 + math.ceil((h.note:GetStringHeight() or 12) + 2)
 
-    local noteHeight = 0
-    if headerNote then
-        noteHeight = 7 + math.ceil((h.note:GetStringHeight() or 12) + 2)
-    end
-
-    local height = 22 + (hasCategories and 6 + stripHeight or 0) + noteHeight + 8
+    local height = 22 + stripsHeight + noteHeight + 8
     h:SetHeight(height)
     return height
 end
@@ -698,7 +797,8 @@ local function Render(content, width)
     -- The header already resolved the query for this pass.
     p.hits = pendingHits or {}
 
-    local question = query .. "\1" .. tostring(addon:GetSetting("itemCategory") or "all")
+    local class, subclass, slot = Picked()
+    local question = table.concat({ query, tostring(class), tostring(subclass), tostring(slot) }, "\1")
     if question ~= lastQuestion then
         lastQuestion = question
         p.first = 0
@@ -740,18 +840,6 @@ Codex.customTabs.items = {
         local catalog = Catalog()
         if catalog then
             highlights[#highlights + 1] = { value = catalog.Count(), label = "items in the game" }
-        end
-        local key = addon:GetSetting("itemCategory")
-        if key and key ~= "all" then
-            for _, cat in ipairs(BagCategories()) do
-                if cat.key == key then
-                    highlights[#highlights + 1] = {
-                        value = #InCategory(Everything(), key),
-                        label = "in " .. (cat.name or key),
-                    }
-                    break
-                end
-            end
         end
         return highlights
     end,
