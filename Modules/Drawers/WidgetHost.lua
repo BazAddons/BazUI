@@ -1039,19 +1039,33 @@ end
 --
 -- So a reflow asked for while one is running is remembered and run
 -- afterwards, once, however many times it was asked for.
+local MAX_REFLOW_PASSES = 3
+
 function WidgetHost:Reflow()
     if self._reflowing then
         self._reflowAgain = true
         return
     end
-    self._reflowing = true
-    local ok, err = pcall(self.DoReflow, self)
-    self._reflowing = false
 
-    if self._reflowAgain then
+    -- A loop, not a call back into Reflow. Recursing here ran until the
+    -- stack gave out: a widget that re-measures itself on being docked
+    -- asks for a reflow from inside every pass, so every pass asked for
+    -- another one. That was seconds of churn ending in an error, and
+    -- the error abandoned the pass half done - which is why the map
+    -- stopped moving as well as why the game hitched.
+    --
+    -- Bounded too. Two passes settle anything that re-measures once;
+    -- a third is the benefit of the doubt. Past that something is
+    -- arguing with itself and running it again will not settle it.
+    self._reflowing = true
+    local ok, err = true, nil
+    for _ = 1, MAX_REFLOW_PASSES do
         self._reflowAgain = nil
-        self:Reflow()
+        ok, err = pcall(self.DoReflow, self)
+        if not ok or not self._reflowAgain then break end
     end
+    self._reflowAgain = nil
+    self._reflowing = false
     if not ok then error(err, 0) end
 end
 
@@ -1099,6 +1113,18 @@ function WidgetHost:DoReflow()
         elseif addon:IsWidgetFloating(w.id) then
             self:FloatWidget(w)
         else
+            -- Coming home. A widget that was floating still carries its
+            -- own Edit Mode handle and still counts as floating to
+            -- anything that asks, so it would keep a handle of its own
+            -- on top of the drawer's and get dragged back out to screen
+            -- coordinates by the next placement pass.
+            if w._floating then
+                if w._editModeRegistered and BazUI.UnregisterEditModeFrame then
+                    BazUI:UnregisterEditModeFrame(w.frame)
+                    w._editModeRegistered = nil
+                end
+                w._floating = nil
+            end
             table.insert(widgets, w)
         end
     end

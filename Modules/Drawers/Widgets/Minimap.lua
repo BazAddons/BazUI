@@ -440,17 +440,22 @@ function MinimapWidget:ApplyScale()
     Minimap:SetScale(MapScale())
 end
 
-function MinimapWidget:ApplyFootprint()
+-- `settled` is for the dock and undock hooks, which run inside a
+-- reflow: the host is already laying the widget out, so telling it to
+-- start again is asking it to redo the pass it is halfway through. The
+-- new size is written down and the pass that is running picks it up.
+function MinimapWidget:ApplyFootprint(settled)
     if not (wrapper and widgetInfo) then return end
     local width, height = Footprint()
     widgetInfo.designWidth, widgetInfo.designHeight = width, height
     wrapper:SetSize(width, height)
+    if settled then return end
     if addon.WidgetHost and addon.WidgetHost.Reflow then
         addon.WidgetHost:Reflow()
     end
 end
 
-function MinimapWidget:ApplyFrameStyle()
+function MinimapWidget:ApplyFrameStyle(settled)
     local style = GetFrameStyle()
     local bazui = (style == "bazui")
 
@@ -475,7 +480,7 @@ function MinimapWidget:ApplyFrameStyle()
         ring:Hide()
     end
     self:ApplyScale()
-    self:ApplyFootprint()
+    self:ApplyFootprint(settled)
 end
 
 ---------------------------------------------------------------------------
@@ -673,14 +678,14 @@ function MinimapWidget:Init()
         OnDock       = function()
             AttachMinimap(wrapper)
             wrapper:SetAlpha(1)
-            MinimapWidget:ApplyFrameStyle()
+            MinimapWidget:ApplyFrameStyle(true)
         end,
         OnUndock     = function()
             -- The wrapper stays the Minimap's parent through both, so
             -- the map follows it wherever the host puts it.
             AttachMinimap(wrapper)
             wrapper:SetAlpha(1)
-            MinimapWidget:ApplyFrameStyle()
+            MinimapWidget:ApplyFrameStyle(true)
         end,
         GetOptionsArgs = function() return MinimapWidget:GetOptionsArgs() end,
     }
