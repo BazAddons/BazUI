@@ -371,11 +371,21 @@ function Flyout.applyCooldown(data, cooldownFrame)
         return handler.applyCooldown(cellData, cooldownFrame)
     end
     if handler and handler.getCooldown and cooldownFrame then
+        -- `enable` says whether the cooldown is running, and the third
+        -- argument of SetCooldown is modRate - a number. Handing the flag
+        -- to it threw "bad argument #3 ... outside of expected range" on
+        -- every cell of every flyout, sixty-six times in one sitting.
+        --
+        -- It is a gate, not a rate: a cooldown that is not enabled is
+        -- one to clear rather than one to draw with an odd speed.
         local start, duration, enable = handler.getCooldown(cellData)
-        if start and duration then
-            cooldownFrame:SetCooldown(start, duration, enable)
+        if start and duration and enable and enable ~= 0
+            and start > 0 and duration > 0 then
+            cooldownFrame:SetCooldown(start, duration)
             return true
         end
+        if cooldownFrame.Clear then cooldownFrame:Clear() end
+        return true
     end
     if cooldownFrame and cooldownFrame.Clear then cooldownFrame:Clear() end
     return true

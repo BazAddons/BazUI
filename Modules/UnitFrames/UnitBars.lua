@@ -1636,9 +1636,18 @@ local function OpenCharacterTab(tab)
     end
 end
 
+-- `secureTo` names one of Blizzard's buttons to forward the click to, so
+-- their panel opens without our taint on the stack - see
+-- BazUI.SecureForward. Only the experience bar has one: the character
+-- micro button opens the sheet on whichever tab it was last on, which is
+-- exactly right for a bar that wants the sheet and wrong for one that
+-- wants the reputation tab. Reputation keeps the direct call, and keeps
+-- the one error that comes with it, rather than quietly opening
+-- somewhere else.
 local KIND_OPENS = {
     rep = { open = OpenCharacterTab("ReputationFrame") },
-    xp  = { open = OpenCharacterTab("PaperDollFrame")  },
+    xp  = { open = OpenCharacterTab("PaperDollFrame"),
+            secureTo = "CharacterMicroButton" },
 }
 
 -- Whether a bar needs the mouse at all, and what it does with it.
@@ -1671,7 +1680,17 @@ local function ApplyBarMouse(bar)
         if HasHoverFormat(def) then UnitBars:Update(bar) end
     end)
 
-    frame:SetScript("OnMouseUp", clickable and function(_, button)
+    -- Built once per bar. The overlay covers the bar and hands hover
+    -- back to it, so the bar still changes what it says under the mouse.
+    if clickable and opens.secureTo and not bar._secureClick then
+        bar._secureClick = BazUI.SecureForward(frame, opens.secureTo,
+            { parent = frame, relayMotion = frame }) or false
+    end
+    if bar._secureClick then
+        bar._secureClick:SetShown(clickable and true or false)
+    end
+
+    frame:SetScript("OnMouseUp", (clickable and not bar._secureClick) and function(_, button)
         if button == "LeftButton" then opens.open() end
     end or nil)
 end
@@ -1967,6 +1986,12 @@ function UnitBars:Dropped(bar, snap, x, y)
     end
     self:Save()
     self:Apply(bar)
+    -- Docked and floating do not offer the same settings, and the panel
+    -- builds its list once. Without this, a bar dragged onto a host keeps
+    -- the inspector it had while floating - no Takes, no Aligned, no Gap -
+    -- while the Dock to dropdown, which asks for a rebuild itself, gives
+    -- the full set. Two ways to do the same thing, disagreeing.
+    self:RefreshEditSettings()
 end
 
 function UnitBars:RefreshMover(bar)

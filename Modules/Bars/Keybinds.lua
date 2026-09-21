@@ -499,7 +499,10 @@ function Keybinds:ExitMode()
     end
 
     -- Restore Edit Mode overlays if still in Edit Mode
-    if EditModeManagerFrame and EditModeManagerFrame:IsEditModeActive() then
+    -- Asked through securecallfunction: even a question put to one of
+    -- Blizzard's frames stores as ours on this client, and this one is
+    -- the Edit Mode manager. See BazUI.SecureCall.
+    if BazUI.SecureCall(_G.EditModeManagerFrame, "IsEditModeActive") then
         for id, frame in pairs(addon.Bar:GetAll()) do
             frame._bazEditOverlay:Show()
         end

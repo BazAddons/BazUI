@@ -252,6 +252,7 @@ BazUI:RegisterUserGuide("BazUI", {
                 { type = "table", columns = { "You do this", "It does this" }, rows = {
                     { "Left-click", "Opens the codex." },
                     { "Right-click", "Opens these settings." },
+                    { "Middle-click", "BazUI Edit Mode, for moving and resizing what BazUI draws. Not while you are fighting." },
                     { "Drag it", "Moves it round the minimap ring, and it stays where you put it." },
                 } },
                 { type = "note", text = "|cffffd700Show the minimap button|r on the General page takes it away. Every module it opens has a slash command as well, so nothing is lost with it." },

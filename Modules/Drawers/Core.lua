@@ -171,6 +171,42 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                 if not any then addon:Print("  Nothing is floating.") end
             end,
         },
+        buttons = {
+            desc = "Minimap buttons: what has been adopted, and everything on the map that has not",
+            handler = function()
+                local W = addon.MinimapButtonsWidget
+                if not W then addon:Print("The minimap buttons widget is not here.") return end
+
+                addon:Print("Adopted:")
+                local any = false
+                for btn in pairs(W.adopted or {}) do
+                    any = true
+                    print(("  %s  (%dx%d)"):format(
+                        tostring(btn:GetName() or "unnamed"),
+                        math.floor(btn:GetWidth() or 0), math.floor(btn:GetHeight() or 0)))
+                end
+                if not any then print("  nothing") end
+
+                -- What is still loose on the map, which is the half that
+                -- matters when something has been taken that should not
+                -- have been, or left that should not have been.
+                addon:Print("Still on the map:")
+                any = false
+                for _, host in ipairs({ _G.Minimap, _G.MinimapBackdrop }) do
+                    for _, child in ipairs(host and { host:GetChildren() } or {}) do
+                        if not W.adopted or not W.adopted[child] then
+                            any = true
+                            print(("  %s  %s  (%dx%d)"):format(
+                                tostring(child:GetName() or "|cff888888unnamed|r"),
+                                child:GetObjectType(),
+                                math.floor(child:GetWidth() or 0),
+                                math.floor(child:GetHeight() or 0)))
+                        end
+                    end
+                end
+                if not any then print("  nothing") end
+            end,
+        },
         feeds = {
             desc = "LibDataBroker feeds: /bwd feeds (list) or /bwd feeds rescan",
             handler = function(args)

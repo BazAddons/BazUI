@@ -90,9 +90,19 @@ local EXCLUDED_MINIMAP_BUTTONS = {
 
 -- Name fragments that mark Blizzard chrome or per-location pins rather
 -- than a launcher button.
+-- A launcher is a button you press. These are not: they are pins that
+-- track a place in the world, and their owner moves them around the map
+-- every frame. Adopting one parks it in the row and leaves the addon
+-- writing a position nobody can see.
+--
+-- TomTom's waypoint pins are the reason "^TomTom" alone was not enough:
+-- the pins are named TTMinimapButton1, 2, 3 - one per waypoint - while
+-- the launcher is LibDBIcon10_TomTom. The prefix that catches the pins
+-- is not the one that spells the addon's name.
 local EXCLUDED_NAME_PATTERNS = {
     "^Minimap", "^MiniMap", "^Blizzard", "^ExpansionLandingPage",
     "^AddonCompartment", "^GarrisonLandingPage", "^HandyNotes", "^TomTom",
+    "^TTMinimapButton",
     "Pin%d*$", "Pin[A-Z_]", "Waypoint", "Arrow", "Node", "Blip", "POI",
 }
 
@@ -205,6 +215,11 @@ end
 -- [button] = { parent, points = {{point, rel, relPoint, x, y}, ...},
 --               isScaled = bool, nativeSize = {w,h}, nativeScale = number }
 local adopted = {}
+
+-- Readable from outside for /bwd buttons, which is the only way to find
+-- out what the scan actually took and what it left. A guess about a
+-- frame's name is not a diagnosis.
+MinimapButtonsWidget.adopted = adopted
 
 ---------------------------------------------------------------------------
 -- Button skins.

@@ -82,6 +82,13 @@ local WINDOWS = {
     { key = "dragMap",        label = "World map",     frame = "WorldMapFrame",
       windowed = true,
       desc = "Drag the map where you want it. Only while it is windowed - full screen has nowhere to be dragged to." },
+    -- Two clients, two flight maps: the classic list-and-parchment
+    -- TaxiFrame, and retail's zoomable FlightMapFrame. Marked movable in
+    -- Blizzard's own file and never wired up, the same as the options
+    -- and guild windows.
+    { key = "dragTaxi",       label = "Flight map",    frame = { "TaxiFrame", "FlightMapFrame" },
+      loadedBy = "Blizzard_FlightMap",
+      desc = "Drag the flight map where you want it. It opens there from then on." },
     { key = "dragMerchant",   label = "Vendor",        frame = "MerchantFrame"     },
     { key = "dragMail",       label = "Mailbox",       frame = "MailFrame"         },
     { key = "dragBank",       label = "Bank",          frame = "BankFrame"         },

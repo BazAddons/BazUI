@@ -20,12 +20,16 @@
 -- in like a tab), children flagged ignoreInLayout are skipped, and the
 -- strip sizes itself to its content.
 --
--- Two looks, chosen with opts.style:
+-- Three looks, chosen with opts.style:
 --
 --   "panel"      A square plate with a gold accent along its top
 --                along the top of the selected tab. Tabs that sit above
 --                a page: the options canvas, the chat dock.
 --   "underline"  Text alone, the selected one bright over a gold rule.
+--
+--   "raised"     The talents window's own tabs: a full plate, and the
+--                chosen one lit gold with dark text rather than capped
+--                with a line. For two or three tabs that ARE the page.
 --                Tabs inside a panel: the notification center.
 --
 -- Colors come from the shared theme, so a tab reads like everything
@@ -108,6 +112,117 @@ function Panel.SetSelected(tab, selected)
 end
 
 ---------------------------------------------------------------------------
+-- The "raised" look
+--
+-- The tab the talents window wears above its tree: a full plate, and the
+-- chosen one lit rather than merely capped. Where "panel" says which is
+-- selected with a line along the top, this says it with the whole tab -
+-- which is what you want when the tabs ARE the page rather than a filter
+-- on it, and there are only two or three of them.
+--
+-- The lit tab takes dark text, because gold on gold is not text.
+---------------------------------------------------------------------------
+
+local RAISED_TEXT_PAD = 30
+
+local Raised = {}
+
+-- The selected tab wears the colour of whatever it is a tab OF, which
+-- the strip is told with opts.tabFill. Left alone it takes the panel
+-- colour, which is right for most things.
+local function RaisedFill(strip, selected)
+    if not selected then return Theme.colors.bg end
+    return strip.tabFill or Theme.colors.bgRaised
+end
+
+function Raised.Create(strip)
+    local tab = CreateFrame("Button", nil, strip)
+    tab:SetHeight(strip.tabHeight or 28)
+
+    tab.bg = tab:CreateTexture(nil, "BACKGROUND", nil, -3)
+    tab.bg:SetAllPoints()
+
+    -- Four edges kept apart rather than a ring, because the bottom one
+    -- is the whole point: the selected tab loses it and runs into the
+    -- panel below, so the two read as one shape. With the bottom edge
+    -- left on, every tab is a button sitting on a list.
+    tab.edgeTop = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    tab.edgeTop:SetHeight(1)
+    tab.edgeTop:SetPoint("TOPLEFT")
+    tab.edgeTop:SetPoint("TOPRIGHT")
+
+    tab.edgeBottom = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    tab.edgeBottom:SetHeight(1)
+    tab.edgeBottom:SetPoint("BOTTOMLEFT")
+    tab.edgeBottom:SetPoint("BOTTOMRIGHT")
+
+    tab.edgeLeft = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    tab.edgeLeft:SetWidth(1)
+    tab.edgeLeft:SetPoint("TOPLEFT")
+    tab.edgeLeft:SetPoint("BOTTOMLEFT")
+
+    tab.edgeRight = tab:CreateTexture(nil, "BACKGROUND", nil, -2)
+    tab.edgeRight:SetWidth(1)
+    tab.edgeRight:SetPoint("TOPRIGHT")
+    tab.edgeRight:SetPoint("BOTTOMRIGHT")
+
+    -- The gold cap, which is what says "this one" now that the fill is
+    -- doing the joining rather than the shouting.
+    tab.accent = tab:CreateTexture(nil, "BACKGROUND", nil, -1)
+    tab.accent:SetHeight(2)
+    tab.accent:SetPoint("TOPLEFT")
+    tab.accent:SetPoint("TOPRIGHT")
+
+    tab.Text = Theme.FontString(tab, "OVERLAY", strip.tabFont or "GameFontNormal")
+    tab.Text:SetPoint("CENTER", 0, 0)
+    tab.Text:SetWordWrap(false)
+
+    tab:HookScript("OnEnter", function(self)
+        if not self.isSelected then
+            self.Text:SetTextColor(unpack(Theme.colors.gold))
+        end
+    end)
+    tab:HookScript("OnLeave", function(self)
+        Raised.SetSelected(self, self.isSelected)
+    end)
+    return tab
+end
+
+function Raised.Init(tab, text, strip)
+    tab.strip = strip
+    tab.Text:SetWidth(0)
+    tab.Text:SetText(text or "")
+    local pad = strip.textPad or RAISED_TEXT_PAD
+    local w = (tab.Text:GetStringWidth() or 0) + pad
+    local width = math.max(strip.minTabWidth or 80,
+        math.min(strip.maxTabWidth or 200, w))
+    tab:SetWidth(width)
+    tab:SetHeight(strip.tabHeight or 28)
+    tab.Text:SetWidth(width - math.min(pad, 14))
+end
+
+function Raised.SetSelected(tab, selected)
+    local strip = tab.strip or tab:GetParent()
+    SetTexColor(tab.bg, RaisedFill(strip, selected))
+
+    local edge = selected and Theme.colors.gold or Theme.colors.divider
+    SetTexColor(tab.edgeTop, edge)
+    SetTexColor(tab.edgeLeft, edge)
+    SetTexColor(tab.edgeRight, edge)
+
+    -- The join. A selected tab has no floor; an unselected one does, and
+    -- sits behind the panel rather than on it.
+    tab.edgeBottom:SetShown(not selected)
+    if not selected then SetTexColor(tab.edgeBottom, Theme.colors.divider) end
+
+    SetTexColor(tab.accent, selected and Theme.colors.gold or Theme.colors.divider)
+    tab.accent:SetShown(selected)
+
+    tab.Text:SetTextColor(unpack(selected
+        and Theme.colors.text or Theme.colors.textMuted))
+end
+
+---------------------------------------------------------------------------
 -- The "underline" look
 ---------------------------------------------------------------------------
 
@@ -154,7 +269,7 @@ function Underline.SetSelected(tab, selected)
     tab.underline:SetShown(selected and true or false)
 end
 
-local STYLES = { panel = Panel, underline = Underline }
+local STYLES = { panel = Panel, underline = Underline, raised = Raised }
 
 -- How wide a tab of each style may be before it is clamped.
 --
@@ -360,7 +475,9 @@ end
 ---------------------------------------------------------------------------
 
 -- BazUI.CreateTabStrip(name, parent, opts)
---   opts.style           "panel" (default) or "underline"
+--   opts.style           "panel" (default), "underline" or "raised"
+--   opts.tabFill         "raised" only: the colour of the thing the tabs
+--                        belong to, so the selected one joins it
 --   opts.minTabWidth     clamp tab widths (default 60 / 120)
 --   opts.maxTabWidth
 --   opts.tabHeight       height of each tab (default 26 panel / 24 underline)
@@ -383,6 +500,9 @@ function BazUI.CreateTabStrip(name, parent, opts)
     strip.tabs           = {}
     strip._pool          = {}
     strip.tabStyle       = opts.style or "panel"
+    -- What the selected tab should be the colour of. Only the "raised"
+    -- look uses it; see RaisedFill.
+    strip.tabFill        = opts.tabFill
     -- Per style: see STYLE_WIDTHS. One pair of numbers served both until
     -- now, which capped every underline tab at the plate width, so
     -- "Draggable Windows" was clamped to 120 pixels, wrapped onto a

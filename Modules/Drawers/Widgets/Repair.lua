@@ -330,7 +330,13 @@ function RepairWidget:Build()
     local f = CreateFrame("Button", "BazUIDrawerRepairWidget", UIParent)
     f:SetSize(DESIGN_WIDTH, initialHeight)
     f:RegisterForClicks("LeftButtonUp")
-    f:SetScript("OnClick", function() BazUI.OpenCharacterSheet("PaperDollFrame") end)
+    -- Blizzard's own button opens Blizzard's own panel, so the sheet's
+    -- OnShow is not ours and may read the player's health. See
+    -- BazUI.SecureForward. Calling the toggle ourselves is the fallback
+    -- for a client that cannot forward, and throws one error doing it.
+    if not BazUI.SecureForward(f, "CharacterMicroButton", { parent = f, relayMotion = f }) then
+        f:SetScript("OnClick", function() BazUI.OpenCharacterSheet("PaperDollFrame") end)
+    end
     f:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("Repair")

@@ -485,6 +485,28 @@ local function WireSecureToggle(popup)
     -- PostClick does the toggle out of combat, which is when the popup
     -- can legally be shown anyway.
     if not BazUI.SecureSnippetsUsable() then
+        -- And the button is told to do nothing on that click.
+        --
+        -- PostClick runs AFTER the secure action has already fired, and
+        -- the snippet path this is standing in for replaced the action
+        -- with type="click". Standing in for it without saying so leaves
+        -- the action in place: a right-click on a flyout cast whatever
+        -- was in the slot AND opened the popup, every time.
+        --
+        -- "noop" is the same word the bars use to hold a click while
+        -- shift-dragging. PostClick still fires for it, so the toggle is
+        -- unaffected.
+        --
+        -- Attributes are refused in combat, and AttachTo already refuses
+        -- to wire a popup there, so this is belt and braces.
+        if not InCombatLockdown() then
+            if opts.toggleButton == "RightButton" then
+                parent:SetAttribute("type2", "noop")
+            elseif opts.toggleButton == "LeftButton" then
+                parent:SetAttribute("type", "noop")
+            end
+        end
+
         if parent._bazPopupToggleHooked then return end
         parent._bazPopupToggleHooked = true
         local wanted = opts.toggleButton

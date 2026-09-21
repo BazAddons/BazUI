@@ -345,7 +345,10 @@ local function GetSettingsPage()
             },
             strata = {
                 order = 14, type = "select", name = "Frame layer",
-                desc = "Dialog keeps the bag above the settings window.",
+                desc = "Dialog keeps the bag above everything, which is why it is "
+                    .. "the default. Medium puts it in with the game's own panels, "
+                    .. "where clicking a window brings it to the front - so the "
+                    .. "character sheet can come out from behind the bag.",
                 values = { LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog" },
                 sorting = { "LOW", "MEDIUM", "HIGH", "DIALOG" },
                 get = function() return addon:GetSetting("strata") or "DIALOG" end,

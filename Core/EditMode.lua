@@ -1803,9 +1803,14 @@ function BazUI:SelectEditFrame(frame)
         BazUI:DeselectEditFrame(selectedFrame)
     end
 
-    if EditModeManagerFrame and EditModeManagerFrame.ClearSelectedSystem then
-        EditModeManagerFrame:ClearSelectedSystem()
-    end
+    -- Through securecallfunction, not straight.
+    --
+    -- Selecting one of our own frames clears Blizzard's selection so the
+    -- two edit modes do not both think they own something. Calling their
+    -- method plainly stored it as ours, which tainted the manager - and
+    -- their next layout pass was refused when it anchored MainActionBar,
+    -- a frame we have never gone near.
+    BazUI.SecureCall(_G.EditModeManagerFrame, "ClearSelectedSystem")
 
     local overlay = frame._bazEditOverlay
     if overlay then

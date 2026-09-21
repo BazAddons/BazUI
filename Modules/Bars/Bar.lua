@@ -261,6 +261,52 @@ end
 -- Layout
 ---------------------------------------------------------------------------
 
+---------------------------------------------------------------------------
+-- The bar's own panel
+--
+-- The same chrome the flyout popup wears, which is the suite's dialog
+-- look: the shared border and a dark fill. A bar without it is what the
+-- game gives you, buttons floating on the world; a bar with it reads as
+-- a thing rather than a row.
+--
+-- A frame of its own, filling the bar exactly, sitting a level below it
+-- so the buttons are always in front - and a child, so the bar's own
+-- opacity, fading and hiding carry it along without anything else having
+-- to know it is there.
+--
+-- The panel does NOT hang off the edges of the bar. It used to, by six
+-- pixels, and the bar then measured smaller than it looked: the edges
+-- stuck out past where the bar said it ended, and anything docked to it
+-- lined up with the buttons rather than with the panel it could see.
+-- Instead the bar grows to make room for it (see LayoutButtons), so the
+-- frame and what you see are the same rectangle again.
+---------------------------------------------------------------------------
+
+local BACKDROP_PAD = 6
+
+function Bar:ApplyBackground(frame)
+    local bd = frame and frame.barData
+    if not bd then return end
+    local Theme = BazUI.Skin and BazUI.Skin.Theme
+    local wanted = BazBars.GetBarSetting(bd, "background") == true
+
+    if not wanted then
+        if frame.bbBackground then frame.bbBackground:Hide() end
+        return
+    end
+    if not Theme or not Theme.ApplyDialog then return end
+
+    local bg = frame.bbBackground
+    if not bg then
+        bg = CreateFrame("Frame", nil, frame)
+        bg:SetFrameLevel(math.max((frame:GetFrameLevel() or 2) - 1, 0))
+        bg:SetAllPoints(frame)
+        frame.bbBackground = bg
+    end
+    Theme.ApplyDialog(bg)
+    bg:Show()
+end
+
 function Bar:LayoutButtons(frame, barData)
     local size = BazBars.DEFAULT_BUTTON_SIZE
     local spacing = BazBars.GetBarSetting(barData, "spacing") or BazBars.DEFAULT_SPACING
@@ -273,6 +319,16 @@ function Bar:LayoutButtons(frame, barData)
     -- against its edge, so a margin here would push a health bar wider
     -- than the row it is under and a couple of pixels further away than
     -- the gap asked for.
+    --
+    -- The one exception is the background panel, which needs room to
+    -- stand clear of the outer icons. That room is added to the frame
+    -- rather than taken outside it, so the bar still measures what it
+    -- looks like: the panel's edge is the bar's edge, and a bar docked
+    -- underneath lines up with the panel rather than with the buttons
+    -- inside it. The buttons are anchored to the frame's centre, so they
+    -- do not move when the room appears.
+    local pad = (BazBars.GetBarSetting(barData, "background") == true)
+        and BACKDROP_PAD or 0
 
     -- For vertical: swap how rows/cols map to screen axes
     local gridW, gridH
@@ -283,7 +339,8 @@ function Bar:LayoutButtons(frame, barData)
         gridW = cols * size + (cols - 1) * spacing
         gridH = rows * size + (rows - 1) * spacing
     end
-    frame:SetSize(gridW, gridH)
+    frame:SetSize(gridW + pad * 2, gridH + pad * 2)
+    Bar:ApplyBackground(frame)
 
     local startX = -gridW / 2
     local startY = gridH / 2
@@ -404,6 +461,18 @@ function Bar:RegisterEditMode(frame, barData)
                   addon.db.profile.bars[bd.id].alwaysShowButtons = v
                   Bar:UpdateButtonVisibility(frame)
               end },
+            { type = "checkbox", key = "background", label = "Background Panel", section = "Appearance",
+              desc = "Draws the suite's panel behind this bar, the same one the flyout wears.",
+              get = function() return BazBars.GetBarSetting(bd, "background") == true end,
+              set = function(v)
+                  bd.background = v
+                  addon.db.profile.bars[bd.id].background = v
+                  -- The panel is inside the bar, so switching it changes
+                  -- the bar's size - which anything docked to it is
+                  -- measured against.
+                  Bar:LayoutButtons(frame, bd)
+                  if BazUI.Dock and BazUI.Dock.Relayout then BazUI.Dock:Relayout() end
+              end },
             { type = "checkbox", key = "showSlotArt", label = "Show Slot Art", section = "Appearance",
               get = function() return BazBars.GetBarSetting(bd, "showSlotArt") ~= false end,
               set = function(v)
@@ -464,10 +533,41 @@ function Bar:RegisterEditMode(frame, barData)
                   { label = "Out of Combat", value = "[nocombat] show; hide" },
                   { label = "With Target", value = "[exists] show; hide" },
                   { label = "While Shift is held", value = "[mod:shift] show; hide" },
+                  { label = "Custom",                value = "custom" },
               },
+              -- A macro this list has no entry for still has to show as
+              -- something, and "Always Visible" would be a lie. The
+              -- dropdown says Custom and the box under it says what.
+              get = function()
+                  local macro = bd.visibilityMacro or ""
+                  for _, opt in ipairs({ "", "[combat] show; hide", "[nocombat] show; hide",
+                      "[exists] show; hide", "[mod:shift] show; hide" }) do
+                      if macro == opt then return macro end
+                  end
+                  return "custom"
+              end,
+              set = function(v)
+                  -- Picking Custom is asking for the box, not for a
+                  -- macro that literally reads "custom".
+                  if v == "custom" then v = bd.visibilityMacro or "" end
+                  Bar:SetVisibilityMacro(frame, v)
+              end },
+
+            -- Anything the five above cannot say.
+            --
+            -- This was the one thing the old Bar Options page could do
+            -- that the inspector could not: the same setting, but as a
+            -- box rather than a list. The page is gone, so the box is
+            -- here - otherwise removing the page would have quietly
+            -- taken every macro condition past those five with it.
+            { type = "input", key = "visibilityMacroText", label = "Show When", section = "Appearance",
+              desc = "A macro condition, such as [combat] show; hide. "
+                  .. "Anything the game understands works: [stance:1], [group], "
+                  .. "[stealth], [mod:shift]. Empty means always.",
               get = function() return bd.visibilityMacro or "" end,
               set = function(v)
-                  Bar:SetVisibilityMacro(frame, v)
+                  Bar:SetVisibilityMacro(frame, v or "")
+                  BazUI:RefreshVisibleOptions()
               end },
 
             -- Behavior

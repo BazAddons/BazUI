@@ -423,6 +423,27 @@ end
 -- addon Lua state resets - kept firing alongside the new one. Result
 -- before this fix: MOTD rendered TWICE on the next /reload (once from
 -- each generation of listener), three times after two /reloads, etc.
+-- The guild's message of the day, asked for as the game asks for it.
+--
+-- C_GuildInfo.GetMOTD is protected on this client, so calling it from
+-- our code is refused outright: "AddOn 'BazUI' tried to call the
+-- protected function GetMOTD()". It has nothing to do with combat or
+-- with any frame - it is the call itself.
+--
+-- securecallfunction runs it as the game's own, which is allowed, and
+-- the pcall is for the clients where the function is missing rather than
+-- protected. Every reader goes through here; there used to be two places
+-- calling it directly and both were blocked.
+local function GuildMOTD()
+    if not (C_GuildInfo and C_GuildInfo.GetMOTD) then return nil end
+    if securecallfunction then
+        local ok, motd = pcall(securecallfunction, C_GuildInfo.GetMOTD)
+        return ok and motd or nil
+    end
+    local ok, motd = pcall(C_GuildInfo.GetMOTD)
+    return ok and motd or nil
+end
+
 local LISTENER_NAME = "BazUIChatGuildMOTDListener"
 local motdListener = _G[LISTENER_NAME] or CreateFrame("Frame", LISTENER_NAME)
 motdListener:UnregisterAllEvents()
@@ -456,8 +477,8 @@ motdListener:SetScript("OnEvent", function(self, event, arg1)
     if event == "GUILD_MOTD" then
         motd = arg1
     else
-        if IsInGuild and IsInGuild() and C_GuildInfo and C_GuildInfo.GetMOTD then
-            motd = C_GuildInfo.GetMOTD()
+        if IsInGuild and IsInGuild() then
+            motd = GuildMOTD()
         end
     end
 
@@ -490,7 +511,7 @@ function Channels:TryRenderInitialMOTD()
 
     local function attempt()
         if motdListener._displayed then return true end
-        local motd = C_GuildInfo.GetMOTD()
+        local motd = GuildMOTD()
         if RenderMOTDOnWindow1(motd) then
             motdListener._displayed = true
             motdListener:UnregisterAllEvents()

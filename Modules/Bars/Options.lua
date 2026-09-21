@@ -2,10 +2,12 @@
 ---------------------------------------------------------------------------
 -- Bars: options pages
 --
--- General     - what applies to every bar: Blizzard's own bar, button
---               text and tooltips, "same on every bar" values, combat.
--- Bar Options - a picker of your bars with New, Duplicate and Delete on
---               the row and the selected bar's form beneath it.
+-- General - what applies to every bar: Blizzard's own bar, button text
+--           and tooltips, "same on every bar" values, combat.
+--
+-- One page, not two. A bar's own settings live in its inspector in BazUI
+-- Edit Mode and nowhere else; see the note further down about the page
+-- that used to be here.
 ---------------------------------------------------------------------------
 
 local BazBars = BazUI.Bars
@@ -15,7 +17,6 @@ addon.Options = Options
 
 local MODULE_KEY   = "Bars"
 local PAGE_GENERAL = "BazUIBars-Settings"
-local PAGE_BARS    = "BazUIBars-Bars"
 
 local function Profile()
     return addon.db and addon.db.profile
@@ -272,7 +273,7 @@ local function GetGeneralOptionsTable()
                 if o.value == nil then o.value = def.default end
                 ApplyToAllBars()
                 Refresh(PAGE_GENERAL)
-                Refresh(PAGE_BARS)
+                Refresh(PAGE_GENERAL)
             end,
         }
         local value = {
@@ -304,297 +305,26 @@ local function GetGeneralOptionsTable()
 end
 
 ---------------------------------------------------------------------------
--- Bar Options
+-- There is no Bar Options page.
+--
+-- There was, and it said the same things as the bar's own inspector in
+-- BazUI Edit Mode: two forms over one set of values, either of which
+-- could be the one you had open when you changed the other. A setting
+-- with two homes has no home.
+--
+-- The inspector won because it is the one you reach by clicking the bar
+-- you mean, with that bar in front of you while you change it - and it
+-- was already the only place for the things that never fitted a form,
+-- like nudging a bar a pixel or reading its keybinds.
+--
+-- Nothing was lost with the page. Every setting on it is in the
+-- inspector; New bar is on Edit Mode's own add menu; Duplicate and
+-- Delete are in the bar's context menu, with the same confirmation.
+--
+-- What remains here is the General page: the global defaults and the
+-- overrides that make one value apply to every bar, which are about the
+-- bars together rather than about one of them.
 ---------------------------------------------------------------------------
-
--- The bar the picker should open on its next render, set by whatever
--- just made one. See pickerSelect in Core/Options/ListDetail.
-local pendingBar
-
-local function TakePendingBar()
-    return pendingBar
-end
-
-local function TakePendingBarTaken()
-    pendingBar = nil
-end
-
-local function BarLabel(id, bd)
-    local name = bd.customName or ("Bar " .. id)
-    return string.format("%s  (%d x %d)", name, bd.cols or 0, bd.rows or 0)
-end
-
-local function BuildBarArgs(id, bd)
-    local function Frame() return addon.Bar:Get(id) end
-    local function Overridden(key) return BazBars.IsGlobalOverrideActive(key) end
-    local function OverrideDesc(key)
-        if Overridden(key) then return "Set for every bar under General." end
-    end
-    local function EndcapsOff()
-        return (BazBars.GetBarSetting(bd, "endcaps") or "off") == "off"
-    end
-
-    return {
-        layoutHeader = { order = 10, type = "header", name = "Layout" },
-        customName = {
-            order = 11, type = "input", name = "Name",
-            get = function() return bd.customName or "" end,
-            set = function(_, val)
-                bd.customName = (val ~= "") and val or nil
-                local frame = Frame()
-                if frame then addon.Bar:SetCustomName(frame, bd.customName) end
-                Refresh(PAGE_BARS)
-            end,
-        },
-        orientation = {
-            order = 12, type = "select", name = "Orientation",
-            values = { horizontal = "Horizontal", vertical = "Vertical" },
-            sorting = { "horizontal", "vertical" },
-            get = function() return bd.orientation or "horizontal" end,
-            set = function(_, val)
-                bd.orientation = val
-                local frame = Frame()
-                if frame then addon.Bar:LayoutButtons(frame, bd) end
-            end,
-        },
-        cols = {
-            order = 13, type = "range", name = "Icons per row",
-            min = 1, max = BazBars.MAX_COLS, step = 1,
-            get = function() return bd.cols end,
-            set = function(_, val)
-                local frame = Frame()
-                if frame then
-                    KeepingOwnValues(frame, bd, function()
-                        addon.Bar:Resize(frame, bd.rows, val, BazBars.GetBarSetting(bd, "spacing"))
-                    end)
-                end
-                bd.cols = val
-                Refresh(PAGE_BARS)
-            end,
-        },
-        rows = {
-            order = 14, type = "range", name = "Rows",
-            min = 1, max = BazBars.MAX_ROWS, step = 1,
-            get = function() return bd.rows end,
-            set = function(_, val)
-                local frame = Frame()
-                if frame then
-                    KeepingOwnValues(frame, bd, function()
-                        addon.Bar:Resize(frame, val, bd.cols, BazBars.GetBarSetting(bd, "spacing"))
-                    end)
-                end
-                bd.rows = val
-                Refresh(PAGE_BARS)
-            end,
-        },
-
-        appearanceHeader = { order = 20, type = "header", name = "Appearance" },
-        scale = {
-            order = 21, type = "range", name = "Icon size", desc = OverrideDesc("scale"),
-            min = BazBars.MIN_SCALE, max = BazBars.MAX_SCALE, step = 0.05, isPercent = true,
-            get = function() return BazBars.GetBarSetting(bd, "scale") or 1 end,
-            set = function(_, val)
-                bd.scale = val
-                local frame = Frame()
-                if frame then addon.Bar:SetScale(frame, val) end
-            end,
-            disabled = function() return Overridden("scale") end,
-        },
-        spacing = {
-            order = 22, type = "range", name = "Icon padding", desc = OverrideDesc("spacing"),
-            min = 0, max = 20, step = 1,
-            get = function() return BazBars.GetBarSetting(bd, "spacing") or BazBars.DEFAULT_SPACING end,
-            set = function(_, val)
-                bd.spacing = val
-                local frame = Frame()
-                if frame then addon.Bar:Resize(frame, bd.rows, bd.cols, val) end
-            end,
-            disabled = function() return Overridden("spacing") end,
-        },
-        alpha = {
-            order = 23, type = "range", name = "Bar opacity", desc = OverrideDesc("alpha"),
-            min = 0, max = 1, step = 0.05, isPercent = true,
-            get = function() return BazBars.GetBarSetting(bd, "alpha") or 1 end,
-            set = function(_, val)
-                bd.alpha = val
-                local frame = Frame()
-                if frame then addon.Bar:SetBarAlpha(frame, val) end
-            end,
-            disabled = function() return Overridden("alpha") end,
-        },
-        endcaps = {
-            order = 24, type = "select", name = "Side endcaps",
-            values = { off = "None", alliance = "Alliance gryphons", horde = "Horde wyverns" },
-            sorting = { "off", "alliance", "horde" },
-            get = function() return BazBars.GetBarSetting(bd, "endcaps") or "off" end,
-            set = function(_, val)
-                bd.endcaps = val
-                local frame = Frame()
-                if frame then addon.Bar:ApplyEndcaps(frame) end
-                Refresh(PAGE_BARS)
-            end,
-        },
-        endcapsAutoScale = {
-            order = 25, type = "toggle", name = "Scale endcaps with the bar's height",
-            hidden = EndcapsOff,
-            get = function() return BazBars.GetBarSetting(bd, "endcapsAutoScale") == true end,
-            set = function(_, val)
-                bd.endcapsAutoScale = val
-                local frame = Frame()
-                if frame then addon.Bar:ApplyEndcaps(frame) end
-                Refresh(PAGE_BARS)
-            end,
-        },
-        endcapsScale = {
-            order = 26, type = "range", name = "Endcap size",
-            min = 0.5, max = 2, step = 0.05, isPercent = true,
-            hidden = function() return EndcapsOff() or BazBars.GetBarSetting(bd, "endcapsAutoScale") == true end,
-            get = function() return BazBars.GetBarSetting(bd, "endcapsScale") or 1 end,
-            set = function(_, val)
-                bd.endcapsScale = val
-                local frame = Frame()
-                if frame then addon.Bar:ApplyEndcaps(frame) end
-            end,
-        },
-
-        visibilityHeader = { order = 30, type = "header", name = "Visibility" },
-        alwaysShowButtons = {
-            order = 31, type = "toggle", name = "Always show buttons",
-            desc = "Off hides empty slots until you drag something onto them.",
-            get = function() return BazBars.GetBarSetting(bd, "alwaysShowButtons") ~= false end,
-            set = function(_, val)
-                bd.alwaysShowButtons = val
-                local frame = Frame()
-                if frame then addon.Bar:UpdateButtonVisibility(frame) end
-            end,
-        },
-        showSlotArt = {
-            order = 32, type = "toggle", name = "Show slot art", desc = OverrideDesc("showSlotArt"),
-            get = function() return BazBars.GetBarSetting(bd, "showSlotArt") ~= false end,
-            set = function(_, val)
-                bd.showSlotArt = val
-                local frame = Frame()
-                if frame then addon.Bar:UpdateSlotArt(frame) end
-            end,
-            disabled = function() return Overridden("showSlotArt") end,
-        },
-        mouseoverFade = {
-            order = 33, type = "toggle", name = "Fade until hovered",
-            get = function() return BazBars.GetBarSetting(bd, "mouseoverFade") == true end,
-            set = function(_, val)
-                bd.mouseoverFade = val
-                local frame = Frame()
-                if frame then addon.Bar:ApplyMouseoverFade(frame) end
-            end,
-        },
-        visibilityMacro = {
-            order = 34, type = "input", name = "Show when",
-            desc = "A macro condition such as [combat] show; hide. Empty means always.",
-            get = function() return bd.visibilityMacro or "" end,
-            set = function(_, val)
-                bd.visibilityMacro = val
-                local frame = Frame()
-                if frame then addon.Bar:SetVisibilityMacro(frame, val) end
-            end,
-        },
-
-        behaviorHeader = { order = 40, type = "header", name = "Behavior" },
-        locked = {
-            order = 41, type = "toggle", name = "Lock buttons",
-            desc = "Buttons can't be dragged off or swapped.",
-            get = function() return bd.locked == true end,
-            set = function(_, val) bd.locked = val end,
-        },
-        rightClickSelfCast = {
-            order = 42, type = "toggle", name = "Right-click casts on yourself",
-            get = function() return bd.rightClickSelfCast == true end,
-            set = function(_, val)
-                bd.rightClickSelfCast = val
-                local frame = Frame()
-                if frame then addon.Button:ApplySelfCast(frame) end
-            end,
-        },
-        clickThrough = {
-            order = 43, type = "toggle", name = "Click-through",
-            desc = "Buttons ignore the mouse. Cooldowns, range tint and glows still show.",
-            get = function() return BazBars.GetBarSetting(bd, "clickThrough") == true end,
-            set = function(_, val)
-                bd.clickThrough = val
-                local frame = Frame()
-                if frame then addon.Bar:ApplyClickThrough(frame) end
-            end,
-        },
-    }
-end
-
-local function GetBarsOptionsTable()
-    local p = Profile()
-    local bars = {}
-    for id, bd in pairs(p and p.bars or {}) do
-        if type(bd) == "table" then
-            bars["bar" .. id] = {
-                order = id,
-                type = "group",
-                name = BarLabel(id, bd),
-                args = BuildBarArgs(id, bd),
-                _barId = id,
-            }
-        end
-    end
-
-    return {
-        name = "Bar Options",
-        type = "group",
-        args = {
-            newBar = {
-                order = 1, type = "execute", name = "New bar",
-                func = function()
-                    if InCombatLockdown() then
-                        addon:Print("Cannot create bars during combat.")
-                        return
-                    end
-                    local id = addon:CreateNewBar()
-                    if id then
-                        -- Open on the one just made. See pickerSelect in
-                        -- Core/Options/ListDetail.
-                        pendingBar = "bar" .. id
-                        addon:Print("Created Bar " .. id)
-                    end
-                end,
-            },
-            bars = {
-                order = 10,
-                type = "group",
-                name = "",
-                pickerLabel = "Bar",
-                pickerSelect = TakePendingBar,
-                pickerSelectTaken = TakePendingBarTaken,
-                emptyText = "No bars yet. Click New bar to make one.",
-                args = bars,
-                itemActions = {
-                    {
-                        name = "Duplicate",
-                        func = function(item)
-                            local id = addon:DuplicateBar(item._barId)
-                            if id then pendingBar = "bar" .. id end
-                        end,
-                    },
-                    {
-                        name = "Delete", style = "danger",
-                        confirm = true, confirmTitle = "Delete bar?",
-                        confirmText = function(item)
-                            return string.format("Delete %s? This removes the bar and every button on it and can't be undone.",
-                                item and item.name or "this bar")
-                        end,
-                        confirmStyle = "destructive", confirmAcceptLabel = "Delete", confirmCancelLabel = "Cancel",
-                        func = function(item) addon:DeleteBar(item._barId) end,
-                    },
-                },
-            },
-        },
-    }
-end
-
 ---------------------------------------------------------------------------
 -- Registration
 ---------------------------------------------------------------------------
@@ -614,13 +344,12 @@ function Options:Setup()
     BazUI:RegisterOptionsTable(PAGE_GENERAL, GetGeneralOptionsTable)
     BazUI:AddToSettings(PAGE_GENERAL, "General", MODULE_KEY)
 
-    BazUI:RegisterOptionsTable(PAGE_BARS, GetBarsOptionsTable)
-    BazUI:AddToSettings(PAGE_BARS, "Bar Options", MODULE_KEY)
 end
 
--- Called after a bar is created, duplicated or deleted.
+-- Called after a bar is created, duplicated or deleted. The General page
+-- counts bars in a couple of places, so it is redrawn if it is up.
 function Options:Refresh()
-    Refresh(PAGE_BARS)
+    Refresh(PAGE_GENERAL)
 end
 
 function Options:Open()

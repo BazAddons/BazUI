@@ -296,14 +296,33 @@ local suppressedByUs = setmetatable({}, { __mode = "k" })
 --
 -- securecallfunction runs their method as theirs. The frame still hides;
 -- nothing it writes on the way down is ours afterwards.
-local function CallClean(frame, method)
-    local fn = frame[method]
+-- Run one of Blizzard's own methods as Blizzard's own code.
+--
+-- On Forever a method called from us stores its result as OURS, so a
+-- Blizzard frame we merely asked a question of is a Blizzard frame
+-- carrying our name from then on - and the game refuses the protected
+-- work it does on that frame afterwards, blaming us. The blame is
+-- literal: "AddOn 'BazUI' tried to call the protected function
+-- MainActionBar:SetPointBase()", raised inside Blizzard's own Edit Mode
+-- while it anchored a bar we never touched.
+--
+-- securecallfunction runs it as theirs, so what it stores stays theirs.
+-- Anything of Blizzard's that we call goes through here.
+--
+-- Public because this kept being rewritten: QoL's draggable windows had
+-- one, this file had one, and Edit Mode had none and tainted the manager.
+function BazUI.SecureCall(object, method, ...)
+    if not object then return end
+    local fn = object[method]
     if type(fn) ~= "function" then return end
     if securecallfunction then
-        securecallfunction(fn, frame)
-    else
-        fn(frame)
+        return securecallfunction(fn, object, ...)
     end
+    return fn(object, ...)
+end
+
+local function CallClean(frame, method)
+    return BazUI.SecureCall(frame, method)
 end
 
 -- Open one of Blizzard's own panels from a click of ours.
@@ -322,6 +341,122 @@ function BazUI.OpenCharacterSheet(tab)
         fn(tab or "PaperDollFrame")
     end
     return true
+end
+
+---------------------------------------------------------------------------
+-- Forwarding a click to one of Blizzard's own buttons
+--
+-- Opening one of their panels by calling the toggle ourselves cannot be
+-- made clean. securecallfunction runs the toggle as theirs, which helps,
+-- but the call reaches the panel manager and goes out through
+-- SetAttribute into a secure snippet - and our taint goes with it. The
+-- character sheet's OnShow then reads the player's health as BazUI and is
+-- refused: "attempt to compare a secret number value (execution tainted
+-- by BazUI)". Wrapping the call turned six of those into one; it could
+-- not turn one into none.
+--
+-- The way the game means this to be done is to not make the call. A
+-- button inheriting SecureActionButtonTemplate, with type "click" and a
+-- clickbutton, has Blizzard's own secure handler carry the click from the
+-- keypress - so when their panel opens there is nothing of ours on the
+-- stack to taint it.
+--
+-- This puts such a button over something we already draw. Returns it, or
+-- nil when this client cannot do it, so a caller can keep whatever it was
+-- doing before rather than losing the click altogether.
+---------------------------------------------------------------------------
+
+-- Where to put the overlay, without a region anywhere in the chain.
+--
+-- A protected frame may not be anchored to a region, and the check walks
+-- the chain rather than looking only at what it was handed - so putting
+-- an ordinary frame in between and pointing THAT at a texture is refused
+-- just the same. A region is therefore not anchored to at all: its own
+-- anchors are borrowed instead, which point at a frame or this cannot be
+-- done.
+local function AnchorPlan(anchorTo)
+    if anchorTo.GetFrameLevel then return { frame = anchorTo } end
+
+    local count = anchorTo.GetNumPoints and anchorTo:GetNumPoints() or 0
+    if count == 0 then return nil end
+    local points = {}
+    for i = 1, count do
+        local point, rel, relPoint, x, y = anchorTo:GetPoint(i)
+        rel = rel or anchorTo:GetParent()
+        if not (rel and rel.GetFrameLevel) then return nil end
+        points[#points + 1] = { point, rel, relPoint, x or 0, y or 0 }
+    end
+    local w, h = anchorTo:GetSize()
+    return { points = points, w = w, h = h }
+end
+
+-- anchorTo   frame or region the overlay should cover
+-- target     one of Blizzard's buttons, or its global name
+-- opts       parent, levelBump, clicks (table), relayMotion (frame whose
+--            OnEnter/OnLeave should still fire under the overlay)
+function BazUI.SecureForward(anchorTo, target, opts)
+    opts = opts or {}
+    if type(target) == "string" then target = _G[target] end
+    if not (anchorTo and target and target.GetFrameLevel) then return nil end
+    if not (BazUI.Has and BazUI.Has.Template("SecureActionButtonTemplate")) then
+        return nil
+    end
+
+    local plan = AnchorPlan(anchorTo)
+    if not plan then return nil end
+
+    local parent = opts.parent
+        or (anchorTo.GetFrameLevel and anchorTo)
+        or anchorTo:GetParent()
+    if not parent then return nil end
+
+    local hit = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
+    hit:SetFrameLevel((parent:GetFrameLevel() or 1) + (opts.levelBump or 1))
+    hit:RegisterForClicks(unpack(opts.clicks or { "LeftButtonUp" }))
+
+    -- Anchoring and attributes are both refused in combat, and the thing
+    -- being covered may well be built during one. Done when we can, and
+    -- again when the fight ends if we could not.
+    local function Wire()
+        if InCombatLockdown() then return false end
+        hit:ClearAllPoints()
+        if plan.frame then
+            hit:SetAllPoints(plan.frame)
+        else
+            if (plan.w or 0) > 0 and (plan.h or 0) > 0 then hit:SetSize(plan.w, plan.h) end
+            for _, pt in ipairs(plan.points) do
+                hit:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5])
+            end
+        end
+        hit:SetAttribute("type", "click")
+        hit:SetAttribute("clickbutton", target)
+        return true
+    end
+
+    if not Wire() then
+        local waiter = CreateFrame("Frame")
+        waiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+        waiter:SetScript("OnEvent", function(self)
+            if Wire() then self:UnregisterEvent("PLAYER_REGEN_ENABLED") end
+        end)
+    end
+
+    -- An overlay takes the mouse, and with it whatever the thing
+    -- underneath was doing on hover: a bar that changes what it says
+    -- under the cursor would simply stop.
+    local under = opts.relayMotion
+    if under then
+        hit:SetScript("OnEnter", function()
+            local fn = under:GetScript("OnEnter")
+            if fn then fn(under) end
+        end)
+        hit:SetScript("OnLeave", function()
+            local fn = under:GetScript("OnLeave")
+            if fn then fn(under) end
+        end)
+    end
+
+    return hit
 end
 
 function BazUI.SuppressFrame(frame, wanted)

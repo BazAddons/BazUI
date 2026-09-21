@@ -203,6 +203,11 @@ end
 --           },
 --       },
 --       portraitOnClick = function(self, button) ... end,
+--       portraitSecureClick = "CharacterMicroButton",
+--                                          -- left-click forwarded to that
+--                                          -- Blizzard button by the secure
+--                                          -- handler, so opening their
+--                                          -- panel carries none of our taint
 --   })
 --
 -- Returns the Frame ready to populate.
@@ -228,6 +233,13 @@ function BazUI:CreatePortraitWindow(globalName, opts)
     f:SetMovable(true)
     f:EnableMouse(true)
     f:SetClampedToScreen(true)
+    -- Toplevel raises a window above its siblings when it is clicked,
+    -- which is what makes clicking one bring it to the front. It only
+    -- works within a layer, though: a window in a higher strata than
+    -- another is always in front of it, whatever either of them does. So
+    -- a window that should take turns with Blizzard's panels belongs in
+    -- MEDIUM with them, and one that should always float above
+    -- everything - the bag, by default - belongs in DIALOG.
     f:SetFrameStrata(opts.strata or "MEDIUM")
     f:SetToplevel(true)
     f:Hide()
@@ -362,13 +374,44 @@ function BazUI:CreatePortraitWindow(globalName, opts)
         or f.portrait or (f.GetPortrait and f:GetPortrait())
     if (opts.portraitTooltip or opts.portraitOnClick) and portraitTex then
         local hitParent = f.PortraitContainer or f
-        local hit = CreateFrame("Button", nil, hitParent)
-        hit:SetAllPoints(portraitTex)
-        hit:SetFrameLevel((hitParent:GetFrameLevel() or 400) + 1)
-        hit:RegisterForClicks("LeftButtonUp", "MiddleButtonUp", "RightButtonUp")
 
+        -- portraitSecureClick names one of Blizzard's own buttons, and
+        -- the portrait forwards the click to it rather than doing the
+        -- work itself. BazUI.SecureForward is where that lives and why.
+        local CLICKS = { "LeftButtonUp", "MiddleButtonUp", "RightButtonUp" }
+
+        local hit = opts.portraitSecureClick and BazUI.SecureForward(
+            portraitTex, opts.portraitSecureClick,
+            { parent = hitParent, clicks = CLICKS })
+        local secure = hit ~= nil
+
+        if not hit then
+            hit = CreateFrame("Button", nil, hitParent)
+            hit:SetAllPoints(portraitTex)
+            hit:RegisterForClicks(unpack(CLICKS))
+        end
+        hit:SetFrameLevel((hitParent:GetFrameLevel() or 400) + 1)
+
+        -- A secure forward answers the left button itself. Anything else
+        -- the window wants from the portrait still comes through here,
+        -- and so does the left button when forwarding is not available.
+        --
+        -- Hooked rather than set, on a secure button. SetScript REPLACES
+        -- SecureActionButtonTemplate's own OnClick, which is the handler
+        -- that does the forwarding - so setting ours here is quietly
+        -- unwiring the thing we just wired up, and the portrait goes
+        -- silent: no error, and no character sheet either. The same trap
+        -- is written down in Core/SecureActionPopup.lua.
         if opts.portraitOnClick then
-            hit:SetScript("OnClick", opts.portraitOnClick)
+            local function Relay(self, button, ...)
+                if secure and button == "LeftButton" then return end
+                opts.portraitOnClick(self, button, ...)
+            end
+            if secure then
+                hit:HookScript("OnClick", Relay)
+            else
+                hit:SetScript("OnClick", Relay)
+            end
         end
 
         local tt = opts.portraitTooltip

@@ -216,8 +216,59 @@ local function CreateCard(parent)
     card.name:SetJustifyH("LEFT")
     card.name:SetWordWrap(false)
 
+    -- The enchant, as a mark rather than two words.
+    --
+    -- "no enchant" written out took most of the card's lower line and ran
+    -- into the item's name on anything with a long one - Apprentice
+    -- Wizard's Gown sat right on top of it. The same fact fits in sixteen
+    -- pixels: lit when there is an enchant, faded when there is not, and
+    -- not there at all on a slot no enchanter can touch. Which is also
+    -- three states where the words could only manage two.
+    card.ench = CreateFrame("Frame", nil, card)
+    card.ench:SetSize(16, 16)
+    card.ench:SetPoint("BOTTOMRIGHT", -10, 7)
+    card.ench:EnableMouse(true)
+    card.ench.icon = card.ench:CreateTexture(nil, "OVERLAY")
+    card.ench.icon:SetAllPoints()
+    card.ench.icon:SetTexture("Interface\\Icons\\Trade_Engraving")
+    card.ench.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    card.ench:Hide()
+
+    -- Lit while the cursor is carrying something this slot will take.
+    -- Above the box fill so it reads through a hover, and below the icon
+    -- and the writing so it never sits on top of them.
+    card.drop = card:CreateTexture(nil, "BORDER")
+    card.drop:SetAllPoints()
+    card.drop:SetColorTexture(1, 0.82, 0.25, 0.14)
+    card.drop:Hide()
+
+    -- Its own hover, because a mark nobody can read is decoration. The
+    -- card's fill is set from here too, so putting the mouse on the icon
+    -- does not make the card look like it was let go.
+    card.ench:SetScript("OnEnter", function(self)
+        Panel.SetBoxFill(card, { 0.16, 0.13, 0.07, 0.80 })
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if self.enchanted then
+            GameTooltip:SetText("Enchanted", unpack(Theme.colors.text))
+            GameTooltip:AddLine("The item's own tooltip says what it is.",
+                0.6, 0.55, 0.45, true)
+        else
+            GameTooltip:SetText("No enchant", unpack(Theme.colors.textMuted))
+            GameTooltip:AddLine("An enchanter can put something on this slot.",
+                0.6, 0.55, 0.45, true)
+        end
+        GameTooltip:Show()
+    end)
+    card.ench:SetScript("OnLeave", function()
+        Panel.SetBoxFill(card)
+        GameTooltip:Hide()
+    end)
+
+    -- Wear only, now that the enchant has a mark of its own. Kept clear
+    -- of that mark whether it is shown or not, so the lower line of every
+    -- card reads along the same edge.
     card.note = Theme.FontString(card, "OVERLAY", "GameFontHighlightSmall")
-    card.note:SetPoint("BOTTOMRIGHT", -10, 9)
+    card.note:SetPoint("BOTTOMRIGHT", card.ench, "BOTTOMLEFT", -6, 1)
     card.note:SetJustifyH("RIGHT")
 
     card:SetScript("OnEnter", function(self)
@@ -236,10 +287,62 @@ local function CreateCard(parent)
         Panel.SetBoxFill(self)
         GameTooltip:Hide()
     end)
-    card:SetScript("OnClick", function()
-        BazUI.OpenCharacterSheet("PaperDollFrame")
-    end)
+    -- A slot you can put something in, and take something out of.
+    --
+    -- One call does both directions, which is what the character sheet
+    -- itself does: PickupInventoryItem with something on the cursor
+    -- equips it here, and with an empty cursor picks up what is worn.
+    -- Drag and click are the same action, so they share a handler.
+    --
+    -- Not protected, so none of the secure forwarding the portrait
+    -- needed applies. The game refuses an equip in combat by itself and
+    -- says so in its own words, which is better than us guessing at the
+    -- rules for two-handers and off hands.
+    --
+    -- What a slot does NOT do is open the character sheet. Seventeen of
+    -- these doing what the portrait already does two inches away, each
+    -- tainting that window's health readout to say it - see
+    -- portraitSecureClick in Core/UI.lua.
+    local function Handle(self)
+        if not self.slotID then return end
+        PickupInventoryItem(self.slotID)
+    end
+
+    card:EnableMouse(true)
+    card:RegisterForClicks("LeftButtonUp")
+    card:RegisterForDrag("LeftButton")
+    card:SetScript("OnClick", Handle)
+    card:SetScript("OnDragStart", Handle)
+    card:SetScript("OnReceiveDrag", Handle)
+
     return card
+end
+
+---------------------------------------------------------------------------
+-- Where what you are holding can go
+--
+-- Dropping onto a card is guesswork without this: seventeen of them, and
+-- the rules for which will take a two-hander or a second ring are the
+-- game's rather than ours. C_PaperDollInfo.CursorCanGoInSlot is the same
+-- question the character sheet asks, so the answer agrees with it.
+--
+-- The enchant mark stops taking the mouse while something is held, so
+-- the corner it sits in does not become a dead spot for the drop.
+---------------------------------------------------------------------------
+
+local function UpdateDropTargets()
+    local holding = CursorHasItem and CursorHasItem()
+    local CanGo = C_PaperDollInfo and C_PaperDollInfo.CursorCanGoInSlot
+
+    for _, card in ipairs(cards) do
+        local ok = false
+        if holding and card.slotID and CanGo then
+            local fine, answer = pcall(CanGo, card.slotID)
+            ok = fine and answer and true or false
+        end
+        if card.drop then card.drop:SetShown(ok) end
+        if card.ench then card.ench:EnableMouse(not holding) end
+    end
 end
 
 -- One row of the summary under the character.
@@ -520,6 +623,7 @@ local function FillCard(card, r, expectEnchants)
         card.name:SetTextColor(unpack(Theme.colors.textMuted))
         card.level:SetText("")
         card.note:SetText("")
+        card.ench:Hide()
         Panel.SetBoxBorder(card, nil)
         return
     end
@@ -531,17 +635,23 @@ local function FillCard(card, r, expectEnchants)
     if c then card.name:SetTextColor(c.r, c.g, c.b) else card.name:SetTextColor(unpack(Theme.colors.text)) end
     card.level:SetText(r.level and tostring(r.level) or "")
 
-    -- One note per card, the worst thing first: an enchant it should
-    -- have, then wear.
+    -- The enchant is a mark, and it says all three of its states by
+    -- itself: absent on a slot nothing can go on, faded when something
+    -- could and has not, lit when it has.
+    card.ench:SetShown(r.enchantable and true or false)
+    card.ench.enchanted = r.enchanted and true or false
+    if r.enchantable then
+        card.ench.icon:SetDesaturated(not r.enchanted)
+        card.ench.icon:SetAlpha(r.enchanted and 1 or 0.4)
+    end
+
+    -- The note is wear alone. The border still carries the warning for
+    -- either, so a card worth looking at is still outlined.
     local note, noteColor, border
-    if r.enchantable and not r.enchanted then
-        note = "no enchant"
-        if expectEnchants then
-            noteColor, border = Theme.colors.caution, Theme.colors.caution
-        else
-            noteColor = Theme.colors.textMuted
-        end
-    elseif r.durability and r.durability < 1 then
+    if r.enchantable and not r.enchanted and expectEnchants then
+        border = Theme.colors.caution
+    end
+    if r.durability and r.durability < 1 then
         note = Percent(r.durability)
         if r.durability < 0.3 then
             noteColor, border = Theme.colors.caution, Theme.colors.caution
@@ -706,8 +816,17 @@ BazUI:QueueForModule("Codex", function()
     watcher:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
     watcher:RegisterEvent("GET_ITEM_INFO_RECEIVED")
     watcher:RegisterEvent("PLAYER_LEVEL_UP")
+    -- Picking something up and putting it down are the two moments the
+    -- highlighting has to answer, and neither is an inventory change.
+    watcher:RegisterEvent("CURSOR_CHANGED")
     watcher:SetScript("OnEvent", function(_, event)
         if not (Codex.IsShown and Codex:IsShown()) then return end
+        if event == "CURSOR_CHANGED" then
+            -- Read after the client has settled the cursor; asked during
+            -- the event it still describes what was there a moment ago.
+            C_Timer.After(0, UpdateDropTargets)
+            return
+        end
         if event == "PLAYER_EQUIPMENT_CHANGED" and page and page.model and page.model:IsShown() then
             if page.model.RefreshUnit then page.model:RefreshUnit() else page.model:SetUnit("player") end
         end

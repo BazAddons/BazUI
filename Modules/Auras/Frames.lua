@@ -1399,6 +1399,12 @@ function addon:RowDropped(def, snap, x, y)
     -- Which way the icons stack can have changed with the edge, so the
     -- header is configured again rather than only moved.
     self:ApplySettings()
+    -- Docked and floating do not offer the same settings, and the panel
+    -- builds its list once. Without this, a row dragged onto a host keeps
+    -- the inspector it had while floating - no Takes, no Aligned, no Gap -
+    -- while the Dock to dropdown, which asks for a rebuild itself, gives
+    -- the full set. Two ways to do the same thing, disagreeing.
+    self:RefreshRowEditSettings()
 end
 
 function addon:ShowRowMovers()

@@ -49,6 +49,7 @@ local HERO_H        = 64
 local GAP           = 12
 local COLUMNS       = 2
 local TABS_Y        = -30  -- where the character sheet hangs its tabs
+local TAB_FOOT      = 14   -- air below the last tab, inside the frame
 
 local ROW_H         = 26   -- the character sheet's stat line, near enough
 local ROW_BAR_W     = 180  -- the bar column, where a row asks for one
@@ -1204,13 +1205,34 @@ local function Build()
         textured       = true,
         width          = WIDTH,
         height         = HEIGHT,
-        strata         = "HIGH",
+        -- The same layer Blizzard's own panels use, so clicking one
+        -- brings it to the front.
+        --
+        -- Every panel in the game, and every window of ours, is a
+        -- toplevel frame - which raises it above its siblings when
+        -- clicked, but only within its own layer. At HIGH the codex was
+        -- not winning a focus fight with the character sheet, it was
+        -- simply above it and always would be, so clicking the sheet
+        -- appeared to do nothing.
+        --
+        -- MEDIUM puts it where CharacterFrame, the talents frame and the
+        -- rest live, and Blizzard's own mechanism does the rest. The
+        -- settings window stays above it, at HIGH, exactly as it stays
+        -- above Blizzard's panels.
+        strata         = "MEDIUM",
         savedAddon     = addon,
         savedKey       = "position",
         uiSpecialFrame = true,
         dragTitleOnly  = true,
-        portraitOnClick = function()
-            BazUI.OpenCharacterSheet("PaperDollFrame")
+        -- Blizzard's own button opens Blizzard's own panel. See
+        -- portraitSecureClick in Core/UI.lua. The handler below is the
+        -- fallback for a client where that cannot be wired, and is not
+        -- reached when it can.
+        portraitSecureClick = "CharacterMicroButton",
+        portraitOnClick = function(_, button)
+            if button == "LeftButton" then
+                BazUI.OpenCharacterSheet("PaperDollFrame")
+            end
         end,
         portraitTooltip = { title = "Open the character sheet", anchor = "ANCHOR_RIGHT" },
     })
@@ -1263,6 +1285,15 @@ local function Build()
     content:SetWidth(ContentWidth())
     scroll:SetScrollChild(content)
     Codex.content = content
+
+    -- The header draws over the page, not under it.
+    --
+    -- These two are siblings and the scroll was made second, so by
+    -- default everything in it sits above the header - which is wrong
+    -- the moment a header wants to touch the page at all. The quests
+    -- page puts its tabs on the list's top edge and they were being
+    -- drawn over by the very border they are meant to cover.
+    headerHost:SetFrameLevel((scroll:GetFrameLevel() or 1) + 10)
 
     return frame
 end
@@ -1325,6 +1356,22 @@ function Panel:RebuildTabs()
     if activeID then
         tabs:SetTabVisuallySelected(activeID)
         tabs.selectedTabID = activeID
+    end
+
+    -- The window grows to hold its tabs.
+    --
+    -- They hang down the outside of the right edge from TABS_Y, so a
+    -- page added past what the height allows does not wrap or scroll -
+    -- it hangs off the bottom, looking like a mistake. That is what the
+    -- twelfth did: 12 tabs at 57 apiece need 712 and the window was 708.
+    --
+    -- Worked out from the column rather than written down, so the next
+    -- page added costs nobody a thought. Only ever taller: a window
+    -- shrinking as tabs come and go would be worse than one that is
+    -- slightly roomier than it needs.
+    local needed = math.abs(TABS_Y) + (tabs:GetHeight() or 0) + TAB_FOOT
+    if needed > (frame:GetHeight() or 0) then
+        frame:SetHeight(needed)
     end
 end
 

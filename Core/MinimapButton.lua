@@ -89,21 +89,32 @@ local function CreateButton()
     highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     highlight:SetBlendMode("ADD")
 
-    -- Two clicks, both of them useful: the codex on the left, the
-    -- settings on the right. There used to be a menu listing every
-    -- module here, but most of its entries only opened an options page,
-    -- and all of those pages sit a click apart in the one settings
-    -- window that right-click already opens.
+    -- Three clicks, all of them useful: the codex on the left, the
+    -- settings on the right, and Edit Mode in the middle. There used to
+    -- be a menu listing every module here, but most of its entries only
+    -- opened an options page, and all of those pages sit a click apart
+    -- in the one settings window that right-click already opens.
+    --
+    -- Edit Mode earns the middle button because it is the other half of
+    -- configuring BazUI - the half you do by pointing at the thing you
+    -- mean rather than by reading a list - and since the bars lost their
+    -- options page it is the only way to reach a bar's own settings.
     btn:SetScript("OnClick", function(_, mouseButton)
         if mouseButton == "RightButton" then
             BazUI:OpenOptionsPanel("BazUI")
+        elseif mouseButton == "MiddleButton" then
+            if InCombatLockdown() then
+                BazUI:Print("Edit Mode has to wait until you are out of combat.")
+                return
+            end
+            if BazUI.ToggleEditMode then BazUI:ToggleEditMode() end
         elseif BazUI.Codex and BazUI.Codex.Toggle then
             BazUI.Codex:Toggle()
         else
             BazUI:OpenOptionsPanel("BazUI")
         end
     end)
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    btn:RegisterForClicks("LeftButtonUp", "MiddleButtonUp", "RightButtonUp")
 
     -- Tooltip
     btn:SetScript("OnEnter", function(self)
@@ -113,6 +124,7 @@ local function CreateButton()
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Left-click for the codex", 0.5, 0.5, 0.5)
         GameTooltip:AddLine("Right-click for settings", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine("Middle-click for BazUI Edit Mode", 0.5, 0.5, 0.5)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function()

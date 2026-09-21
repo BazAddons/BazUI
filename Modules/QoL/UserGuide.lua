@@ -70,6 +70,7 @@ BazUI:RegisterUserGuide("QoL", {
                     { "Quest dialogue", "The window an NPC offers and hands in quests through." },
                     { "NPC chat", "The list of what an NPC has to say, and what else they can do for you." },
                     { "World map", "Windowed only." },
+                    { "Flight map", "The flight master's map." },
                     { "Vendor", "A merchant's goods." },
                     { "Mailbox", "Your post." },
                     { "Bank", "Your bank." },
