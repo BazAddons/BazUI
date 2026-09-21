@@ -1351,9 +1351,26 @@ end
 -- Module API
 ---------------------------------------------------------------------------
 
+-- Opening the codex is a fresh look at the game, not a return to where
+-- you left off. The page you were on, what you had typed, what you had
+-- narrowed to and what you had sorted by were all answers to a question
+-- you asked last time, and carrying them over means opening the window
+-- and being shown the middle of an old search.
+--
+-- Each tab forgets its own state, because only the tab knows what it
+-- was holding. Folded blocks are not in this: a fold is a standing
+-- preference about what you care to see, which is why it is saved.
+function Panel:ResetForOpen()
+    addon:SetSetting("activeTab", "today")
+    for _, def in pairs(Codex.customTabs or {}) do
+        if def.Reset then pcall(def.Reset) end
+    end
+end
+
 function Codex:Show()
     Build()
     self.Panel:ApplySettings()
+    self.Panel:ResetForOpen()
     self.Panel:RebuildTabs()
     frame:Show()
     self.Panel:Refresh()

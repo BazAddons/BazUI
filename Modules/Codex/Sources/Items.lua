@@ -264,16 +264,18 @@ local function BuildTree()
 end
 
 -- What is picked. Numbers, or nil for "all of them" at that level.
+--
+-- Held for as long as the window is open and no longer. Saving it
+-- would mean opening the codex tomorrow inside last night's search for
+-- cloth leg pieces, which is not what anybody opens it for.
+local pickClass, pickSubclass, pickSlot
+
 local function Picked()
-    return tonumber(addon:GetSetting("itemClass")),
-           tonumber(addon:GetSetting("itemSubclass")),
-           tonumber(addon:GetSetting("itemSlot"))
+    return pickClass, pickSubclass, pickSlot
 end
 
 local function Pick(class, subclass, slot)
-    addon:SetSetting("itemClass", class)
-    addon:SetSetting("itemSubclass", subclass)
-    addon:SetSetting("itemSlot", slot)
+    pickClass, pickSubclass, pickSlot = class, subclass, slot
 end
 
 -- The hits that are inside whatever is picked. A straight pass over
@@ -361,6 +363,117 @@ local query = ""
 local headerNote
 local pendingHits = {}   -- what the header resolved, for the list to draw
 
+---------------------------------------------------------------------------
+-- Columns
+--
+-- What a column says depends on what you are looking at. Item level on
+-- a stack of copper ore is a number nobody wants, and a slot on a
+-- potion is a blank column taking up the row. So each class of item
+-- brings its own set, and a column that would say nothing is not drawn
+-- at all rather than drawn empty.
+--
+-- Name is not in here. It is the row, and it takes whatever width the
+-- columns leave.
+---------------------------------------------------------------------------
+
+local COLUMN = {
+    type = {
+        title = "Type", width = 108, justify = "LEFT",
+        text = function(rec)
+            if not rec.subclassID then return "" end
+            return SubclassName(rec.classID or 0, rec.subclassID)
+        end,
+        rank = function(rec) return (rec.classID or 0) * 100 + (rec.subclassID or 0) end,
+    },
+    slot = {
+        title = "Slot", width = 104, justify = "LEFT",
+        text = function(rec)
+            if not (rec.slot and rec.slot > 0) then return "" end
+            return SlotName(FoldSlot(rec.slot))
+        end,
+        rank = function(rec) return rec.slot or 0 end,
+    },
+    ilvl = {
+        title = "iLvl", width = 46, justify = "RIGHT", numeric = true,
+        text = function(rec)
+            return (rec.ilvl and rec.ilvl > 0) and tostring(rec.ilvl) or ""
+        end,
+        rank = function(rec) return rec.ilvl or 0 end,
+    },
+    req = {
+        title = "Req", width = 46, justify = "RIGHT", numeric = true,
+        text = function(rec)
+            return (rec.minLvl and rec.minLvl > 0) and tostring(rec.minLvl) or ""
+        end,
+        rank = function(rec) return rec.minLvl or 0 end,
+    },
+}
+
+-- By item class. Absent means the general set; an empty list means the
+-- name is the whole story, which is true of quest items and keys.
+local CLASS_COLUMNS = {
+    [0]  = { "type", "req" },                  -- Consumable
+    [1]  = { "type", "ilvl" },                 -- Container
+    [2]  = { "type", "slot", "ilvl", "req" },  -- Weapon
+    [4]  = { "type", "slot", "ilvl", "req" },  -- Armor
+    [5]  = { "type" },                         -- Reagent
+    [6]  = { "type", "req" },                  -- Projectile
+    [7]  = { "type" },                         -- Trade Goods
+    [9]  = { "type", "req" },                  -- Recipe
+    [11] = { "type", "ilvl" },                 -- Quiver
+    [12] = {},                                 -- Quest
+    [13] = {},                                 -- Key
+    [15] = { "type" },                         -- Miscellaneous
+}
+local GENERAL_COLUMNS = { "type", "ilvl", "req" }
+
+local function ActiveColumns()
+    local class = Picked()
+    local keys = class and CLASS_COLUMNS[class] or GENERAL_COLUMNS
+    local out = {}
+    for _, key in ipairs(keys) do out[#out + 1] = key end
+    return out
+end
+
+-- Where everything sits, measured in from the right edge of the card.
+-- The name gets what is left. Worked out once per render and handed to
+-- the header and every row, so a column and its heading cannot drift
+-- apart.
+local RIGHT_PAD, STAR_W, MET_W, OWNED_W, COL_GAP = 10, 18, 16, 74, 8
+
+local function ColumnLayout(keys)
+    local layout = { star = RIGHT_PAD }
+    layout.met = layout.star + STAR_W + COL_GAP
+    layout.owned = layout.met + MET_W + COL_GAP
+    local right = layout.owned + OWNED_W + COL_GAP
+    layout.columns = {}
+    for i = #keys, 1, -1 do
+        local key = keys[i]
+        local width = COLUMN[key].width
+        layout.columns[key] = { right = right, width = width }
+        right = right + width + COL_GAP
+    end
+    layout.nameRight = right + 2
+    return layout
+end
+
+-- What a row knows about its item. The catalog where there is one, and
+-- the client for an item met on a build with no catalog.
+local function RecordFor(itemID)
+    local cat = Catalog()
+    local rec = cat and cat.Get(itemID)
+    if rec then return rec end
+
+    local name, _, quality, ilvl, minLvl, _, _, _, _, _, _, classID, subclassID =
+        C_Item.GetItemInfo(itemID)
+    if not name then return nil end
+    return {
+        id = itemID, name = name, quality = quality,
+        ilvl = ilvl, minLvl = minLvl,
+        classID = classID, subclassID = subclassID,
+    }
+end
+
 local function AcquireRow(parent)
     local row = table.remove(pool)
     if row then
@@ -382,12 +495,14 @@ local function AcquireRow(parent)
     row.label:SetJustifyH("LEFT")
     row.label:SetWordWrap(false)
 
+    -- One string per column, made on demand and kept with the row.
+    row.cols = {}
+
     -- The star. Hollow and faint until you want the thing; filled and
     -- bright once you do. One click either way, and the Wishlist page
     -- follows in the same redraw.
     row.star = CreateFrame("Button", nil, row)
     row.star:SetSize(18, 18)
-    row.star:SetPoint("RIGHT", -8, 0)
     row.star.tex = row.star:CreateTexture(nil, "ARTWORK")
     row.star.tex:SetAllPoints()
     row.star.tex:SetTexture(STAR_FILE)
@@ -420,7 +535,6 @@ local function AcquireRow(parent)
     -- say in words what it means.
     row.met = CreateFrame("Frame", nil, row)
     row.met:SetSize(16, 16)
-    row.met:SetPoint("RIGHT", row.star, "LEFT", -6, 0)
     row.met.tex = row.met:CreateTexture(nil, "ARTWORK")
     row.met.tex:SetAllPoints()
     row.met.tex:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
@@ -437,9 +551,7 @@ local function AcquireRow(parent)
     end)
 
     row.owned = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
-    row.owned:SetPoint("RIGHT", row.met, "LEFT", -6, 0)
     row.owned:SetJustifyH("RIGHT")
-    row.label:SetPoint("RIGHT", row.owned, "LEFT", -10, 0)
 
     row:SetScript("OnEnter", function(self)
         self.hover:Show()
@@ -688,16 +800,60 @@ end
 -- The list
 ---------------------------------------------------------------------------
 
--- The list is virtual. It used to draw one frame per result and stop
--- at two hundred, which was a cap you noticed the moment there were
--- eighteen thousand items to search. Now the card is the height of the
--- page, holds only the rows that fit in it, and the wheel changes which
--- slice of the results those rows show. Twenty frames, however many
--- hits; nothing is capped and nothing tall is ever built.
+-- The list is virtual. It draws only the rows that fit in the card and
+-- the wheel changes which slice of the results those rows show, so
+-- seventeen thousand results cost the same as twenty.
 --
 -- `first` is the index of the top row. It is kept across renders - a
 -- bag update redraws the page and must not throw you back to the top -
 -- and reset only when the question changes.
+
+local HEADER_H = 22
+
+-- What the list is sorted by, and which way. Kept for the session
+-- rather than saved: a sort is something you do while looking for one
+-- thing, and opening the tab tomorrow wanting last night's sort is
+-- rarer than opening it wanting the names in order.
+local sortKey, sortDesc = "name", false
+local sortedHits, sortedFor
+
+local function SortHits(hits, question)
+    local signature = table.concat({ question, sortKey, tostring(sortDesc), tostring(#hits) }, "\2")
+    if sortedFor == signature then return sortedHits end
+
+    local out = {}
+    for i, id in ipairs(hits) do out[i] = id end
+
+    if sortKey ~= "name" then
+        local col = COLUMN[sortKey]
+        -- Ranked once per item rather than on every comparison: a sort
+        -- of seventeen thousand asks this a quarter of a million times.
+        local rank, name = {}, {}
+        for _, id in ipairs(out) do
+            local rec = RecordFor(id)
+            rank[id] = rec and col.rank(rec) or 0
+            name[id] = rec and rec.name or ""
+        end
+        table.sort(out, function(a, b)
+            if rank[a] ~= rank[b] then
+                if sortDesc then return rank[a] > rank[b] end
+                return rank[a] < rank[b]
+            end
+            return name[a] < name[b]
+        end)
+    elseif sortDesc then
+        local name = {}
+        for _, id in ipairs(out) do
+            local rec = RecordFor(id)
+            name[id] = rec and rec.name or ""
+        end
+        table.sort(out, function(a, b) return name[a] > name[b] end)
+    end
+    -- Ascending by name is the order the catalog is already in.
+
+    sortedHits, sortedFor = out, signature
+    return out
+end
 
 local function Build(parent)
     if page then
@@ -710,12 +866,24 @@ local function Build(parent)
     page.rows = {}
     page.first = 0
     page.hits = {}
+    page.heads = {}
 
     -- Results live in the same card the rest of the codex draws, so a
     -- lookup and a lockout read as pages of one book.
     page.card = Codex.Panel.CreateBox(page)
     page.card:SetPoint("TOPLEFT")
     page.card:SetPoint("TOPRIGHT")
+
+    -- The heading strip, inside the card above the rows.
+    page.head = CreateFrame("Frame", nil, page.card)
+    page.head:SetPoint("TOPLEFT", 10, -8)
+    page.head:SetPoint("TOPRIGHT", -10, -8)
+    page.head:SetHeight(HEADER_H)
+    page.head.rule = page.head:CreateTexture(nil, "ARTWORK")
+    page.head.rule:SetHeight(1)
+    page.head.rule:SetPoint("BOTTOMLEFT")
+    page.head.rule:SetPoint("BOTTOMRIGHT")
+    page.head.rule:SetColorTexture(unpack(Theme.colors.edge))
 
     -- The same arrow every scrolling block wears, in the same place.
     page.hint = page.card:CreateTexture(nil, "OVERLAY")
@@ -737,6 +905,78 @@ local function Build(parent)
     return page
 end
 
+-- One clickable heading. Click to sort by it, click again to turn it
+-- round. Numbers start at the biggest, words at A, because that is
+-- what each is usually being asked for.
+local function AcquireHead(key)
+    local head = page.heads[key]
+    if head then return head end
+
+    head = CreateFrame("Button", nil, page.head)
+    head:SetHeight(HEADER_H)
+    head.text = Theme.FontString(head, "OVERLAY", "GameFontNormalSmall")
+    head.text:SetPoint("LEFT")
+    head.text:SetPoint("RIGHT")
+    head.text:SetWordWrap(false)
+    head.arrow = head:CreateTexture(nil, "OVERLAY")
+    head.arrow:SetSize(10, 5)
+    head:SetScript("OnClick", function(self)
+        if sortKey == self.key then
+            sortDesc = not sortDesc
+        else
+            sortKey = self.key
+            sortDesc = COLUMN[self.key] and COLUMN[self.key].numeric or false
+        end
+        page.first = 0
+        Codex.Panel:QueueRefresh()
+    end)
+    head:SetScript("OnEnter", function(self) self.text:SetTextColor(1, 1, 1) end)
+    head:SetScript("OnLeave", function(self)
+        self.text:SetTextColor(unpack(sortKey == self.key and Theme.colors.gold or Theme.colors.textMuted))
+    end)
+    page.heads[key] = head
+    return head
+end
+
+local function FillHeader(keys, layout)
+    for _, head in pairs(page.heads) do head:Hide() end
+
+    local function Place(key, title, justify, width, right)
+        local head = AcquireHead(key)
+        head.key = key
+        head.text:SetText(title)
+        head.text:SetJustifyH(justify)
+        head:ClearAllPoints()
+        if width then
+            head:SetWidth(width)
+            head:SetPoint("RIGHT", page.head, "RIGHT", -right, 0)
+        else
+            head:SetPoint("LEFT", page.head, "LEFT", 28, 0)
+            head:SetPoint("RIGHT", page.head, "RIGHT", -right, 0)
+        end
+        head.text:SetTextColor(unpack(sortKey == key and Theme.colors.gold or Theme.colors.textMuted))
+
+        head.arrow:ClearAllPoints()
+        head.arrow:SetShown(sortKey == key)
+        if sortKey == key then
+            BazUI.SetArrowTexture(head.arrow, sortDesc and "DOWN" or "UP", 10)
+            if justify == "RIGHT" then
+                head.arrow:SetPoint("RIGHT", head.text, "LEFT", -3, 0)
+            else
+                head.arrow:SetPoint("LEFT", head.text, "LEFT",
+                    math.min(head.text:GetStringWidth() or 0, head:GetWidth() or 0) + 3, 0)
+            end
+        end
+        head:Show()
+    end
+
+    Place("name", "Name", "LEFT", nil, layout.nameRight)
+    for _, key in ipairs(keys) do
+        local col, spot = COLUMN[key], layout.columns[key]
+        Place(key, col.title, col.justify, spot.width, spot.right)
+    end
+end
+
 -- Draw the rows for the current slice. Rows are taken from the pool
 -- and handed back each time; twenty of them, so it costs nothing.
 local function FillRows()
@@ -745,23 +985,21 @@ local function FillRows()
 
     local hits = page.hits
     local visible = page.visible or 0
-    local y = 10
+    local keys, layout = page.keys or {}, page.layout
+    local y = 0
 
     for i = page.first + 1, math.min(#hits, page.first + visible) do
         local itemID = hits[i]
+        local rec = RecordFor(itemID)
         local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID)
         if not name then
             -- Not loaded this session. The catalog has the name, the
             -- color and the picture, which is all a row needs, so the
             -- server is not asked for a search result; hovering the row
             -- asks for the tooltip, which is when it becomes wanted.
-            local cat = Catalog()
-            local rec = cat and cat.Get(itemID)
             if rec then
                 name, quality, texture = rec.name, rec.quality, rec.icon
             else
-                -- Known by name from the met list only: ask, and draw
-                -- what we have meanwhile.
                 if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
                 name = Index()[itemID] or ("Item " .. itemID)
             end
@@ -769,12 +1007,43 @@ local function FillRows()
 
         local row = AcquireRow(page.card)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 10, -y)
-        row:SetPoint("TOPRIGHT", -10, -y)
+        row:SetPoint("TOPLEFT", 10, -(y + HEADER_H + 10))
+        row:SetPoint("TOPRIGHT", -10, -(y + HEADER_H + 10))
         Codex.Panel.SetRowBand(row, i)
         row.itemID = itemID
         SetStar(row)
+
+        row.star:ClearAllPoints()
+        row.star:SetPoint("RIGHT", -layout.star, 0)
+        row.met:ClearAllPoints()
+        row.met:SetPoint("RIGHT", -layout.met, 0)
         row.met:SetShown(Index()[itemID] ~= nil)
+        row.owned:ClearAllPoints()
+        row.owned:SetWidth(OWNED_W)
+        row.owned:SetPoint("RIGHT", -layout.owned, 0)
+
+        -- The columns this class wants, and nothing else shown.
+        for key, fs in pairs(row.cols) do fs:Hide() end
+        for _, key in ipairs(keys) do
+            local col, spot = COLUMN[key], layout.columns[key]
+            local fs = row.cols[key]
+            if not fs then
+                fs = Theme.FontString(row, "OVERLAY", "GameFontHighlightSmall")
+                fs:SetWordWrap(false)
+                row.cols[key] = fs
+            end
+            fs:ClearAllPoints()
+            fs:SetWidth(spot.width)
+            fs:SetPoint("RIGHT", -spot.right, 0)
+            fs:SetJustifyH(col.justify)
+            fs:SetText(rec and col.text(rec) or "")
+            fs:SetTextColor(unpack(Theme.colors.textMuted))
+            fs:Show()
+        end
+
+        row.label:ClearAllPoints()
+        row.label:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+        row.label:SetPoint("RIGHT", row, "RIGHT", -layout.nameRight, 0)
         row.icon:SetTexture(texture
             or (C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID))
             or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -810,9 +1079,6 @@ local function Render(content, width)
     p:SetWidth(width)
     p:Show()
 
-    -- The header already resolved the query for this pass.
-    p.hits = pendingHits or {}
-
     local class, subclass, slot = Picked()
     local question = table.concat({ query, tostring(class), tostring(subclass), tostring(slot) }, "\1")
     if question ~= lastQuestion then
@@ -820,18 +1086,28 @@ local function Render(content, width)
         p.first = 0
     end
 
+    -- The header already resolved the query for this pass; the order is
+    -- this page's to decide.
+    p.hits = SortHits(pendingHits or {}, question)
+    p.keys = ActiveColumns()
+    p.layout = ColumnLayout(p.keys)
+
     -- The card is the page: as tall as the room below the header, and
     -- no taller, so the panel has nothing of its own to scroll.
-    local room = math.max((Codex.Panel.ContentHeight() or 300) - 2, ROW_H + 20)
-    p.visible = math.max(1, math.floor((room - 20) / ROW_H))
-    p.first = math.max(0, math.min(p.first, #p.hits - p.visible))
+    local room = math.max((Codex.Panel.ContentHeight() or 300) - 2, ROW_H + 40)
+    p.visible = math.max(1, math.floor((room - 20 - HEADER_H) / ROW_H))
+    p.first = math.max(0, math.min(p.first, math.max(0, #p.hits - p.visible)))
 
     local cardHeight = (#p.hits > 0)
-        and (math.min(#p.hits, p.visible) * ROW_H + 20)
+        and (HEADER_H + math.min(#p.hits, p.visible) * ROW_H + 20)
         or 28
     p.card:SetHeight(cardHeight)
     p.card:SetShown(#p.hits > 0)
+    p.head:SetShown(#p.hits > 0)
 
+    if #p.hits > 0 then
+        FillHeader(p.keys, p.layout)
+    end
     FillRows()
 
     local used = (#p.hits > 0) and cardHeight or 1
@@ -842,6 +1118,18 @@ end
 Codex.customTabs.items = {
     label        = "Items",
     order        = 30,
+    -- Everything this tab was holding, let go. Called when the window
+    -- opens; see Panel:ResetForOpen.
+    Reset        = function()
+        query = ""
+        pendingID = nil
+        pickClass, pickSubclass, pickSlot = nil, nil, nil
+        sortKey, sortDesc = "name", false
+        sortedHits, sortedFor = nil, nil
+        lastQuestion = nil
+        if header and header.box then header.box:SetText("") end
+        if page then page.first = 0 end
+    end,
     RenderHeader = RenderHeader,
     Render       = Render,
     Hide         = function()
