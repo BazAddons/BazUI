@@ -30,8 +30,8 @@ local Codex = BazUI.Codex
 local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
-local MAX_RESULTS = 200   -- drawn at once; the filter narrows past this
-local ROW_H       = 26   -- a banded row, the same one the rest of the codex draws
+local ROW_H = 26   -- a banded row, the same one the rest of the codex draws
+local WHEEL = 3    -- rows per notch of the wheel
 
 Codex.customTabs = Codex.customTabs or {}
 
@@ -478,9 +478,6 @@ local function RenderHeader(host, width)
         else
             headerNote = "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
         end
-    elseif #hits > MAX_RESULTS then
-        headerNote = string.format(
-            "%d found, showing the first %d. Keep typing to narrow it.", #hits, MAX_RESULTS)
     else
         headerNote = nil
     end
@@ -505,6 +502,17 @@ end
 -- The list
 ---------------------------------------------------------------------------
 
+-- The list is virtual. It used to draw one frame per result and stop
+-- at two hundred, which was a cap you noticed the moment there were
+-- eighteen thousand items to search. Now the card is the height of the
+-- page, holds only the rows that fit in it, and the wheel changes which
+-- slice of the results those rows show. Twenty frames, however many
+-- hits; nothing is capped and nothing tall is ever built.
+--
+-- `first` is the index of the top row. It is kept across renders - a
+-- bag update redraws the page and must not throw you back to the top -
+-- and reset only when the question changes.
+
 local function Build(parent)
     if page then
         page:SetParent(parent)
@@ -514,6 +522,8 @@ local function Build(parent)
     page = CreateFrame("Frame", nil, parent)
     page:SetPoint("TOPLEFT")
     page.rows = {}
+    page.first = 0
+    page.hits = {}
 
     -- Results live in the same card the rest of the codex draws, so a
     -- lookup and a lockout read as pages of one book.
@@ -521,22 +531,37 @@ local function Build(parent)
     page.card:SetPoint("TOPLEFT")
     page.card:SetPoint("TOPRIGHT")
 
+    -- The same arrow every scrolling block wears, in the same place.
+    page.hint = page.card:CreateTexture(nil, "OVERLAY")
+    page.hint:SetPoint("BOTTOM", page.card, "BOTTOM", 0, 4)
+    BazUI.SetArrowTexture(page.hint, "DOWN", 20)
+    page.hint:SetAlpha(0.45)
+    page.hint:Hide()
+
+    page.card:EnableMouseWheel(true)
+    page.card:SetScript("OnMouseWheel", function(_, delta)
+        local most = math.max(0, #page.hits - (page.visible or 1))
+        local to = math.max(0, math.min(most, page.first - delta * WHEEL))
+        if to ~= page.first then
+            page.first = to
+            page.FillRows()
+        end
+    end)
+
     return page
 end
 
-local function Render(content, width)
-    local p = Build(content)
-    p:ClearAllPoints()
-    p:SetPoint("TOPLEFT")
-    p:SetWidth(width)
-    p:Show()
+-- Draw the rows for the current slice. Rows are taken from the pool
+-- and handed back each time; twenty of them, so it costs nothing.
+local function FillRows()
+    if not page then return end
     ReleaseRows()
 
-    -- The header already resolved the query for this pass.
-    local hits = pendingHits or {}
+    local hits = page.hits
+    local visible = page.visible or 0
     local y = 10
 
-    for i = 1, math.min(#hits, MAX_RESULTS) do
+    for i = page.first + 1, math.min(#hits, page.first + visible) do
         local itemID = hits[i]
         local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID)
         if not name then
@@ -556,7 +581,7 @@ local function Render(content, width)
             end
         end
 
-        local row = AcquireRow(p.card)
+        local row = AcquireRow(page.card)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", 10, -y)
         row:SetPoint("TOPRIGHT", -10, -y)
@@ -576,15 +601,51 @@ local function Render(content, width)
         row.owned:SetText(count > 0 and ("carrying " .. count) or "")
         row.owned:SetTextColor(unpack(Theme.colors.textMuted))
         row:Show()
-        p.rows[#p.rows + 1] = row
+        page.rows[#page.rows + 1] = row
         y = y + ROW_H
     end
 
-    local cardHeight = math.max(y + 10, 28)
-    p.card:SetHeight(cardHeight)
-    p.card:SetShown(#hits > 0)
+    local most = math.max(0, #hits - visible)
+    page.hint:SetShown(most > 0 and page.first < most)
+end
 
-    local used = (#hits > 0) and cardHeight or 1
+-- What the last render was asked, so a redraw for some other reason -
+-- a bag update, a loaded item - keeps its place, and only a new
+-- question starts from the top.
+local lastQuestion
+
+local function Render(content, width)
+    local p = Build(content)
+    p.FillRows = FillRows
+    p:ClearAllPoints()
+    p:SetPoint("TOPLEFT")
+    p:SetWidth(width)
+    p:Show()
+
+    -- The header already resolved the query for this pass.
+    p.hits = pendingHits or {}
+
+    local question = query .. "\1" .. tostring(addon:GetSetting("itemCategory") or "all")
+    if question ~= lastQuestion then
+        lastQuestion = question
+        p.first = 0
+    end
+
+    -- The card is the page: as tall as the room below the header, and
+    -- no taller, so the panel has nothing of its own to scroll.
+    local room = math.max((Codex.Panel.ContentHeight() or 300) - 2, ROW_H + 20)
+    p.visible = math.max(1, math.floor((room - 20) / ROW_H))
+    p.first = math.max(0, math.min(p.first, #p.hits - p.visible))
+
+    local cardHeight = (#p.hits > 0)
+        and (math.min(#p.hits, p.visible) * ROW_H + 20)
+        or 28
+    p.card:SetHeight(cardHeight)
+    p.card:SetShown(#p.hits > 0)
+
+    FillRows()
+
+    local used = (#p.hits > 0) and cardHeight or 1
     p:SetHeight(used)
     Codex.customTabs.items.height = used
 end
