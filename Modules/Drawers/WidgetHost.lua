@@ -1028,7 +1028,34 @@ end
 -- Reflow - rebuild the vertical slot stack from the current registry
 ---------------------------------------------------------------------------
 
+-- A reflow can ask for another one before it has finished.
+--
+-- A widget is told it has docked or undocked in the middle of a pass,
+-- and the honest answer to that is often "I am a different size now" -
+-- the minimap says exactly that, because the map it holds is sized
+-- against the drawer when it is in one and against nothing when it is
+-- not. Saying so calls Reflow from inside Reflow, and the inner pass
+-- then lays out frames the outer pass is still walking over.
+--
+-- So a reflow asked for while one is running is remembered and run
+-- afterwards, once, however many times it was asked for.
 function WidgetHost:Reflow()
+    if self._reflowing then
+        self._reflowAgain = true
+        return
+    end
+    self._reflowing = true
+    local ok, err = pcall(self.DoReflow, self)
+    self._reflowing = false
+
+    if self._reflowAgain then
+        self._reflowAgain = nil
+        self:Reflow()
+    end
+    if not ok then error(err, 0) end
+end
+
+function WidgetHost:DoReflow()
     if not self.parent then return end
 
     -- Defer the entire reflow if we're in combat. Reflow can call

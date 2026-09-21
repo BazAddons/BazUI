@@ -662,13 +662,25 @@ function MinimapWidget:Init()
         -- Asked on every reflow, so a style change is picked up even if
         -- something else in the drawer triggers the reflow first.
         GetDesiredHeight = function() return (select(2, Footprint())) end,
-        OnDock       = function() AttachMinimap(wrapper); wrapper:SetAlpha(1) end,
-        OnUndock     = function()
-            -- When switching to floating mode or re-docking, we keep the
-            -- wrapper as the Minimap's parent so the Minimap follows the
-            -- wrapper wherever WidgetHost puts it.
+        -- Docked and floating are not the same size.
+        --
+        -- In a drawer the wrapper is scaled to the drawer's width and
+        -- the map fills it; floating there is nothing to fill, so the
+        -- map draws at its own size and the wrapper has to be told what
+        -- that is. Re-applying the style does all of it - the map's
+        -- native size, the ring drawn round it, the scale and the
+        -- footprint - so the transition either way is one call.
+        OnDock       = function()
             AttachMinimap(wrapper)
             wrapper:SetAlpha(1)
+            MinimapWidget:ApplyFrameStyle()
+        end,
+        OnUndock     = function()
+            -- The wrapper stays the Minimap's parent through both, so
+            -- the map follows it wherever the host puts it.
+            AttachMinimap(wrapper)
+            wrapper:SetAlpha(1)
+            MinimapWidget:ApplyFrameStyle()
         end,
         GetOptionsArgs = function() return MinimapWidget:GetOptionsArgs() end,
     }
