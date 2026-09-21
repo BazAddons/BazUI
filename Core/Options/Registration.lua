@@ -24,6 +24,10 @@ local optionsTables = BazUI._optionsTables or {}
 BazUI._optionsTables = optionsTables
 
 local ROOT_KEY         = "BazUI"
+-- Air between a pinned header and the page that scrolls under it, and
+-- between the controls sitting side by side in it.
+local PINNED_GAP       = 10
+local PINNED_ROW_GAP   = 16
 local TAB_GAP          = 16
 local TAB_INSET        = 4
 local TAB_HEIGHT       = 24
@@ -162,6 +166,59 @@ local function RenderPageContent(content, optionsTable, width, stateHost)
     content:SetHeight(math.abs(y) + O.PAD)
 end
 
+-- A pinned header: the controls that act on the whole page rather than
+-- on one row of it.
+--
+-- A page of twenty switches puts "turn them all on" and "forget every
+-- position" at the bottom, where they are the two things you have to
+-- scroll past everything else to reach - and they are the two that have
+-- nothing to do with any particular row. Pinned, they sit above the list
+-- and stay there while it scrolls.
+--
+-- Rendered by the same widget factories as everything else, into a frame
+-- of its own, so a pinned toggle is the same toggle it would be further
+-- down the page.
+--
+-- Across rather than down. A header is a strip, and a strip that stacks
+-- is a header eating the list it is meant to sit above - two controls
+-- with a line of description each came to four lines of chrome before
+-- the first switch. Side by side they come to one. Which means a pinned
+-- control wants a label that says the whole thing, because there is no
+-- room under it for a second line explaining the first.
+local function RenderPinned(pinned, args, width)
+    O.ClearChildren(pinned)
+
+    local row = {}
+    for _, opt in ipairs(O.SortedArgs(args)) do
+        if not O.IsHidden(opt) and O.widgetFactories[opt.type] then
+            row[#row + 1] = opt
+        end
+    end
+
+    local total = math.min(width - O.PAD * 2, O.CONTENT_MAX)
+    local count = math.max(#row, 1)
+    local each  = math.floor((total - PINNED_ROW_GAP * (count - 1)) / count)
+
+    local h, x = 0, O.PAD
+    for _, opt in ipairs(row) do
+        local widget, wh = O.widgetFactories[opt.type](pinned, opt, each)
+        widget:SetPoint("TOPLEFT", pinned, "TOPLEFT", x, -O.PAD)
+        widget:Show()
+        if (wh or 0) > h then h = wh end
+        x = x + each + PINNED_ROW_GAP
+    end
+    pinned:SetHeight(h + O.PAD * 2)
+
+    -- The rule that says the list starts below here. Drawn after the
+    -- clear rather than once when the frame was made, because
+    -- ClearChildren takes a frame's own regions with it.
+    local rule = pinned:CreateTexture(nil, "ARTWORK")
+    rule:SetHeight(1)
+    rule:SetPoint("BOTTOMLEFT", O.PAD, 0)
+    rule:SetPoint("BOTTOMRIGHT", -O.PAD, 0)
+    rule:SetColorTexture(unpack(O.DIVIDER_COLOR))
+end
+
 local function RenderIntoCanvas(container, optionsTable)
     -- Where the reader had got to. A render builds a new scroll frame, so
     -- without this, changing one setting three quarters of the way down a
@@ -182,12 +239,34 @@ local function RenderIntoCanvas(container, optionsTable)
         container._renderTarget:SetParent(nil)
         container._renderTarget = nil
     end
+    if container._pinned then
+        container._pinned:Hide()
+        container._pinned:SetParent(nil)
+        container._pinned = nil
+    end
     -- Pickers call this to re-render after a selection change; the
     -- container outlives each render, so selection state lives on it.
     container._bazRefresh = function() RenderIntoCanvas(container, optionsTable) end
 
+    local pinnedArgs = optionsTable.pinned
+    if pinnedArgs and not next(pinnedArgs) then pinnedArgs = nil end
+
+    local pinned
+    if pinnedArgs then
+        pinned = CreateFrame("Frame", nil, container)
+        pinned:SetPoint("TOPLEFT", 0, 0)
+        pinned:SetPoint("TOPRIGHT", -18, 0)
+        -- Something to sit on until the first layout measures it.
+        pinned:SetHeight(1)
+        container._pinned = pinned
+    end
+
     local scroll = CreateFrame("ScrollFrame", nil, container)
-    scroll:SetPoint("TOPLEFT", 0, 0)
+    if pinned then
+        scroll:SetPoint("TOPLEFT", pinned, "BOTTOMLEFT", 0, -PINNED_GAP)
+    else
+        scroll:SetPoint("TOPLEFT", 0, 0)
+    end
     scroll:SetPoint("BOTTOMRIGHT", -18, 0)
     scroll:EnableMouseWheel(true)
     container._scrollFrame = scroll
@@ -219,6 +298,10 @@ local function RenderIntoCanvas(container, optionsTable)
 
     local function Layout(width)
         if not width or width <= 0 then return end
+        -- The header first: the scroll frame hangs off its bottom edge,
+        -- so its height has to be right before the page below is
+        -- measured against what is left.
+        if pinned then RenderPinned(pinned, pinnedArgs, width) end
         content:SetWidth(width)
         O.ClearChildren(content)
         RenderPageContent(content, optionsTable, width, container)

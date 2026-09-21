@@ -43,6 +43,15 @@ BazUI:RegisterUserGuide("QoL", {
         },
 
         {
+            title = "Other addons' settings",
+            blocks = {
+                { type = "paragraph", text = "WoW: Forever writes every addon's settings at logout and never reads one back. That is the client, not the addon, and it is why so much of your interface forgets itself every time you reload." },
+                { type = "paragraph", text = "BazUI keeps its own settings somewhere the client does read, and it can carry other addons' settings the same way. One switch per addon, and only for addons you actually have installed." },
+                { type = "note", text = "|cffffd700A greyed switch|r is an addon that loads before BazUI. By the time we could put its settings back it has already read them, so there is nothing to be done for it." },
+                { type = "note", style = "tip", text = "For an addon not on the list, |cffffd700/baz persist add <AddOn> <Globals>|r does the same thing. The globals are on the |cffffd700## SavedVariables|r line of that addon's own .toc file, and |cffffd700/baz persist|r lists everything being looked after." },
+            },
+        },
+        {
             title = "Draggable windows",
             blocks = {
                 { type = "paragraph", text = "The game places its own panels where it wants them, and puts them back there every time they open. Each switch here hands one of those windows back to you: drag it by its frame, and it opens where you left it from then on - across sessions, not just until you log out." },
@@ -52,9 +61,12 @@ BazUI:RegisterUserGuide("QoL", {
                 { type = "table", columns = { "Window", "What it is" }, rows = {
                     { "Options", "The game's settings, and BazUI's own pages inside it." },
                     { "Character", "Your character sheet." },
-                    { "Spellbook", "Your spells." },
+                    { "Spellbook and talents", "Your spells, and the talent tree, which shares that window." },
                     { "Quest log", "Your quests. On this client they live inside the map." },
                     { "Social", "Friends, who is online, the guild roster." },
+                    { "Guild", "Your guild and your communities." },
+                    { "Group finder", "Looking for group." },
+                    { "Appearances", "Your appearances. Called Collections on clients that also keep mounts and pets there." },
                     { "Quest dialogue", "The window an NPC offers and hands in quests through." },
                     { "NPC chat", "The list of what an NPC has to say, and what else they can do for you." },
                     { "World map", "Windowed only." },
@@ -70,7 +82,7 @@ BazUI:RegisterUserGuide("QoL", {
                 { type = "note", text = "A window your client does not have, or whose addon is not installed, gets no switch at all - so this list is longer than the page you are looking at, and that is the reason." },
                 { type = "h3", text = "In combat" },
                 { type = "paragraph", text = "Windows cannot be dragged while you are fighting, and a window that opens during a fight appears where the game puts it rather than where you left it. Both come back to normal when combat ends." },
-                { type = "note", text = "|cffffd700Forget where I put them|r clears every saved position at once, and the windows open where the game puts them again. The switches stay on, so they are draggable from there." },
+                { type = "note", text = "|cffffd700Reset window positions|r, at the top of the page, forgets every position at once. The windows open where the game puts them again, and stay draggable. |cffffd700All windows draggable|r beside it throws every switch on the page at once. Both stay put while the list scrolls." },
             },
         },
 

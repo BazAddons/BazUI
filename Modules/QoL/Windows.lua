@@ -19,6 +19,14 @@
 local addon = BazUI:GetModule("QoL")
 if not addon then return end
 
+-- Blizzard does not call the same window the same thing on both clients,
+-- and a switch named after the other client's title bar is a switch
+-- nobody finds. Forever's collections window is titled Appearances,
+-- because appearances is all that is in it. Read off the interface
+-- version because that is the thing that actually differs; Forever is
+-- 16001 and retail is six figures.
+local VANILLA = (select(4, GetBuildInfo()) or 0) < 20000
+
 -- key       what the switch is saved under
 -- label     what the page calls it
 -- frame     the global the game gives it
@@ -32,12 +40,35 @@ local WINDOWS = {
     { key = "dragOptions",    label = "Options",       frame = "SettingsPanel",
       desc = "Drag the options window - the game's settings, and BazUI's own pages inside it - where you want it." },
     { key = "dragCharacter",  label = "Character",     frame = "CharacterFrame"    },
-    { key = "dragSpellbook",  label = "Spellbook",     frame = "SpellBookFrame"    },
+    -- One window, two things in it. Forever and retail both hang the
+    -- talent tree off the spellbook frame and retitle it as you switch
+    -- tabs, so a separate switch for talents would be a second switch
+    -- for the same window. The older clients' SpellBookFrame is only the
+    -- book, which is why the label says both and the description says
+    -- where they are.
+    { key = "dragSpellbook",  label = "Spellbook and talents",
+      frame = { "PlayerSpellsFrame", "SpellBookFrame" },
+      loadedBy = "Blizzard_PlayerSpells",
+      desc = "Drag the spellbook where you want it. Your talents share that window, so they move with it." },
     -- Two names, because two clients. Classic has a quest log window of
     -- its own; on Forever the quest log lives in the map. First one the
     -- client actually has wins - see Resolve below.
     { key = "dragQuestLog",   label = "Quest log",     frame = { "QuestMapFrame", "QuestLogFrame" } },
     { key = "dragSocial",     label = "Social",        frame = "FriendsFrame"      },
+    { key = "dragGuild",      label = "Guild",         frame = "CommunitiesFrame",
+      loadedBy = "Blizzard_Communities",
+      desc = "Drag the guild and communities window where you want it. Marked movable in Blizzard's own file and never wired up, the same as the options window." },
+    -- Two windows under one switch, because the group finder is one idea
+    -- wearing two shapes: Forever has the vanilla-looking Looking For
+    -- Group panel, retail has the dungeon and raid finder.
+    { key = "dragGroupFinder", label = "Group finder", frame = { "LFGParentFrame", "PVEFrame" },
+      loadedBy = { "Blizzard_GroupFinder_VanillaStyle", "Blizzard_GroupFinder" },
+      desc = "Drag the group finder where you want it." },
+    { key = "dragCollections", label = VANILLA and "Appearances" or "Collections",
+      frame = "CollectionsJournal", loadedBy = "Blizzard_Collections",
+      desc = VANILLA
+          and "Drag the appearances window where you want it."
+          or "Drag the collections window - mounts, pets, toys and appearances - where you want it." },
     -- Talking to somebody. Two frames rather than one entry with two
     -- names: those alternatives are for the same window under different
     -- names on different clients, and these are two windows that both

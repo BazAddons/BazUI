@@ -279,6 +279,23 @@ BazUI:RegisterUserGuide("BazUI", {
             },
         },
         {
+            title = "Settings that stay put",
+            blocks = {
+                { type = "paragraph", text = "On WoW: Forever, nothing an addon saves comes back. The client writes the file at every logout and never reads one, for every addon on your machine, which is why so much of your interface resets itself each time you reload." },
+                { type = "paragraph", text = "BazUI keeps its settings somewhere the client does read. Nothing to switch on and nothing to set up: your layout, your bars, your profiles and your window positions simply come back, through a reload, a logout and a full restart." },
+                { type = "note", style = "tip", text = "On a client that reads saved variables properly, BazUI uses those instead and tidies away anything it left behind. The day Forever is fixed, this stops mattering on its own." },
+                { type = "h3", text = "Other addons" },
+                { type = "paragraph", text = "The bug is not BazUI's and neither is the damage, so BazUI can carry another addon's settings the same way. You ask for it by name, one addon at a time." },
+                { type = "table", columns = { "Command", "What it does" }, rows = {
+                    { "/baz persist", "Lists what is being looked after." },
+                    { "/baz persist add TomTom TomTomDB", "Starts keeping that addon's settings. Name the globals it saves; the client will not tell us." },
+                    { "/baz persist remove TomTom", "Stops, and lets go of what was kept." },
+                } },
+                { type = "note", text = "|cffffd700Only addons that load after BazUI|r can be helped, because the settings have to be put back before that addon reads them. Alphabetically that is most of them, but not all. An addon that cannot be helped says so rather than pretending." },
+                { type = "note", style = "tip", text = "The globals an addon saves are in its own .toc file, on the |cffffd700## SavedVariables|r line." },
+            },
+        },
+        {
             title = "The look",
             blocks = {
                 { type = "paragraph", text = "Almost everything BazUI draws is a plain texture tinted by a handful of colors, which means the whole look is a list of numbers rather than a folder of art. The |cffffd700Skin|r page is where you change it." },

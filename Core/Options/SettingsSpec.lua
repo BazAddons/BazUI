@@ -64,6 +64,9 @@
 --   set        - function(_, value) -- save the new value
 --   disabled   - function() -> bool (live gray-out check)
 --   hidden     - bool or function() -> bool (Options page only)
+--   pinned     - true to sit in the page's fixed header rather than in
+--                the part that scrolls (Options page only). For the
+--                controls that act on the whole page.
 --   disabledLabel - string shown in editMode dropdowns when disabled
 --
 -- Format helpers:
@@ -264,6 +267,11 @@ local function BuildOptionsArgsForEntry(e)
         out.confirm     = e.confirm
         out.confirmText = e.confirmText
         out.width       = e.width
+        -- A button with no description of its own is drawn at the left of
+        -- its row, where a lone action reads as part of the form. In a
+        -- pinned strip it is one of several across the page instead, and
+        -- wants the right edge of its share.
+        out.alignRight  = e.alignRight
     else
         return nil  -- unknown type; skip
     end
@@ -276,6 +284,11 @@ function BazUI:BuildOptionsTableFromSpec(addonName, opts)
     opts = opts or {}
 
     local args = {}
+    -- Entries that asked to be pinned, kept apart from the rest. They are
+    -- still ordered against the page as a whole, so a pinned entry with a
+    -- low order comes first in the header the same way it would have come
+    -- first in the list.
+    local pinnedArgs = {}
     local order = 1
     local intro = opts.intro or spec.intro
 
@@ -315,7 +328,11 @@ function BazUI:BuildOptionsTableFromSpec(addonName, opts)
                 local widget = BuildOptionsArgsForEntry(e)
                 if widget then
                     widget.order = order
-                    args[e.key] = widget
+                    if e.pinned then
+                        pinnedArgs[e.key] = widget
+                    else
+                        args[e.key] = widget
+                    end
                     order = order + 1
                 end
             end
@@ -326,6 +343,7 @@ function BazUI:BuildOptionsTableFromSpec(addonName, opts)
         name = opts.name or addonName,
         type = "group",
         args = args,
+        pinned = next(pinnedArgs) and pinnedArgs or nil,
     }
 end
 

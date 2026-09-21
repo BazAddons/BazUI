@@ -278,9 +278,26 @@ function BazUI:CreatePortraitWindow(globalName, opts)
     -- Without them the frame is just centered and drag is ephemeral.
     local savedAddon = opts.savedAddon
     local savedKey   = opts.savedKey
-    do
-        f:ClearAllPoints()
+
+    -- Asked again once the settings are really there.
+    --
+    -- A window is not always built at a tidy moment. The bag panel is
+    -- made from whichever bag event arrives first, which can be before
+    -- its module has been given its database - and GetSetting on a module
+    -- without one answers nil, so the window centres itself and the saved
+    -- position is never read. It looked exactly like a position that was
+    -- not being saved, and it hid behind the client's own saved variables
+    -- bug for as long as nothing was saved at all.
+    --
+    -- So the position is applied now and applied again when the settings
+    -- arrive, unless it has been dragged in between - a drag is the
+    -- player saying where it goes, and nothing may overrule that.
+    local dragged = false
+
+    local function ApplySaved()
+        if dragged then return end
         local saved = savedAddon and savedKey and savedAddon:GetSetting(savedKey) or nil
+        f:ClearAllPoints()
         if saved and saved.point then
             f:SetPoint(saved.point, UIParent, saved.relPoint or saved.point,
                        saved.x or 0, saved.y or 0)
@@ -289,8 +306,14 @@ function BazUI:CreatePortraitWindow(globalName, opts)
         end
     end
 
+    ApplySaved()
+    if savedAddon and savedKey and BazUI.QueueForVariables then
+        BazUI:QueueForVariables(ApplySaved)
+    end
+
     local function OnDragStop()
         f:StopMovingOrSizing()
+        dragged = true
         if savedAddon and savedKey then
             local point, _, relPoint, x, y = f:GetPoint()
             savedAddon:SetSetting(savedKey, {

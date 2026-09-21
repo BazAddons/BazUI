@@ -23,7 +23,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 014
+## Version: 015
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -55,6 +55,10 @@
 # Must stay first, because an addon file runs before its saved variables do
 # and the real ones are meant to overwrite this.
 Core\Seed.lua
+
+# Straight after it: the settings move into a table this client really does
+# read back. Seed.lua stays as the fallback for a client with neither.
+Core\Persist.lua
 
 # Core - forked from BazCore. Module registry, profiles, options window,
 # Edit Mode, popups and UI helpers.

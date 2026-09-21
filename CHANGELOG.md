@@ -1,48 +1,50 @@
-## 014
+## 015
 
-**The Codex knows every item in the game.** The Items tab used to search
-only the things your character had carried, because the client cannot
-search its own items - there is no call for it. So BazUI now ships the
-game's own item list for WoW: Forever, generated from the game's tables
-the same way the faction and instance lists already were. 17,771 items,
-once the placeholders and the retired ones are dropped.
+**Your settings stay put on WoW: Forever.**
 
-Open the tab and it is all there, in name order. Scroll it, browse it by
-category, sort it, or type a name and search the lot.
+The client writes every addon's saved variables at logout and never reads
+one back. Not BazUI's, not anybody's. It is why your bars, your layout and
+half your interface have been forgetting themselves on every reload since
+the day Forever launched, and there has never been anything an addon could
+do about it from the inside.
+
+There is now. Some of the game's own saved files are read back, and BazUI
+keeps its settings in one of those. Your layout, your bars, your profiles,
+your window positions and everything else come back through a reload, a
+logout and a full restart. Nothing to switch on, nothing to set up, no
+file to edit.
+
+If you have been baking a settings file by hand to work around this, you
+can stop.
 
 ### New
 
-- **Browse by the game's own tree**, the one the auction house uses. Pick
-  Weapon and a second row of tabs gives you Daggers, Staves, Swords. Pick
-  Armor and it gives you Cloth, Leather, Mail, Plate; pick one of those
-  and a third row gives you the slot. Cloth then Legs is every cloth leg
-  piece in the game.
-- **Columns, and they belong to what you are looking at.** Armor and
-  weapons get Type, Slot, iLvl and Req. Consumables get Type and Req,
-  because item level on a potion is a number nobody wants. Quest items
-  and keys get neither. **Click a heading to sort by it**, click again to
-  turn it round - so sorting cloth legs by Req shows what you can wear
-  now.
-- **A star on every row** adds the item to your Wishlist, and takes it
-  off again. Searching for something and starring it is the way to build
-  a wishlist now; the box on the Wishlist tab is still there for a link
-  somebody just posted in chat.
-- **A green tick** on a row means this character has met that item:
-  carried, worn, banked, looted, or seen linked in chat.
-- **A count under the tabs**, always, saying how many items you are
-  looking at and of how many.
-- **`/bwd float`** and **`/bwd map`** report where loose drawer widgets
-  and the minimap think they should be, for when one is not where you
-  expect.
+- **BazUI can carry other addons' settings too.** The bug is not ours and
+  neither is the damage, so **Quality of Life > Other addons' settings**
+  has a switch for each addon you have installed that we know how to
+  help. TomTom keeps its arrow where you put it and stays quiet about the
+  coordinates. For anything not on the list, `/baz persist add <AddOn>
+  <Globals>`.
+- **Four more draggable windows**: the spellbook, which carries your
+  talents with it, the guild and communities window, the group finder,
+  and appearances.
+- **Draggable Windows opens with the two controls that act on the whole
+  page**, and they stay put while the list scrolls. **All windows
+  draggable** throws every switch at once, and **Reset window positions**
+  replaces the old Forget where I put them.
 
 ### Fixed
 
-- **The item list ran out at two hundred rows.** It draws only the rows
-  that fit and scrolls through the rest, so the end of a search is
-  reachable however long it is.
-- **Opening the Codex now gives you a fresh window.** The page you were
-  on, what you had typed, what you had narrowed to and what you had
-  sorted by are let go when it opens. Folded blocks still stay folded.
-- **Tabs were truncated with room to spare** beside them.
-- **Everything is written in American English**, which it was not
-  consistently.
+- **Window positions come back.** The bag panel and the codex were
+  reading their saved position before the settings had arrived, so they
+  centered themselves and never looked again. Invisible until now, for
+  the obvious reason.
+- **A greyed switch** in that addon list is one that loads before BazUI.
+  Its settings are already read by the time we could put them back, so it
+  says so rather than pretending.
+
+### Notes
+
+- On a client that reads saved variables properly, BazUI uses those
+  instead and tidies away anything it left behind. The day Forever is
+  fixed, all of this stops mattering on its own, with nothing to undo.

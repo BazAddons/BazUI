@@ -124,10 +124,25 @@ local function ReadyVariables()
 
     -- Counted here rather than at a fixed event, so it counts loads rather
     -- than how early we looked. If this climbs, the file is being read.
+    --
+    -- Read before Persist runs, and written after, so it goes on answering
+    -- the question it was made for - has the client started reading saved
+    -- variables - rather than quietly becoming a readout of the place we
+    -- moved them to.
     local t = BazUI._svTrace
     _G.BazUICharDB = _G.BazUICharDB or {}
     t.charLoads = _G.BazUICharDB.loads or 0
-    _G.BazUICharDB.loads = t.charLoads + 1
+
+    -- Here, and only here. This is the moment the saved variables are as
+    -- real as this client is going to make them, and the last moment
+    -- before anything reads a setting: Persist may replace both globals
+    -- outright with the copies the host table was holding, and a module
+    -- that had already taken a reference would be writing into a table
+    -- nobody is going to save. See Core/Persist.lua.
+    if BazUI.Persist then BazUI.Persist:Adopt() end
+
+    _G.BazUICharDB = _G.BazUICharDB or {}
+    _G.BazUICharDB.loads = (_G.BazUICharDB.loads or 0) + 1
 
     for _, entry in ipairs(variablesQueue) do entry() end
     wipe(variablesQueue)
@@ -1305,6 +1320,12 @@ BazUI:QueueForLogin(function()
                     BazUI:ReportSavedVariables()
                 end,
             },
+            persist = {
+                desc = "Keep another addon's settings too: add <AddOn> [Globals], remove <AddOn>, or nothing to list",
+                handler = function(args)
+                    BazUI:PersistCommand(args)
+                end,
+            },
             taint = {
                 desc = "Report which Blizzard globals and frames BazUI has taken over (add 'all' for every addon)",
                 handler = function(args)
@@ -1347,6 +1368,66 @@ end)
 -- BazUI is standalone. Running it next to the BazCore-based suite means two
 -- addons fighting over the minimap, quest tracker and chat, so say so once.
 ---------------------------------------------------------------------------
+-- /baz persist - looking after another addon's settings.
+--
+-- Not a setting on a page, because this is a repair for a broken client
+-- rather than a preference, and the list of addons it applies to is one
+-- somebody types once and forgets. See Core/Persist.lua.
+function BazUI:PersistCommand(args)
+    local P = BazUI.Persist
+    if not P then return end
+    args = (args or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local verb, rest = args:match("^(%S+)%s*(.*)$")
+    verb = verb and verb:lower() or nil
+
+    if verb == "add" then
+        local addOnName, globals = rest:match("^(%S+)%s*(.*)$")
+        if not addOnName then
+            BazUI:Print("Which addon? /baz persist add TomTom")
+            return
+        end
+        local list
+        if globals and globals ~= "" then
+            list = {}
+            for word in globals:gmatch("[%w_]+") do list[#list + 1] = word end
+        end
+        local ok, result = P:AddGuest(addOnName, list)
+        if ok then
+            BazUI:Print(("Now keeping %s's settings: %s. They come back from the next login on.")
+                :format(addOnName, table.concat(result, ", ")))
+        else
+            BazUI:Print("Cannot: " .. tostring(result))
+        end
+        return
+    end
+
+    if verb == "remove" or verb == "forget" then
+        local addOnName = rest:match("^(%S+)")
+        if addOnName and P:RemoveGuest(addOnName) then
+            BazUI:Print(addOnName .. " is on its own again. Its settings here are let go.")
+        else
+            BazUI:Print("Not looking after " .. tostring(addOnName) .. ".")
+        end
+        return
+    end
+
+    local guests = P:Guests()
+    if #guests == 0 then
+        BazUI:Print("Not looking after any other addon's settings. "
+            .. "|cffffd700/baz persist add TomTom|r to start.")
+    else
+        BazUI:Print("Also keeping the settings of:")
+        for _, name in ipairs(guests) do
+            local globals = P:GuestGlobals(name) or {}
+            print(("  %s - %s%s"):format(name, table.concat(globals, ", "),
+                (P.guestReport and P.guestReport[name])
+                    and ("  (" .. P.guestReport[name] .. " this login)") or ""))
+        end
+    end
+    print("  |cff888888Only for addons that load after BazUI, and only on a client "
+        .. "that does not read saved variables back.|r")
+end
+
 function BazUI:ReportSavedVariables()
     local t = BazUI._svTrace or {}
     local function Say(n)
@@ -1376,6 +1457,21 @@ function BazUI:ReportSavedVariables()
 
     print(("  per-character file remembered %s previous load%s"):format(
         tostring(t.charLoads), (t.charLoads == 1) and "" or "s"))
+
+    -- Where the settings really are on a client that will not read its
+    -- own. See Core/Persist.lua.
+    if BazUI.Persist then
+        print("  host table (" .. BazUI.Persist.HOST .. "): " .. BazUI.Persist:Describe())
+        local keys = BazUI.Persist:Keys()
+        print("  it is holding " .. #keys .. " table"
+            .. ((#keys == 1) and "" or "s") .. " of ours"
+            .. ((#keys > 0) and (": " .. table.concat(keys, ", ")) or ""))
+        -- When the host table turned up, which decides whether another
+        -- addon's settings can be restored before it reads them.
+        for _, line in ipairs(BazUI.Persist.hostTrace or {}) do
+            print("    " .. line)
+        end
+    end
 
     -- "Interface" is not a metadata key the client hands back, which is why
     -- this used to print a question mark and tell us nothing at all. Any X-
