@@ -180,6 +180,13 @@ end
 
 local ARMOR = 4
 
+-- A subclass has to be worth a tab. The game keeps categories it no
+-- longer uses - "Trade Goods (OBSOLETE)" holds three items, "Explosives
+-- (OBSOLETE)" holds one - and a tab each for those crowds out the ones
+-- people want while saying nothing. Anything under this many items is
+-- reachable by name, by All, and by its class.
+local MIN_SUBCLASS = 5
+
 -- Slots the auction house folds together: a robe is a chest piece, and
 -- the right-hand ranged slot is the ranged slot.
 local SLOT_FOLD = { [20] = 5, [26] = 15 }
@@ -501,9 +508,14 @@ local function BuildHeader(host)
     header.strips = {}
     local above = header.box
     for level = 1, 3 do
+        -- No width cap worth the name. These labels are the client's
+        -- own words and some are long ("Trade Goods (OBSOLETE)"); a cap
+        -- clipped them to an ellipsis while the row still had room to
+        -- the right of it. The strip wraps to a second line when it
+        -- genuinely runs out of width, which is the honest limit.
         local strip = BazUI.CreateTabStrip(nil, header, {
             style = "panel", tabHeight = 20, spacing = 3,
-            minTabWidth = 44, maxTabWidth = 130,
+            minTabWidth = 44, maxTabWidth = 400,
         })
         strip:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -6)
         strip.keys = {}
@@ -581,7 +593,11 @@ local function RebuildTree()
     if c and #c.subOrder > 1 then
         entries = {}
         for _, sc in ipairs(c.subOrder) do
-            entries[#entries + 1] = { id = sc.id, label = SubclassName(class, sc.id) }
+            -- The one that is picked stays, however small, so a pick
+            -- never vanishes from under the cursor.
+            if sc.count >= MIN_SUBCLASS or sc.id == subclass then
+                entries[#entries + 1] = { id = sc.id, label = SubclassName(class, sc.id) }
+            end
         end
         FillStrip(s2, entries, subclass, function(id)
             Pick(class, id, nil)
