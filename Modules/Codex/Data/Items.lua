@@ -17974,6 +17974,15 @@ function Items.Count()
     return Items.count
 end
 
+-- Every item there is, in name order. The list is shared, so callers
+-- read it and do not write to it.
+function Items.All()
+    Items.Load()
+    local out = {}
+    for i, entry in ipairs(byName) do out[i] = entry.id end
+    return out
+end
+
 -- Every item whose name contains the needle, in name order. Plain
 -- substring, case-insensitive, the way the search box already behaves
 -- against the met list.

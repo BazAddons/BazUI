@@ -14,11 +14,13 @@
 --                     searches that. Where the catalogue is for another
 --                     client (retail, today) a name falls back to what
 --                     this character has met.
---   Nothing           the list you see before typing is what this
---                     character has met: carried, worn, banked, or
---                     looked up by the client for any reason. Eighteen
---                     thousand rows is not a page anyone reads; the
---                     ones you have touched are.
+--   Nothing           every item in the game, in name order, for
+--                     browsing - by category, with the tabs. The list
+--                     is virtual, so seventeen thousand rows cost the
+--                     same as twenty. What this character has met -
+--                     carried, worn, banked, or looked up by the client
+--                     for any reason - is the Met tab, and is the whole
+--                     list where there is no catalogue.
 --
 -- A row is drawn from the client's own data the moment it has any, and
 -- from the catalogue until then - so a search result is never a bare
@@ -159,14 +161,22 @@ local function Sorted(ids, index)
     return ids
 end
 
--- Everything the character has met, by name. This is what the page
--- shows before you type anything: the box narrows a list that is
--- already there rather than summoning one out of nothing.
-local function Everything()
+-- Everything the character has met, by name.
+local function Met()
     local index = Index()
     local ids = {}
     for itemID in pairs(index) do ids[#ids + 1] = itemID end
     return Sorted(ids, index)
+end
+
+-- What the page shows before you type anything: every item there is,
+-- where the catalogue is for this client, and otherwise what you have
+-- met. The box narrows a list that is already there rather than
+-- summoning one out of nothing.
+local function Everything()
+    local cat = Catalogue()
+    if cat then return cat.All() end
+    return Met()
 end
 
 ---------------------------------------------------------------------------
@@ -464,6 +474,9 @@ local function RebuildCategories()
     end
 
     Add("all", "All")
+    -- Only where All means the whole game; otherwise the two are the
+    -- same list and a second tab would be a puzzle.
+    if Catalogue() then Add("met", "Met") end
     for _, cat in ipairs(BagCategories() or {}) do
         Add(cat.key, cat.name or cat.key)
     end
@@ -510,7 +523,16 @@ local function RenderHeader(host, width)
 
     local hits, note = Resolve(query)
     local category = addon:GetSetting("itemCategory") or "all"
-    if category ~= "all" then hits = InCategory(hits, category) end
+    if category == "met" then
+        local index = Index()
+        local kept = {}
+        for _, itemID in ipairs(hits) do
+            if index[itemID] then kept[#kept + 1] = itemID end
+        end
+        hits = kept
+    elseif category ~= "all" then
+        hits = InCategory(hits, category)
+    end
     pendingHits = hits
 
     -- The count already sits in the rail, so this line is kept for the
@@ -518,10 +540,10 @@ local function RenderHeader(host, width)
     if note then
         headerNote = note
     elseif #hits == 0 then
-        if IndexSize() > 0 then
+        if category == "met" and IndexSize() == 0 then
+            headerNote = "Nothing met yet. Items join this tab as you carry, wear, bank and loot them."
+        elseif IndexSize() > 0 or Catalogue() then
             headerNote = "Nothing in this category matches."
-        elseif Catalogue() then
-            headerNote = "Nothing met yet. Items join this list as you carry, wear, bank and loot them. Type a name to search every item in the game."
         else
             headerNote = "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
         end
@@ -717,7 +739,7 @@ Codex.customTabs.items = {
             highlights[#highlights + 1] = { value = catalogue.Count(), label = "items in the game" }
         end
         local key = addon:GetSetting("itemCategory")
-        if key and key ~= "all" then
+        if key and key ~= "all" and key ~= "met" then
             for _, cat in ipairs(BagCategories()) do
                 if cat.key == key then
                     highlights[#highlights + 1] = {
