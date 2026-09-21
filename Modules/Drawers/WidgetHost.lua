@@ -1106,6 +1106,26 @@ function WidgetHost:DoReflow()
     -- handled by FloatWidget (reparented to UIParent, Edit Mode
     -- registered) and NOT included in the slot stack. Docked + enabled
     -- widgets get normal slot treatment.
+    -- Everything registered, not only what this drawer holds.
+    --
+    -- A widget that is switched on but is in no drawer used to fall
+    -- through every branch below, because the list only ever held the
+    -- active drawer's members - so it was never docked, never floated
+    -- and never hidden, and simply stayed wherever it last was. On
+    -- screen, in the middle of nothing, ignoring the drawer entirely.
+    local member = {}
+    for _, w in ipairs(allWidgets) do member[w.id] = true end
+    for _, w in ipairs(BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}) do
+        if not member[w.id]
+            and addon:IsWidgetEnabled(w.id)
+            and not addon:IsWidgetFloating(w.id)
+        then
+            -- Switched on, not floating, and nowhere to be. There is no
+            -- honest place to draw it.
+            self:DisableWidget(w)
+        end
+    end
+
     local widgets = {}
     for _, w in ipairs(allWidgets) do
         if not addon:IsWidgetEnabled(w.id) then
