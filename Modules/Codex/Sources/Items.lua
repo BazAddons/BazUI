@@ -356,10 +356,8 @@ local function AcquireRow(parent)
         r.hover:Show()
         self.tex:SetAlpha(1)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self.wanted and "On your wishlist" or "Want it",
+        GameTooltip:SetText(self.wanted and "Remove from Wishlist" or "Add to Wishlist",
             unpack(Theme.colors.text))
-        GameTooltip:AddLine(self.wanted and "Click to take it off." or "Click to add it to the Wishlist.",
-            0.9, 0.9, 0.9, true)
         GameTooltip:Show()
     end)
     row.star:SetScript("OnLeave", function(self)
