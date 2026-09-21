@@ -100,7 +100,7 @@ function BarMixin:SetFillColor(color)
     local def = self._screen and FillDef() or nil
 
     -- Artwork that is not white needs the color lifting before it goes
-    -- through it. The game's HUD bars are a grey at about three quarters
+    -- through it. The game's HUD bars are a gray at about three quarters
     -- brightness, and a status bar's color multiplies what is under it,
     -- so a color handed over untouched arrives three quarters as bright -
     -- which is how a blue mana bar came out nearly black the first time
@@ -208,7 +208,7 @@ end
 
 -- Which end the bar fills from. "LEFT" is the usual: empty on the left,
 -- filling rightward. "RIGHT" mirrors it, which is what the right-hand
--- half of a pair of bars wants so the two drain towards each other
+-- half of a pair of bars wants so the two drain toward each other
 -- rather than both marching the same way.
 function BarMixin:SetFillDirection(from)
     self._reversed = (from == "RIGHT")
@@ -383,7 +383,7 @@ local OUTLINES = {
 }
 -- Ordered, not keyed: an edge runs none, thin, thick and a line reads
 -- left to right. Sorting these by their words would put "Thick" before
--- "Thin" and "Centre" first, which is a list nobody scans.
+-- "Thin" and "Center" first, which is a list nobody scans.
 BazUI.BarTextOutlines = {
     { value = "NONE",  label = "None"  },
     { value = "THIN",  label = "Thin"  },
@@ -391,7 +391,7 @@ BazUI.BarTextOutlines = {
 }
 BazUI.BarTextAligns = {
     { value = "LEFT",   label = "Left"   },
-    { value = "CENTER", label = "Centre" },
+    { value = "CENTER", label = "Center" },
     { value = "RIGHT",  label = "Right"  },
 }
 
@@ -472,8 +472,8 @@ end
 -- bar: on a tall bar the text stops growing at twelve pixels and an inline
 -- glyph stops with it, leaving a speck in a lot of empty height.
 --
--- The text is centred in the fill, so an icon hanging off its left would
--- carry the pair off centre. Both move instead: the text shifts right by
+-- The text is centered in the fill, so an icon hanging off its left would
+-- carry the pair off center. Both move instead: the text shifts right by
 -- half of what the icon and its gap take up, which puts the two of them
 -- together back in the middle.
 ---------------------------------------------------------------------------
@@ -504,7 +504,7 @@ function BarMixin:SetLeadIcon(path, size)
     icon:SetSize(size, size)
     icon:ClearAllPoints()
     -- Against the text rather than the bar, so it stays with the writing
-    -- it belongs to however the pair ends up centred.
+    -- it belongs to however the pair ends up centered.
     icon:SetPoint("RIGHT", self.text, "LEFT", -LEAD_GAP, 0)
 
     self._leadSize = size
@@ -695,7 +695,7 @@ function BarMixin:SetOuterSize(width, height)
 end
 
 -- The fill's size, which is not the frame's.
--- Whether the coloured part is drawn at all.
+-- Whether the colored part is drawn at all.
 --
 -- A portrait or a blank bar is a bar in every other way - same chrome,
 -- same size, same docking - with nothing to show a value for. Hiding the

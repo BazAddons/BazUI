@@ -29,7 +29,7 @@ end
 --
 -- Four switches each, and all four are offered on every kind even where
 -- one of them cannot apply: class color means nothing on a mob and rank
--- means nothing on a player, so those grey out in place rather than
+-- means nothing on a player, so those gray out in place rather than
 -- vanishing. A switch you can see is not for this kind beats hunting for
 -- one that moved.
 --
@@ -94,7 +94,7 @@ BazUI:RegisterSettingsSpec("Nameplates-Kinds", {
         .. "somebody else has tagged is tapped rather than hostile, and a "
         .. "player is a player rather than an NPC.|n|n"
         .. "A switch left alone follows the General page. Class color is "
-        .. "greyed out where the unit has no class and the rare and elite "
+        .. "grayed out where the unit has no class and the rare and elite "
         .. "mark where it has no rank.",
     sections = KindSections(),
     entries = KindEntries({}),

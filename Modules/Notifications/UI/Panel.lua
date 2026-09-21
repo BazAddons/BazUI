@@ -744,7 +744,7 @@ local function PopulateHistory()
         addon.ApplyMessageStyle(card.message, entry.emphasis)
         card.timestamp:SetText(FormatHistoryTimestamp(entry.realTime))
 
-        -- Same band as a live card: the source's colour, solid in
+        -- Same band as a live card: the source's color, solid in
         -- proportion to how much it wanted looking at.
         local band = BNC:GetModuleColor(entry.module)
         local alphas = Colors.priorityAlpha or {}

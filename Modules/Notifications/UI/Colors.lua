@@ -27,9 +27,9 @@ addon.Colors = {
     badge           = { 0.85, 0.65, 0.13, 1.0 },
     badgeText       = { 0.12, 0.08, 0.02, 1.0 },
 
-    -- Priority, as how solid the band is rather than what colour it is.
-    -- The colour says which module a card came from; this says how much
-    -- it wants looking at, without spending a second colour on it.
+    -- Priority, as how solid the band is rather than what color it is.
+    -- The color says which module a card came from; this says how much
+    -- it wants looking at, without spending a second color on it.
     priorityAlpha   = { high = 1.0, normal = 0.8, low = 0.45 },
 
     -- Dismiss button
@@ -48,15 +48,15 @@ addon.Colors = {
 }
 
 ---------------------------------------------------------------------------
--- One colour per source
+-- One color per source
 --
 -- The band down the left of a card says where the notification came from,
 -- so a panel with loot, quests and whispers in it groups by eye before it
 -- is read. It pairs with the group header above, which names the same
 -- module.
 --
--- These are identity colours rather than skin colours, in the way class
--- colours are: a skin that repainted them would make quests and loot
+-- These are identity colors rather than skin colors, in the way class
+-- colors are: a skin that repainted them would make quests and loot
 -- indistinguishable, which is the one thing they exist to avoid. A source
 -- can still bring its own by passing `color` to BNC:RegisterModule -
 -- Zygor's is its own orange, off its icon.

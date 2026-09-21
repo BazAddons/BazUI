@@ -81,7 +81,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "h3", text = "Nudging it" },
                 { type = "paragraph", text = "The Edit Mode panel has arrow controls that move a bar a pixel at a time. A docked bar keeps the nudge as an offset from where its host put it, so it survives the host being resized." },
                 { type = "h3", text = "Fills from" },
-                { type = "paragraph", text = "Which end the bar empties towards. Two bars sharing a line often want opposite ends so they drain towards each other." },
+                { type = "paragraph", text = "Which end the bar empties toward. Two bars sharing a line often want opposite ends so they drain toward each other." },
                 { type = "h3", text = "Text" },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Show text", "Always, on hover, or never. This is |cffffd700when|r there is text; the two settings below are |cffffd700what|r it says." },
@@ -95,9 +95,9 @@ BazUI:RegisterUserGuide("UnitFrames", {
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Size text to the bar", "The text grows and shrinks with the bar. Off, it stays at the size below however tall the bar is." },
                     { "Text size", "6 to 36, when the text is not sizing itself." },
-                    { "Edge", "The outline drawn around each letter, which is what keeps writing readable over a bar that changes colour under it." },
+                    { "Edge", "The outline drawn around each letter, which is what keeps writing readable over a bar that changes color under it." },
                     { "Drop shadow", "A soft shadow behind the text. Reads gentler than an outline, and the two can be worn together." },
-                    { "Text colour", "Whatever you like. The default follows the theme." },
+                    { "Text color", "Whatever you like. The default follows the theme." },
                     { "Sits", "Which end of the bar the writing reads from." },
                 } },
                 { type = "h3", text = "Experience bars" },
@@ -208,11 +208,11 @@ BazUI:RegisterUserGuide("UnitFrames", {
             title = "Mirror bars",
             blocks = {
                 { type = "note", style = "tip", text = "|cffffd700New to the term?|r A mirror timer is the game's name for the bars it floats at the top of the screen when something is counting down against you: your |cffffd700breath|r underwater, |cffffd700fatigue|r when you swim too far out to sea, and the timer while you are |cffffd700feigning death|r. They are called mirror timers because the game and the server keep the same count on both sides." },
-                { type = "paragraph", text = "The game draws all of them in the casting bar's art, at the top of the screen, where nothing else of yours is. A mirror bar is the same information as one of your own bars: it docks where you want, takes your skin, and colours itself by which timer is running." },
-                { type = "table", columns = { "Timer", "Colour" }, rows = {
+                { type = "paragraph", text = "The game draws all of them in the casting bar's art, at the top of the screen, where nothing else of yours is. A mirror bar is the same information as one of your own bars: it docks where you want, takes your skin, and colors itself by which timer is running." },
+                { type = "table", columns = { "Timer", "Color" }, rows = {
                     { "Breath", "Blue" },
                     { "Fatigue", "Orange" },
-                    { "Feign death", "Grey" },
+                    { "Feign death", "Gray" },
                 } },
                 { type = "paragraph", text = "The bar names the timer in words as well, and counts down beside it. With more than one running it shows the one that will kill you first, so drowning beats being tired." },
                 { type = "h3", text = "Making one" },
@@ -297,7 +297,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "/bazframes", "Opens this module's settings. /bazplayer does the same." },
                     { "/bazframes preview", "Turns the placeholder bars on or off." },
                     { "/bazframes stacks", "Prints every bar and every aura row with what it is docked to. Worth running when a layout is not coming out the way you expect." },
-                    { "/bazframes paint", "Prints why a bar is drawing the way it is: its colour, its value and its texture, which are the three ways a bar ends up black." },
+                    { "/bazframes paint", "Prints why a bar is drawing the way it is: its color, its value and its texture, which are the three ways a bar ends up black." },
                     { "/bazframes stock", "Prints what happened to each of the game's own frames the switches above cover, which answers a switch that reads as on with the frame still on screen." },
                     { "/bazframes reset", "Deletes every bar and starts again with the usual five. Asks first." },
                     { "/bazframes settings", "Opens the settings page. Every BazUI command takes this, and |cffffd700help|r." },

@@ -22,7 +22,7 @@ BazUI.Skin = {
     --
     -- Measured, not guessed, and measured again whenever the picture
     -- changes. The number wanted is where the brass turns solid - 756
-    -- pixels across, of a 929 x 1088 canvas, centred in it to within a
+    -- pixels across, of a 929 x 1088 canvas, centered in it to within a
     -- pixel - because that is where the map has to reach.
     --
     -- Not where the picture stops being transparent, which is a long way
@@ -44,8 +44,8 @@ BazUI.Skin = {
 
     -- What rank a unit is, as a glyph to sit in front of its name. Drawn
     -- inline in the bar's own text, which means the client scales them to
-    -- the line height and nothing can tint them: whatever colour they
-    -- carry is the colour they are. 51x51 as shipped.
+    -- the line height and nothing can tint them: whatever color they
+    -- carry is the color they are. 51x51 as shipped.
     --
     -- Anything missing falls back to what the rank is made of, so the set
     -- still works with a file absent.

@@ -257,11 +257,11 @@ skins[BUILT_IN.id].builtIn = true
 -- look shared by every profile, on the reasoning that a skin is what the
 -- addon looks like to you rather than how this character's bars are
 -- arranged. That reasoning lost: a profile is a whole layout, and a
--- layout with somebody else's colours on it is half a layout.
+-- layout with somebody else's colors on it is half a layout.
 --
 -- The thing that argument was right about is that a switch has to
 -- repaint, and repaint without a reload. ApplySkin already does exactly
--- that - it walks every colour and redraws every band - so the switch
+-- that - it walks every color and redraws every band - so the switch
 -- just has to call it, which is what the listener at the bottom of this
 -- file is for.
 ---------------------------------------------------------------------------
@@ -274,7 +274,7 @@ function Store()
     -- Set the profile structure up rather than giving up on it. This file
     -- loads before every module and its saved-variables callback runs
     -- before theirs, so the profiles may not exist yet the first time a
-    -- colour is asked for.
+    -- color is asked for.
     if not BazUIDB.profiles and BazUI.InitProfiles then
         BazUI:InitProfiles()
     end
@@ -646,7 +646,7 @@ if BazUI.QueueForVariables then
         Skin.ApplySkin(Store().active or BUILT_IN.id)
         applied = true
 
-        -- A profile switch repaints. ApplySkin walks every colour the
+        -- A profile switch repaints. ApplySkin walks every color the
         -- theme has and redraws every band on screen, so the new
         -- profile's look lands without a reload - which was the whole
         -- objection to keeping the skin in a profile.
@@ -659,7 +659,7 @@ if BazUI.QueueForVariables then
                 C_Timer.After(0, function()
                     RegisterCustom()
                     Skin.ApplySkin(Store().active or BUILT_IN.id)
-                    -- The Skin tab is a readout of these colours, so it
+                    -- The Skin tab is a readout of these colors, so it
                     -- is redrawn too if somebody is looking at it.
                     if BazUI.RefreshVisibleOptions then
                         BazUI:RefreshVisibleOptions()

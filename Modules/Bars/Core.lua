@@ -430,7 +430,7 @@ end
 -- is a write to something we do not own, and MainActionBar inherits
 -- EditModeActionBarTemplate - it is one of Blizzard's Edit Mode systems,
 -- which EditModeFrameSetup walks on the way in. Touching it tainted that
--- walk, and their compact party frames errored on a secret colour two
+-- walk, and their compact party frames errored on a secret color two
 -- calls later.
 --
 -- BazUI.SuppressFrame hooks the frame's own OnShow and hides it again,
@@ -523,7 +523,7 @@ function addon:ApplyStatusBarVisibility()
     -- do not own, and it taints the manager: their UpdateShownState calls
     -- CanShowBar, EnterEditMode calls UpdateShownState, and from there
     -- every action in the press was refused - ClearTarget, then their
-    -- compact party frames comparing a secret colour. Found by bisecting
+    -- compact party frames comparing a secret color. Found by bisecting
     -- modules, after the taint log named the call but not the module.
     --
     -- Suppressing the bar frames themselves gets the same picture: the

@@ -529,7 +529,7 @@ end
 -- Which face is wanted, as a key into the list above.
 --
 -- Before the list there was a tick box, and unticking it meant the
--- game's font. That answer is still honoured for anyone who set it, so
+-- game's font. That answer is still honored for anyone who set it, so
 -- an existing profile opens on the face it has always had.
 local function ChosenKey()
     if BazUIDB and BazUIDB.fontFace then return BazUIDB.fontFace end
@@ -949,7 +949,7 @@ Theme.BUTTON_STYLES = {
 }
 
 -- Font object names come in a Normal / Highlight / Disable set around a
--- shared prefix and suffix, so the grey sibling of a face can be worked
+-- shared prefix and suffix, so the gray sibling of a face can be worked
 -- out rather than asked for.
 local FONT_ROLES = { "Normal", "Highlight", "Disable" }
 
@@ -974,11 +974,11 @@ function Theme.SetButtonFont(button, blizzardName, color)
     if not face then return end
 
     local greyName = DisabledSibling(blizzardName)
-    local grey = greyName and Theme.FontObject(greyName) or face
+    local gray = greyName and Theme.FontObject(greyName) or face
 
     button:SetNormalFontObject(face)
     button:SetHighlightFontObject(face)
-    button:SetDisabledFontObject(grey)
+    button:SetDisabledFontObject(gray)
 
     -- Those are only read when the state changes, so put the resting one
     -- on the string now instead of waiting for the first hover.
@@ -1542,7 +1542,7 @@ end
 --
 -- There is no way to draw a shape in this UI: everything on screen is a
 -- texture, and a circle normally means an artist and a PNG per size. The
--- game ships a circular alpha mask, though, and a solid colour wearing
+-- game ships a circular alpha mask, though, and a solid color wearing
 -- that mask is a filled circle at whatever size you make it. Three of
 -- them, each smaller than the last and drawn over it, leave two rings
 -- and a hole - which is a border.
@@ -1650,8 +1650,8 @@ function Theme.CreateIconButton(parent, opts)
         icon:SetTexture(opts.texture)
     end
 
-    -- Blizzard's icons carry their own colour; desaturating first means
-    -- the tint is the only colour on them, so they sit in our palette
+    -- Blizzard's icons carry their own color; desaturating first means
+    -- the tint is the only color on them, so they sit in our palette
     -- rather than beside it.
     icon:SetDesaturated(true)
     icon:SetVertexColor(unpack(opts.color or Theme.colors.textSoft))
@@ -1795,7 +1795,7 @@ end
 --   ring:SetInnerSize(26)          -- the icon's diameter
 --   ring:SetTint(1, 0.92, 0.55)    -- lands on the gold
 --
--- The tint goes to the gold because that is the part worth colouring:
+-- The tint goes to the gold because that is the part worth coloring:
 -- the micro menu pulses a button by brightening it.
 function Theme.CreateRoundRing(parent, opts)
     opts = opts or {}
@@ -1975,7 +1975,7 @@ end
 -- pcall for that reason.
 --
 -- Mirroring the object the string is already using is what keeps its
--- size: the mirror copies size, flags, colour and justification from the
+-- size: the mirror copies size, flags, color and justification from the
 -- one it was made from, and changes only the face. A menu sets its sizes
 -- deliberately and this leaves them alone.
 local function ApplyMenuFont(frame, depth)

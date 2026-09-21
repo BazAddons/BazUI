@@ -215,7 +215,7 @@ function Plates:UpdateTarget(ours)
     local unit = ours and ours.unit
     -- The mark is drawn around the health bar, so a kind showing only a
     -- name has nothing to put it around. Its name still takes the target
-    -- colour from the theme, which is what marks it there.
+    -- color from the theme, which is what marks it there.
     local wanted = Setting("targetMark") ~= false
         and unit and BazUI.Secret.IsUnit(unit, "target")
         and addon:UnitWants(unit, "showBar")
@@ -393,7 +393,7 @@ function Plates:Initialize()
         local ours = Find(unit)
         if ours then self:UpdateName(ours) end
     end)
-    -- A unit that changes its mind about you changes colour, and the
+    -- A unit that changes its mind about you changes color, and the
     -- level only arrives once the game has looked the unit up.
     -- Both of these can move a unit from one kind to another - a player
     -- flagging for PvP, a mob being tagged by somebody else - and a kind

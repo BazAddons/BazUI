@@ -502,7 +502,7 @@ end
 
 -- A follower can ask for a host that does not exist yet, because action
 -- bars are built after the thing docking to them. The request is kept
--- and honoured when the host turns up.
+-- and honored when the host turns up.
 local waiting = {}
 
 function Dock:AttachTo(frame, hostId, opts)
@@ -823,7 +823,7 @@ end
 --
 -- Settles after one pass and stays there: once the stack adds up to the
 -- room available, the next pass divides that room by itself and changes
--- nothing. A stack of one is the plain old behaviour exactly - it
+-- nothing. A stack of one is the plain old behavior exactly - it
 -- stretches to the host.
 --
 -- Returns how much of the stack lies before the follower itself - above
@@ -1032,7 +1032,7 @@ function PlaceOneEdge(host, edge)
                 -- along by however much of it lies before the follower.
                 -- The two stacks then begin together and, being the same
                 -- size, end together. Hung by the middle, a health bar
-                -- with a power bar under it sat centred on the host and
+                -- with a power bar under it sat centered on the host and
                 -- the pair spilled out below.
                 local lead = FitStack(frame, hostAxis, across) or 0
                 if vertical then

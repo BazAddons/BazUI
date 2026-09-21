@@ -4,7 +4,7 @@
 --
 -- Two blocks over one table. "Open to you" is the answer to what can I
 -- do today: instances you are attuned or keyed for, at level, and not
--- already saved to. "Working towards" is everything you have started
+-- already saved to. "Working toward" is everything you have started
 -- and not finished, with what is left to do.
 --
 -- Nothing here asks the client a question it cannot answer. The gates
@@ -28,7 +28,7 @@ local function Split()
         if state.ready then
             open[#open + 1] = state
         elseif state.done > 0 then
-            -- Not started at all is not "working towards"; it is just
+            -- Not started at all is not "working toward"; it is just
             -- the rest of the game, and listing it would bury the ones
             -- you are actually part way through.
             working[#working + 1] = state
@@ -117,7 +117,7 @@ Codex:RegisterSection({
 })
 
 ---------------------------------------------------------------------------
--- Working towards
+-- Working toward
 ---------------------------------------------------------------------------
 
 Codex:RegisterSection({

@@ -95,7 +95,7 @@ function addon.CreateNotificationBody(frame)
 
     -- Priority accent bar (left edge)
     frame.priorityBar = frame:CreateTexture(nil, "OVERLAY")
-    -- Three pixels rather than two: it is a colour to be read now, not
+    -- Three pixels rather than two: it is a color to be read now, not
     -- just a mark that something is there.
     frame.priorityBar:SetSize(3, 1)
     frame.priorityBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -1)
@@ -152,7 +152,7 @@ function addon.PopulateNotification(frame, notifData, width, opts)
     BazUI.Skin.Theme.SetText(frame.message, notifData.message or "")
     addon.ApplyMessageStyle(frame.message, notifData.emphasis)
 
-    -- The band down the left. Its colour says which source the card came
+    -- The band down the left. Its color says which source the card came
     -- from, so a mixed panel groups by eye; how solid it is says how much
     -- the card wants looking at. Every card has one - a card without a
     -- band used to mean "normal", which read as less important than the

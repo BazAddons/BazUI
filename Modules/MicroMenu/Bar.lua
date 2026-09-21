@@ -530,7 +530,7 @@ function addon:Initialize()
     -- Even the string form of hooksecurefunc leaves the global counting
     -- as tainted on Forever, and EnterEditMode calls UpdateMicroButtons:
     -- the taint log showed that call, then ClearTarget blocked, then
-    -- their compact party frames erroring on a secret colour, all in the
+    -- their compact party frames erroring on a secret color, all in the
     -- one press. Watching instead of hooking costs a little latency on a
     -- button lighting up and taints nothing.
     local watcher, since = CreateFrame("Frame"), 0

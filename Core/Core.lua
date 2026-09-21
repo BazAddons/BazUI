@@ -1083,7 +1083,7 @@ local function AtlasPreview(names)
             row.label:SetPoint("TOPLEFT", 8, 0)
             row.label:SetJustifyH("LEFT")
 
-            -- A mid grey behind each, so art that is mostly transparent
+            -- A mid gray behind each, so art that is mostly transparent
             -- reads as transparent rather than as black.
             row.mat = row:CreateTexture(nil, "BACKGROUND")
             row.mat:SetPoint("TOPLEFT", 8, -14)

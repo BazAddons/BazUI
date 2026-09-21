@@ -414,7 +414,7 @@ function Layouts.Render(ctx)
             -- forty of them, and the question - "what do I delete" - is
             -- answered by a name far better than by a symbol you have to
             -- find first. Put on whichever category the thing landed in,
-            -- so pinning a grey somewhere unusual moves the note with it.
+            -- so pinning a gray somewhere unusual moves the note with it.
             local Bag = addon.Bag
             if Bag and Bag.CheapestJunk then
                 local tossBag, tossSlot, _, tossName = Bag:CheapestJunk()

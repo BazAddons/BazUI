@@ -129,7 +129,7 @@ local function DockBlizzardDurability(anchor)
     -- Selection.Hide. DurabilityFrame is one of their Edit Mode systems,
     -- and writing to the method table of one is what left MainActionBar's
     -- snap state owned by BazUI - which surfaced four files away as their
-    -- compact party frames comparing a secret colour.
+    -- compact party frames comparing a secret color.
     --
     -- Two things do the same job without writing anything of theirs: the
     -- highlight frame goes down through SuppressFrame, and the frame is

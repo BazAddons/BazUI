@@ -55,7 +55,7 @@ BazUI:RegisterUserGuide("Auras", {
                     { "Counts toward stack height", "The same sideways." },
                 } },
                 { type = "note", text = "A centered row stays centered as icons come and go, including in combat, because what moves is the row's frame rather than anything the game protects." },
-                { type = "note", text = "A row docked to the left or right of something always keeps its own width. A row works its icon size out from its width, and a side has only height to give it - so Takes is greyed out there rather than offering a choice the row would ignore." },
+                { type = "note", text = "A row docked to the left or right of something always keeps its own width. A row works its icon size out from its width, and a side has only height to give it - so Takes is grayed out there rather than offering a choice the row would ignore." },
             },
         },
 

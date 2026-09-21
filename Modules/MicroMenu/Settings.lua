@@ -56,11 +56,11 @@ local entries = {
 -- One toggle per button, in bar order.
 --
 -- Every button either client has, including the ones this one does not.
--- A switch for a button that is not here greys out rather than
+-- A switch for a button that is not here grays out rather than
 -- disappearing, so the list is the same shape wherever you read it and
 -- nobody goes looking for a row that moved.
 --
--- Greyed on whether this client uses the button, not on whether the frame
+-- Grayed on whether this client uses the button, not on whether the frame
 -- exists. Both clients define every button either of them has, so the
 -- second question answers yes for things that are nowhere on screen - a
 -- switch offering to show Achievements on Forever, which has none.

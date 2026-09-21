@@ -141,8 +141,8 @@ local function NormalisePosition(pos, scale)
         absX = originX + (pos.x or 0) * scale
         absY = originY + (pos.y or 0) * scale
     elseif pos.x and pos.y then
-        -- Edit Mode's other shape: the frame's centre as a screen-pixel
-        -- offset from the centre of the screen, with no anchor at all.
+        -- Edit Mode's other shape: the frame's center as a screen-pixel
+        -- offset from the center of the screen, with no anchor at all.
         -- Left alone it would put a 4K arrangement three hundred pixels
         -- off the top of a smaller monitor, which is the whole reason
         -- this conversion exists.
@@ -255,7 +255,7 @@ local function Write(value, out, depth, key, scale)
         --
         -- This mattered more than it looks. Texture paths are full of
         -- backslashes - Interface\Icons\INV_Misc_Gear_01 - and Lua 5.1 does
-        -- not complain about an escape it does not recognise, it silently
+        -- not complain about an escape it does not recognize, it silently
         -- drops the backslash and keeps the letter. An unescaped path is
         -- therefore not a syntax error anybody would notice; it loads as
         -- InterfaceIconsINV_Misc_Gear_01 and the icon quietly never appears.

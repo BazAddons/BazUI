@@ -27,7 +27,7 @@ addon.Chrome = Chrome
 --
 -- It used to wear Blizzard's CharacterCreateDropdown nine-slice, which
 -- looked the part but made the chat the one big frame in the addon that
--- ignored the Skin page: change a border band or a colour and every bar,
+-- ignored the Skin page: change a border band or a color and every bar,
 -- panel, nameplate and popup followed while the chat sat there in
 -- somebody else's gold. ApplyDialog is what our popups are drawn with,
 -- and it registers for redraws, so the chat follows a skin change

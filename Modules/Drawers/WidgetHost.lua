@@ -52,8 +52,8 @@ local DRAG_HOLD_TIME = 0.5              -- seconds to hold before drag activates
 
 -- What a title bar looks like: sitting there, under the mouse, and armed
 -- for a drag. Written out at each of the places that set one, which is
--- how the drag colour and the hover colour came to disagree about which
--- grey they were.
+-- how the drag color and the hover color came to disagree about which
+-- gray they were.
 local TITLE_BG_IDLE  = { 0.08, 0.08, 0.12, 0.7 }
 local TITLE_BG_HOVER = { 0.15, 0.15, 0.22, 0.9 }
 local TITLE_BG_DRAG  = { 0.10, 0.40, 0.10, 0.9 }
@@ -214,8 +214,8 @@ function WidgetHost:CreateSlot(widget)
         return btn
     end
 
-    -- Alpha rather than a tint, for the arrows at least: the art is grey
-    -- and a vertex colour multiplies, so it can only ever be made darker.
+    -- Alpha rather than a tint, for the arrows at least: the art is gray
+    -- and a vertex color multiplies, so it can only ever be made darker.
     local function Lit(self)
         if self:IsEnabled() then self.icon:SetAlpha(1) end
     end
@@ -268,7 +268,7 @@ function WidgetHost:CreateSlot(widget)
     title.moveDown:SetPoint("RIGHT", title.chevron, "LEFT", -6, 0)
     title.moveUp:SetPoint("RIGHT", title.moveDown, "LEFT", -2, 0)
 
-    -- Shown together, each greyed unless it has something to do. An
+    -- Shown together, each grayed unless it has something to do. An
     -- arrow at the end of the stack is drawn faint and does nothing,
     -- which reads better than one that vanishes and leaves the other
     -- somewhere else.
@@ -513,7 +513,7 @@ end
 
 -- Where a floating widget sits, written down so that scale cannot move it.
 --
--- A position is the frame's centre as a screen-pixel offset from the
+-- A position is the frame's center as a screen-pixel offset from the
 -- middle of the screen, which is the shape every other BazUI frame is
 -- saved in. The old shape was whatever GetPoint happened to return - a
 -- point, a point on the screen to hang off, and an offset in the
@@ -523,7 +523,7 @@ end
 -- corner it was anchored from.
 --
 -- Screen pixels do not scale, so this one stays where it is put and
--- grows about its own centre.
+-- grows about its own center.
 function WidgetHost:SaveFloatingPosition(widget)
     if not (widget and widget.frame) then return end
     local f = widget.frame
@@ -1003,7 +1003,7 @@ end
 --
 -- What the arrows on a title bar do, and the same neighbour the drag
 -- would have found. Answers whether it could, so a button at the end of
--- the stack can grey itself out rather than be a control that does
+-- the stack can gray itself out rather than be a control that does
 -- nothing when pressed.
 function WidgetHost:MoveInStack(widgetId, delta, testOnly)
     if not widgetId then return false end

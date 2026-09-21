@@ -23,7 +23,7 @@ BazUI:RegisterUserGuide("Codex", {
                 }},
                 { type = "h2", text = "What is on every page" },
                 { type = "table", columns = { "Part", "What it is" }, rows = {
-                    { "The header", "Your name in your class colour, your realm, level, class, where you are and what you are carrying. Clicking the portrait opens the character sheet." },
+                    { "The header", "Your name in your class color, your realm, level, class, where you are and what you are carrying. Clicking the portrait opens the character sheet." },
                     { "The tiles", "A row of figures across the top, chosen for the page you are on: the number still wanted, the number already yours, your average item level." },
                     { "The blocks", "The page itself, in two columns. A block that runs long scrolls inside itself rather than pushing the page about." },
                 } },
@@ -46,7 +46,7 @@ BazUI:RegisterUserGuide("Codex", {
                     { "|cffffd700Currencies|r",  "Your purse, and everything else the game counts." },
                     { "|cffffd700Professions|r", "Your trades and every other skill you have." },
                     { "|cffffd700Items|r",       "Look anything up." },
-                    { "|cffffd700Wishlist|r",    "The things you are playing towards." },
+                    { "|cffffd700Wishlist|r",    "The things you are playing toward." },
                 } },
                 { type = "note", text = "A page only ever shows what this client can answer. Where a system is not open yet - Legacy, on a build that has not switched it on - the page says so rather than showing an empty frame." },
             },
@@ -136,7 +136,7 @@ BazUI:RegisterUserGuide("Codex", {
                     { "|cffffd700Dungeons|r",     "Five-player instances, by level." },
                     { "|cffffd700Raids|r",        "The larger ones, with how many bosses each has." },
                     { "|cffffd700World bosses|r", "The ones standing out in the world." },
-                    { "|cffffd700Also saved to|r", "Lockouts the catalogue does not recognise, so a lock is never invisible just because the list has not heard of the place." },
+                    { "|cffffd700Also saved to|r", "Lockouts the catalog does not recognize, so a lock is never invisible just because the list has not heard of the place." },
                 } },
             },
         },
@@ -154,7 +154,7 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "Professions",
             blocks = {
-                { type = "paragraph", text = "A card per profession, wearing that profession's own book art, with a rank bar under it. Then everything else you have learned - class skills, weapon skills, armour, languages - grouped the way the game's own skills sheet groups them." },
+                { type = "paragraph", text = "A card per profession, wearing that profession's own book art, with a rank bar under it. Then everything else you have learned - class skills, weapon skills, armor, languages - grouped the way the game's own skills sheet groups them." },
                 { type = "note", text = "With nothing learned the page says so and tells you where to start: a trainer in any capital will teach you two." },
             },
         },

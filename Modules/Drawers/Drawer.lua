@@ -132,7 +132,7 @@ function Drawer:Build()
     display.lockButton.icon = display.lockButton:CreateTexture(nil, "ARTWORK")
     display.lockButton.icon:SetPoint("CENTER")
     display.lockButton.icon:SetSize(16, 16)
-    -- Same treatment as the gear beside it: the icon's own colour off,
+    -- Same treatment as the gear beside it: the icon's own color off,
     -- ours on, muted until the mouse is over it.
     display.lockButton.icon:SetDesaturated(true)
     display.lockButton.icon:SetVertexColor(unpack(BazUI.Skin.Theme.colors.textSoft))
@@ -683,8 +683,8 @@ function Drawer:ApplyLockUI(skipFade)
     local hovered = Drawer:IsHovered()
 
     -- Swap the lock icon's atlas based on state, keeping the tint: the
-    -- icon is desaturated and coloured like every other small button,
-    -- and setting a new atlas would otherwise bring its own colour back.
+    -- icon is desaturated and colored like every other small button,
+    -- and setting a new atlas would otherwise bring its own color back.
     local lb = display.lockButton
     if lb and lb.icon then
         BazUI.SetAtlasOrTexture(lb.icon,

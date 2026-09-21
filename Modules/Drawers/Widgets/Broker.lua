@@ -179,7 +179,7 @@ function Broker:Build(name, dataobj)
     local id = ID_PREFIX .. name
 
     -- First sight of a feed decides its enabled flag explicitly, so the
-    -- "auto-enable new feeds" setting is honoured whatever the profile's
+    -- "auto-enable new feeds" setting is honored whatever the profile's
     -- default mode for unknown widgets is.
     local enabledMap = addon:GetSetting("widgetEnabled")
     if type(enabledMap) == "table" and enabledMap[id] == nil then

@@ -105,7 +105,7 @@ end
 
 --- Create a GetSetting closure for a module. Eliminates per-module boilerplate.
 --- Usage: local GetSetting = BNC:CreateGetSetting("mymodule")
--- The colour of a source's band. Always answers something drawable.
+-- The color of a source's band. Always answers something drawable.
 function BNC:GetModuleColor(moduleId)
     local module = addon.modules[moduleId]
     return (module and module.color)

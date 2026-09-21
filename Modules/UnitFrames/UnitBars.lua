@@ -37,13 +37,13 @@ UnitBars.bars = {}          -- [id] = { def, frame, mover }
 local previewing = false
 
 -- Offline is here because a placeholder bar wears it before there is a
--- unit to ask about. The rest of the unit colours live in Core/Units.lua.
+-- unit to ask about. The rest of the unit colors live in Core/Units.lua.
 local CAST_COLOR    = { 1.00, 0.82, 0.00, 1 }
 
 -- The game's mirror timers, by the name it calls each one. Blizzard
 -- draws all of them in the casting bar's own art, which is fine until
 -- you are drowning and fatigued at once and the two bars look alike.
--- A colour each, and the bar says which it is in words as well.
+-- A color each, and the bar says which it is in words as well.
 local MIRROR_COLORS = {
     BREATH     = { 0.25, 0.55, 0.95, 1 },
     EXHAUSTION = { 0.95, 0.55, 0.15, 1 },
@@ -663,16 +663,16 @@ local function Number(n)
 end
 
 -- Offline and dead read as gray whatever else is true of them: a party
--- member's last known health is not worth colouring as if it were
+-- member's last known health is not worth coloring as if it were
 -- current. The rule lives in Core/Units.lua so the name plates paint the
 -- same unit the same way.
 local function HealthColor(unit)
     return BazUI.UnitColor(unit, { classColor = addon:GetSetting("classColor") })
 end
 
--- Read the same careful way as the health colour. UnitPowerType is not
+-- Read the same careful way as the health color. UnitPowerType is not
 -- documented as secret-returning, but a restricted unit hands back values
--- of every sort, and a colour built from one paints the bar black. The
+-- of every sort, and a color built from one paints the bar black. The
 -- parts are added to zero inside the read so a secret raises here rather
 -- than arriving at the texture.
 local function PowerColor(unit)
@@ -760,9 +760,9 @@ end
 -- A bar for a unit that is not there
 --
 -- Shown while a layout is being arranged, so a party can be laid out
--- without a party. It used to be a grey bar at full, which answered none
+-- without a party. It used to be a gray bar at full, which answered none
 -- of the questions you have while arranging: whether a name of real
--- length fits, what four class colours look like stacked, whether a
+-- length fits, what four class colors look like stacked, whether a
 -- half-empty bar still reads at the height you chose.
 --
 -- So it stands in for a plausible group instead. Each slot keeps the same
@@ -1081,7 +1081,7 @@ end
 
 -- A portrait, which is the one bar kind whose content is a picture.
 --
--- Square and centred: stretched across a wide bar it is a smeared face,
+-- Square and centered: stretched across a wide bar it is a smeared face,
 -- so the picture takes the bar's height and the bar keeps whatever width
 -- it was given. That also means a portrait docked beside a health bar
 -- comes out the same height as it without being told.
@@ -1213,7 +1213,7 @@ local function UpdatePortrait(bar)
     if frame.model then frame.model:SetShown(shown and threeD) end
     if not shown then return end
 
-    -- Square, centred, the fill's height: the same box either way, so
+    -- Square, centered, the fill's height: the same box either way, so
     -- flipping between flat and 3D moves nothing around it.
     local _, fill = frame:GetFillSize()
     local size = math.max(8, fill or 16)
@@ -1484,7 +1484,7 @@ function UnitBars:ShowMirrors()
         local frame = bar.frame
         if running then
             -- Cleared so the tick treats this as a new timer and puts
-            -- the right colour and label on before the first frame.
+            -- the right color and label on before the first frame.
             frame._mirror = nil
             frame:SetAlpha(1)
             BazUI.Dock:SetShown(frame, true)
@@ -1654,7 +1654,7 @@ local function ApplyBarMouse(bar)
     local opens = KIND_OPENS[def.kind]
     local clickable = opens and addon:GetSetting("barClicks") ~= false
     -- "On Hover" is offered for every bar, and a bar that never hears the
-    -- mouse can never honour it. Nor can it change what it says under the
+    -- mouse can never honor it. Nor can it change what it says under the
     -- mouse if it never knows the mouse is there.
     local hovers = (def.textMode or "always") == "hover" or HasHoverFormat(def)
 
@@ -1871,7 +1871,7 @@ function UnitBars:Apply(bar)
         color   = def.textColor,
         align   = def.textAlign,
     })
-    -- A portrait or a blank bar keeps the chrome and loses the colour.
+    -- A portrait or a blank bar keeps the chrome and loses the color.
     frame:SetFillShown(not NO_FILL[def.kind])
     ApplyBarMouse(bar)
     frame:SetTicks(def.ticks or 0)
@@ -2089,9 +2089,9 @@ function UnitBars:EditSettings(bar)
               UnitBars:RefreshEditSettings()
           end },
 
-        -- Offered on every bar and greyed where it is not a portrait: a
+        -- Offered on every bar and grayed where it is not a portrait: a
         -- square health bar is a shape nobody has asked for, and a switch
-        -- you can see is greyed says more than one that is not there.
+        -- you can see is grayed says more than one that is not there.
         { type = "checkbox", section = "Size", label = "3D portrait",
           desc = "The unit's model, framed head and shoulders the way the game's "
               .. "own portraits are, instead of the flat picture.",
@@ -2158,7 +2158,7 @@ function UnitBars:EditSettings(bar)
         { type = "dropdown", section = "Text", label = "Edge",
           options = BazUI.BarTextOutlines,
           desc = "The outline drawn around each letter, which is what keeps "
-              .. "writing readable over a bar that changes colour under it.",
+              .. "writing readable over a bar that changes color under it.",
           get = function() return def.textOutline or "THIN" end,
           set = function(value) def.textOutline = value Refresh() end },
 
@@ -2168,7 +2168,7 @@ function UnitBars:EditSettings(bar)
           get = function() return def.textShadow == true end,
           set = function(value) def.textShadow = value or nil Refresh() end },
 
-        { type = "color", section = "Text", label = "Text colour",
+        { type = "color", section = "Text", label = "Text color",
           get = function() return def.textColor or { r = 1, g = 1, b = 1, a = 1 } end,
           set = function(value)
               def.textColor = value and { r = value.r, g = value.g,
@@ -2193,8 +2193,8 @@ function UnitBars:EditSettings(bar)
     -- Appended rather than written inline with a condition: a nil in the
     -- middle of a table constructor ends the list for everything after
     -- it, which would have quietly cost every other bar its nudge.
-    -- Always on the panel, greyed where it does not apply: a floating bar
-    -- is in no stack at all. A switch you can see is greyed says more
+    -- Always on the panel, grayed where it does not apply: a floating bar
+    -- is in no stack at all. A switch you can see is grayed says more
     -- than one that is not there.
     --
     -- Two of them, because the two measurements are separate questions.
@@ -2304,7 +2304,7 @@ function UnitBars:EditSettings(bar)
     -- here - a new indicator then arrives on every bar's panel without
     -- this file hearing about it.
     --
-    -- Offered on every bar and greyed out where it cannot apply, rather
+    -- Offered on every bar and grayed out where it cannot apply, rather
     -- than appearing on one bar and not another: a switch you cannot find
     -- is worse than one you can see is not for this bar.
     for _, entry in ipairs(addon.Indicators and addon.Indicators.LIST or {}) do

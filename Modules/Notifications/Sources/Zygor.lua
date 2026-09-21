@@ -3,13 +3,13 @@ local BNC = BazUI.Notifications.API
 -- ==========================================================================
 -- BNC-Zygor: Zygor's notifications, shown here instead of there.
 --
--- Zygor keeps a notification centre of its own and pops a toast of its own
+-- Zygor keeps a notification center of its own and pops a toast of its own
 -- when something arrives. If somebody is running both, that is two places
 -- to look and two different-looking toasts for the same class of thing.
 --
 -- This is an integration, not a port: nothing of Zygor's is copied or
 -- reimplemented. We listen to the one call it makes when it raises a
--- notification, repeat the title and text through our own centre, hand on
+-- notification, repeat the title and text through our own center, hand on
 -- whatever clicking it was going to do, and stop its toast from being
 -- shown. Its own list is left intact and its own settings still decide
 -- whether a notification happens at all - if Zygor is switched off, or has
@@ -180,7 +180,7 @@ local function Install()
     return true
 end
 
--- Zygor builds its notification centre during its own startup, which may
+-- Zygor builds its notification center during its own startup, which may
 -- be after ours. Try at login and give it a few seconds to appear before
 -- giving up quietly - an addon that is not installed is not a problem to
 -- report.

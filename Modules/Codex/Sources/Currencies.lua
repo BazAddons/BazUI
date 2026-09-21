@@ -199,6 +199,6 @@ BazUI:QueueForModule("Codex", function()
     end)
 end)
 
--- Silence a linter that cannot see Theme is kept for the day a colour
+-- Silence a linter that cannot see Theme is kept for the day a color
 -- is wanted here.
 local _ = Theme

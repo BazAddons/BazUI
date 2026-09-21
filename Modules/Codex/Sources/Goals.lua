@@ -138,7 +138,7 @@ Codex:RegisterSection({
                 detail = Detail(state),
                 state  = "open",
                 tip    = Tooltip(state),
-                -- No colour of its own: an open goal is gold like every
+                -- No color of its own: an open goal is gold like every
                 -- other open thing, and turns green when it is done.
                 progress = { value = state.fraction, max = 1 },
             }

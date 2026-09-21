@@ -161,21 +161,21 @@ end
 ---------------------------------------------------------------------------
 -- Rarity rims
 --
--- Classic does not colour item borders. SetItemButtonQuality is still
--- there and still takes a quality, but the body that coloured IconBorder
+-- Classic does not color item borders. SetItemButtonQuality is still
+-- there and still takes a quality, but the body that colored IconBorder
 -- is commented out in the game's own code and the function ends by hiding
 -- it - so calling it, which we do, gets you nothing.
 --
--- So the rim is ours: four thin textures around the icon, coloured by the
+-- So the rim is ours: four thin textures around the icon, colored by the
 -- item's quality. Drawn rather than an atlas, in keeping with the rest of
 -- the addon, and on the button itself so it moves and hides with the slot.
 ---------------------------------------------------------------------------
 
--- Which qualities are worth a rim, by setting. Grey and white on every
+-- Which qualities are worth a rim, by setting. Gray and white on every
 -- slot is noise rather than information, so "uncommon and better" is the
 -- useful default.
 -- Thin, because the rim sits on the icon's own edge rather than outside
--- it: two pixels reads as a coloured edge, four reads as a frame with a
+-- it: two pixels reads as a colored edge, four reads as a frame with a
 -- picture in it.
 -- The art an empty slot is drawn with: a dark fill and a bevelled frame
 -- around it.
@@ -188,9 +188,9 @@ local SLOT_ART_ATLAS      = "ui-hud-actionbar-iconframe-slot"
 -- This is the texture the game lights an equipped item up with, and it
 -- is built to be added rather than drawn over: every pixel is opaque,
 -- the middle is black, and the glow is white. Added, black contributes
--- nothing and so disappears, while the white takes whatever colour it is
+-- nothing and so disappears, while the white takes whatever color it is
 -- tinted - which makes it the one piece of art in the client that gives
--- a true quality colour instead of a muddied one.
+-- a true quality color instead of a muddied one.
 --
 -- It suits a bag better than a border did. A border has to be drawn
 -- somewhere exact and fights the frame already round the slot; a glow
@@ -263,7 +263,7 @@ function Bag:DumpRims()
     if shown == 0 then print("  no slot has a rim texture at all") end
 end
 
--- `override` is a colour that wins over the quality rim, for the one
+-- `override` is a color that wins over the quality rim, for the one
 -- slot the panel wants to point at. Only ever one at a time, so there is
 -- no chance of it reading as a second quality scheme.
 local function ApplyRim(btn, quality, override)
@@ -289,14 +289,14 @@ end
 ---------------------------------------------------------------------------
 -- What the panel is backed with
 --
--- The stock choice was the game's spec-background atlas, a mid-grey rock
+-- The stock choice was the game's spec-background atlas, a mid-gray rock
 -- that reads lighter than any other panel in the addon. These are the
 -- darker ones the client already has, plus a plain fill for anyone who
 -- wants no grain at all.
 --
 -- Darkened by tinting toward black rather than by swapping in a darker
 -- picture: the tint is a multiply, so the grain survives in proportion.
--- Tinting all the way to the palette's panel colour, which is nearly
+-- Tinting all the way to the palette's panel color, which is nearly
 -- black, multiplies the texture out of existence - it goes flat, which
 -- is the one thing the texture was there to avoid.
 ---------------------------------------------------------------------------
@@ -761,15 +761,15 @@ end
 
 
 ---------------------------------------------------------------------------
--- Selling the greys
+-- Selling the grays
 --
 -- A button that appears on the title bar only while a merchant is open,
 -- because that is the only moment it can do anything. It sells every poor
--- quality item that has a price - grey and worthless is a quest leftover
+-- quality item that has a price - gray and worthless is a quest leftover
 -- and cannot be sold anyway - and says what it got.
 --
 -- Quality alone decides it. Nothing here reads the category a thing is
--- filed under: somebody who renamed Junk, or pinned a grey elsewhere,
+-- filed under: somebody who renamed Junk, or pinned a gray elsewhere,
 -- still gets the same items sold, and somebody who pinned a blue into
 -- Junk does not lose it.
 ---------------------------------------------------------------------------
@@ -796,12 +796,12 @@ end
 -- "what is junk" - the Junk category already answers that - it is "which
 -- single thing costs me least to lose", and that is not the cheapest
 -- item, it is the cheapest *stack*: deleting one slot frees one slot
--- whether it held one grey or twenty, so what matters is the whole pile's
+-- whether it held one gray or twenty, so what matters is the whole pile's
 -- worth.
 --
 -- Poor quality with a price, by the same rule the sell button uses:
 -- quality alone, nothing reading which category a thing was filed under,
--- so renaming Junk or pinning a grey elsewhere changes nothing here. An
+-- so renaming Junk or pinning a gray elsewhere changes nothing here. An
 -- item with no value at all is skipped - a quest leftover cannot be sold
 -- and is usually the one thing you must not delete.
 --
@@ -883,10 +883,10 @@ local function SellJunk()
     end
 
     if sold > 0 then
-        addon:Print(("Sold %d grey item%s for %s."):format(
+        addon:Print(("Sold %d gray item%s for %s."):format(
             sold, sold == 1 and "" or "s", BazUI:FormatMoney(value)))
     else
-        addon:Print("Nothing grey to sell.")
+        addon:Print("Nothing gray to sell.")
     end
 end
 
@@ -1180,7 +1180,7 @@ function BuildFrame()
     frame.sellJunk = BazUI.Skin.Theme.CreateIconButton(frame, {
         size    = 20,
         texture = "Interface\\Icons\\INV_Misc_Coin_01",
-        tooltip = "Sell grey items",
+        tooltip = "Sell gray items",
         onClick = SellJunk,
     })
     frame.sellJunk:SetPoint("RIGHT", frame.money, "LEFT", -10, 0)
@@ -2121,7 +2121,7 @@ local function HookBlizzardBagToggles()
     -- does `CloseAllBags()`, CloseAllWindows sits in the panel-manager path
     -- that opens Edit Mode, and reading a global BazUI had taken over tainted
     -- that whole call - ending in their compact party frames comparing a
-    -- secret colour four files away. hooksecurefunc was tried next and is no
+    -- secret color four files away. hooksecurefunc was tried next and is no
     -- better: the string form leaves the global counting as tainted just the
     -- same, which the micro menu proved separately with UpdateMicroButtons.
     --

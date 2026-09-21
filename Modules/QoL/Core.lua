@@ -3,7 +3,7 @@
 -- BazUI Quality of Life
 --
 -- The small things: instant quest text, repairing without clicking the
--- anvil, selling the grey rubbish, a screenshot when you level.
+-- anvil, selling the gray rubbish, a screenshot when you level.
 --
 -- None of them are a system of their own, and that is the point of
 -- putting them together. What this module is, is a list: each tweak says

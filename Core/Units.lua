@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 ---------------------------------------------------------------------------
--- BazUI: what colour a unit is
+-- BazUI: what color a unit is
 --
 -- One answer, because two would drift. A health bar and a name plate are
 -- looking at the same unit and should agree about it; they only ask a
@@ -39,11 +39,11 @@ function BazUI.UnitColor(unit, opts)
     -- UnitClass is SecretWhenUnitIdentityRestricted, and identity comes and
     -- goes: the same unit answers plainly one moment and with a value we
     -- are not allowed to read the next. Indexing RAID_CLASS_COLORS with one
-    -- of those yields a colour whose parts are secret too, and a bar
+    -- of those yields a color whose parts are secret too, and a bar
     -- painted with it comes out black - which is what made health and power
     -- bars flick to black and back for no visible reason.
     --
-    -- Two ways to the same colour, and the first is the one we want.
+    -- Two ways to the same color, and the first is the one we want.
     -- RAID_CLASS_COLORS gives ordinary numbers, which a gradient can shade,
     -- so the bar keeps its lit top edge.
     --
@@ -68,17 +68,17 @@ function BazUI.UnitColor(unit, opts)
         -- GetClassColor is one of the few the client lets a tainted caller
         -- hand a secret to, so it can answer where the table lookup above
         -- raised. What it gives back still has to be readable, though:
-        -- a colour whose parts are secret is accepted by every widget
+        -- a color whose parts are secret is accepted by every widget
         -- setter and then drawn BLACK, with no error anywhere - which is
-        -- worse than not colouring it at all. Touched here so an
+        -- worse than not coloring it at all. Touched here so an
         -- unreadable one raises in the read rather than on screen.
         if GetClassColor then
-            local colour = BazUI.Secret.Read(function()
+            local color = BazUI.Secret.Read(function()
                 local r, g, b = GetClassColor(class)
                 if type(r) ~= "number" then return nil end
                 return { r + 0, g + 0, b + 0, 1 }
             end, nil)
-            if colour then return colour end
+            if color then return color end
         end
     end
 
@@ -113,7 +113,7 @@ end
 -- unit you look at, which is the opposite of what this is for.
 ---------------------------------------------------------------------------
 
--- `color` names a skin colour rather than holding one, because the skin
+-- `color` names a skin color rather than holding one, because the skin
 -- writes new numbers into its own tables and anything holding a copy
 -- would keep painting the old ones.
 BazUI.UNIT_RANKS = {

@@ -548,7 +548,7 @@ function O.CreateSwatch(parent, width, height)
 end
 
 -- One place that knows how to drive the game's color picker: it reports a
--- new color as it is dragged and the original if it is cancelled, so a
+-- new color as it is dragged and the original if it is canceled, so a
 -- caller only has to say what to do with a color.
 function O.OpenColorPicker(r, g, b, a, hasAlpha, onChange)
     if not (ColorPickerFrame and ColorPickerFrame.SetupColorPickerAndShow) then return end

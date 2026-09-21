@@ -10,7 +10,7 @@
 -- Four rules it follows, each learned from the page it replaces:
 --
 --   A button says what it does. "Active Profile" was a button whose label
---   was a state, greyed out and unpressable, which is a status line
+--   was a state, grayed out and unpressable, which is a status line
 --   pretending to be a control. It reads "Use this profile" now, and the
 --   dropdown says which one is in use.
 --
@@ -107,7 +107,7 @@ function BazUI:GetProfileOptionsTable()
             intro = {
                 order = 0.1, type = "lead",
                 text = "A profile is your whole interface: where everything sits, "
-                    .. "what colour it is, how it behaves. Keep one, or keep "
+                    .. "what color it is, how it behaves. Keep one, or keep "
                     .. "several and switch between them.",
             },
 

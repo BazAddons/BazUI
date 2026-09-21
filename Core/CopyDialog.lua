@@ -152,7 +152,7 @@ local function CreateDialog()
     -- thousands of characters, so this is a ceiling nothing will reach.
     editBox:SetMaxLetters(1000000)
     editBox:SetFontObject("ChatFontNormal")
-    -- The font object belongs to the chat, whose colour is whatever the
+    -- The font object belongs to the chat, whose color is whatever the
     -- last thing to draw with it left behind. This box is for reading
     -- back what you are about to copy, so it says white itself.
     editBox:SetTextColor(1, 1, 1)

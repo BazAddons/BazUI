@@ -243,7 +243,7 @@ function Indicators:Wanted(def, key)
     if own ~= nil then return own and true or false end
 
     -- Before this registry the resting mark had a field of its own, and
-    -- profiles written by older builds still carry it. Honoured rather
+    -- profiles written by older builds still carry it. Honored rather
     -- than migrated: a profile is the player's, and quietly rewriting one
     -- to suit a refactor is how a setting goes missing.
     if key == "rest" and def.restIcon ~= nil then
@@ -301,7 +301,7 @@ end
 -- Lay out whichever marks this bar is wearing right now.
 --
 -- Sized to the fill rather than to the frame, so they sit inside the
--- coloured part at any height, and never smaller than they can be read -
+-- colored part at any height, and never smaller than they can be read -
 -- which is the rule the resting mark already followed.
 --
 -- Right to left from the end of the bar, in list order, so a mark coming

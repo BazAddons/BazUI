@@ -15,26 +15,26 @@ you them back, widgets and all.
   screen there is nothing to fill, so each one now carries a **Scale** -
   on its page under Widgets and on its BazUI Edit Mode panel, the same
   setting in both places. The minimap keeps its own **Map Scale** instead,
-  because the map has to stay centred inside the ring drawn around it.
+  because the map has to stay centered inside the ring drawn around it.
 - **`/bwd float`** prints where each loose widget thinks it should be
   against where it actually is, and **`/bwd map`** does the same for the
   minimap in rather more detail.
 
 ### Fixed
 
-- **Loose widgets came back centred on the screen after a reload.** They
+- **Loose widgets came back centered on the screen after a reload.** They
   were placed once, at whatever point in the login each widget registered,
   and anything that anchored the frame afterwards won.
 - **Scaling a loose widget moved it.** It slid down and left as it shrank
   and up and right as it grew. Positions are stored in screen pixels now,
-  so a widget stays where you put it and grows about its own centre.
+  so a widget stays where you put it and grows about its own center.
 - **A widget switched on but in no drawer simply vanished** - or worse,
   sat on the screen ignoring the drawer entirely. If one has gone missing,
   look under Drawers, then Widgets in this drawer.
 - **The minimap did not resize when it moved in or out of a drawer**, and
   could come up with its map missing entirely.
-- **A setting that should be greyed out now is.** This one is not about
-  drawers: nothing in any BazUI settings page greyed itself out when the
+- **A setting that should be grayed out now is.** This one is not about
+  drawers: nothing in any BazUI settings page grayed itself out when the
   page was rebuilt, so controls that did not apply could still be changed.
   The drawer's appearance sliders were the obvious case, sitting live
   under a line saying the drawer was locked.

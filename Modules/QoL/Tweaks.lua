@@ -43,8 +43,8 @@ addon:RegisterTweak({
 
 addon:RegisterTweak({
     key     = "sellJunk",
-    label   = "Sell grey items",
-    desc    = "Sells every poor quality item in your bags when you open a merchant. Only grey: nothing you might have meant to keep.",
+    label   = "Sell gray items",
+    desc    = "Sells every poor quality item in your bags when you open a merchant. Only gray: nothing you might have meant to keep.",
     section = "vendors",
     order   = 2,
 })
@@ -73,7 +73,7 @@ local function SellJunk()
         for slot = 1, container.GetContainerNumSlots(bag) or 0 do
             local info = container.GetContainerItemInfo
                 and container.GetContainerItemInfo(bag, slot)
-            -- Poor quality and worth something: a grey with no vendor
+            -- Poor quality and worth something: a gray with no vendor
             -- price is a quest leftover and selling it is not possible
             -- anyway.
             if info and info.quality == 0 and not info.hasNoValue then
@@ -83,7 +83,7 @@ local function SellJunk()
         end
     end
     if sold > 0 then
-        addon:Print(("Sold %d grey item%s."):format(sold, sold == 1 and "" or "s"))
+        addon:Print(("Sold %d gray item%s."):format(sold, sold == 1 and "" or "s"))
     end
 end
 

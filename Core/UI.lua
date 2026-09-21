@@ -570,9 +570,9 @@ function BazUI.SetArrowTexture(tex, direction, length)
 
     tex:SetTexture(ARROW_FILE)
     tex:SetTexCoord(unpack(ARROW_COORDS[direction]))
-    -- The art is already the colour it should be; tinting it only ever
-    -- made it darker, since a texture's colour multiplies its vertex
-    -- colour and grey art cannot be brightened into gold.
+    -- The art is already the color it should be; tinting it only ever
+    -- made it darker, since a texture's color multiplies its vertex
+    -- color and gray art cannot be brightened into gold.
     tex:SetVertexColor(1, 1, 1)
     tex:SetSize(w, h)
     return w, h

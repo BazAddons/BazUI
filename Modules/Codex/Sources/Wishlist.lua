@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 -- Codex: wishlist
 --
--- The things you are playing towards. Drop an item link in the box, or
+-- The things you are playing toward. Drop an item link in the box, or
 -- shift-click an item anywhere in the game while the box has the cursor,
 -- and it joins the list with the date you wanted it. When one turns up
 -- in your bags the row says so, which is the only automatic part: the

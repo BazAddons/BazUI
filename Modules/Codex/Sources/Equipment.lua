@@ -315,7 +315,7 @@ local function Build(parent)
     page.summary:SetHeight(52 + #SUMMARY_ROWS * 24 + 10)
 
     -- The item level, as a card of its own under the left column: the
-    -- sheet's own figure in the sheet's own colour, and under it the
+    -- sheet's own figure in the sheet's own color, and under it the
     -- mean of what is actually worn, because the sheet divides by every
     -- slot and a character with six pieces on reads as a three.
     page.ilvl = Panel.CreateBox(page)

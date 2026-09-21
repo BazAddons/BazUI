@@ -18,7 +18,7 @@ BazUI:RegisterUserGuide("QoL", {
                 { type = "paragraph", text = "The draggable windows are the exception and start on. Making a window draggable does nothing at all until you drag it, so there is no surprise to protect you from - and a window you cannot move is a thing people go looking for a setting to fix." },
                 { type = "paragraph", text = "Two kinds live here. Some set a console setting the game already has - those remember what you had before and put it back when you switch them off. The rest listen for something happening and act when it does; they ask whether they are switched on at the moment they fire, so one that is off is genuinely doing nothing." },
                 { type = "note", text = "|cffffd700Open it with|r /bazqol, or Options > AddOns > BazUI > Quality of Life. There are two pages: |cffffd700General Settings|r for the tweaks, and |cffffd700Draggable Windows|r for the list of windows." },
-                { type = "note", text = "A switch that sets a console setting your client does not have is greyed out rather than hidden, so the page reads the same everywhere and a missing switch is never a mystery." },
+                { type = "note", text = "A switch that sets a console setting your client does not have is grayed out rather than hidden, so the page reads the same everywhere and a missing switch is never a mystery." },
             },
         },
 
@@ -35,9 +35,9 @@ BazUI:RegisterUserGuide("QoL", {
             blocks = {
                 { type = "h3", text = "Repair automatically" },
                 { type = "paragraph", text = "Repairs everything the moment you open a merchant that can. Guild funds are used first where they are available and you are allowed them, so it costs you nothing before it costs you money. What it spent is printed in chat." },
-                { type = "h3", text = "Sell grey items" },
-                { type = "paragraph", text = "Sells every poor quality item in your bags when you open a merchant. Only grey, and only grey that is worth something - a grey with no vendor price is a quest leftover and cannot be sold anyway." },
-                { type = "note", text = "Anything you want kept, pin to a category in Bags and it is still sold - this looks at quality, not at your bags' arrangement. Keep it in the bank if it is grey and precious." },
+                { type = "h3", text = "Sell gray items" },
+                { type = "paragraph", text = "Sells every poor quality item in your bags when you open a merchant. Only gray, and only gray that is worth something - a gray with no vendor price is a quest leftover and cannot be sold anyway." },
+                { type = "note", text = "Anything you want kept, pin to a category in Bags and it is still sold - this looks at quality, not at your bags' arrangement. Keep it in the bank if it is gray and precious." },
                 { type = "note", text = "The Bags module has a button that does the same thing on demand, if you would rather decide each time than have it happen automatically." },
             },
         },

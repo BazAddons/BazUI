@@ -464,7 +464,7 @@ function Dock:CreateMover(target, opts)
     end
 
     -- Drawing the line and remembering what it promised are the same
-    -- act, because letting go has to honour it.
+    -- act, because letting go has to honor it.
     function mover:ShowSnap(snap)
         self._snapShown = snap and true or false
         self._snap = snap

@@ -21,8 +21,8 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
         maxRows       = 15,    -- how tall the content may get before the panel takes another column
                                 -- instead. Bags do not scroll; a higher number means a taller,
                                 -- narrower bag and a lower one means a shorter, wider bag.
-        -- Which qualities get a coloured edge on their slot. Classic
-        -- colours nothing on its own, so this is entirely ours.
+        -- Which qualities get a colored edge on their slot. Classic
+        -- colors nothing on its own, so this is entirely ours.
         rarityRims    = "uncommon",
 
         -- A dark square behind an empty slot. Without it the grid has
@@ -37,13 +37,13 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
 
         -- The coin button at a merchant.
         sellJunkButton = true,
-        markCheapestJunk = true,  -- ring the cheapest grey stack once the bags are full
+        markCheapestJunk = true,  -- ring the cheapest gray stack once the bags are full
 
         showItemLevel = false,
         showBindType  = false,
 
         -- What backs the panel, and how far toward black it is taken.
-        -- Dark stone rather than the game's mid-grey slate: the panel
+        -- Dark stone rather than the game's mid-gray slate: the panel
         -- should read as part of this addon rather than part of the
         -- game's UI, and still have some grain in it.
         bgTexture     = "marble",
@@ -416,15 +416,15 @@ local function GetSettingsPage()
             },
 
             sellJunkButton = {
-                order = 23.5, type = "toggle", name = "Sell grey items at a vendor",
-                desc = "A coin button on the title bar while a merchant is open, which sells every grey that has a price. It is only there when there is something to sell.",
+                order = 23.5, type = "toggle", name = "Sell gray items at a vendor",
+                desc = "A coin button on the title bar while a merchant is open, which sells every gray that has a price. It is only there when there is something to sell.",
                 get = function() return addon:GetSetting("sellJunkButton") ~= false end,
                 set = function(_, val) addon:SetSetting("sellJunkButton", val and true or false); Refresh() end,
             },
 
             markCheapestJunk = {
                 order = 23.52, type = "toggle", name = "Mark what to drop first",
-                desc = "When your bags are full, ring the grey stack worth the least "
+                desc = "When your bags are full, ring the gray stack worth the least "
                     .. "of anything you are carrying, so there is no hunting for "
                     .. "something to make room with. Nothing with no sale value is "
                     .. "ever picked - that is usually the one thing you must keep.",
@@ -461,12 +461,12 @@ local function GetSettingsPage()
 
             raritySlots = {
                 order = 24, type = "select", name = "Rarity glow",
-                desc = "A colored glow around a slot, by the item's quality. Grey and white on every slot is noise rather than information, which is why the useful setting is uncommon and better.",
+                desc = "A colored glow around a slot, by the item's quality. Gray and white on every slot is noise rather than information, which is why the useful setting is uncommon and better.",
                 values = {
                     none     = "Off",
                     uncommon = "Uncommon and better",
                     common   = "White and better",
-                    all      = "Everything, including grey",
+                    all      = "Everything, including gray",
                 },
                 sorting = { "none", "uncommon", "common", "all" },
                 get = function() return addon:GetSetting("rarityRims") or "uncommon" end,

@@ -215,7 +215,7 @@ local function BarArgs(def)
             },
             fillFrom = {
                 order = 22.5, type = "select", name = "Fills from",
-                desc = "Which end the bar empties towards. Two bars sharing a line often want opposite ends, so they drain towards each other.",
+                desc = "Which end the bar empties toward. Two bars sharing a line often want opposite ends, so they drain toward each other.",
                 values = FILL_FROM,
                 get = Field(def, "fillFrom", "LEFT"), set = SetField(def, "fillFrom"),
             },

@@ -21,7 +21,7 @@ local LEGACY_DEFAULT = "Default"
 -- and the one a character with no pin ends up wearing.
 --
 -- Asked for by name from the panels as well, so that the control that
--- greys out Rename and the code that refuses it are answering the same
+-- grays out Rename and the code that refuses it are answering the same
 -- question. They used to hold a copy of the name each, which was fine
 -- while there was only ever one name.
 local function FallbackProfile(sv)

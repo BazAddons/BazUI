@@ -8,7 +8,7 @@
 -- to the classic game type, and on a client where it does load it works
 -- by compiling snippets, which Forever cannot do either.
 --
--- The buttons are still SecureActionButtonTemplate, because cancelling a
+-- The buttons are still SecureActionButtonTemplate, because canceling a
 -- buff is protected and a right-click on a real secure button is the only
 -- way an addon may do it.
 --
@@ -634,7 +634,7 @@ function addon:LayoutHeader(def)
         local slot = slots[i]
         -- Stamped before it is shown, so the first paint has something to
         -- read. An empty slot keeps a plausible index rather than none:
-        -- cancelling an aura that is not there is a no-op, and a slot with
+        -- canceling an aura that is not there is a no-op, and a slot with
         -- no index at all would paint nothing even once one arrives.
         btn:SetAttribute("target-slot", slot and slot.weapon or nil)
         btn:SetAttribute("index", (slot and not slot.weapon) and slot.index or i)
@@ -1471,12 +1471,12 @@ function addon:RowEditSettings(def)
           set = function(value)
               def.dock = { host = value, edge = (def.dock and def.dock.edge) or "BOTTOM" }
               Refresh()
-              -- No panel rebuild: the rows below grey themselves.
+              -- No panel rebuild: the rows below gray themselves.
           end },
     }
 
     -- Always here, never conditional. A control that does not apply right
-    -- now goes grey where it stands rather than vanishing: a row that comes
+    -- now goes gray where it stands rather than vanishing: a row that comes
     -- and goes rearranges the panel under the cursor and leaves you unsure
     -- whether the setting exists at all.
     -- Named for what they disable on, so `disabled = Floating` reads as
@@ -1486,7 +1486,7 @@ function addon:RowEditSettings(def)
     local function Floating() return not (def.dock and def.dock.host and def.dock.host ~= "float") end
     local function NotBeside() return Floating() or addon:RowTakes(def) == "full" end
     -- A row on a side keeps its own size - see RowTakes - so the choice
-    -- is greyed out there rather than offering something it will ignore.
+    -- is grayed out there rather than offering something it will ignore.
     local function OnASide() return Floating() or addon:RowAxis(def) == "H" end
 
     -- A docked row is part of a stack, and anything docked to that stack
@@ -1567,7 +1567,7 @@ function addon:RowEditSettings(def)
     end
 
     -- A row the dock measures has its icon size worked out for it, so the
-    -- control is shown greyed at whatever it came out as rather than taken
+    -- control is shown grayed at whatever it came out as rather than taken
     -- away.
     Slider("Icon size", "iconSize", 12, 48, function()
         return not Floating() and addon:RowMeasured(def)
@@ -1978,14 +1978,14 @@ function addon:Initialize()
     -- Rows are built here rather than by Blizzard's secure aura header,
     -- which is gated to the classic game type and absent on Forever. What
     -- is still needed is the plain secure action button, which every
-    -- client has, because cancelling a buff is protected and can only
+    -- client has, because canceling a buff is protected and can only
     -- happen through one.
     --
     -- Without it the rows would still draw; they would just have no
     -- right-click. Say so and carry on rather than turning the module
     -- off, since showing auras is most of what it is for.
     if not BazUI.Has.Template("SecureActionButtonTemplate") then
-        self.unavailable = "This client does not provide secure action buttons, so auras cannot be cancelled by right-clicking."
+        self.unavailable = "This client does not provide secure action buttons, so auras cannot be canceled by right-clicking."
         BazUI:Print("Auras: " .. self.unavailable)
     end
 

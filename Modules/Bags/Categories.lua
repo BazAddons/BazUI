@@ -862,7 +862,7 @@ end
 -- the item info isn't cached yet.
 --
 -- `meta` is optional: a caller that already knows the item's type and
--- quality - the Codex, from the shipped item catalogue - hands them in
+-- quality - the Codex, from the shipped item catalog - hands them in
 -- and the client is not asked. Without it the client is, and an item
 -- it has not loaded matches nothing.
 function Categories.MatchesCategory(itemID, categoryKey, meta)

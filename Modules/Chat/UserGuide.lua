@@ -100,7 +100,7 @@ BazUI:RegisterUserGuide("Chat", {
         {
             title = "The combat log",
             blocks = {
-                { type = "paragraph", text = "The |cffffd700Log|r tab ships carrying the quiet running commentary the game produces about you: experience, honour, reputation, skill ups and pet news. That is what is on it out of the box, and it is read-only, with no edit box." },
+                { type = "paragraph", text = "The |cffffd700Log|r tab ships carrying the quiet running commentary the game produces about you: experience, honor, reputation, skill ups and pet news. That is what is on it out of the box, and it is read-only, with no edit box." },
                 { type = "h3", text = "The game's own combat log" },
                 { type = "paragraph", text = "The full combat log - the one with My Actions, What Happened to Me and the Additional Filters dropdown - lives in an addon the game does not load by itself. |cffffd700Use Blizzard's combat log|r, on the General page beside the master switch, loads it and hands the Log tab its output, its filters and its quick buttons." },
                 { type = "note", style = "warning", text = "|cffffd700It starts switched off, and on WoW: Forever you probably want it left that way.|r Loading that addon on this build leaves its own refresh erroring every frame - hundreds a session, inside Blizzard's file, on something no addon can reach. Turn it on where the client behaves. It takes a reload either way." },

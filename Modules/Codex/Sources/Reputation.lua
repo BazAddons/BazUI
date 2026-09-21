@@ -25,7 +25,7 @@ local EXALTED  = 8
 local COMMON   = { tab = TAB, tabLabel = "Reputation", tabOrder = 27, tabIcon = TAB_ICON }
 
 ---------------------------------------------------------------------------
--- Words and colours
+-- Words and colors
 ---------------------------------------------------------------------------
 
 -- The client's own word for a standing: localised, and gendered in the
@@ -78,7 +78,7 @@ end
 -- The factions written down that the client has not listed: the ones
 -- you have not met. Each goes under the header its met neighbours sit
 -- under, or under its own group's word where none of them has been met
--- yet, greyed and read live by id. See Data/Factions.lua.
+-- yet, grayed and read live by id. See Data/Factions.lua.
 local function MergeUnmet(groups, byName, listed)
     local data = Codex.Factions
     if not (data and data.entries and data.Confirm) then return end

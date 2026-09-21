@@ -126,7 +126,7 @@ function SecondsUntil(fn)
 end
 
 -- One reset clock. The bar fills as the window runs out and warms from
--- gold towards amber as it does, so a glance says how much of the day or
+-- gold toward amber as it does, so a glance says how much of the day or
 -- the week is already spent without reading the number.
 local function ResetRow(label, remaining, period, window, tip)
     local Theme = BazUI.Skin.Theme

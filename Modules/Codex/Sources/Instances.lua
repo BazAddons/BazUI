@@ -12,7 +12,7 @@
 -- A row reads one of five ways, worst first: saved (bosses down, time
 -- to reset), too low for it, not yet attuned, outgrown, or open - with
 -- "for your level" on the ones tuned for where you are. Any lockout
--- the catalogue does not know is listed on its own, so a lockout is
+-- the catalog does not know is listed on its own, so a lockout is
 -- never missing from the page just because the data has not caught up.
 ---------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ local function Duration(seconds)
     return BazUI:FormatSpan(seconds)
 end
 
-local function Catalogue()
+local function Catalog()
     return (Codex.Instances and Codex.Instances.entries) or {}
 end
 
@@ -94,7 +94,7 @@ local function AccessFor(entry)
     return nil
 end
 
--- Bosses down and bosses up, where the client will say; the catalogue's
+-- Bosses down and bosses up, where the client will say; the catalog's
 -- list otherwise.
 -- The bosses, one per line, marked off where the client will say which
 -- are down. A list of fifteen names run together is not a list anyone
@@ -234,7 +234,7 @@ end
 
 local function ByKind()
     local byKind, kinds = {}, {}
-    for _, entry in ipairs(Catalogue()) do
+    for _, entry in ipairs(Catalog()) do
         local kind = KIND_TITLE[entry.kind] and entry.kind or "dungeon"
         if not byKind[kind] then
             byKind[kind] = {}
@@ -299,11 +299,11 @@ local function Blocks()
         }
     end
 
-    -- Lockouts the catalogue does not know.
+    -- Lockouts the catalog does not know.
     local strays = {}
     for _, lock in ipairs(Lockouts()) do
         local known = false
-        for _, entry in ipairs(Catalogue()) do
+        for _, entry in ipairs(Catalog()) do
             if LockoutFor({ lock }, entry) then known = true break end
         end
         if not known then strays[#strays + 1] = lock end

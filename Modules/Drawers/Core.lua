@@ -126,7 +126,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                 print(("  saved position: %s"):format(pos
                     and (pos.point and ("%s %s %.0f,%.0f"):format(pos.point,
                             pos.relPoint or "?", pos.x or 0, pos.y or 0)
-                        or ("centre offset %.0f,%.0f"):format(pos.x or 0, pos.y or 0))
+                        or ("center offset %.0f,%.0f"):format(pos.x or 0, pos.y or 0))
                     or "none"))
                 print(("  design: %.0fx%.0f"):format(w.designWidth or 0, w.designHeight or 0))
                 Frame("wrapper ", w.frame)
@@ -152,7 +152,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
                             and (pos.point
                                 and ("%s %s %.0f, %.0f"):format(pos.point,
                                     pos.relPoint or pos.point, pos.x or 0, pos.y or 0)
-                                or ("centre offset %.0f, %.0f"):format(pos.x or 0, pos.y or 0))
+                                or ("center offset %.0f, %.0f"):format(pos.x or 0, pos.y or 0))
                             or "nothing saved"
                         -- Not `w.frame and w.frame:GetPoint()`: an `and`
                         -- keeps only the first return, so every value

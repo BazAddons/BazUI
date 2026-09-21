@@ -36,7 +36,7 @@ local EditModeNineSliceLayout = {
 ---------------------------------------------------------------------------
 -- What an overlay says about a frame
 --
--- The atlas says whether a frame is selected. The colour says what it is
+-- The atlas says whether a frame is selected. The color says what it is
 -- in a dock stack, which is otherwise invisible while editing: move the
 -- host and everything hanging off it comes too, move a follower and it
 -- only changes its place in the stack. Those are different enough actions
@@ -80,7 +80,7 @@ local function DockRole(frame)
 end
 
 -- Re-applies the layout as well as the tint, because ApplyLayout replaces
--- the textures and a colour set before it would be thrown away.
+-- the textures and a color set before it would be thrown away.
 local function ApplyOverlayLook(frame, overlay)
     if not overlay then return end
     NineSliceUtil.ApplyLayout(overlay, EditModeNineSliceLayout,
@@ -95,7 +95,7 @@ local function ApplyOverlayLook(frame, overlay)
     end
 end
 
--- A stack can be rearranged inside a session, so the colours are worked
+-- A stack can be rearranged inside a session, so the colors are worked
 -- out again rather than settled once when the overlay was built.
 function BazUI:RefreshEditOverlays()
     for frame in pairs(registeredFrames) do
@@ -110,9 +110,9 @@ end
 -- only worked inside Blizzard's edit mode - open ours and there was
 -- nothing to snap to.
 --
--- Drawn from the middle of the screen outward, so the centre line is a
--- real centre however wide the display is, and so the two halves always
--- match. The centre pair is brighter than the rest: lining something up
+-- Drawn from the middle of the screen outward, so the center line is a
+-- real center however wide the display is, and so the two halves always
+-- match. The center pair is brighter than the rest: lining something up
 -- with the middle of the screen is the one alignment worth calling out.
 ---------------------------------------------------------------------------
 
@@ -140,7 +140,7 @@ local function GridActive()
 end
 
 -- Where a point lands once the grid has it. The origin is the middle of
--- the screen, which is what makes a centred frame stay centred.
+-- the screen, which is what makes a centered frame stay centered.
 local function SnapPoint(cx, cy)
     local spacing = GridSpacing()
     local gx, gy = UIParent:GetWidth() / 2, UIParent:GetHeight() / 2
@@ -184,18 +184,18 @@ function BazUI:RefreshEditGrid()
     local w, h = UIParent:GetWidth(), UIParent:GetHeight()
     local cx, cy = w / 2, h / 2
 
-    local function Vertical(x, centre)
+    local function Vertical(x, center)
         local t = GridLine(f)
-        t:SetWidth(centre and 2 or 1)
-        t:SetColorTexture(1, 1, 1, centre and 0.30 or 0.08)
+        t:SetWidth(center and 2 or 1)
+        t:SetColorTexture(1, 1, 1, center and 0.30 or 0.08)
         t:SetPoint("TOP", f, "TOPLEFT", x, 0)
         t:SetPoint("BOTTOM", f, "BOTTOMLEFT", x, 0)
     end
 
-    local function Horizontal(y, centre)
+    local function Horizontal(y, center)
         local t = GridLine(f)
-        t:SetHeight(centre and 2 or 1)
-        t:SetColorTexture(1, 1, 1, centre and 0.30 or 0.08)
+        t:SetHeight(center and 2 or 1)
+        t:SetColorTexture(1, 1, 1, center and 0.30 or 0.08)
         t:SetPoint("LEFT", f, "BOTTOMLEFT", 0, y)
         t:SetPoint("RIGHT", f, "BOTTOMRIGHT", 0, y)
     end
@@ -476,7 +476,7 @@ local INSPECTOR_WIDTH  = POPUP_WIDTH + 24
 -- system falls back to and neither file owns the other.
 -- The profile that cannot be renamed. Asked of the profile system rather
 -- than spelled out here, so this and the code that enforces it cannot
--- disagree - a Rename button that is not greyed and does nothing is worse
+-- disagree - a Rename button that is not grayed and does nothing is worse
 -- than one that is.
 local function DefaultProfileName()
     return (BazUI.GetFallbackProfile and BazUI:GetFallbackProfile()) or "BazUI"
@@ -503,12 +503,12 @@ local BTN_WIDTH = POPUP_WIDTH - 30
 
 -- Widget Builders
 
--- Greying out, for every kind of row
+-- Graying out, for every kind of row
 --
--- A control that does not apply right now stays where it is and goes grey.
+-- A control that does not apply right now stays where it is and goes gray.
 -- It does not disappear. Hiding rearranges the panel under your cursor and
 -- leaves you wondering whether a setting exists at all - the row that is
--- there and grey tells you both that it exists and that something else has
+-- there and gray tells you both that it exists and that something else has
 -- to change first.
 --
 -- `disabled` is a function so it can be asked repeatedly; the state is
@@ -1205,7 +1205,7 @@ local function BuildPopup()
     -- Which layout you are arranging.
     --
     -- A profile is the whole interface - where everything sits, what
-    -- colour it is, how it behaves - so it is also the layout, and
+    -- color it is, how it behaves - so it is also the layout, and
     -- switching one here rearranges the screen under you. That is the
     -- point: arranging a second layout means switching to it first, and
     -- going back to the options panel to do that is going the long way
@@ -1279,7 +1279,7 @@ local function BuildPopup()
         BazUI:OpenPopup({
             title = "New layout",
             body  = problem or ("A layout is your whole interface: where "
-                .. "everything sits, what colour it is, how it behaves. The new "
+                .. "everything sits, what color it is, how it behaves. The new "
                 .. "one becomes the one you are wearing, so you can arrange it "
                 .. "straight away."),
             fields = {
@@ -1316,7 +1316,7 @@ local function BuildPopup()
 
     local function OpenRenameLayout(prefill, problem)
         local from = BazUI:GetActiveProfile() or DefaultProfileName()
-        -- The menu entry is greyed for Default, so this is belt and
+        -- The menu entry is grayed for Default, so this is belt and
         -- braces - but RenameProfile refuses it, and the caller below
         -- reads a refusal as "that name is taken", which it is not.
         if from == DefaultProfileName() then return end
@@ -1367,7 +1367,7 @@ local function BuildPopup()
         root:CreateButton("New layout...", function() OpenNewLayout() end)
         local rename = root:CreateButton("Rename this layout...",
             function() OpenRenameLayout() end)
-        -- Greyed rather than dropped: the entry being there is how you
+        -- Grayed rather than dropped: the entry being there is how you
         -- learn renaming exists, and Default is the one the profile
         -- system falls back to.
         if BazUI:GetActiveProfile() == DefaultProfileName() and rename.SetDisabled then
@@ -2055,7 +2055,7 @@ local function AddGameMenuButton()
     -- frame that is not there. Escape then does nothing at all, for the
     -- rest of the session: ToggleGameMenu sees GameMenuFrame:IsShown() is
     -- false, falls through to showing it, and ShowUIPanel finds it is
-    -- already the centre panel and has nothing to do.
+    -- already the center panel and has nothing to do.
     --
     -- That is what "Escape stopped working after leaving Edit Mode" was,
     -- and /baz escdebug named it in one line: "GameMenu: false" beside

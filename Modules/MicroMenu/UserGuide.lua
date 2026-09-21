@@ -45,7 +45,7 @@ BazUI:RegisterUserGuide("MicroMenu", {
                 } },
                 { type = "h3", text = "Buttons" },
                 { type = "paragraph", text = "One switch per button. Turning one off takes it off the bar and closes the gap; it does not disable whatever it opened, which still has its keybind." },
-                { type = "note", text = "|cffffd700Every button has a row, on every client|r, and the ones this client has no button for are greyed out rather than missing - so the list is the same shape wherever you read it, and a setting you remember is where you remember it." },
+                { type = "note", text = "|cffffd700Every button has a row, on every client|r, and the ones this client has no button for are grayed out rather than missing - so the list is the same shape wherever you read it, and a setting you remember is where you remember it." },
                 { type = "note", text = "The switches are listed in a fixed order. The bar itself follows the order the game gives its buttons, so the two lists can read differently." },
                 { type = "note", text = "The bar is always visible while Edit Mode is open, whatever the fade is set to - a bar you cannot see is a bar you cannot drag." },
             },

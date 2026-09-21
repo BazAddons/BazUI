@@ -46,7 +46,7 @@ local function SortedKeys(t)
     return out
 end
 
--- Same value, to the depth a setting ever goes. Positions and colours are
+-- Same value, to the depth a setting ever goes. Positions and colors are
 -- small tables, so a shallow compare would call every one of them equal.
 local function Same(a, b)
     if a == b then return true end
@@ -225,7 +225,7 @@ end
 local function Describe(value)
     local kind = type(value)
     if kind == "table" then
-        -- Positions and colours are the tables that matter here, and
+        -- Positions and colors are the tables that matter here, and
         -- they are small and flat. Anything larger is summarised.
         local parts, count = {}, 0
         for k, v in pairs(value) do
@@ -288,7 +288,7 @@ function BazUI:PrintModuleSettings(name)
             table.concat(cells, "   ") .. "|r"))
     end
     print("  |cff999999Gold means the profiles disagree, which is what" ..
-        " per-profile looks like. Grey means they all hold the same thing.|r")
+        " per-profile looks like. Gray means they all hold the same thing.|r")
 end
 
 function BazUI:PrintSettingsAudit()

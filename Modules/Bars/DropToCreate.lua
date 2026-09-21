@@ -364,7 +364,7 @@ local function Ghost()
     ghost:Hide()
 
     -- The dock's landing green, because this is the same promise being
-    -- made about a different thing, and one colour for "it goes here" is
+    -- made about a different thing, and one color for "it goes here" is
     -- one thing to learn instead of two.
     local rim = ghost:CreateTexture(nil, "BACKGROUND")
     rim:SetAllPoints()
@@ -502,7 +502,7 @@ end
 -- Grow the bar by one slot on the edge the drop came in by, and hand
 -- back the slot that appeared.
 --
--- A bar's buttons hang off its centre, so a grid one slot wider grows
+-- A bar's buttons hang off its center, so a grid one slot wider grows
 -- half a slot in each direction and everything already on the bar slides
 -- half a slot away from where it was - the drop would move the thing it
 -- was aimed beside. So the bar is put back by whatever its far edge
@@ -572,7 +572,7 @@ end
 -- Making the bar
 ---------------------------------------------------------------------------
 
--- A bar of one, centred where it was dropped.
+-- A bar of one, centered where it was dropped.
 --
 -- The position is worked out after the bar exists, because the offset in
 -- a SetPoint is read in the coordinate space of the frame being placed -

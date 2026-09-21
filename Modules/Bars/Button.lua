@@ -562,7 +562,7 @@ local function FlyoutShapeItems(btn, data)
     end
 
     return {
-        { label = "Opens towards", submenu = directions },
+        { label = "Opens toward", submenu = directions },
         { label = "Rows",    submenu = CountItems("rows", 4, data.rows or 1) },
         { label = "Columns", submenu = CountItems("cols", 8, data.cols or 3) },
         {

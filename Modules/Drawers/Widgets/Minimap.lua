@@ -431,7 +431,7 @@ end
 -- back on the next reflow; floating, nothing else is going to resize the
 -- wrapper, so set it here and let the reflow ignore it.
 -- The map and the frame around it scale together, so they stay
--- concentric: both are centred on the wrapper, and a scale changes only
+-- concentric: both are centered on the wrapper, and a scale changes only
 -- how big each one draws, never where its middle is.
 function MinimapWidget:ApplyScale()
     if not Minimap then return end
@@ -576,7 +576,7 @@ function MinimapWidget:GetOptionsArgs()
             order     = 12,
             type      = "range",
             name      = "Map Scale",
-            desc      = "How big the map draws. In a drawer this is how much of the drawer's width it takes, and below 100% it sits centred with room either side. Floating, it is simply the size of the map.",
+            desc      = "How big the map draws. In a drawer this is how much of the drawer's width it takes, and below 100% it sits centered with room either side. Floating, it is simply the size of the map.",
             min       = MAP_SCALE_MIN,
             max       = MAP_SCALE_MAX,
             step      = 0.05,
@@ -641,7 +641,7 @@ function MinimapWidget:Init()
     wrapper = CreateFrame("Frame", "BazUIDrawerMinimapWrapper", UIParent)
     wrapper:SetSize(wrapperW, wrapperH)
     -- Invisible until the dock has put it somewhere. A frame born at the
-    -- centre of the screen and left there by combat should not be seen
+    -- center of the screen and left there by combat should not be seen
     -- there; alpha is the one thing combat lets us change.
     wrapper:SetAlpha(0)
 

@@ -107,8 +107,8 @@ end
 -- the same breath, which is exactly what re-rendering a page does - so
 -- a row rebuilt by a refresh kept whatever state it was built with, and
 -- `disabled` did nothing at all until something else made the page
--- appear. A setting that greys out on one render and not the next is
--- worse than one that never greys out, because you cannot tell which
+-- appear. A setting that grays out on one render and not the next is
+-- worse than one that never grays out, because you cannot tell which
 -- you are looking at.
 --
 -- So the sync runs once at creation too. It is the same function either

@@ -4,8 +4,8 @@
 --
 -- Every profession as a card of its own, wearing the profession book's
 -- own furniture: the faded workshop behind it, the framed icon, and
--- the rank bar in that profession's colours. Then everything else the
--- character has learned - class skills, weapons, armour, languages -
+-- the rank bar in that profession's colors. Then everything else the
+-- character has learned - class skills, weapons, armor, languages -
 -- grouped the way Forever's skills sheet groups them, one row per
 -- skill with a bar where a rank is climbing to its cap.
 --

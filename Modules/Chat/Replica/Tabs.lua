@@ -731,8 +731,8 @@ function Tabs:EnsureFor(dockInstance)
     --
     -- The two speak the same API, so this used to take theirs when it was
     -- there and fall back to ours when it was not. That left the tabs
-    -- wearing Blizzard's grey plates above a window drawn in the suite's
-    -- own border and colours - the same mismatch the chrome itself had.
+    -- wearing Blizzard's gray plates above a window drawn in the suite's
+    -- own border and colors - the same mismatch the chrome itself had.
     -- Ours takes its plates and its accent straight from the palette, so
     -- the strip follows a skin change with the window under it.
     local ts = BazUI.CreateTabStrip(stripName, UIParent, {

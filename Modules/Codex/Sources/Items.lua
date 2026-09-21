@@ -11,7 +11,7 @@
 --                     no such call. So BazUI ships the game's item list
 --                     for the client it is built for - Data/Items.lua,
 --                     generated from the game's own tables - and a name
---                     searches that. Where the catalogue is for another
+--                     searches that. Where the catalog is for another
 --                     client (retail, today) a name falls back to what
 --                     this character has met.
 --   Nothing           every item in the game, in name order, for
@@ -20,10 +20,10 @@
 --                     same as twenty. An item this character has met -
 --                     carried, worn, banked, or looked up by the client
 --                     for any reason - wears a mark on its row. Where
---                     there is no catalogue the met items are the list.
+--                     there is no catalog the met items are the list.
 --
 -- A row is drawn from the client's own data the moment it has any, and
--- from the catalogue until then - so a search result is never a bare
+-- from the catalog until then - so a search result is never a bare
 -- number waiting on the server, and nothing is asked of the server for
 -- an item nobody has pointed at.
 ---------------------------------------------------------------------------
@@ -60,14 +60,14 @@ local function Index()
 end
 
 -- The shipped item list, or nil where it describes a different client.
-local function Catalogue()
+local function Catalog()
     local Items = Codex.Items
     if Items and Items.Available and Items.Available() then return Items end
     return nil
 end
 
 -- What the classifier would have asked the client for, from the
--- catalogue instead. Missing what the table does not carry - bind type,
+-- catalog instead. Missing what the table does not carry - bind type,
 -- equip slot, stack size - so a custom rule on one of those simply does
 -- not match until the item has been loaded, which is the fail-safe way
 -- round.
@@ -162,11 +162,11 @@ local function Sorted(ids, index)
 end
 
 -- What the page shows before you type anything: every item there is,
--- where the catalogue is for this client, and otherwise what you have
+-- where the catalog is for this client, and otherwise what you have
 -- met. The box narrows a list that is already there rather than
 -- summoning one out of nothing.
 local function Everything()
-    local cat = Catalogue()
+    local cat = Catalog()
     if cat then return cat.All() end
     local index = Index()
     local ids = {}
@@ -212,12 +212,12 @@ local function CategoryOf(itemID)
     if not (cats and cats.Classify) then return nil end
 
     -- The classifier reads the item's type and quality, which the
-    -- client only has once the item is loaded. The catalogue has both,
+    -- client only has once the item is loaded. The catalog has both,
     -- so an item the client has never seen is classified from that and
     -- the server is not asked - a search across the whole game would
     -- otherwise be thousands of requests for items nobody pointed at.
     if not C_Item.GetItemInfo(itemID) then
-        local cat = Catalogue()
+        local cat = Catalog()
         local rec = cat and cat.Get(itemID)
         if rec then
             local ok, key = pcall(cats.Classify, itemID, rec.quality, rec.classID, CatalogueMeta(rec))
@@ -227,7 +227,7 @@ local function CategoryOf(itemID)
             end
             return nil
         end
-        -- No catalogue for this client: wait for the item and ask
+        -- No catalog for this client: wait for the item and ask
         -- again, rather than cache a wrong answer for the session.
         if C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
         return nil
@@ -270,8 +270,8 @@ local function Resolve(query)
 
     local needle = query:lower()
 
-    -- Every item the game has, where the catalogue is for this client.
-    local cat = Catalogue()
+    -- Every item the game has, where the catalog is for this client.
+    local cat = Catalog()
     if cat then
         local hits = cat.Search(needle)
         if #hits == 0 then
@@ -544,7 +544,7 @@ local function RenderHeader(host, width)
     if note then
         headerNote = note
     elseif #hits == 0 then
-        if IndexSize() > 0 or Catalogue() then
+        if IndexSize() > 0 or Catalog() then
             headerNote = "Nothing in this category matches."
         else
             headerNote = "Nothing here yet. Items join the list as you carry, wear, bank and loot them; a link or an item number looks up anything else."
@@ -636,11 +636,11 @@ local function FillRows()
         local itemID = hits[i]
         local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(itemID)
         if not name then
-            -- Not loaded this session. The catalogue has the name, the
-            -- colour and the picture, which is all a row needs, so the
+            -- Not loaded this session. The catalog has the name, the
+            -- color and the picture, which is all a row needs, so the
             -- server is not asked for a search result; hovering the row
             -- asks for the tooltip, which is when it becomes wanted.
-            local cat = Catalogue()
+            local cat = Catalog()
             local rec = cat and cat.Get(itemID)
             if rec then
                 name, quality, texture = rec.name, rec.quality, rec.icon
@@ -737,9 +737,9 @@ Codex.customTabs.items = {
         local highlights = {
             { value = IndexSize(), label = "items this character has met" },
         }
-        local catalogue = Catalogue()
-        if catalogue then
-            highlights[#highlights + 1] = { value = catalogue.Count(), label = "items in the game" }
+        local catalog = Catalog()
+        if catalog then
+            highlights[#highlights + 1] = { value = catalog.Count(), label = "items in the game" }
         end
         local key = addon:GetSetting("itemCategory")
         if key and key ~= "all" then

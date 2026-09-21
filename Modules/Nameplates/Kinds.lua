@@ -27,7 +27,7 @@
 -- answers them and two answers would only disagree:
 --
 --   Pets, guardians, totems and minions. The game keeps them as a
---   visibility category and colours them by whose side they are on, and
+--   visibility category and colors them by whose side they are on, and
 --   so do we: a hostile warlock's felhunter is a hostile NPC. A kind of
 --   its own would have to outrank friendly and hostile both, and a pet
 --   that ignored whether it was going to hit you would read wrong.
@@ -60,7 +60,7 @@ addon.KINDS = {
     {
         id    = "tapped",
         label = "Tapped by someone else",
-        desc  = "A mob somebody else got to first, which you can hit but cannot loot or take credit for. Turn its plate down or off here; the colour is left as the reaction colour.",
+        desc  = "A mob somebody else got to first, which you can hit but cannot loot or take credit for. Turn its plate down or off here; the color is left as the reaction color.",
         -- Above the hostile kinds on purpose: a tapped mob is still
         -- hostile, and knowing it is not yours is the more useful of the
         -- two facts.
@@ -140,7 +140,7 @@ end
 ---------------------------------------------------------------------------
 
 -- rank and class color are each only about half the kinds, and rather
--- than leave a switch that silently does nothing, the page greys them
+-- than leave a switch that silently does nothing, the page grays them
 -- out. Named here so the page and the plate agree about which.
 local PLAYER_ONLY = { friendlyPlayer = true, hostilePlayer = true }
 local NPC_ONLY    = { friendlyNpc = true, neutralNpc = true, hostileNpc = true, tapped = true }

@@ -40,7 +40,7 @@ addon.CombatLog = CombatLog
 -- securecallfunction is the way in: the callee runs without our taint, so
 -- the load, the filter it applies and the ticker it starts are all clean.
 -- Falls back to pcall where the client has no such thing, which keeps the
--- old behaviour rather than inventing a new one.
+-- old behavior rather than inventing a new one.
 ---------------------------------------------------------------------------
 
 local function SecureCall(fn, ...)

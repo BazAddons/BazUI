@@ -177,20 +177,20 @@ end
 -- being allowed to look. Anything absent raises: SetGradient, string
 -- format, indexing a table with one, and every comparison.
 --
--- A colour is the exception, and it is worth stating plainly.
+-- A color is the exception, and it is worth stating plainly.
 --
 -- There was a helper here for keeping one without reading it: GetClassColor
 -- will take a secret class from a tainted caller, so it looked like the way
--- to colour a unit whose identity we may not have - pack what comes back
+-- to color a unit whose identity we may not have - pack what comes back
 -- without looking, hand it to the bar, let the widget deal with it.
 --
--- It cannot. A colour whose parts are secret is accepted by every setter
+-- It cannot. A color whose parts are secret is accepted by every setter
 -- without complaint and then drawn BLACK, with no error to notice, so the
--- bars went black instead of coloured. Accepting a value and rendering it
+-- bars went black instead of colored. Accepting a value and rendering it
 -- are not the same thing, and the list above only promises the first.
 --
--- Anything that reaches a widget as a colour has to be a number we were
--- allowed to read. Where we were not allowed, the honest answer is a colour
+-- Anything that reaches a widget as a color has to be a number we were
+-- allowed to read. Where we were not allowed, the honest answer is a color
 -- of our own choosing. See Core/Units.lua.
 
 -- Refused, which is not the same as secret
@@ -292,7 +292,7 @@ local suppressedByUs = setmetatable({}, { __mode = "k" })
 -- nil. Called plainly from here, that write belongs to BazUI, and
 -- EditModeFrameSetup reads snappedToFrame on the way into Edit Mode - which
 -- is how hiding an action bar surfaced as their compact party frames
--- comparing a secret colour. /baz taint named the field.
+-- comparing a secret color. /baz taint named the field.
 --
 -- securecallfunction runs their method as theirs. The frame still hides;
 -- nothing it writes on the way down is ours afterwards.
@@ -610,10 +610,10 @@ function BazUI:CheckDependencies()
 
     for _, def in ipairs(dependencies) do
         -- Some holds are only holds when something else is installed.
-        -- Zygor's notification centre is four of them, and on a machine
+        -- Zygor's notification center is four of them, and on a machine
         -- without Zygor they reported MISSING every time - which is not a
         -- fault, it is an addon that is not there. Four red lines nobody
-        -- can act on teaches you to read past the colour, which is the
+        -- can act on teaches you to read past the color, which is the
         -- one thing this report must not do.
         --
         -- `when` says whether the question applies at all. A hold that

@@ -22,7 +22,7 @@
 -- Sections hand over rows and the panel draws them, which is what keeps
 -- a lockout, a title and a reputation looking like three readings of
 -- the same instrument. Numbers are written, not drawn: a block says
--- "3 of 9" in words and a row says "ready" in its colour.
+-- "3 of 9" in words and a row says "ready" in its color.
 --
 -- Everything is pooled. A codex redraws on every event that touches it
 -- and frames cannot be destroyed in this client.
@@ -205,7 +205,7 @@ function Panel.SetBoxFill(f, color)
     end
 end
 
--- nil puts the border back to the art's own colour.
+-- nil puts the border back to the art's own color.
 function Panel.SetBoxBorder(f, color)
     if f.bazBox then
         if color then
@@ -334,7 +334,7 @@ end
 -- The skill bar
 --
 -- The profession book's own rank bar: a stone trough, a fill in the
--- profession's colours, a carved frame, the reading lettered across it.
+-- profession's colors, a carved frame, the reading lettered across it.
 -- Blizzard animates the fill as a flipbook; here it is the first frame,
 -- still. Built from the same atlases so it is the same bar, and hidden
 -- where a client has not got them.
@@ -401,7 +401,7 @@ end
 -- set out left and right the way the game sets out an item's stats.
 function Panel.SetTooltipText(tooltip, text)
     local first = true
-    -- Split on the literal "|n" only; a colour code has a bar in it too.
+    -- Split on the literal "|n" only; a color code has a bar in it too.
     for line in (tostring(text or "") .. "|n"):gmatch("(.-)|n") do
         if line == "" then
             -- A blank line between sections, which is the whole point of
@@ -704,7 +704,7 @@ local function AcquireTile()
     tile = Panel.CreateBox(content)
     tile:SetHeight(TILE_H)
 
-    -- A band down the inside of the left edge in the reading's colour.
+    -- A band down the inside of the left edge in the reading's color.
     tile.accent = tile:CreateTexture(nil, "ARTWORK")
     tile.accent:SetWidth(3)
     tile.accent:SetPoint("TOPLEFT", 6, -7)

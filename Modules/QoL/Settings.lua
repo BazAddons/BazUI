@@ -29,7 +29,7 @@ local function BuildSpec()
             order   = def.order or 100,
             -- A tweak that is only a console setting needs that setting to
             -- exist. instantQuestText is gone from retail, so the switch
-            -- greys out there rather than sitting on and doing nothing -
+            -- grays out there rather than sitting on and doing nothing -
             -- which is the worse of the two, because it reads as working.
             disabled = def.cvar and function()
                 return not (GetCVar and GetCVar(def.cvar) ~= nil)
