@@ -511,13 +511,33 @@ local function BuildEditModeConfig(widget)
     return settings, actions
 end
 
--- Where a floating widget goes, and the only code that decides it.
+-- Where a floating widget sits, written down so that scale cannot move it.
 --
--- The saved shape is whatever GetPoint gave us at the time: a point, the
--- point on the screen it hangs off, and an offset. Anchored to UIParent
--- rather than to whatever the frame happened to be attached to when it
--- was saved, because the only thing a floating widget is ever attached
--- to is the screen.
+-- A position is the frame's centre as a screen-pixel offset from the
+-- middle of the screen, which is the shape every other BazUI frame is
+-- saved in. The old shape was whatever GetPoint happened to return - a
+-- point, a point on the screen to hang off, and an offset in the
+-- frame's own units. Those units are scaled, so scaling the widget
+-- multiplied the offset and the widget slid: down and left as it
+-- shrank, up and right as it grew, along the line back to whatever
+-- corner it was anchored from.
+--
+-- Screen pixels do not scale, so this one stays where it is put and
+-- grows about its own centre.
+function WidgetHost:SaveFloatingPosition(widget)
+    if not (widget and widget.frame) then return end
+    local f = widget.frame
+    local cx, cy = f:GetCenter()
+    local ux, uy = UIParent:GetCenter()
+    if not (cx and ux) then return end
+    local es, ues = f:GetEffectiveScale(), UIParent:GetEffectiveScale()
+    addon:SetWidgetPosition(widget.id, {
+        x = cx * es - ux * ues,
+        y = cy * es - uy * ues,
+    })
+end
+
+-- Where a floating widget goes, and the only code that decides it.
 function WidgetHost:PlaceFloating(widget)
     if not (widget and widget.frame) then return false end
     if InCombatLockdown() and widget.frame:IsProtected() then return false end
@@ -525,12 +545,15 @@ function WidgetHost:PlaceFloating(widget)
     local pos = addon:GetWidgetPosition(widget.id)
     local f = widget.frame
     f:ClearAllPoints()
+
     if pos and pos.point then
+        -- Saved the old way, in the frame's own units. Place it where it
+        -- says, then write it down again in screen pixels so it is only
+        -- ever read like this once.
         f:SetPoint(pos.point, UIParent, pos.relPoint or pos.point,
             pos.x or 0, pos.y or 0)
+        self:SaveFloatingPosition(widget)
     elseif pos and pos.x and pos.y then
-        -- The shape BazUI Edit Mode saves for everything else: the
-        -- frame's centre as a screen-pixel offset from the middle.
         local es = f:GetEffectiveScale()
         f:SetPoint("CENTER", UIParent, "CENTER", pos.x / es, pos.y / es)
     else
@@ -624,12 +647,7 @@ function WidgetHost:FloatWidget(widget)
             addonName = "Drawers",
             positionKey = false,
             onPositionChanged = function()
-                local point, _, relPoint, x, y = f:GetPoint()
-                if point then
-                    addon:SetWidgetPosition(id, {
-                        point = point, relPoint = relPoint, x = x, y = y,
-                    })
-                end
+                WidgetHost:SaveFloatingPosition(widget)
             end,
             settings = settings,
             actions  = actions,
