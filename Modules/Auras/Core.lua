@@ -26,6 +26,11 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     profiles = true,
     defaults = {
         enabled       = true,
+        -- Rows drawn by the engine rather than by us. The only way an
+        -- aura row can keep up during a fight on this client; see
+        -- Modules/Auras/Container.lua. Falls back on its own where the
+        -- AuraContainer intrinsic is absent.
+        engineAuras   = true,
         hideBlizzard  = true,   -- park Blizzard's BuffFrame and DebuffFrame while ours are shown
 
         -- Layout

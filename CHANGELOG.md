@@ -1,72 +1,83 @@
-## 019
+## 020
 
-**The quest catalog is readable, and reloading mid-fight no longer looks like
-the addon fell over.**
+**Your buffs and debuffs finally work during a fight.**
 
-### Fixed: the quest pages
+This is the big one, and it needs a word of explanation because the fix is
+not what you would expect.
 
-- **Descriptions were never shown.** Every quest page fell back to nothing
-  where it should have fallen back to the catalog, so **4,306 quest
-  descriptions were sitting in the addon and reachable by nobody.** They are
-  on the page now.
-- **The header stays put.** Title, facts line and rule are pinned; only the
-  quest scrolls under them. The rewards block scrolls with it instead of
-  being stranded.
-- **XP and coin moved up** onto the Rewards heading, right-aligned — XP
-  first, because there is always XP and there is not always coin. The last
-  row used to be one number sitting alone.
-- **Fonts.** Several lines were quietly resolving to the game's font instead
-  of yours.
-- **An objective that only repeats the summary** is no longer printed twice.
-- **A quest with a summary and no story** crashed the page. Ten of 4,316 rows
-  were affected.
-- **Profession bars read full** when they were nowhere near it.
+On WoW: Forever, the moment a fight starts the game stops telling addons
+anything at all about auras. Not "some auras" — every buff and every debuff,
+on you and on your target, becomes unreadable. Ask anyway and the game
+answers with an error.
 
-### Fixed: reloading in combat
+So BazUI's aura rows **froze**. Whatever you happened to have when the fight
+began stayed on screen, unchanging, until it ended. A debuff you applied
+mid-fight never appeared at all — which, for a damage-over-time spell that
+expires before the fight is over, meant it was never visible once.
 
-The game refuses almost everything an addon does to the interface while you
-are fighting, so a `/reload` mid-fight comes back half-arranged. That part is
-unavoidable. What was wrong was how it looked and how it recovered.
+There is no way to read that data. There is a way to *show* it.
 
-- **A notice now says so**, on the left of the screen, in words: nothing is
-  wrong, nothing needs fixing, it sorts itself the moment the fight ends.
-  Click to dismiss.
-- **The minimap no longer leaves a piece of itself in the middle of the
-  screen.** It was coming back as a bare overlay with the tracking dots on
-  it. Nothing touches the minimap now until combat is clear.
-- **Blizzard's action bar no longer appears when the fight ends.** It was
-  absent during combat and arrived the moment you were safe, which is
-  exactly backwards. BazUI was standing in the middle of Blizzard's own
-  show-the-bar function when it tried to hide it, and the game refused them
-  both.
+The game ships an aura display system meant for addons to use. BazUI now
+hands it a unit, a filter and somewhere to draw, and the game fills it in.
+**Nothing about your auras is ever read** — which is exactly why it works
+while everything else is refused.
 
-### Changed: the codex tabs
+What that means in practice:
 
-- **The rail is in a sensible order.** Today, Progress, then **Quests** —
-  which is the biggest page in the addon and was sixth — then the things you
-  are part-way through, then your gear, then the two pages about the game
-  rather than about you. Legacy, an archive of things that no longer exist,
-  was third.
-- **You can rearrange it.** Hold a tab for half a second, it lights green,
-  drag it up or down. The same hold and drag that moves a widget inside a
-  drawer. **Reset page order** in the codex settings puts it back.
-- **The wishlist is a page of the Items tab**, not a tab of its own. It is a
-  list of items and you read it while you are looking at items. Two buttons
-  at the top of that page switch between them.
+- **Debuffs on your target appear the moment you apply them**, and their
+  timers count down properly.
+- **Buffs you gain mid-fight show up**, instead of after it.
+- **Stack counts keep counting.**
+- **Right-click still cancels one of your own buffs**, in combat or out —
+  and it now cancels *that specific aura* rather than a position in the row,
+  so it can no longer cancel the wrong thing when something above it drops
+  off.
+- **Weapon enchants** are a proper part of the row now instead of a
+  stand-in, with the game keeping their timers.
+
+It looks identical to before. If anything misbehaves, **Let the game draw
+the icons** at the top of Auras > General puts the old rows back, with no
+reload needed.
+
+One change worth knowing: the game deliberately does not tell an addon *how
+many* auras there are, so a row can no longer shrink to fit its contents. It
+holds the size you set it to, full or empty. Floating, you will not notice.
+Docked in a drawer, an empty row now keeps its space.
+
+### Fixed
+
+- **Blizzard's action bar could come back with a taint on it.** Hiding one of
+  the game's Edit Mode frames ran a pile of their own layout bookkeeping
+  while BazUI was the one asking, and one of their fields ended up marked as
+  ours. That is what was behind the blocked `SetPointBase` errors, and
+  probably the cooldown errors on the override bar too. BazUI now hides
+  those frames the plain way and touches none of their bookkeeping.
+- **Picking an ability up off a bar made Blizzard's bar flicker.** It was
+  being hidden a frame late. Now it is hidden immediately, and suppressed
+  frames are made transparent as well as hidden — which also means a reload
+  during a fight no longer leaves the game's frames sitting visible until
+  the fight ends.
+- **Out-of-range coloring did nothing with "target where you're looking."**
+  It only ever checked your hard target, and soft targeting does not set
+  one, so icons never dimmed for anyone playing that way.
+- **The "new slot" marker appeared on slots that already existed.** Aim past
+  the end of a bar whose last slot is empty and it offered to add a slot on
+  top of one that was already there. It now only appears where a slot would
+  genuinely be created.
+- **`/baz persist` said it could not tell what an addon saves, and gave an
+  example that read like a stutter.** It now says plainly which addons it
+  covers. It looks after a few that have actually been tested, and does not
+  guess at others — restoring the wrong table over a live one would break
+  the addon it was trying to help.
 
 ### New
 
-- **Hide TomTom's coordinates.** Puts away the little block showing where you
-  are standing. TomTom's own setting is left alone, so turning this off gives
-  you the block back exactly as TomTom had it.
+- **`/baz auras`** reports what the game will and will not let BazUI see
+  about auras right now, and what each row is holding. Run it in combat and
+  it explains, in words, why nothing is readable.
 
-### The manual
+### Changed
 
-- **A page for the Quests tab**, which had none: the filters, the columns,
-  what a row does, and how to read **Seen in game** against **Unconfirmed**.
-- **Reloading in the middle of a fight** has a page, as does **two Edit
-  Modes** — the game's moves the game's frames, BazUI's moves BazUI's, and
-  opening one closes the other.
-- **The micro menu's manual is gone.** It is a widget now, so it is written
-  up with the widgets.
-- Six other guides had drifted in a week and were corrected.
+- **A fresh install starts with an updated layout**, including the nameplate
+  Focus settings added in 018, which had never made it into the starting
+  arrangement. Existing setups are untouched.

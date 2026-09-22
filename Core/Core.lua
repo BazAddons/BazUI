@@ -1333,6 +1333,12 @@ BazUI:QueueForLogin(function()
                     BazUI:PersistCommand(args)
                 end,
             },
+            auras = {
+                desc = "What the client will let us read about auras right now, and what each row is holding - add 'spike' to test the AuraContainer route",
+                handler = function(args)
+                    BazUI:ReportAuras(args)
+                end,
+            },
             taint = {
                 desc = "Report which Blizzard globals and frames BazUI has taken over (add 'all' for every addon)",
                 handler = function(args)
@@ -1435,6 +1441,289 @@ function BazUI:PersistCommand(args)
         .. "that does not read saved variables back.|r")
 end
 
+---------------------------------------------------------------------------
+-- /baz auras - what the client will let us read, aura by aura
+--
+-- Written because "my debuff does not show up" has four possible answers
+-- and they are indistinguishable from the outside: the client refused the
+-- read, the client allowed it and there was nothing there, the row has no
+-- slot stamped with that index, or the slot is there and painting and is
+-- somewhere you are not looking.
+--
+-- So it asks all four, in order, and prints what it got. Run it while the
+-- thing that is missing should be on screen - in combat, if that is when
+-- it goes wrong, because that is the whole question.
+---------------------------------------------------------------------------
+
+local function AuraLine(unit, index, filter)
+    local secret = "-"
+    if C_Secrets and C_Secrets.ShouldUnitAuraIndexBeSecret then
+        local ok, is = pcall(C_Secrets.ShouldUnitAuraIndexBeSecret, unit, index, filter)
+        secret = ok and (is and "|cffff4444secret|r" or "|cff00ff00readable|r")
+            or "|cffff4444could not ask|r"
+    end
+
+    local allowed = BazUI.Secret and BazUI.Secret.AuraReadable
+        and BazUI.Secret.AuraReadable(unit, index, filter)
+
+    -- Only read where we have just been told we may. The point of this
+    -- command is not to find out the hard way.
+    local name = "|cff888888not read|r"
+    if allowed then
+        local ok, got = pcall(function()
+            if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+                local a = C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+                return a and a.name or false
+            end
+            return (UnitAura(unit, index, filter)) or false
+        end)
+        if not ok then name = "|cffff4444the read threw|r"
+        elseif got == false then name = "|cff888888nothing there|r"
+        else name = tostring(got) end
+    end
+
+    return ("    %d  %s  ->  %s"):format(index, secret, name)
+end
+
+-- /baz auras spike - the one road left, tried in one command.
+--
+-- Everything BazUI's aura rows do is built on READING auras, and on this
+-- client that is refused during combat by every route there is. The way
+-- out is not to read them: AuraContainer is an intrinsic Blizzard ships
+-- for addons to instantiate, and its own TOC says why the XML is loaded
+-- globally -
+--
+--   "to allow intrinsics and templates to be instantiated by external
+--    code without making their created objects implicitly forbidden"
+--
+-- The frames it makes carry secret aspects for their text, cooldown,
+-- alpha and texcoords, so the ENGINE draws a value we are never handed.
+-- Nothing here reads an aura, which is exactly why it might work.
+--
+-- A spike, not a feature: it proves the thing renders on Forever at all,
+-- which nothing has yet. If it does, Modules/Auras/Frames.lua gets rebuilt
+-- on it and loses the hand-rolled header, the spare-slot headroom and the
+-- whole secret dance with it.
+function BazUI:SpikeAuraContainer(off)
+    if BazUI._auraSpikeHost and off then
+        BazUI._auraSpikeHost:Hide()
+        BazUI._auraSpikeHost = nil
+        BazUI._auraSpike = nil
+        BazUI:Print("Aura spike removed.")
+        return
+    end
+    if BazUI._auraSpikeHost then
+        -- Already up: read it where it stands rather than tearing down the
+        -- very state worth looking at.
+        BazUI:Print("Aura spike, as it stands:")
+        return BazUI:ReportAuraSpike()
+    end
+
+    BazUI:Print("Aura spike: letting the engine draw the target's debuffs.")
+
+    -- A host of our own, which is the bit that is definitely visible.
+    --
+    -- The first attempt put a background straight onto the container and
+    -- nothing appeared at all. A container lays itself out from what it is
+    -- holding, so an empty one is very likely zero by zero - and a texture
+    -- anchored to all points of a frame with no size is a texture with no
+    -- size. This way the marker cannot vanish, and where the icons end up
+    -- relative to it is itself information.
+    local host = CreateFrame("Frame", "BazUIAuraSpikeHost", UIParent)
+    host:SetSize(320, 64)
+    host:SetPoint("CENTER", UIParent, "CENTER", 0, -160)
+    host:SetFrameStrata("HIGH")
+    local bg = host:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.6, 0, 0.6, 0.55)
+    host:Show()
+    BazUI._auraSpikeHost = host
+    print("  |cffff66ffa PURPLE box is below the middle of your screen|r")
+
+    local ok, container = pcall(CreateFrame, "AuraContainer", "BazUIAuraSpike",
+        host, "CustomAuraContainerTemplate")
+    if not ok or not container then
+        print("  |cffff4444the intrinsic would not build|r: " .. tostring(container))
+        return
+    end
+    print("  |cff00ff00built|r")
+
+    container:SetAllPoints(host)
+
+    local step, err
+    step, err = pcall(container.SetUnit, container, "target")
+    print(("  SetUnit('target'): %s"):format(step and "|cff00ff00ok|r"
+        or ("|cffff4444" .. tostring(err) .. "|r")))
+
+    -- With a SIZE, which is the whole of why the first two attempts drew
+    -- nothing. CustomAuraContainerGroupLayoutDefaultOptions ships
+    --
+    --   elementWidth = nil;  elementHeight = nil;
+    --
+    -- so the engine made its ten aura frames exactly as asked and laid
+    -- them out with no dimensions to lay out. The count said it was
+    -- working while the screen said it was not, and both were right.
+    --
+    -- initializeFrame as well as the layout options: the individual aura
+    -- frames take AccessRestrictionFlags after creation and cannot be
+    -- touched by us afterwards, so that callback is the only moment any
+    -- per-frame styling can happen.
+    step, err = pcall(container.AddAuraGroup, container, "debuffs", "HARMFUL", {
+        layout = {
+            elementWidth   = 32,
+            elementHeight  = 32,
+            elementSpacing = 4,
+            lineSpacing    = 4,
+        },
+        -- initializeFrame has to BUILD the artwork, not just size it.
+        --
+        -- CustomAuraButtonTemplate is mixins and nothing else - no
+        -- textures, no regions, not one line of XML art:
+        --
+        --   <AuraButton name="CustomAuraButtonTemplate" virtual="true">
+        --     <Mixins> ... </Mixins>
+        --   </AuraButton>
+        --
+        -- It supplies behaviour and the secret-aspect binding; the look is
+        -- the caller's job. So ten frames of the right size, holding real
+        -- auras, drew nothing at all - correctly. SetIcon is what hands
+        -- the engine something to paint into, and from then on the icon
+        -- carries Alpha/VertexColor/TexCoords/Shown as secret aspects that
+        -- the engine drives and we never read.
+        initializeFrame = function(frame)
+            pcall(frame.SetSize, frame, 32, 32)
+
+            local made, tex = pcall(frame.CreateTexture, frame, nil, "ARTWORK")
+            if not made or not tex then return end
+            tex:SetAllPoints(frame)
+            pcall(frame.SetIcon, frame, tex)
+        end,
+    })
+    print(("  AddAuraGroup('HARMFUL', 32px + SetIcon): %s"):format(step and "|cff00ff00ok|r"
+        or ("|cffff4444" .. tostring(err) .. "|r")))
+
+    -- The switch. Without it the container is inert:
+    --
+    --   ShouldRegisterForDynamicEvents() = IsVisible() and IsEnabled()
+    --   ParseAllAuras()                  = returns early if not IsEnabled()
+    --
+    -- and `enabled` starts nil. So it never registers for UNIT_AURA and
+    -- never parses an aura, while still pre-creating its batch of frames -
+    -- which is why the count read 10 through two attempts that displayed
+    -- nothing. Set last, so the refresh it triggers sees the finished setup.
+    step, err = pcall(container.SetEnabled, container, true)
+    print(("  SetEnabled(true): %s"):format(step and "|cff00ff00ok|r"
+        or ("|cffff4444" .. tostring(err) .. "|r")))
+
+    container:Show()
+    BazUI._auraSpike = container
+
+    -- Asked a second later, because the engine fills these in its own time
+    -- and in batches. GetAuraGroupFrameCount is the question that matters:
+    -- it says whether the engine made any aura frames at all, which is a
+    -- different failure from making them and drawing them somewhere else.
+    C_Timer.After(1, function() BazUI:ReportAuraSpike() end)
+end
+
+-- Asked whenever, because the interesting moment is while a debuff is
+-- actually ticking and rebuilding the thing to look at it destroys the
+-- state being looked at.
+function BazUI:ReportAuraSpike()
+    do
+        local c = BazUI._auraSpike
+        if not c then return end
+        local function Ask(label, fn, ...)
+            local good, value = pcall(fn, c, ...)
+            print(("  %s: %s"):format(label,
+                good and tostring(value) or ("|cffff4444" .. tostring(value) .. "|r")))
+        end
+        print("  |cffffd700one second on:|r")
+        Ask("shown",        c.IsShown)
+        Ask("enabled",      c.IsEnabled)
+        Ask("width",        c.GetWidth)
+        Ask("height",       c.GetHeight)
+        Ask("aura frames",  c.GetAuraGroupFrameCount, "debuffs")
+
+        -- The aura frames themselves are deliberately NOT touched.
+        --
+        -- They carry DenyTaintedAccessWhenAurasAreSecret, applied after
+        -- creation, so the moment one is holding a secret aura it becomes
+        -- a forbidden object and even GetWidth on it is an error. Asking
+        -- was worth one run - an empty frame answered '32x32, shown false'
+        -- and a filled one answered 'forbidden', which is how we know the
+        -- engine is populating them at all - but it is an error per frame
+        -- per look from here on, and this client stops reporting errors
+        -- after a hundred.
+        --
+        -- Which is the deal this whole approach makes: the engine will
+        -- draw what we may not see, and in exchange we do not get to ask
+        -- what it drew. The screen is the readout.
+        print("  |cffffd700Look at the purple box - that is the readout.|r")
+        print("  |cff888888Icons there means the engine is drawing auras we"
+            .. " are not allowed to read, which is the whole point.|r")
+        print("  |cff888888'/baz auras spike' re-reads this; add 'off' to"
+            .. " remove the box.|r")
+    end
+end
+
+function BazUI:ReportAuras(args)
+    args = args and args:lower() or ""
+    if args:find("spike") then
+        return BazUI:SpikeAuraContainer(args:find("off") ~= nil)
+    end
+    local deep = args:find("all")
+
+    BazUI:Print("Auras: what the client will let us read")
+    print("  in combat: " .. tostring(InCombatLockdown() and "|cffffd700yes|r" or "no"))
+
+    if not C_Secrets then
+        print("  C_Secrets: |cff00ff00absent - nothing is restricted on this client|r")
+    else
+        local function Ask(fn, label)
+            if not fn then return print("  " .. label .. ": |cff888888not on this client|r") end
+            local ok, value = pcall(fn)
+            print(("  %s: %s"):format(label,
+                ok and tostring(value) or "|cffff4444could not ask|r"))
+        end
+        Ask(C_Secrets.HasSecretRestrictions, "HasSecretRestrictions")
+        Ask(C_Secrets.ShouldAurasBeSecret,   "ShouldAurasBeSecret  (the GENERAL answer - not the one we act on)")
+    end
+
+    if InCombatLockdown() then
+        print("  |cffffd700Nothing below will be readable, and that is the"
+            .. " client, not BazUI.|r")
+        print("  |cff888888In combat every aura is secret, and a secret aura"
+            .. " cannot be read by an addon at all:|r")
+        print("  |cff888888  GetAuraDataByIndex errors outright - 'Auras cannot"
+            .. " be accessed when secret while tainted'.|r")
+        print("  |cff888888  UNIT_AURA does arrive, but its payload is a secret"
+            .. " table that cannot be indexed or counted.|r")
+        print("  |cff888888Rows therefore hold what they last saw and catch up"
+            .. " when the fight ends. Blizzard's own frames are untainted,"
+            .. " which is the whole of why theirs keep working.|r")
+    end
+
+    for _, unit in ipairs({ "player", "target" }) do
+        if UnitExists(unit) then
+            for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+                print(("  |cffffd700%s %s|r"):format(unit, filter))
+                local shown = 0
+                for index = 1, deep and 40 or 8 do
+                    print(AuraLine(unit, index, filter))
+                    shown = shown + 1
+                end
+                if shown == 0 then print("    none") end
+            end
+        else
+            print(("  |cffffd700%s|r: nothing there"):format(unit))
+        end
+    end
+
+    -- And what the rows actually made of it. A readable aura that no slot
+    -- is stamped for is a different bug from one the client refused.
+    local auras = BazUI.GetModule and BazUI:GetModule("Auras")
+    if auras and auras.ReportRows then auras:ReportRows() end
+end
 function BazUI:ReportSavedVariables()
     local t = BazUI._svTrace or {}
     local function Say(n)

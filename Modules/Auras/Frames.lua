@@ -492,6 +492,18 @@ local function RowCorner(below, def)
     return (below and "TOP" or "BOTTOM") .. (right and "LEFT" or "RIGHT")
 end
 
+-- Whether this row is drawn by the engine rather than by us.
+--
+-- See Modules/Auras/Container.lua. Everything below this line is the
+-- hand-rolled row, kept whole: it is what runs on a client without the
+-- intrinsic, and what runs if somebody turns the engine rows off.
+local function UsesContainer()
+    local C = BazUI.Auras and BazUI.Auras.Container
+    if not (C and C.Available()) then return false end
+    return addon:GetSetting("engineAuras") ~= false
+end
+addon.UsesAuraContainer = UsesContainer
+
 local function ConfigureHeader(def, below)
     local h       = headers[def.id]
     if not h then return end
@@ -560,6 +572,19 @@ local function ConfigureHeader(def, below)
         -- yours.
         cancel        = isPlayer,
         weapons       = weapons,
+
+        -- Read here so a container row sees them too. These are decided
+        -- once, when the engine builds a frame, and cannot be changed
+        -- afterwards - Container.Signature lists them for exactly that
+        -- reason, and a change to any of them rebuilds the row. The
+        -- hand-rolled path reads the same settings for itself later and
+        -- is unaffected by their being here.
+        shape         = addon:RowValue(def, "iconShape"),
+        showDuration  = addon:GetSetting("showDuration") ~= false,
+        showCount     = addon:GetSetting("showCount") ~= false,
+        -- Only a debuff row has dispel types to color by.
+        dispelRims    = (def.filter == "HARMFUL")
+            and (addon:GetSetting("debuffBorders") ~= false) or false,
     }
 
     -- Inside its group, at the corner the rows run from. Anchored once,
@@ -571,6 +596,21 @@ local function ConfigureHeader(def, below)
         h:SetPoint(point, frame, point, 0, 0)
     end
 
+    -- Handed to the engine, if this client has the intrinsic. The
+    -- hand-rolled header stays built but goes down: switching the engine
+    -- rows off again has to give it back without a reload, and a header
+    -- of secure buttons cannot be rebuilt mid-fight.
+    if UsesContainer() then
+        local C = BazUI.Auras.Container
+        if frame and C.Ensure(def, h.bazCfg, frame) then
+            h:Hide()
+            return
+        end
+    elseif BazUI.Auras and BazUI.Auras.Container then
+        BazUI.Auras.Container.Release(def)
+    end
+
+    h:Show()
     addon:LayoutHeader(def)
 end
 
@@ -590,12 +630,23 @@ end
 -- shows.
 ---------------------------------------------------------------------------
 
--- A row lays out a few more slots than it needs so auras cast during a
+-- A row lays out more slots than it needs so auras that arrive during a
 -- fight have somewhere to go. They are transparent until something fills
--- them.
-local HEADROOM = 4
+-- them, and the row measures only the filled ones, so spare slots cost
+-- nothing on screen - just a few button frames.
+--
+-- Eight rather than four. Four was chosen when nothing arriving mid-fight
+-- could be read anyway (see BazUI.Secret.AuraReadable), so it was never
+-- the number that was tested - a target row starts a fight empty and a
+-- druid or a warlock can have more than four of their own things on a
+-- boss before anything else lands.
+local HEADROOM = 8
 
 function addon:LayoutHeader(def)
+    -- An engine row lays itself out, and reading auras to do it is the
+    -- thing that does not work.
+    if UsesContainer() and BazUI.Auras.Container.Get(def) then return end
+
     local h = headers[def.id]
     if not h then return end
     local cfg = h.bazCfg
@@ -1225,7 +1276,21 @@ function addon:SizeRows()
 
     for _, def in ipairs(self:Rows()) do
         local frame, header = rowFrames[def.id], headers[def.id]
-        if frame and header then
+
+        -- An engine row is its configured grid, full or empty. The count
+        -- of auras is deliberately obscured by the engine, so there is
+        -- nothing to measure and nothing to shrink to. See Container.lua.
+        local cw, ch = nil, nil
+        if UsesContainer() and BazUI.Auras.Container.Get(def) then
+            cw, ch = BazUI.Auras.Container.Measure(def)
+        end
+        if frame and cw then
+            if self:RowMeasured(def) and BazUI.Dock:IsDocked(frame) then
+                frame:SetHeight(ch)
+            else
+                frame:SetSize(cw, ch)
+            end
+        elseif frame and header then
             local size    = self:RowValue(def, "iconSize")
             local spacing = self:RowValue(def, "spacing")
             local step    = size + spacing
@@ -1904,6 +1969,48 @@ end
 -- Module API
 ---------------------------------------------------------------------------
 
+-- What each row is holding, for /baz auras.
+--
+-- The half the client cannot answer: a row is laid out out of combat and
+-- cannot be laid out again until the fight ends, so every aura that turns
+-- up mid-fight has to land in a slot that already existed. If the client
+-- says an aura is readable and it still is not on screen, this is where
+-- it went - the row ran out of slots, or no slot is stamped with its
+-- index.
+function addon:ReportRows()
+    local defs = self:Rows()
+    if #defs == 0 then
+        print("  |cffffd700rows|r: none")
+        return
+    end
+
+    print("  |cffffd700rows|r  (slot = the aura index it is stamped to read)")
+    for _, def in ipairs(defs) do
+        local h = headers[def.id]
+        if not h then
+            print(("    %s %s: |cffff4444no header built|r"):format(def.unit, def.filter))
+        else
+            local pool, live, filled = h.bazButtons or {}, 0, 0
+            local stamps = {}
+            for i, btn in ipairs(pool) do
+                if btn:IsShown() then
+                    live = live + 1
+                    if (btn:GetAlpha() or 0) > 0 then filled = filled + 1 end
+                    if i <= 12 then
+                        stamps[#stamps + 1] = tostring(btn:GetAttribute("index"))
+                    end
+                end
+            end
+            print(("    %s %s: %d slots, %d showing something, laid out for %s")
+                :format(def.unit, def.filter, live, filled,
+                    tostring(h.bazFilled or 0) .. " at the last layout"))
+            print("      stamped: " .. table.concat(stamps, " "))
+        end
+    end
+    if InCombatLockdown() then
+        print("      |cff888888in combat the slot count is frozen - what is here is what there is until the fight ends|r")
+    end
+end
 function addon:RefreshAll()
     -- Out of combat the row is rebuilt: slots re-sorted, the count of them
     -- matched to the auras, sizes re-taken. In combat none of that is

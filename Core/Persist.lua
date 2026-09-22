@@ -453,9 +453,15 @@ function Persist:Known()
     return out
 end
 
--- What the client will admit to when asked. Some fields are readable and
--- some are not, and SavedVariables is not documented either way, so it is
--- tried and the answer is used only if it looks like one.
+-- What the client will admit to when asked.
+--
+-- Which is nothing. GetAddOnMetadata answers for Title, Notes, Author,
+-- Version and the X- fields; SavedVariables is consumed by the client and
+-- never handed back, so this returns nil for every addon there is.
+--
+-- Kept because it costs one call and would start working the day that
+-- changed. Nothing depends on it: what an addon saves is known here only
+-- for the few in RECIPES, or because somebody named it by hand.
 local function DeclaredGlobals(addOnName)
     local get = C_AddOns and C_AddOns.GetAddOnMetadata or _G.GetAddOnMetadata
     if not get then return nil end
@@ -593,9 +599,22 @@ function Persist:AddGuest(addOnName, globals)
 
     globals = globals or Persist.RECIPES[addOnName] or DeclaredGlobals(addOnName)
     if not globals then
-        return false, "cannot tell what " .. addOnName
-            .. " saves - name its globals, as in: /baz persist add "
-            .. addOnName .. " " .. addOnName .. "DB"
+        -- Said plainly, and without the example that used to be here.
+        --
+        -- It read "name its globals, as in: /baz persist add Foo FooDB",
+        -- which is correct and lands as a stutter - somebody who had just
+        -- typed the addon's name saw it come back twice and reasonably
+        -- read that as the command being broken.
+        --
+        -- It also oversold what this is. Working out what an arbitrary
+        -- addon saves, and handing its settings back to it at the right
+        -- moment, is that addon's job; guessing on its behalf is a way to
+        -- restore the wrong table over a live one. The list below is a
+        -- handful that have actually been tested.
+        return false, ("BazUI does not know what %s saves, and does not "
+            .. "guess. This only covers a few addons that have been tried: "
+            .. "%s"):format(addOnName,
+                table.concat(Persist:Known(), ", "))
     end
 
     GuestList(true)[addOnName] = globals

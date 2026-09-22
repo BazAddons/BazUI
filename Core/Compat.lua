@@ -223,16 +223,55 @@ function BazUI.Secret.AurasReadable()
     return true
 end
 
+-- Is THIS aura readable - not: are auras readable.
+--
+-- The difference is the whole of it, and getting it wrong turned every
+-- aura row off for the duration of every fight.
+--
+-- ShouldAurasBeSecret is documented as whether queries "will GENERALLY
+-- produce secret values". It is a description of the situation, and in
+-- combat the situation is always yes:
+--
+--   SecretWhenUnitAuraRestricted - Guarded APIs and events produce secret
+--   values when combat, encounter, challenge mode, or PvP match addon
+--   restrictions are in effect. INDIVIDUAL SPELLS MAY BE FLAGGED AS
+--   NEVER OR ALWAYS SECRET, WHICH TAKES PRIORITY OVER RESTRICTIONS.
+--
+-- That last sentence is the one that matters. Most auras are flagged
+-- never-secret and stay perfectly readable through a fight; the general
+-- answer says nothing about any of them. This function used to open with
+--
+--   if not BazUI.Secret.AurasReadable() then return false end
+--
+-- so the moment a fight started it refused every aura in the game and
+-- never reached the per-index question below - the precise question,
+-- unreachable in exactly the situation it was written for. Rows froze on
+-- whatever they were showing when the fight began, a debuff applied
+-- during the fight never appeared at all, and it all came back the
+-- instant combat dropped, which made it look like a refresh bug.
+--
+-- So: the per-index answer decides, and the general one is only the
+-- fallback for a client that cannot be asked.
 function BazUI.Secret.AuraReadable(unit, index, filter)
-    if not BazUI.Secret.AurasReadable() then return false end
-    if C_Secrets and C_Secrets.ShouldUnitAuraIndexBeSecret then
+    -- A client with no restrictions at all - Classic Era - where every
+    -- Should* would answer false anyway.
+    if not C_Secrets then return true end
+    if C_Secrets.HasSecretRestrictions and not C_Secrets.HasSecretRestrictions() then
+        return true
+    end
+
+    if C_Secrets.ShouldUnitAuraIndexBeSecret then
         -- Plain arguments in, plain boolean out, so this one really can be
         -- pcall'd: it is a question about a restriction, not a read through
         -- one.
         local ok, secret = pcall(C_Secrets.ShouldUnitAuraIndexBeSecret, unit, index, filter)
-        if ok and secret then return false end
+        if ok then return not secret end
     end
-    return true
+
+    -- No per-index answer to be had. The general one is all there is, and
+    -- being wrong here means an error the client does not let us catch,
+    -- so it is believed.
+    return BazUI.Secret.AurasReadable()
 end
 
 ---------------------------------------------------------------------------
@@ -321,7 +360,84 @@ function BazUI.SecureCall(object, method, ...)
     return fn(object, ...)
 end
 
+-- Hide it the way the widget system hides things, not the way Edit Mode
+-- hides things.
+--
+-- EditModeSystemMixin:SetupVisibilityFunctionOverrides keeps the real
+-- methods before it replaces them:
+--
+--   self.HideBase   = self.Hide;    self.Hide   = self.HideOverride
+--   self.ShowBase   = self.Show;    self.Show   = self.ShowOverride
+--   self.IsShownBase = self.IsShown
+--
+-- so a frame of theirs that is an Edit Mode system has both, and the
+-- plain one does only what it says. HideOverride does a great deal more:
+--
+--   HideOverride -> ShouldBreakSnappedFramesOnHide -> BreakSnappedFrames
+--                -> ClearAllPointsOverride -> ClearFrameSnap
+--                -> snappedToFrame = nil
+--
+-- and an action bar's own HideOverride goes on into UpdateVisibility and
+-- EditModeManagerFrame:UpdateActionBarLayout, which is SetPointBase on a
+-- protected frame.
+--
+-- Every one of those is a write to their bookkeeping, made while we are
+-- the ones asking, and securecallfunction did not keep them theirs -
+-- /baz taint reported MainActionBar.snappedToFrame as BazUI's after a
+-- session of simply having the bar switched off. It is also where the
+-- blocked SetPointBase came from.
+--
+-- None of that machinery is wanted. We want the frame not drawn. HideBase
+-- is exactly that and nothing else, and it leaves isShownExternal and the
+-- snap state alone - so their books still say what they said, which is
+-- the honest outcome: we are hiding a frame, not resigning it from Edit
+-- Mode.
+local BASE_METHOD = {
+    Hide     = "HideBase",
+    Show     = "ShowBase",
+    SetShown = "SetShownBase",
+    IsShown  = "IsShownBase",
+}
+
+-- Invisible as well as hidden.
+--
+-- Belt and braces, and the braces do work the belt cannot:
+--
+--  * Hiding is refused on a protected frame during combat. Alpha is not
+--    protected at all - of the alpha calls only GetEffectiveAlpha carries
+--    an access predicate, and we never make it - so a frame we are not
+--    allowed to put away we can at least stop drawing. That is the whole
+--    of what a mid-fight reload looks like: the game's frames where it
+--    left them, and nothing able to move them until the fight ends.
+--
+--  * Their own code shows these frames for reasons of its own. Picking an
+--    ability up off a bar makes the game show its bar to offer you the
+--    empty slots, and between their Show and our Hide the frame is on
+--    screen for a moment. At alpha zero there is nothing to see.
+--
+-- The alpha it had is kept rather than assumed to be 1, so handing the
+-- frame back gives it back exactly as it was found.
+local fadedByUs = setmetatable({}, { __mode = "k" })
+
+local function Conceal(frame)
+    if fadedByUs[frame] ~= nil then return end
+    local ok, was = pcall(frame.GetAlpha, frame)
+    fadedByUs[frame] = (ok and was) or 1
+    pcall(BazUI.SecureCall, frame, "SetAlpha", 0)
+end
+
+local function Reveal(frame)
+    local was = fadedByUs[frame]
+    if was == nil then return end
+    fadedByUs[frame] = nil
+    pcall(BazUI.SecureCall, frame, "SetAlpha", was)
+end
+
 local function CallClean(frame, method)
+    local base = BASE_METHOD[method]
+    if base and type(frame[base]) == "function" then
+        return BazUI.SecureCall(frame, base)
+    end
     return BazUI.SecureCall(frame, method)
 end
 
@@ -465,24 +581,27 @@ end
 local suppressPending = setmetatable({}, { __mode = "k" })
 local suppressWatcher
 
--- Frames with a deferred re-hide already booked, so a burst of shows in
--- one frame books one hide rather than a dozen.
-local hideSoon = setmetatable({}, { __mode = "k" })
-
 local function Settle(frame)
     local wanted = suppressWanted[frame]
     if not wanted then return end
 
     if wanted() then
+        Conceal(frame)
         suppressedByUs[frame] = true
         CallClean(frame, "Hide")
-    elseif suppressedByUs[frame] then
+    else
         -- Only ever put back what we took down. Calling Show on a frame
         -- we do not own marks its shown state as ours, and Blizzard's
         -- Edit Mode reads that state on the way in; anything we never
         -- hid is left entirely alone.
-        suppressedByUs[frame] = nil
-        CallClean(frame, "Show")
+        if suppressedByUs[frame] then
+            suppressedByUs[frame] = nil
+            CallClean(frame, "Show")
+        end
+        -- Outside that test, because a frame can be faded without having
+        -- been hidden - which is exactly what happens when we are refused
+        -- the hide mid-fight - and it still has to be handed back.
+        Reveal(frame)
     end
 end
 
@@ -521,53 +640,34 @@ function BazUI.SuppressFrame(frame, wanted)
         frame:HookScript("OnShow", function(self)
             local test = suppressWanted[self]
             if not (test and test() and not Blocked(self)) then return end
-            if hideSoon[self] then return end
 
-            -- Next frame, not this one.
+            -- Straight away, in their OnShow, not a frame later.
             --
-            -- OnShow does not fire after the frame has finished being
-            -- shown. It fires in the MIDDLE of whatever is showing it,
-            -- and on this client that matters, because the thing showing
-            -- an action bar is not Frame:Show at all:
+            -- It was a frame later for a while, and the reason was real:
+            -- OnShow fires in the MIDDLE of whatever is showing the frame,
+            -- and on an action bar that is
             --
-            --   function EditModeActionBarMixin:ShowOverride()
+            --   EditModeActionBarMixin:ShowOverride()
             --       self.isShownExternal = true
-            --       self:UpdateVisibility()     -- ShowBase() is in here,
-            --   end                             -- and so is
-            --                                   -- UpdateActionBarLayout
+            --       self:UpdateVisibility()  -- ShowBase is in here, and
+            --   end                          -- so is UpdateActionBarLayout
             --
-            -- ShowBase fires our hook halfway down UpdateVisibility, so
-            -- the REST of their function - UpdateActionBarLayout, and the
-            -- SetPointBase calls underneath it - runs on a stack we are
-            -- standing on, and is refused:
+            -- so hiding from inside it meant our Hide ran while their Show
+            -- was half done. That was fatal when Hide meant HideOverride,
+            -- which runs BreakSnappedFrames and lands on SetPointBase - a
+            -- protected call, refused, leaving the bar up until a reload.
             --
-            --   AddOn 'BazUI' tried to call the protected function
-            --   'MainActionBar:SetPointBase()'
-            --   ActionBar.lua:325: in function 'Show'
-            --
-            -- securecallfunction cannot help. It launders a call we make;
-            -- it cannot launder their call that we are standing inside.
-            --
-            -- Our own Hide then failed the same way and for the same
-            -- reason - HideOverride runs BreakSnappedFrames, which is
-            -- more SetPointBase, BEFORE it reaches HideBase - so it threw
-            -- before hiding anything and the bar stayed up until a
-            -- reload. Which is exactly what it looked like from outside:
-            -- reload mid-fight, and Blizzard's bar one arrives when the
-            -- fight ends, at the first Show since our hook existed.
-            --
-            -- A timer of zero is the next OnUpdate. Their function has
-            -- returned by then and the stack is ours alone. The cost is
-            -- one frame of the thing being visible.
-            hideSoon[self] = true
-            C_Timer.After(0, function()
-                hideSoon[self] = nil
-                local again = suppressWanted[self]
-                if not (again and again() and not Blocked(self)) then return end
-                if not BazUI.SecureCall(self, "IsShown") then return end
-                suppressedByUs[self] = true
-                CallClean(self, "Hide")
-            end)
+            -- CallClean uses HideBase now. There is no BreakSnappedFrames
+            -- and no SetPointBase anywhere in that path - it is the plain
+            -- widget hide, safe to make from anywhere we are allowed to
+            -- hide the frame at all, and Blocked already answers that. So
+            -- the delay bought nothing and cost a visible flicker: drag an
+            -- ability, the game shows its own bar to offer the empty
+            -- slots, and the bar was on screen for a frame before going
+            -- back down.
+            Conceal(self)
+            suppressedByUs[self] = true
+            CallClean(self, "Hide")
         end)
     end
     suppressWanted[frame] = wanted
@@ -585,6 +685,9 @@ function BazUI.SuppressFrame(frame, wanted)
         -- The OnShow hook above is not enough on its own: it only fires if
         -- the frame is shown AFTER we hooked it, and a frame that was
         -- already up when we were refused never shows again.
+        -- Cannot hide it. Can stop it being drawn, which is most of what
+        -- hiding it was for.
+        Conceal(frame)
         suppressPending[frame] = true
         SuppressWatcher()
         return true

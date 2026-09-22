@@ -159,14 +159,45 @@ function Button:UpdateUsable(btn)
     end
 end
 
+-- Which unit a range check is about.
+--
+-- "target", when you have one. With soft targeting - the game's "target
+-- where you are looking" - you very often do not: the unit is under the
+-- reticle and lives in a token of its own, and "target" is genuinely
+-- empty. This used to ask about "target", find nothing, and quietly
+-- conclude that everything was in range, so the icons never dimmed at
+-- all for anybody playing that way.
+--
+-- Enemy before friend, because range indication is overwhelmingly about
+-- something you are trying to hit. A helpful spell while a soft enemy is
+-- under the reticle is measured against the enemy, which is the one
+-- place this is a guess rather than an answer.
+--
+-- Unknown unit tokens are simply absent rather than an error, so a
+-- client without soft targeting falls through these and behaves exactly
+-- as it did.
+local RANGE_UNITS = { "target", "softenemy", "softfriend" }
+
+local function RangeUnit()
+    for _, unit in ipairs(RANGE_UNITS) do
+        if UnitExists(unit) then return unit end
+    end
+end
+
+-- The ticker in Core.lua asks the same question to decide whether there
+-- is anything to measure against at all, and the two answers have to be
+-- the same one.
+Button.RangeUnit = RangeUnit
+
 function Button:UpdateRange(btn)
     if not btn.action then return end
 
     local outOfRange = false
-    if UnitExists("target") then
+    local unit = RangeUnit()
+    if unit then
         local handler, data = GetHandler(btn)
         if handler and handler.isInRange then
-            local inRange = handler.isInRange(data, "target")
+            local inRange = handler.isInRange(data, unit)
             if inRange == false then outOfRange = true end
         end
     end

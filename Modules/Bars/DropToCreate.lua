@@ -465,7 +465,25 @@ local function Track()
             end
 
             local slot = OverTheWorld() and Resolve(GetCursorPosition())
-            if slot then ShowGhost(slot) else HideGhost() end
+
+            -- Only where the drop would make something that is not
+            -- there yet.
+            --
+            -- Resolve answers with an existing empty slot whenever there
+            -- is one to answer with - that is the point of it, a bar with
+            -- a hole in it should be filled before it is grown - and the
+            -- ghost was drawn on that slot too. Which reads as an offer to
+            -- add a slot, on a slot, and the likeliest way to meet it is
+            -- to aim just past the end of a bar whose last slot is empty:
+            -- the cell index clamps to that last slot and the ghost lands
+            -- squarely on top of it, question mark and all.
+            --
+            -- A slot that is already drawn is its own preview. The ghost
+            -- has nothing to add there, and saying it twice says something
+            -- untrue. slot.edge is exactly the distinction: set when the
+            -- bar would grow, nil when the drop is going somewhere that
+            -- already exists.
+            if slot and slot.edge then ShowGhost(slot) else HideGhost() end
         end)
     end
     driver.wait = 0

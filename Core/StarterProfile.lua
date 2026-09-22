@@ -2,12 +2,11 @@
 ---------------------------------------------------------------------------
 -- BazUI Starter Profile
 --
--- The layout a fresh install starts with, and the one the shipped "BazUI"
--- profile wears. Core lays these values over a module's coded defaults
--- the first time that module's section is created in a profile: on a
--- brand-new install, when a new profile is made, and when a module is
--- added to an existing install. Existing sections are never touched, so
--- nobody's settings change on update.
+-- The layout a fresh install starts with. Core lays these values over a
+-- module's coded defaults the first time that module's section is
+-- created in a profile: on a brand-new install, when a new profile is
+-- made, and when a module is added to an existing install. Existing
+-- sections are never touched, so nobody's settings change on update.
 --
 -- Positions use screen anchors (BOTTOM, TOP, RIGHT ...), never absolute
 -- pixels from a corner, so the layout lands the same at any resolution
@@ -16,15 +15,16 @@
 -- Anything tied to one player stays out: per-character bar payloads,
 -- item pins, chat history, minimap button order from other addons.
 --
--- Written by tools/bake-profiles.py from an arrangement made in game.
+-- Written by tools/bake-starter.py from an arrangement made in game.
 -- Editing it by hand is fine; the next bake will overwrite it.
--- Arranged on a 1920 x 1080 screen, baked 2026-09-20 19:47:53.
+-- Arranged on a 1920 x 1080 screen, 2026-09-22 08:17:00.
 ---------------------------------------------------------------------------
 
 BazUI.StarterProfile = {
     Auras = {
         debuffBorders = true,
         enabled = true,
+        engineAuras = true,
         hideBlizzard = true,
         iconShape = "square",
         iconSize = 40,
@@ -111,6 +111,7 @@ BazUI.StarterProfile = {
                 dockedAs = "statusbar:5|BOTTOM",
                 filter = "HARMFUL",
                 gap = 4,
+                grow = "LEFT",
                 id = 4,
                 maxRows = 1,
                 name = "Target Debuffs 1",
@@ -360,7 +361,7 @@ BazUI.StarterProfile = {
                     point = "CENTER",
                     relPoint = "BOTTOM",
                     x = 0,
-                    y = 478.2,
+                    y = 405.7,
                 },
                 rightClickSelfCast = false,
                 rows = 2,
@@ -410,9 +411,15 @@ BazUI.StarterProfile = {
         },
         docks = {
             dock = {
-                height = 151,
+                height = 196,
                 locked = true,
-                width = 444,
+                pos = {
+                    point = "BOTTOMLEFT",
+                    relPoint = "BOTTOMLEFT",
+                    x = 22,
+                    y = 44,
+                },
+                width = 457,
             },
         },
         enabled = true,
@@ -553,6 +560,8 @@ BazUI.StarterProfile = {
             x = -46.5,
             y = 83.7,
         },
+        questSeen = {
+        },
         scale = 1,
     },
     Core = {
@@ -615,6 +624,7 @@ BazUI.StarterProfile = {
         locked = true,
         side = "right",
         transitionStyle = "instant",
+        useDrawers = true,
         widgetDockedToBottom = {},
         widgetEnableStrict = true,
         widgetEnabled = {
@@ -630,6 +640,7 @@ BazUI.StarterProfile = {
             },
         },
         widgetPositions = {},
+        widgetScale = {},
         widgetSettings = {
             bazdrawer_minimap = {
                 frameStyle = "bazui",
@@ -659,7 +670,9 @@ BazUI.StarterProfile = {
         spacing = 4,
     },
     Nameplates = {
+        aggroMark = true,
         classColor = true,
+        combatOnly = false,
         height = 10,
         kinds = {
             friendlyNpc = {
@@ -673,13 +686,19 @@ BazUI.StarterProfile = {
             },
         },
         nameSize = 9,
+        nonTargetAlpha = 100,
+        offsetY = 0,
         showBar = true,
         showFriendly = true,
+        showGuild = false,
         showLevel = true,
         showName = true,
         showPlate = true,
         showRank = true,
+        showSurname = true,
         targetMark = true,
+        targetScale = 100,
+        threatColor = false,
         width = 110,
     },
     Notifications = {
@@ -696,6 +715,9 @@ BazUI.StarterProfile = {
         maxHistory = 999,
         modules = {
             _bazui = {
+                enabled = true,
+            },
+            _test = {
                 enabled = true,
             },
         },

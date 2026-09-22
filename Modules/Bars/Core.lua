@@ -735,7 +735,12 @@ addon.config.onReady = function(self)
     self:On({ "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS", "CURRENT_SPELL_CAST_CHANGED",
               "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL", "PLAYER_ENTER_COMBAT", "PLAYER_LEAVE_COMBAT" },
         function() addon:UpdateAllChecked() end)
-    self:On("PLAYER_TARGET_CHANGED", function()
+    -- The soft ones as well as the hard one. A player using "target where
+    -- you are looking" changes what they are pointing at without ever
+    -- firing PLAYER_TARGET_CHANGED, and an unknown event is refused on
+    -- this client rather than ignored - which addon:On already pcalls.
+    self:On({ "PLAYER_TARGET_CHANGED", "PLAYER_SOFT_ENEMY_CHANGED",
+              "PLAYER_SOFT_FRIEND_CHANGED" }, function()
         addon:OnRangeEvent()
         addon:RefreshRangeTicker()
     end)
@@ -921,8 +926,16 @@ function addon:StopRangeTicker()
 end
 
 -- Run only while there is something to measure against.
+--
+-- Which is not the same as "while you have a target". Soft targeting
+-- puts the unit in its own token and leaves "target" empty, so this used
+-- to keep the ticker parked for the whole of anybody's session who plays
+-- that way - and with the ticker parked, no range check ever ran and no
+-- icon ever dimmed. Button.RangeUnit is the same question the check
+-- itself asks.
 function addon:RefreshRangeTicker()
-    if UnitExists("target") then
+    local unit = addon.Button and addon.Button.RangeUnit and addon.Button.RangeUnit()
+    if unit then
         if not rangeFrame:IsShown() then self:StartRangeTicker() end
     else
         self:StopRangeTicker()
