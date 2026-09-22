@@ -20,7 +20,7 @@ local TAB = "events"
 local COMMON = {
     tab      = TAB,
     tabLabel = "Events",
-    tabOrder = 24,
+    tabOrder = 110,
     -- A world event, not a clock: Today already wears the pocket watch.
     tabIcon  = "Interface\\Icons\\Achievement_WorldEvent_Lunar",
 }

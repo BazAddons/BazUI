@@ -16,6 +16,44 @@ function QT.HasTomTom()
     return _G.TomTom and type(_G.TomTom.AddWaypoint) == "function"
 end
 
+---------------------------------------------------------------------------
+-- TomTom's coordinate block
+--
+-- The little readout of where you are standing. Useful to some people and
+-- permanently in the way for everybody else, and TomTom's own switch for
+-- it is several clicks into a different addon's options.
+--
+-- Hidden through BazUI.SuppressFrame rather than by writing to TomTom's
+-- settings. Reaching into another addon's saved variables to change its
+-- mind is not ours to do - it would fight the next time TomTom wrote its
+-- own config, and it would leave a change behind that survives BazUI
+-- being uninstalled. Suppression hooks the frame's OnShow and puts it
+-- back down; turn this off and TomTom's block returns exactly as TomTom
+-- left it.
+--
+-- TomTomBlock is built the first time TomTom wants it rather than at
+-- load, so a straight lookup at login finds nothing. Hence the retry: it
+-- only runs while the setting is on and it gives up rather than waiting
+-- forever on an addon that may simply not be installed.
+---------------------------------------------------------------------------
+
+local hideBlock = false
+
+function QT.ApplyTomTomBlock(attempt)
+    hideBlock = addon:GetWidgetSetting(C.WIDGET_ID, "tomtomHideBlock", false) == true
+
+    local block = _G.TomTomBlock
+    if not block then
+        attempt = (attempt or 0) + 1
+        if hideBlock and attempt <= 10 then
+            C_Timer.After(1, function() QT.ApplyTomTomBlock(attempt) end)
+        end
+        return
+    end
+
+    BazUI.SuppressFrame(block, function() return hideBlock end)
+end
+
 -- Exported on QT so Zygor integration can reuse it
 function QT.ResolveQuestWaypoint(questID)
     if not questID or questID == 0 then return nil end

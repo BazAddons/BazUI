@@ -20,7 +20,7 @@ local TAB = "currencies"
 local COMMON = {
     tab      = TAB,
     tabLabel = "Currencies",
-    tabOrder = 28,
+    tabOrder = 70,
     tabIcon  = "Interface\\Icons\\INV_Misc_Coin_02",
 }
 local PREFIX = "cur."

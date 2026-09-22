@@ -80,7 +80,8 @@ BazUI:RegisterUserGuide("Chat", {
                     { "Strip channel numbers", "[1. General - Stormwind] becomes [General]. Independent of the setting above - you can have one without the other." },
                 } },
                 { type = "h3", text = "Guild message of the day" },
-                { type = "paragraph", text = "Shown once a session, on a cold login and after a reload, rather than every time something makes the game re-send it. A genuine change to it while you are playing comes through as guild chat, as it should." },
+                { type = "paragraph", text = "Shown once a session, on a cold login and after a reload, rather than every time something makes the game re-send it. A genuine change to it while you are playing comes through as it happens." },
+                { type = "note", text = "It is whatever the server sends, never something BazUI goes and reads. On this client the call that would fetch it is one an addon is not allowed to make, so after a reload BazUI asks for the guild roster and the server volunteers the message of the day in reply. In a guild that has not set one, there is nothing to show." },
             },
         },
 

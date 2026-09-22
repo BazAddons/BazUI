@@ -13,7 +13,7 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "Overview",
             blocks = {
-                { type = "lead", text = "The codex gathers what the game scatters across a dozen windows and puts it on one page. Eleven pages, a tab each down the left, each one a set of blocks you can fold away." },
+                { type = "lead", text = "The codex gathers what the game scatters across a dozen windows and puts it on one page. Eleven pages, a tab each down the right edge, each one a set of blocks you can fold away." },
                 { type = "h2", text = "Opening it" },
                 { type = "list", items = {
                     "Type |cffffd700/codex|r or |cffffd700/bazcodex|r",
@@ -35,19 +35,21 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "The pages",
             blocks = {
+                { type = "paragraph", text = "The rail runs top to bottom as the questions get less urgent: what to do now, then what you are part-way through, then what you have, then the two pages about the game rather than about you." },
                 { type = "table", columns = { "Page", "What it answers" }, rows = {
                     { "|cffffd700Today|r",       "What is still open to you: quests, lockouts, what you can walk into, what resets when." },
                     { "|cffffd700Progress|r",    "What you have already put your name to." },
-                    { "|cffffd700Legacy|r",      "Forever's own account-wide points and where this character spent them." },
-                    { "|cffffd700Events|r",      "What the calendar has on, today and the rest of the month." },
-                    { "|cffffd700Equipment|r",   "What you are wearing, and the one thing wrong with each piece." },
+                    { "|cffffd700Quests|r",      "Every quest in the game - where it lives, who gives it, and whether you have done it." },
                     { "|cffffd700Instances|r",   "Every dungeon, raid and world boss, and whether you can go." },
+                    { "|cffffd700Professions|r", "Your trades and every other skill you have." },
                     { "|cffffd700Reputation|r",  "Everyone you have standing with." },
                     { "|cffffd700Currencies|r",  "Your purse, and everything else the game counts." },
-                    { "|cffffd700Professions|r", "Your trades and every other skill you have." },
-                    { "|cffffd700Items|r",       "Look anything up." },
-                    { "|cffffd700Wishlist|r",    "The things you are playing toward." },
+                    { "|cffffd700Equipment|r",   "What you are wearing, and the one thing wrong with each piece." },
+                    { "|cffffd700Items|r",       "Look anything up - and, behind the second button at the top of that page, the |cffffd700Wishlist|r of things you are playing toward." },
+                    { "|cffffd700Events|r",      "What the calendar has on, today and the rest of the month." },
+                    { "|cffffd700Legacy|r",      "Forever's own account-wide points and where this character spent them." },
                 } },
+                { type = "note", style = "tip", text = "|cffffd700That order is only the starting one.|r Hold a tab for half a second and it washes green, then drag it up or down the rail - the same hold and drag that moves a widget inside a drawer. The pages you open every day can sit at the top. |cffffd700Reset page order|r in the codex settings puts them back." },
                 { type = "note", text = "A page only ever shows what this client can answer. Where a system is not open yet - Legacy, on a build that has not switched it on - the page says so rather than showing an empty frame." },
             },
         },
@@ -129,6 +131,45 @@ BazUI:RegisterUserGuide("Codex", {
         },
 
         {
+            title = "Quests",
+            blocks = {
+                { type = "paragraph", text = "Every quest in the game, where it lives, who gives it, and whether you have done it." },
+                { type = "paragraph", text = "Five thousand and fourteen of them, with 124 zones and 3,956 named quest givers. Open one you have never met and it still tells you the zone, the giver, the minimum level and which side it belongs to - which is the point of the page. It is for deciding where to go." },
+
+                { type = "h2", text = "Finding one" },
+                { type = "table", columns = { "Control", "What it does" }, rows = {
+                    { "The search box", "Filters by name, or by what a quest asks of you - so |cffffd700murloc|r finds the quests whose objectives mention murlocs, not only the ones with it in the title." },
+                    { "The level bands", "Any level, then 1-9 through 60+. The band is the quest's minimum level, not your own." },
+                    { "Incomplete / In progress / Complete", "Along the bottom of the header, touching the list, because they are the list's own tabs rather than a third filter." },
+                } },
+                { type = "note", style = "tip", text = "Quests that share a title - every race's copy of the same starting quest, every class's version of the same trainer chain - are told apart by zone, by who gives them, or failing both by their number. |cffffd700521 titles in this catalog belong to more than one quest|r, so a duplicate on screen is usually seven real quests rather than one shown seven times." },
+
+                { type = "h2", text = "The columns" },
+                { type = "table", columns = { "Column", "What it is" }, rows = {
+                    { "Side", "Alliance, Horde or both. A glance says whether a quest is yours before you read anything else." },
+                    { "Lvl", "The lowest level that can pick it up." },
+                    { "XP", "What it pays, at the level it is meant for." },
+                } },
+
+                { type = "h2", text = "Where the words come from" },
+                { type = "paragraph", text = "None of this pretends to be first-hand. A quest's own words never reach your client until somebody is offered it, so for a quest nobody has met the addon is repeating what a public database says - and it tells you so, on the quest's own facts line, next to the level and the tag." },
+                { type = "table", columns = { "It says", "Which means" }, rows = {
+                    { "|cff55cc66Seen in game|r", "Somebody was offered this quest and the game laid the whole record out. A blank means the quest genuinely has none - no coin reward means no coin reward." },
+                    { "|cff998866Unconfirmed|r", "Borrowed. Good enough to walk towards, not good enough to plan around, and replaced outright the first time the quest is offered to you." },
+                } },
+                { type = "note", text = "The rewards block is marked separately from the words, because the two can come from different places and the figures are the half you act on. A quest can have been read properly and still be guessing about what it pays." },
+                { type = "note", style = "info", text = "This is the one rule the whole catalog is built on: |cffffd700only witnessing licenses a negative.|r Asked about a quest by number, the server decides how much to say and mostly says little, so a blank from it means it declined - never that there is nothing there." },
+
+                { type = "h2", text = "What a row does" },
+                { type = "table", columns = { "You do this", "It does this" }, rows = {
+                    { "Left-click", "Opens the quest: its description, what it asks of you, and what it pays." },
+                    { "Right-click", "Track it, stop tracking it, share it with your group, link it in chat, or abandon it - whichever of those the quest is actually in a state for." },
+                } },
+                { type = "note", text = "A quest you are on shows its progress and its completion text as well. Those only exist once the game has told your client about them, so they are absent on a quest you have never picked up rather than empty." },
+            },
+        },
+
+        {
             title = "Instances",
             blocks = {
                 { type = "paragraph", text = "The whole map of where you can go: every dungeon, raid and world boss the game has, not only the ones you are ready for. A row reads one of five ways, worst first: saved to it, too low for it, not yet attuned, outgrown it, or open to you." },
@@ -170,8 +211,8 @@ BazUI:RegisterUserGuide("Codex", {
                 { type = "note", style = "tip", text = "On the Items tab, |cffffd700shift-click|r any row to drop the item's link into whatever you are typing, and |cffffd700ctrl-click|r to try it on." },
                 { type = "paragraph", text = "The tabs above the list are the |cffffd700game's own tree|r, the one the auction house browses by. Pick a class and a second row appears with its types: Weapon gives you Daggers, Staves, Swords; Armor gives you Cloth, Leather, Mail, Plate. Pick an armor type and a third row appears for the slot, so Cloth then Legs is every cloth leg piece in the game. The line under the tabs always says how many items you are looking at, and of how many." },
                 { type = "h2", text = "The wishlist" },
-                { type = "paragraph", text = "Every row on the Items tab ends in a |cffffd700star|r. Hollow, the item is not wanted; click it and it fills, and the item joins the Wishlist. Click again to take it off. So the way to build a wishlist is to search for things and star them." },
-                { type = "paragraph", text = "The Wishlist tab itself takes an item link dropped into the box at its top, for something somebody has just linked in chat. Either way a row says how long ago you wanted it, and when one turns up in your bags the row says so. The |cffffd700x|r on a row takes it off, and shift-clicking a row links it in chat." },
+                { type = "paragraph", text = "Every row on the Items tab ends in a |cffffd700star|r. Hollow, the item is not wanted; click it and it fills, and the item joins the wishlist. Click again to take it off. So the way to build a wishlist is to search for things and star them, and |cffffd700Wishlist|r at the top of the Items page is where the starred ones gather - the list and the search that feeds it, behind two buttons on one page." },
+                { type = "paragraph", text = "The |cffffd700Wishlist|r page takes an item link dropped into the box at its top, for something somebody has just linked in chat. Either way a row says how long you have wanted it and whether you have one yet." },
                 { type = "note", text = "The codex does not know where anything drops and will not guess. The wishlist is your list; the only thing it works out for itself is whether you have the item yet." },
             },
         },
@@ -186,6 +227,7 @@ BazUI:RegisterUserGuide("Codex", {
                       { "|cffffd700Scale|r",              "How large the window is." },
                       { "|cffffd700Background opacity|r", "How see-through it is." },
                       { "|cffffd700Reset position|r",     "Back to the middle of the screen, for a window dragged somewhere you cannot reach." },
+                      { "|cffffd700Reset page order|r",   "Puts the tabs down the right edge back into the order BazUI ships them in, undoing any you have dragged." },
                       { "|cffffd700Open the codex|r",     "Opens it from the settings page." },
                   }},
                 { type = "h2", text = "Item Lookup" },

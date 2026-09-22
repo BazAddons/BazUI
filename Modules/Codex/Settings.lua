@@ -33,7 +33,14 @@ BazUI:RegisterSettingsSpec("Codex", {
               addon:SetSetting("position", nil)
               Codex:ApplySettings()
           end },
-        { key = "open", label = "Open the codex", type = "execute", section = "window", order = 4,
+        { key = "tabNote", type = "note", section = "window", order = 4,
+          text = "Hold a tab on the right of the window for half a second and it washes green, then drag it up or down to put the pages in whatever order suits you - the same hold and drag that moves a widget inside a drawer." },
+        { key = "resetTabs", label = "Reset page order", type = "execute", section = "window", order = 5,
+          func = function()
+              addon:SetSetting("tabOrder", nil)
+              if Codex.Panel then Codex.Panel:RebuildTabs() end
+          end },
+        { key = "open", label = "Open the codex", type = "execute", section = "window", order = 6,
           func = function() Codex:Show() end },
 
         { key = "indexItems", label = "Remember items this character meets", type = "toggle",

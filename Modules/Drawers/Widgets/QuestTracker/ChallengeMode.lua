@@ -131,7 +131,7 @@ function QT.CreateChallengeModeBlock()
     if _G[C.TITLE_FONT] then
         f.name:SetFontObject(_G[C.TITLE_FONT])
     else
-        f.name:SetFontObject("GameFontNormal")
+        f.name:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontNormal"))
     end
     f.name:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
     f.name:SetPoint("RIGHT", f.level, "LEFT", -8, 0)
@@ -156,7 +156,7 @@ function QT.CreateChallengeModeBlock()
     if _G[C.OBJECTIVE_FONT] then
         f.timerBar.text:SetFontObject(_G[C.OBJECTIVE_FONT])
     else
-        f.timerBar.text:SetFontObject("GameFontHighlightSmall")
+        f.timerBar.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
     end
     f.timerBar.text:SetPoint("CENTER")
     f.timerBar.text:SetTextColor(1, 1, 1)
@@ -200,7 +200,7 @@ function QT.CreateChallengeModeBlock()
     if _G[C.OBJECTIVE_FONT] then
         f.deathFrame.text:SetFontObject(_G[C.OBJECTIVE_FONT])
     else
-        f.deathFrame.text:SetFontObject("GameFontHighlightSmall")
+        f.deathFrame.text:SetFontObject(BazUI.Skin.Theme.FontObject("GameFontHighlightSmall"))
     end
     f.deathFrame.text:SetPoint("LEFT", f.deathFrame.icon, "RIGHT", 4, 0)
     f.deathFrame.text:SetTextColor(1, 0.3, 0.3)

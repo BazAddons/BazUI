@@ -66,6 +66,7 @@ local TILE_H        = 58
 local TILE_GAP      = 8
 
 local frame, inset, scroll, content, hero, headerHost
+local pageStrip, pageHost
 local rowPool, cardPool, tilePool = {}, {}, {}
 local liveCards, liveTiles = {}, {}
 local refreshQueued = false
@@ -352,19 +353,23 @@ function Panel.CreateSkillBar(parent)
     bar.bg:SetPoint("TOPLEFT")
     BazUI.SetAtlasOrTexture(bar.bg, "Professions-skillbar-bg", nil, true)
 
+    -- Filled by width and texture coordinates, not by a mask.
+    --
+    -- This used to clip the fill with a MaskTexture, and the fill also
+    -- needs SetTexCoord to pick one frame out of the flipbook sheet. Those
+    -- two do not coexist: a masked texture takes its UVs from the mask, so
+    -- the SetTexCoord below was fighting the mask and the mask was losing.
+    -- Every profession drew a full bar - Skinning 6/75 looked finished.
+    --
+    -- The same trap is written down in Modules/MicroMenu/Bar.lua, where
+    -- the icon has to be cropped BEFORE the round mask goes on.
+    --
+    -- So the fill is simply made narrower and its right-hand coordinate
+    -- moved in to match, which is how a status bar was drawn before masks
+    -- existed and has no such argument in it.
     bar.fill = bar:CreateTexture(nil, "ARTWORK", nil, 2)
     bar.fill:SetSize(SKILLBAR_W - 12, SKILLBAR_H)
     bar.fill:SetPoint("TOPLEFT", 5, -3)
-
-    bar.mask = bar:CreateMaskTexture()
-    bar.mask:SetPoint("LEFT", bar.fill, "LEFT", 1, 0)
-    if HasAtlas("Professions-skillbar-mask") then
-        bar.mask:SetAtlas("Professions-skillbar-mask", true)
-    else
-        bar.mask:SetTexture("Interface\\Buttons\\WHITE8x8")
-        bar.mask:SetHeight(SKILLBAR_H)
-    end
-    bar.fill:AddMaskTexture(bar.mask)
 
     bar.border = bar:CreateTexture(nil, "ARTWORK", nil, 3)
     bar.border:SetPoint("TOPLEFT")
@@ -382,16 +387,27 @@ end
 function Panel.SetSkillBar(bar, kit, value, max, text)
     local name = kit and ("Skillbar_Fill_Flipbook_" .. kit)
     if not (name and HasAtlas(name)) then name = "Skillbar_Fill_Flipbook_DefaultBlue" end
+    local progress = (max and max > 0)
+        and math.min(1, math.max(0, (value or 0) / max)) or 0
+
+    local full = SKILLBAR_W - 12
+    bar.fill:SetWidth(math.max(1, full * progress))
+    bar.fill:SetShown(progress > 0)
+
     local info = C_Texture.GetAtlasInfo(name)
     if info then
         bar.fill:SetAtlas(name, false)
         -- One frame of the sheet: two columns across, height/34 rows down.
+        -- The left half is the frame; `progress` of that half is how much
+        -- of the frame this bar is showing, so the fill and its texture are
+        -- cut off at the same place.
         local rows = math.max(1, math.floor(info.height / SKILLBAR_FILL_FRAME_H + 0.5))
-        local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
-        bar.fill:SetTexCoord(l, l + (r - l) / 2, t, t + (b - t) / rows)
+        local l, r, t, b = info.leftTexCoord, info.rightTexCoord,
+            info.topTexCoord, info.bottomTexCoord
+        local half = l + (r - l) / 2
+        bar.fill:SetTexCoord(l, l + (half - l) * progress, t, t + (b - t) / rows)
     end
-    local progress = (max and max > 0) and math.min(1, math.max(0, (value or 0) / max)) or 0
-    bar.mask:SetWidth(math.max(1, bar:GetWidth() * progress))
+
     bar.text:SetText(text or "")
 end
 
@@ -727,6 +743,104 @@ local function AcquireTile()
 end
 
 -- Returns the height the strip took, so the blocks start below it.
+-- The row of page buttons along the top of a tab that has pages, and the
+-- frame the page's own header is given underneath it. Returns the height
+-- it took, or zero when this tab is a single page and there is nothing
+-- to choose between.
+function Panel:DrawPageStrip(tab, owner, active, width)
+    if not headerHost then return 0 end
+
+    if not pageStrip then
+        pageStrip = BazUI.CreateTabStrip(nil, headerHost, {
+            style = "panel", tabHeight = 22, spacing = 4,
+            minTabWidth = 78, maxTabWidth = 260,
+        })
+        pageStrip:SetPoint("TOPLEFT", 0, 0)
+        pageHost = CreateFrame("Frame", nil, headerHost)
+    end
+
+    if not (owner and #owner.pages > 1) then
+        pageStrip:Hide()
+        pageHost:Hide()
+        return 0
+    end
+
+    pageStrip:ClearTabs()
+    local keys, activeID = {}, nil
+    for _, page in ipairs(owner.pages) do
+        local id = pageStrip:AddTab(page.label or page.key)
+        keys[id] = page.key
+        if page == active then activeID = id end
+    end
+    pageStrip:SetTabSelectedCallback(function(id, isUserAction)
+        if not isUserAction then return end
+        addon:SetSetting("page_" .. tab, keys[id])
+        Panel:Refresh()
+    end)
+    pageStrip:SetWrapWidth(width)
+    pageStrip:Layout()
+    if activeID then
+        pageStrip:SetTabVisuallySelected(activeID)
+        pageStrip.selectedTabID = activeID
+    end
+    pageStrip:Show()
+
+    local used = math.ceil(pageStrip:GetHeight() or 22) + 8
+    pageHost:ClearAllPoints()
+    pageHost:SetPoint("TOPLEFT", headerHost, "TOPLEFT", 0, -used)
+    pageHost:SetWidth(width)
+    pageHost:Show()
+    return used
+end
+
+---------------------------------------------------------------------------
+-- A tab that holds more than one page
+--
+-- Some pages belong together without each deserving a place on the rail.
+-- The wishlist is a list of items and it is read while you are looking
+-- at items, so it is a page of the Items tab rather than a twelfth tab
+-- of its own.
+--
+-- A tab declares them and changes nothing else:
+--
+--   Codex.customTabs.items.pages = {
+--       { key = "browse", label = "All items", <the usual page def> },
+--       { key = "wishlist", label = "Wishlist", ... },
+--   }
+--
+-- A page def is exactly what a custom tab def was - RenderHeader,
+-- Render, Hide, height, Reset - so a page is a tab that happens not to
+-- have a tab, and nothing that was written as one had to be rewritten.
+---------------------------------------------------------------------------
+
+local function HasPages(def)
+    return (def and def.pages and #def.pages > 0) and true or false
+end
+
+-- The page showing on a tab, and the tab that holds it. A tab with no
+-- pages is its own page, which is what keeps every other call site the
+-- same as it was.
+local function ResolveCustom(tab)
+    local def = Codex.customTabs and Codex.customTabs[tab]
+    if not def then return nil, nil end
+    if not HasPages(def) then return def, nil end
+
+    local saved = addon:GetSetting("page_" .. tab)
+    for _, page in ipairs(def.pages) do
+        if page.key == saved then return page, def end
+    end
+    return def.pages[1], def
+end
+
+-- Put away every frame a tab is holding, except the page about to draw.
+local function PutAwayCustom(def, keep)
+    if not def then return end
+    for _, page in ipairs(def.pages or {}) do
+        if page ~= keep and page.Hide then page.Hide() end
+    end
+    if def ~= keep and def.Hide then def.Hide() end
+end
+
 local function DrawStrip(tab, width)
     local highlights = {}
 
@@ -736,7 +850,7 @@ local function DrawStrip(tab, width)
             if h and h.value then highlights[#highlights + 1] = h end
         end
     end
-    local custom = Codex.customTabs and Codex.customTabs[tab]
+    local custom = ResolveCustom(tab)
     if custom and custom.GetHighlights then
         for _, h in ipairs(custom.GetHighlights() or {}) do
             if h and h.value then highlights[#highlights + 1] = h end
@@ -837,18 +951,24 @@ function Panel:Refresh()
     local tab   = addon:GetSetting("activeTab") or "today"
     local width = ContentWidth()
 
+    local custom, owner = ResolveCustom(tab)
+
     -- A tab that owns its page keeps its frames between visits, so the
-    -- ones we are not showing have to be put away.
+    -- ones we are not showing have to be put away - including the other
+    -- pages of the tab we are on.
     for key, def in pairs(Codex.customTabs or {}) do
-        if key ~= tab and def.Hide then def.Hide() end
+        PutAwayCustom(def, key == tab and custom or nil)
     end
 
-    local custom = Codex.customTabs and Codex.customTabs[tab]
+    local stripHeight = Panel:DrawPageStrip(tab, owner, custom, width)
+    local host = (stripHeight > 0) and pageHost or headerHost
+
     local headerHeight = 1
     if custom and custom.RenderHeader then
-        headerHeight = math.max(custom.RenderHeader(headerHost, width) or 1, 1)
+        headerHeight = math.max(custom.RenderHeader(host, width) or 1, 1)
     end
-    headerHost:SetHeight(headerHeight)
+    if host == pageHost then pageHost:SetHeight(headerHeight) end
+    headerHost:SetHeight(stripHeight + headerHeight)
 
     if custom then
         -- Render is what sets height, so it is read after.
@@ -1300,6 +1420,28 @@ end
 
 -- Tabs are rebuilt whenever a section or a custom tab registers, so a
 -- module loading late still gets one.
+--
+-- The rail reads top to bottom as the questions get less urgent, and it
+-- is banded in tens so a new page has somewhere to go without anybody
+-- having to renumber. The bands are the whole scheme:
+--
+--    10-20   what now          Today, Progress
+--    30-70   what I am at      Quests, Instances, Professions,
+--                              Reputation, Currencies
+--    80-90   what I have       Equipment, Items
+--   110-120  the world         Events, Legacy
+--
+-- The wishlist is not on the rail. It is a page of the Items tab, which
+-- is where its rows come from - see the page notes further down.
+--
+-- It used to run 10, 20, 22, 24, 25, 25, 26 ... which is what happens
+-- when each page picks a number next to the one it feels related to.
+-- Legacy - an archive of things that are no longer in the game - came
+-- third, and Equipment and Quests both asked for 25 and were separated
+-- by the spelling of their labels.
+--
+-- Ties still fall back to the label, but a tie is now a mistake rather
+-- than the normal case.
 function Panel:RebuildTabs()
     if not frame then return end
     local tabs = frame.sideTabs
@@ -1326,7 +1468,28 @@ function Panel:RebuildTabs()
     for key, def in pairs(Codex.customTabs or {}) do
         Want(key, def.label or key, def.order, def.icon)
     end
+    -- The player's own arrangement wins where they have made one.
+    --
+    -- Saved as the whole list of keys rather than a number per page, so
+    -- there is never a saved number sitting next to a declared one
+    -- arguing about which band it is in. A page added to BazUI later is
+    -- not in the list and joins the end of the rail, where it can be
+    -- dragged to wherever it belongs - the same bargain the drawer makes
+    -- with a widget added after you have arranged your drawer.
+    local rank
+    local saved = addon:GetSetting("tabOrder")
+    if type(saved) == "table" and #saved > 0 then
+        rank = {}
+        for i, key in ipairs(saved) do rank[key] = i end
+    end
+
     table.sort(order, function(a, b)
+        if rank then
+            local ra, rb = rank[a.key], rank[b.key]
+            if ra and rb then return ra < rb end
+            if ra then return true end
+            if rb then return false end
+        end
         if a.sort ~= b.sort then return a.sort < b.sort end
         return a.label < b.label
     end)
@@ -1334,7 +1497,7 @@ function Panel:RebuildTabs()
     local active = addon:GetSetting("activeTab") or "today"
     local activeID, todayID
     for _, entry in ipairs(order) do
-        local id = tabs:AddTab(entry.label, entry.icon)
+        local id = tabs:AddTab(entry.label, entry.icon, entry.key)
         Codex.tabKeys[id] = entry.key
         Codex.tabLabels[entry.key] = entry.label
         if entry.key == active then activeID = id end
@@ -1346,6 +1509,17 @@ function Panel:RebuildTabs()
         activeID = todayID
         addon:SetSetting("activeTab", "today")
     end
+    -- Hold a tab, it lights green, carry it up or down the rail.
+    --
+    -- Called once, when the mouse comes up, with the pages in the order
+    -- the drag left them. The whole list is written back rather than a
+    -- number for the page that moved, so what is saved is always a
+    -- complete arrangement rather than a patch over the declared bands.
+    tabs:SetReorderHandler(function(keys)
+        addon:SetSetting("tabOrder", keys)
+        Panel:RebuildTabs()
+    end)
+
     tabs:SetTabSelectedCallback(function(tabID, isUserAction)
         local key = Codex.tabKeys[tabID]
         if not key then return end
@@ -1411,6 +1585,9 @@ function Panel:ResetForOpen()
     addon:SetSetting("activeTab", "today")
     for _, def in pairs(Codex.customTabs or {}) do
         if def.Reset then pcall(def.Reset) end
+        for _, page in ipairs(def.pages or {}) do
+            if page.Reset then pcall(page.Reset) end
+        end
     end
 end
 

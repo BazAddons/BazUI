@@ -30,6 +30,10 @@
 ---------------------------------------------------------------------------
 
 local Codex = BazUI.Codex
+
+-- Declared here because Render, written above where this page is
+-- built, reports its measured height onto it.
+local BrowsePage
 local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
@@ -1129,12 +1133,21 @@ local function Render(content, width)
 
     local used = (#p.hits > 0) and cardHeight or 1
     p:SetHeight(used)
-    Codex.customTabs.items.height = used
+    BrowsePage.height = used
 end
 
-Codex.customTabs.items = {
-    label        = "Items",
-    order        = 30,
+-- The browse page, and the tab that holds it.
+--
+-- Split in two because the wishlist lives here now: it is a list of
+-- items, read while you are looking at items, and a rail tab of its own
+-- for one short list was a tab spent on a page most people open by
+-- coming here first anyway. Wishlist.lua appends itself to `pages`.
+--
+-- The page def is the tab def that used to be - nothing below this
+-- comment changed when it moved.
+BrowsePage = {
+    key          = "browse",
+    label        = "All items",
     -- Everything this tab was holding, let go. Called when the window
     -- opens; see Panel:ResetForOpen.
     Reset        = function()
@@ -1164,6 +1177,12 @@ Codex.customTabs.items = {
         end
         return highlights
     end,
+}
+
+Codex.customTabs.items = {
+    label = "Items",
+    order = 90,
+    pages = { BrowsePage },
 }
 
 ---------------------------------------------------------------------------

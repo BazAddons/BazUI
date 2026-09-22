@@ -13,6 +13,10 @@
 ---------------------------------------------------------------------------
 
 local Codex = BazUI.Codex
+
+-- Declared here because Render, written above where this page is
+-- built, reports its measured height onto it.
+local WishlistPage
 local addon = BazUI:GetModule("Codex")
 local Theme = BazUI.Skin.Theme
 
@@ -368,12 +372,18 @@ local function Render(content, width)
 
     local used = (#entries > 0) and cardHeight or 1
     p:SetHeight(used)
-    Codex.customTabs.wishlist.height = used
+    WishlistPage.height = used
 end
 
-Codex.customTabs.wishlist = {
+-- A page of the Items tab, not a tab.
+--
+-- It is a list of items and it is read while you are looking at items,
+-- so it sits behind a button on that page rather than taking a place on
+-- the rail. Everything below is what it was as a tab; a page def and a
+-- custom tab def are the same shape.
+WishlistPage = {
+    key          = "wishlist",
     label        = "Wishlist",
-    order        = 40,
     RenderHeader = RenderHeader,
     Render       = Render,
     Hide         = function()
@@ -394,6 +404,13 @@ Codex.customTabs.wishlist = {
         }
     end,
 }
+
+-- Items.lua loads first and made the tab; this joins it.
+local items = Codex.customTabs and Codex.customTabs.items
+if items then
+    items.pages = items.pages or {}
+    items.pages[#items.pages + 1] = WishlistPage
+end
 
 -- Picking something up off the list is worth noticing.
 BazUI:QueueForModule("Codex", function()

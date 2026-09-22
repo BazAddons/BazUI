@@ -1146,6 +1146,16 @@ function WidgetHost:Reflow()
     if not ok then error(err, 0) end
 end
 
+-- Has the layout actually run, or is it waiting for a fight to end?
+--
+-- Anything that draws chrome around a widget needs this: until the reflow
+-- has run, a floating widget is wherever it happened to be left, and a
+-- frame drawn around it says "somebody put this here" about a position
+-- nobody chose.
+function WidgetHost:IsWaitingOnCombat()
+    return self._reflowPending and true or false
+end
+
 function WidgetHost:DoReflow()
     if not self.parent then return end
 

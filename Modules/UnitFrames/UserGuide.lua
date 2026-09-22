@@ -90,6 +90,7 @@ BazUI:RegisterUserGuide("UnitFrames", {
                     { "Tenth marks", "Divider lines across the fill. Ten of them marks the tenths of a level, which is what an experience bar usually wants." },
                 } },
                 { type = "note", text = "|cffffd700On WoW: Forever, a percentage is not always available.|r This client hands an addon your health and mana as sealed numbers - they can be put in a bar, but not divided into a percentage. Where that happens, any wording asking for a percent falls back to the pair of numbers, which is the nearest honest thing. Name and percent is the wording every new bar starts on, so this is worth knowing before you go looking for a setting that is wrong." },
+                { type = "note", text = "|cffffd700Players have two names on this client|r, and a bar set to show a name shows both. The game hands the surname over separately from the first name - where retail hands over the realm - so a name that reads as one word is the surname having been dropped, not a player without one. Nameplates have a switch for leaving it off; unit bars always show it, because a unit bar is where you are identifying somebody." },
                 { type = "h3", text = "How the writing looks" },
                 { type = "paragraph", text = "On the Edit Mode panel, under Text:" },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {

@@ -287,6 +287,23 @@ function QT.GetOptionsArgs()
             end,
             disabled = function() return not QT.HasTomTom() end,
         },
+        tomtomHideBlock = {
+            order = 31.5,
+            type = "toggle",
+            name = "Hide TomTom's coordinates",
+            desc = "Puts away the little block showing where you are "
+                .. "standing. TomTom's own setting is left alone - this "
+                .. "only holds the frame down, so turning it off gives you "
+                .. "the block back exactly as TomTom had it.",
+            get = function()
+                return addon:GetWidgetSetting(C.WIDGET_ID, "tomtomHideBlock", false) == true
+            end,
+            set = function(_, val)
+                addon:SetWidgetSetting(C.WIDGET_ID, "tomtomHideBlock", val and true or false)
+                QT.ApplyTomTomBlock()
+            end,
+            disabled = function() return not QT.HasTomTom() end,
+        },
         zygorEnabled = {
             order = 32,
             type = "toggle",

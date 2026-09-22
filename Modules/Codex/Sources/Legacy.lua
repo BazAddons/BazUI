@@ -26,7 +26,7 @@ local TAB = "legacy"
 local COMMON = {
     tab      = TAB,
     tabLabel = "Legacy",
-    tabOrder = 22,
+    tabOrder = 120,
     tabIcon  = "Interface\\Icons\\INV_Misc_Trophy_Argent",
 }
 local PREFIX = "leg."

@@ -777,7 +777,7 @@ end
 
 Codex.customTabs[TAB] = {
     label  = "Equipment",
-    order  = 25,
+    order  = 80,
     icon   = "Interface\\Icons\\INV_Chest_Cloth_17",
     Render = Render,
     Hide   = function()

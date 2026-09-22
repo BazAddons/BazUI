@@ -54,6 +54,73 @@ local MapScale
 
 local pendingAttach
 
+---------------------------------------------------------------------------
+-- Nothing touches the map during a fight
+--
+-- The minimap is the most combat-restricted thing this addon handles. It
+-- cannot be reparented, anchored, shown or hidden mid-fight, and the
+-- widget host will not lay anything out either - so a reload in combat
+-- meant several bits of this file each discovering that separately, each
+-- parking its own request, each with its own idea of when to try again.
+--
+-- Chasing that cost three wrong fixes in a row: every gate guarded a
+-- refusal that was real but was not the one happening, so every gate sat
+-- there doing nothing while the map drew in the middle of the screen.
+--
+-- One door instead. Ask before doing anything to the map; if a fight is
+-- on, hand the work over and it runs the moment the fight ends. Jobs are
+-- keyed so that ten calls to the same thing while you are swinging at a
+-- boar become one call afterwards.
+---------------------------------------------------------------------------
+
+local parked, parkWatcher = {}, nil
+
+-- Returns true when the caller may carry on, false when the work has been
+-- taken off it.
+--
+-- It does NOT run the job when the coast is clear. The job is "do the
+-- thing you were about to do", and every caller is written as
+--
+--     if not WhenClear(key, function() self:Thing() end) then return end
+--
+-- so running it here as well means Thing calls WhenClear, which calls
+-- Thing, which calls WhenClear. That is a stack overflow the first time
+-- anybody logs in out of combat, which is most of the time - a gate for a
+-- rare case that broke the common one.
+local function WhenClear(key, job)
+    if not InCombatLockdown() then return true end
+
+    parked[key] = job
+
+    if not parkWatcher then
+        parkWatcher = CreateFrame("Frame")
+        parkWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+        parkWatcher:SetScript("OnEvent", function()
+            -- Taken and cleared first: a job is allowed to park more work,
+            -- and a job that parked itself into the table it is being read
+            -- out of would run for ever.
+            local work = parked
+            parked = {}
+
+            -- A frame later, not now. The widget host listens for this
+            -- same event to run the layout it also refused, and two
+            -- listeners on one event have no order between them - so
+            -- running here would be a coin toss on whether the map had
+            -- been placed yet when we drew the frame around it.
+            C_Timer.After(0, function()
+                for _, fn in pairs(work) do pcall(fn) end
+            end)
+        end)
+    end
+    return false
+end
+-- Declared here rather than beside the code that builds it, because
+-- AttachMinimap is written above that and has to be able to put the
+-- frame away. A local is only visible to code written after it, so
+-- the same name further down would have been a second variable and
+-- this one would have stayed nil for ever.
+local ring
+
 local function AttachMinimap(parent)
     if not Minimap or not parent then return end
     if minimapParentedInto == parent then return end
@@ -64,6 +131,18 @@ local function AttachMinimap(parent)
     -- the request and do it when the fight ends.
     if InCombatLockdown() and Minimap:IsProtected() then
         pendingAttach = parent
+        -- And take our frame down while we wait.
+        --
+        -- The map cannot be moved OR hidden mid-fight - it is protected,
+        -- which is the whole reason we are here - but the ring around it
+        -- is ours and neither. Left up it draws at the widget's position
+        -- with no map inside it, which on a fresh placement is a large
+        -- empty circle in the middle of the screen, over the fight.
+        --
+        -- Nothing is lost by waiting: the frame is decoration, and
+        -- decoration around something that is not there yet is worse than
+        -- no decoration.
+        if ring then ring:Hide() end
         return
     end
     pendingAttach = nil
@@ -304,7 +383,7 @@ end
 -- drawer multiplies, so this is a few more than it says on screen.
 local FRAME_OVERLAP = 5
 
-local ring
+-- `ring` is declared at the top of the file; see the note there.
 
 -- Every piece of the game's own ring, found rather than listed.
 --
@@ -456,6 +535,14 @@ function MinimapWidget:ApplyFootprint(settled)
 end
 
 function MinimapWidget:ApplyFrameStyle(settled)
+    -- Repainting reaches for the map's size and the game's own ring
+    -- textures, and puts our frame up around whatever it finds. In a fight
+    -- what it finds is not where it is going to be.
+    if not WhenClear("style", function() MinimapWidget:ApplyFrameStyle(settled) end) then
+        if ring then ring:Hide() end
+        return
+    end
+
     local style = GetFrameStyle()
     local bazui = (style == "bazui")
 
@@ -470,7 +557,30 @@ function MinimapWidget:ApplyFrameStyle(settled)
     -- Native, always. See MapDiameter.
     if nativeMapWidth then raw.SetSize(Minimap, nativeMapWidth, nativeMapHeight) end
 
-    if bazui then
+    -- Not while the map is somewhere nobody chose.
+    --
+    -- Two different refusals put it there, and the ring has to wait for
+    -- both: the map cannot be REPARENTED in combat (pendingAttach), and a
+    -- floating widget carrying a protected child cannot be POSITIONED in
+    -- combat either (_placed). The second is the one that leaves a
+    -- minimap in the middle of the screen after a reload mid-fight, and
+    -- drawing a frame around it only makes it look deliberate.
+    --
+    -- Anything that repaints the style would otherwise put the ring
+    -- straight back up, and several things repaint it - which is why this
+    -- is guarded here rather than only where the refusal happens.
+    -- Asked of the host, because the host is what refuses.
+    --
+    -- DoReflow bails wholesale in combat and parks a flag - it never
+    -- reaches the code that places a floating widget - so a per-widget
+    -- "were you placed" answer is never written and gating on one gated
+    -- on nothing. Two earlier attempts at this failed for exactly that
+    -- reason: they guarded refusals that were not the one happening.
+    local host = addon.WidgetHost
+    local adrift = pendingAttach
+        or (host and host.IsWaitingOnCombat and host:IsWaitingOnCombat())
+
+    if bazui and not adrift then
         local frame = EnsureRing()
         if frame then
             frame:SetInnerSize(MapDiameter())
@@ -620,6 +730,12 @@ function MinimapWidget:Init()
     if wrapper then return end
     if not Minimap then return end
 
+    -- Not a step of the setup deferred, the whole setup. Half-built is the
+    -- state that put a ring with no map inside it on screen; not built at
+    -- all leaves Blizzard's own minimap exactly where the game put it,
+    -- which is a perfectly good place for it to be for thirty seconds.
+    if not WhenClear("init", function() MinimapWidget:Init() end) then return end
+
     -- Query the Minimap's native (unscaled) size BEFORE we do anything.
     -- GetWidth returns the logical size regardless of SetScale.
     local mapW = Minimap:GetWidth() or DEFAULT_SIZE
@@ -703,8 +819,13 @@ function MinimapWidget:Init()
         if pendingAttach then
             local parent = pendingAttach
             AttachMinimap(parent)
-            if MinimapWidget.ApplyFrameStyle then MinimapWidget:ApplyFrameStyle() end
         end
+        -- A frame later, whether or not the reparent was the thing that
+        -- was waiting: the widget host places floating widgets on this
+        -- same event, and the ring can only be drawn once it has.
+        C_Timer.After(0, function()
+            if MinimapWidget.ApplyFrameStyle then MinimapWidget:ApplyFrameStyle() end
+        end)
     end)
     EnableWheelZoom()
     EnableCalendarClick()

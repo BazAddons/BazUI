@@ -459,6 +459,44 @@ function BazUI.SecureForward(anchorTo, target, opts)
     return hit
 end
 
+-- Frames we were refused mid-fight, and the one watcher that settles
+-- them. Weak keys: a frame nobody else is holding is not worth keeping
+-- alive to hide it.
+local suppressPending = setmetatable({}, { __mode = "k" })
+local suppressWatcher
+
+-- Frames with a deferred re-hide already booked, so a burst of shows in
+-- one frame books one hide rather than a dozen.
+local hideSoon = setmetatable({}, { __mode = "k" })
+
+local function Settle(frame)
+    local wanted = suppressWanted[frame]
+    if not wanted then return end
+
+    if wanted() then
+        suppressedByUs[frame] = true
+        CallClean(frame, "Hide")
+    elseif suppressedByUs[frame] then
+        -- Only ever put back what we took down. Calling Show on a frame
+        -- we do not own marks its shown state as ours, and Blizzard's
+        -- Edit Mode reads that state on the way in; anything we never
+        -- hid is left entirely alone.
+        suppressedByUs[frame] = nil
+        CallClean(frame, "Show")
+    end
+end
+
+local function SuppressWatcher()
+    if suppressWatcher then return end
+    suppressWatcher = CreateFrame("Frame")
+    suppressWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+    suppressWatcher:SetScript("OnEvent", function()
+        local waiting = suppressPending
+        suppressPending = setmetatable({}, { __mode = "k" })
+        for frame in pairs(waiting) do pcall(Settle, frame) end
+    end)
+end
+
 function BazUI.SuppressFrame(frame, wanted)
     if not (frame and frame.HookScript and type(wanted) == "function") then
         return false
@@ -482,26 +520,77 @@ function BazUI.SuppressFrame(frame, wanted)
     if suppressWanted[frame] == nil then
         frame:HookScript("OnShow", function(self)
             local test = suppressWanted[self]
-            if test and test() and not Blocked(self) then
+            if not (test and test() and not Blocked(self)) then return end
+            if hideSoon[self] then return end
+
+            -- Next frame, not this one.
+            --
+            -- OnShow does not fire after the frame has finished being
+            -- shown. It fires in the MIDDLE of whatever is showing it,
+            -- and on this client that matters, because the thing showing
+            -- an action bar is not Frame:Show at all:
+            --
+            --   function EditModeActionBarMixin:ShowOverride()
+            --       self.isShownExternal = true
+            --       self:UpdateVisibility()     -- ShowBase() is in here,
+            --   end                             -- and so is
+            --                                   -- UpdateActionBarLayout
+            --
+            -- ShowBase fires our hook halfway down UpdateVisibility, so
+            -- the REST of their function - UpdateActionBarLayout, and the
+            -- SetPointBase calls underneath it - runs on a stack we are
+            -- standing on, and is refused:
+            --
+            --   AddOn 'BazUI' tried to call the protected function
+            --   'MainActionBar:SetPointBase()'
+            --   ActionBar.lua:325: in function 'Show'
+            --
+            -- securecallfunction cannot help. It launders a call we make;
+            -- it cannot launder their call that we are standing inside.
+            --
+            -- Our own Hide then failed the same way and for the same
+            -- reason - HideOverride runs BreakSnappedFrames, which is
+            -- more SetPointBase, BEFORE it reaches HideBase - so it threw
+            -- before hiding anything and the bar stayed up until a
+            -- reload. Which is exactly what it looked like from outside:
+            -- reload mid-fight, and Blizzard's bar one arrives when the
+            -- fight ends, at the first Show since our hook existed.
+            --
+            -- A timer of zero is the next OnUpdate. Their function has
+            -- returned by then and the stack is ours alone. The cost is
+            -- one frame of the thing being visible.
+            hideSoon[self] = true
+            C_Timer.After(0, function()
+                hideSoon[self] = nil
+                local again = suppressWanted[self]
+                if not (again and again() and not Blocked(self)) then return end
+                if not BazUI.SecureCall(self, "IsShown") then return end
                 suppressedByUs[self] = true
                 CallClean(self, "Hide")
-            end
+            end)
         end)
     end
     suppressWanted[frame] = wanted
 
-    if Blocked(frame) then return true end
-    if wanted() then
-        suppressedByUs[frame] = true
-        CallClean(frame, "Hide")
-    elseif suppressedByUs[frame] then
-        -- Only ever put back what we took down. Calling Show on a frame
-        -- we do not own marks its shown state as ours, and Blizzard's
-        -- Edit Mode reads that state on the way in; anything we never
-        -- hid is left entirely alone.
-        suppressedByUs[frame] = nil
-        CallClean(frame, "Show")
+    if Blocked(frame) then
+        -- Parked, not dropped.
+        --
+        -- This used to return here and say no more about it, while the
+        -- note above promised the frame would be "picked up when the fight
+        -- ends". Nothing picked it up. Reload during a fight and
+        -- Blizzard's action bars were never hidden at all - they simply
+        -- turned up when the fight finished, looking like something we had
+        -- just decided to show.
+        --
+        -- The OnShow hook above is not enough on its own: it only fires if
+        -- the frame is shown AFTER we hooked it, and a frame that was
+        -- already up when we were refused never shows again.
+        suppressPending[frame] = true
+        SuppressWatcher()
+        return true
     end
+
+    Settle(frame)
     return true
 end
 

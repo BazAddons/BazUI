@@ -567,6 +567,9 @@ function QT.Init()
     })
 
     QT.ApplyBlizzardTrackerVisibility()
+    -- TomTom builds its coordinate block lazily, so this asks and
+    -- retries rather than expecting it to be there now.
+    if QT.ApplyTomTomBlock then QT.ApplyTomTomBlock() end
 
     -- Events
     -- Registered through pcall: RegisterEvent throws on a name the client

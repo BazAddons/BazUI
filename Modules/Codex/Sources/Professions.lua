@@ -23,7 +23,7 @@ local TAB = "professions"
 local COMMON = {
     tab      = TAB,
     tabLabel = "Professions",
-    tabOrder = 29,
+    tabOrder = 50,
     tabIcon  = "Interface\\Icons\\Trade_Engineering",
 }
 local PREFIX = "skl."

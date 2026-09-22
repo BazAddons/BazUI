@@ -318,8 +318,25 @@ local function Merged(id)
     row.zone        = (mine and mine.from and mine.from.zone) or (place and place.zone)
     row.minLevel    = place and place.minLevel
     row.faction     = place and place.faction
-    row.description = mine and mine.description
-    row.summary     = mine and mine.summary
+    -- The words, yours first and the catalogue's after.
+    --
+    -- This read the witnessed store and nothing else, so the shipped text
+    -- - two megabytes of it, four thousand descriptions - was written,
+    -- loaded and never once shown. Every quest nobody had personally met
+    -- said "Not in here yet" while the facts line said "Unconfirmed",
+    -- which is a page arguing with itself: unconfirmed means we DID
+    -- borrow the words, and they were sitting right there.
+    --
+    -- Objectives already had this fallback, which is what made the gap
+    -- hard to spot - the page looked populated.
+    local told = Catalog() and Codex.Quests.Text and Codex.Quests.Text(id)
+
+    row.description = (mine and mine.description) or (told and told.description)
+    row.summary     = (mine and mine.summary) or (told and told.summary)
+
+    -- No catalogue fallback for these two on purpose. The giver's words
+    -- while you are working and when you hand in only exist if somebody
+    -- got that far, and neither source we ship carries them.
     row.progress    = mine and mine.progress
     row.completion  = mine and mine.completion
     row.objectives  = (mine and mine.objectives)
@@ -1034,7 +1051,9 @@ end
 local LINE_GAP     = 3     -- between the lines of one block
 local BLOCK_GAP    = 16    -- between one block and the next
 local HEADING_GAP  = 7     -- between a heading and its body
-local RULE_GAP     = 9     -- either side of the rule under the title
+-- The rule under the title moved to the pinned header, which owns its
+-- own spacing, so there is no longer a full-width rule drawn into the
+-- scrolling body. The headings still draw their own short ones.
 local PLACE_INSET  = 10    -- places sit in from the edge, like objectives
 
 local function AcquireRule(index)
@@ -1128,7 +1147,16 @@ local function AcquireLine(index, font)
         pool[index] = line
         pool.fonts[index] = font
     elseif pool.fonts[index] ~= font then
-        line:SetFontObject(font)
+        -- Theme.FontObject, not the bare name.
+        --
+        -- Theme.FontString builds the line in the suite's face, but
+        -- SetFontObject("GameFontHighlightSmall") resolves Blizzard's own
+        -- global and puts their face back - so a pooled line was in the
+        -- addon's font until the first quest that needed that slot at a
+        -- different size, and in the game's font from then on. Which line
+        -- went wrong depended on what you had looked at before it, which
+        -- is why it read as random.
+        line:SetFontObject(Theme.FontObject(font))
         pool.fonts[index] = font
     end
     return line
@@ -1191,18 +1219,6 @@ local function LayoutDetail(quest, width)
         used = used + (line:GetStringHeight() or 12)
     end
 
-    local function Rule(colour, gapAbove)
-        rules = rules + 1
-        local rule = AcquireRule(rules)
-        rule:ClearAllPoints()
-        used = used + (gapAbove or 0)
-        rule:SetPoint("TOPLEFT", page.detail.inner, "TOPLEFT", 0, -used)
-        rule:SetPoint("RIGHT", page.detail.inner, "RIGHT", 0, 0)
-        rule:SetColorTexture(unpack(colour))
-        rule:Show()
-        used = used + 1
-    end
-
     local function Heading(text)
         Put(text, "GameFontNormalSmall", Theme.colors.gold, BLOCK_GAP)
         local line = pool[count]
@@ -1216,9 +1232,8 @@ local function LayoutDetail(quest, width)
         rule:Show()
     end
 
-    -- The name, and one quiet line saying what it is.
-    Put(quest.title, "GameFontNormalLarge", Theme.colors.gold, 0)
-
+    -- The name and its one quiet line go in the pinned header, not into
+    -- the scrolling body. See CreateBox.
     local facts = {}
     if quest.level and quest.level > 0 then
         facts[#facts + 1] = "Level " .. quest.level
@@ -1243,19 +1258,35 @@ local function LayoutDetail(quest, width)
     facts[#facts + 1] = firsthand and "|cff55cc66Seen in game|r"
         or "|cff998866Unconfirmed|r"
 
-    Put(table.concat(facts, "  |  "), "GameFontHighlightSmall",
-        Theme.colors.textMuted, 5)
+    local head = page.detail.head
+    page.detail.headTitle:SetWidth(width)
+    page.detail.headTitle:SetText(quest.title or "?")
+    page.detail.headFacts:SetWidth(width)
+    page.detail.headFacts:SetText(table.concat(facts, "  |  "))
 
-    Rule(Theme.colors.edge, RULE_GAP)
-    used = used + RULE_GAP
+    -- Measured, so a title long enough to wrap pushes the rule and the
+    -- body down rather than being drawn over them.
+    head:SetHeight((page.detail.headTitle:GetStringHeight() or 16)
+        + 5 + (page.detail.headFacts:GetStringHeight() or 12))
 
     -- What it wants, unannounced, the way the game says it.
     Put(quest.summary, "GameFontHighlightSmall", Theme.colors.text, 0)
 
+    -- Objectives, minus any that only say the summary again.
+    --
+    -- The database fill supplies an objective list for quests the harvest
+    -- had none for, and for a delivery quest that list is one line which
+    -- is word for word the summary above it - "Deliver the Crate of Inn
+    -- Supplies to Tannok Frosthammer in Kharanos", twice, once in white
+    -- and once in grey. Both are right and printing both is not.
     if quest.objectives and #quest.objectives > 0 then
-        for index, text in ipairs(quest.objectives) do
-            Put(text, "GameFontHighlightSmall", Theme.colors.textMuted,
-                (index == 1) and 10 or LINE_GAP, 10)
+        local shown = 0
+        for _, text in ipairs(quest.objectives) do
+            if text ~= quest.summary then
+                shown = shown + 1
+                Put(text, "GameFontHighlightSmall", Theme.colors.textMuted,
+                    (shown == 1) and 10 or LINE_GAP, 10)
+            end
         end
     end
 
@@ -1328,12 +1359,18 @@ local function LayoutDetail(quest, width)
 
     -- The rest, only when there is any. These are the giver's words at
     -- moments other than the offer, and most quests have none of them.
-    if quest.progress and quest.progress ~= "" then
+    -- Trimmed before it is judged.
+    --
+    -- A giver with nothing to say while you work still leaves a record -
+    -- a space, a newline - and `~= ""` waves that through, so the heading
+    -- was drawn over an empty line. A heading introducing nothing reads
+    -- as something failing to load.
+    if quest.progress and strtrim(quest.progress) ~= "" then
         Heading("While you are working")
         Put(quest.progress, "GameFontHighlightSmall", Theme.colors.text,
             HEADING_GAP)
     end
-    if quest.completion and quest.completion ~= "" then
+    if quest.completion and strtrim(quest.completion) ~= "" then
         Heading("On handing in")
         Put(quest.completion, "GameFontHighlightSmall", Theme.colors.text,
             HEADING_GAP)
@@ -1375,7 +1412,8 @@ local function AcquireFooterLine(index, font)
         pool[index] = line
         pool.fonts[index] = font
     elseif pool.fonts[index] ~= font then
-        line:SetFontObject(font)
+        -- Same trap as AcquireLine above: the themed object, not the name.
+        line:SetFontObject(Theme.FontObject(font))
         pool.fonts[index] = font
     end
     return line
@@ -1522,6 +1560,30 @@ local function LayoutRewards(quest, width)
         or "Rewards  |cff998866- unconfirmed|r",
         "GameFontNormalSmall", Theme.colors.gold, 0)
 
+    -- Anchored to the heading that was just drawn, so it sits on that line
+    -- whatever the heading turned out to say.
+    -- Coin first, experience last, which is the opposite of the order you
+    -- would say them in and the right order to draw them.
+    --
+    -- The line is right-aligned, so whatever comes last sits against the
+    -- edge. Nearly every quest pays experience and plenty pay no coin, so
+    -- putting experience last keeps it in the same place on every quest
+    -- and lets the coin appear beside it when there is any. The other way
+    -- round, the experience figure shuffled left and right depending on
+    -- whether the quest happened to pay money.
+    local pay = {}
+    if coin then pay[#pay + 1] = coin end
+    if xp then
+        pay[#pay + 1] = ("|T%s:14:14:0:0|t %s"):format(XP_ICON,
+            _G.BreakUpLargeNumbers and _G.BreakUpLargeNumbers(xp) or xp)
+    end
+
+    local figures = page.detail.footPay
+    figures:ClearAllPoints()
+    figures:SetPoint("RIGHT", page.detail.footLines[lines], "RIGHT", 0, 0)
+    figures:SetText(table.concat(pay, "      "))
+    figures:SetShown(#pay > 0)
+
     if #choices > 0 then
         Say("You will be able to choose one of these:",
             "GameFontHighlightSmall", Theme.colors.textMuted, 5)
@@ -1529,23 +1591,17 @@ local function LayoutRewards(quest, width)
         Row(choices)
     end
 
-    if #giving > 0 or xp or coin then
+    -- Only when there is an item to introduce. The line used to cover the
+    -- experience and the coin as well, so a quest paying nothing but
+    -- experience announced "You will receive:" and then, on the heading
+    -- line above it, the figure it was introducing.
+    if #giving > 0 then
         Say((#choices > 0) and "You will also receive:" or "You will receive:",
             "GameFontHighlightSmall", Theme.colors.textMuted,
             (#choices > 0) and 8 or 5)
         used = used + 4
         Row(giving)
 
-        if xp or coin then
-            local pay = {}
-            if xp then
-                pay[#pay + 1] = ("|T%s:14:14:0:0|t %s"):format(XP_ICON,
-                    _G.BreakUpLargeNumbers and _G.BreakUpLargeNumbers(xp) or xp)
-            end
-            if coin then pay[#pay + 1] = coin end
-            Say(table.concat(pay, "      "), "GameFontHighlight",
-                Theme.colors.text, (#giving > 0) and 6 or 0)
-        end
     end
 
     for index = lines + 1, #page.detail.footLines do
@@ -1619,14 +1675,59 @@ local function Build(parent)
     page.detail.footLines = { fonts = {} }
     page.detail.plates = {}
 
+    -- What it pays, on the Rewards line rather than under everything.
+    --
+    -- Experience and coin are two short things, and a row of their own at
+    -- the bottom of the panel spent a whole line on "360" with an empty
+    -- half-panel beside it. The heading has that space going spare and
+    -- reads as a header, which is exactly where a figure belongs.
+    page.detail.footPay = Theme.FontString(
+        page.detail.footer, "OVERLAY", "GameFontHighlight")
+    page.detail.footPay:SetJustifyH("RIGHT")
+    page.detail.footPay:Hide()
+
     page.detail.footRule = page.detail:CreateTexture(nil, "ARTWORK")
     page.detail.footRule:SetHeight(1)
     page.detail.footRule:SetPoint("BOTTOMLEFT", page.detail.footer, "TOPLEFT", 0, 10)
     page.detail.footRule:SetPoint("BOTTOMRIGHT", page.detail.footer, "TOPRIGHT", 0, 10)
     page.detail.footRule:SetColorTexture(unpack(Theme.colors.edge))
 
+    -- Which quest you are reading, along the top, in the same place
+    -- whatever it says - the mirror of the rewards along the bottom.
+    --
+    -- Pinned rather than scrolled because it is the answer to "what am I
+    -- looking at", and a page that scrolls that away answers it only
+    -- while you do not need it. The rewards were already pinned for the
+    -- same reason and the two looked inconsistent, which is how this got
+    -- noticed.
+    page.detail.head = CreateFrame("Frame", nil, page.detail)
+    page.detail.head:SetPoint("TOPLEFT", 16, -15)
+    page.detail.head:SetPoint("TOPRIGHT", -14, -15)
+    page.detail.head:SetHeight(1)
+
+    page.detail.headTitle = Theme.FontString(
+        page.detail.head, "OVERLAY", "GameFontNormalLarge")
+    page.detail.headTitle:SetPoint("TOPLEFT")
+    page.detail.headTitle:SetPoint("TOPRIGHT")
+    page.detail.headTitle:SetJustifyH("LEFT")
+    page.detail.headTitle:SetTextColor(unpack(Theme.colors.gold))
+
+    page.detail.headFacts = Theme.FontString(
+        page.detail.head, "OVERLAY", "GameFontHighlightSmall")
+    page.detail.headFacts:SetPoint("TOPLEFT", page.detail.headTitle,
+        "BOTTOMLEFT", 0, -5)
+    page.detail.headFacts:SetPoint("RIGHT")
+    page.detail.headFacts:SetJustifyH("LEFT")
+    page.detail.headFacts:SetTextColor(unpack(Theme.colors.textMuted))
+
+    page.detail.headRule = page.detail:CreateTexture(nil, "ARTWORK")
+    page.detail.headRule:SetHeight(1)
+    page.detail.headRule:SetPoint("TOPLEFT", page.detail.head, "BOTTOMLEFT", 0, -9)
+    page.detail.headRule:SetPoint("TOPRIGHT", page.detail.head, "BOTTOMRIGHT", 0, -9)
+    page.detail.headRule:SetColorTexture(unpack(Theme.colors.edge))
+
     page.detail.scroll = CreateFrame("ScrollFrame", nil, page.detail)
-    page.detail.scroll:SetPoint("TOPLEFT", 16, -15)
+    page.detail.scroll:SetPoint("TOPLEFT", page.detail.headRule, "BOTTOMLEFT", 0, -9)
     page.detail.scroll:SetPoint("RIGHT", -14, 0)
     page.detail.scroll:SetPoint("BOTTOM", page.detail.footRule, "TOP", 0, 8)
     Codex.Panel.MakeScrollable(page.detail.scroll, page.detail)
@@ -1681,6 +1782,10 @@ local function Render(content, width)
     local quest = opened and Merged(opened)
     p.detail.empty:SetShown(quest == nil)
     p.detail.scroll:SetShown(quest ~= nil)
+    -- The pinned header and its rule belong to a quest, so they go with
+    -- the body rather than sitting over "Pick a quest on the left."
+    p.detail.head:SetShown(quest ~= nil)
+    p.detail.headRule:SetShown(quest ~= nil)
 
     if quest then
         local inner = p.detail:GetWidth() - 30
@@ -1717,7 +1822,7 @@ end
 
 Codex.customTabs.quests = {
     label        = "Quests",
-    order        = 25,
+    order        = 30,
     RenderHeader = RenderHeader,
     Render       = Render,
     Hide         = function()

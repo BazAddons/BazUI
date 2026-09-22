@@ -22,7 +22,7 @@ local TAB      = "reputation"
 local TAB_ICON = "Interface\\Icons\\Achievement_Reputation_01"
 local PREFIX   = "rep."
 local EXALTED  = 8
-local COMMON   = { tab = TAB, tabLabel = "Reputation", tabOrder = 27, tabIcon = TAB_ICON }
+local COMMON   = { tab = TAB, tabLabel = "Reputation", tabOrder = 60, tabIcon = TAB_ICON }
 
 ---------------------------------------------------------------------------
 -- Words and colors

@@ -1,84 +1,72 @@
-## 018
+## 019
 
-**The quest catalog more than doubled: 5,014 quests, with where to find them.**
+**The quest catalog is readable, and reloading mid-fight no longer looks like
+the addon fell over.**
 
-Version 016 shipped a catalog of 2,113 quests — every one the server would
-name when asked for it by ID. It would not name the rest, so three
-thousand quests were simply missing rather than uncertain.
+### Fixed: the quest pages
 
-They are in now, and so is something the catalog never had at all: **where
-a quest lives and who gives it**. Open one you have never met and it tells
-you the zone, the quest giver's name, the minimum level and which side it
-belongs to. **124 zones, 3,956 named quest givers.**
+- **Descriptions were never shown.** Every quest page fell back to nothing
+  where it should have fallen back to the catalog, so **4,306 quest
+  descriptions were sitting in the addon and reachable by nobody.** They are
+  on the page now.
+- **The header stays put.** Title, facts line and rule are pinned; only the
+  quest scrolls under them. The rewards block scrolls with it instead of
+  being stranded.
+- **XP and coin moved up** onto the Rewards heading, right-aligned — XP
+  first, because there is always XP and there is not always coin. The last
+  row used to be one number sitting alone.
+- **Fonts.** Several lines were quietly resolving to the game's font instead
+  of yours.
+- **An objective that only repeats the summary** is no longer printed twice.
+- **A quest with a summary and no story** crashed the page. Ten of 4,316 rows
+  were affected.
+- **Profession bars read full** when they were nowhere near it.
 
-There is a new **Side** column too, so a glance says whether a quest is
-yours before you read anything else.
+### Fixed: reloading in combat
 
-### Where the words come from, and why we say so
+The game refuses almost everything an addon does to the interface while you
+are fighting, so a `/reload` mid-fight comes back half-arranged. That part is
+unavoidable. What was wrong was how it looked and how it recovered.
 
-None of this pretends to be first-hand. A quest's own words never reach
-your client until somebody is offered it, so for a quest nobody has met
-the addon is repeating what a public database says — and the page tells
-you that, on the quest's own facts line:
+- **A notice now says so**, on the left of the screen, in words: nothing is
+  wrong, nothing needs fixing, it sorts itself the moment the fight ends.
+  Click to dismiss.
+- **The minimap no longer leaves a piece of itself in the middle of the
+  screen.** It was coming back as a bare overlay with the tracking dots on
+  it. Nothing touches the minimap now until combat is clear.
+- **Blizzard's action bar no longer appears when the fight ends.** It was
+  absent during combat and arrived the moment you were safe, which is
+  exactly backwards. BazUI was standing in the middle of Blizzard's own
+  show-the-bar function when it tried to hide it, and the game refused them
+  both.
 
-- **Seen in game** — somebody was offered this and the game laid the whole
-  record out. A blank means the quest genuinely has none.
-- **Unconfirmed** — borrowed. Good enough to walk towards, not good enough
-  to plan around, and replaced outright the first time the quest is
-  offered to you.
+### Changed: the codex tabs
 
-The rewards block is marked separately, because the words and the figures
-can come from different places and the figures are the half you act on.
+- **The rail is in a sensible order.** Today, Progress, then **Quests** —
+  which is the biggest page in the addon and was sixth — then the things you
+  are part-way through, then your gear, then the two pages about the game
+  rather than about you. Legacy, an archive of things that no longer exist,
+  was third.
+- **You can rearrange it.** Hold a tab for half a second, it lights green,
+  drag it up or down. The same hold and drag that moves a widget inside a
+  drawer. **Reset page order** in the codex settings puts it back.
+- **The wishlist is a page of the Items tab**, not a tab of its own. It is a
+  list of items and you read it while you are looking at items. Two buttons
+  at the top of that page switch between them.
 
 ### New
 
-- **Nameplates: Focus.** Fade everything that is not your target, enlarge
-  the one that is, move plates up or down off the unit, and show them only
-  in combat. On top of that, **anything actually attacking you gets a red
-  rim** — the question threat is really being asked, given a mark of its
-  own rather than a shade of the health bar. **Color by threat** is there
-  for the full gradient.
-- **Nameplates: names.** **Last names** can be turned off, leaving the
-  first name only. **Guild name** puts the guild in angle brackets above
-  the name, and an NPC's title comes through the same way, so a bartender
-  reads <Bartender>.
-- **Floating widgets can fade when you are not pointing at them.** A docked
-  widget fades with its drawer; one loose on the screen had nothing to fade
-  with. Every floating widget gets the switch and its own faded opacity.
-- **The quest timer is back.** It is a child of Blizzard's tracker, which
-  BazUI hides — so a timed quest counted down where nobody could see it.
-  It has been rescued onto its own draggable frame.
+- **Hide TomTom's coordinates.** Puts away the little block showing where you
+  are standing. TomTom's own setting is left alone, so turning this off gives
+  you the block back exactly as TomTom had it.
 
-### Changed
+### The manual
 
-- **The micro menu is a drawer widget.** It can float anywhere, dock into a
-  drawer beside the clock and the repair icon, scale with that drawer and
-  fade on mouseover. It also gained **rows** — ten buttons in two rows of
-  five — and a switch to **leave Blizzard's button art alone** if you would
-  rather not have the round icons.
-- **You will need to place it once.** Its old position setting is gone,
-  along with the page it used to live on: its settings are with every other
-  widget's now, in Drawers > Widgets.
-- **Blizzard's Edit Mode and BazUI's are separate.** Opening theirs closes
-  ours rather than putting two grids and two panels on the screen arguing
-  over frames that answer to only one of them. BazUI's inspector opens
-  pinned on the left.
-- **Only the buttons this client has** get a row in the micro menu
-  settings. There is no Achievements button on WoW: Forever, so there is no
-  longer a switch for one.
-
-### Fixed
-
-- **Surnames.** Players have two names on this client and the addon was
-  showing one. Nameplates and unit frames both.
-- **Dragging a floating widget** could snap it back while you were still
-  holding it.
-- **A quest timer's position** was never restored, and what looked like it
-  drifting was it starting from scratch every reload.
-
-### Notes
-
-- Quests that share a title - every race's copy of the same starting
-  quest, every class's version of the same trainer chain - are told apart
-  by zone, by who gives them, or failing both by their id. 521 titles in
-  this catalog belong to more than one quest.
+- **A page for the Quests tab**, which had none: the filters, the columns,
+  what a row does, and how to read **Seen in game** against **Unconfirmed**.
+- **Reloading in the middle of a fight** has a page, as does **two Edit
+  Modes** — the game's moves the game's frames, BazUI's moves BazUI's, and
+  opening one closes the other.
+- **The micro menu's manual is gone.** It is a widget now, so it is written
+  up with the widgets.
+- Six other guides had drifted in a week and were corrected.

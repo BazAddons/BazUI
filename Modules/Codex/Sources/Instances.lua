@@ -23,7 +23,7 @@ local TAB = "instances"
 local COMMON = {
     tab      = TAB,
     tabLabel = "Instances",
-    tabOrder = 26,
+    tabOrder = 40,
     tabIcon  = "Interface\\Icons\\INV_Misc_Key_03",
     empty    = "Nothing written down here yet.",
 }

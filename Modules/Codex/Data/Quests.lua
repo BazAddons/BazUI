@@ -5043,7 +5043,7 @@ local rawList = [==[
 99152	10		0	0		As Above, So Below
 99153	10		0	0		The One That Got Away
 99156	13	Elite	0	0		Rear Guard Patrol
-99158	8		0	0	t	Dawn in the Mountains
+99158	8		70	0		Dawn in the Mountains
 99159	8		0	0	t	Finding Warmth
 99160	8		0	0	t	Rime's Wrath
 99161	8		0	0	t	Rime's Wrath
@@ -17606,8 +17606,18 @@ function Quests.Text(id)
             local questID = tonumber(f[1])
             if questID then
                 text[questID] = {
-                    summary     = (f[2] ~= "" and f[2]:gsub("\\n", "\n")) or nil,
-                    description = (f[3] ~= "" and f[3]:gsub("\\n", "\n")) or nil,
+                    -- Guarded for nil, not just for empty.
+                    --
+                    -- A row is right-stripped when it has no story, so
+                    -- a quest with a summary and nothing else arrives
+                    -- here as TWO fields and f[3] is nil - and `nil ~=
+                    -- ""` is true, so the old test walked straight into
+                    -- calling gsub on nothing. It sat there harmlessly
+                    -- for as long as nobody read this block.
+                    summary     = (f[2] and f[2] ~= ""
+                        and f[2]:gsub("\\n", "\n")) or nil,
+                    description = (f[3] and f[3] ~= ""
+                        and f[3]:gsub("\\n", "\n")) or nil,
                 }
             end
         end)

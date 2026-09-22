@@ -320,6 +320,21 @@ BazUI:RegisterUserGuide("BazUI", {
                 } },
                 { type = "note", text = "The key is read while you drag, not when you started, so you can change your mind half way - the landing line goes out the moment you hold it and comes back when you let go. That is the quickest way to see which of the two you are getting." },
                 { type = "paragraph", text = "Both are on |cffffd700BazUI > General|r, under Moving things, and they apply everywhere that docks: bars, unit frames, auras, drawers and the rest." },
+
+                { type = "h3", text = "Two Edit Modes" },
+                { type = "paragraph", text = "The game has one of its own, and it moves the game's frames. BazUI has one, and it moves BazUI's. |cffffd700Opening Blizzard's closes ours|r rather than putting two grids and two panels on the screen arguing over frames that answer to only one of them." },
+                { type = "note", text = "It goes the other way too: BazUI's will not open while the game's is up. BazUI's inspector opens pinned on the left." },
+            },
+        },
+
+        {
+            title = "Reloading in the middle of a fight",
+            blocks = {
+                { type = "paragraph", text = "A |cffffd700/reload|r while something is hitting you comes back up looking broken, and it is worth knowing why before you go looking for the bug." },
+                { type = "paragraph", text = "Almost everything an addon does to the interface is refused during combat. Frames the game protects cannot be moved, reparented, shown or hidden; secure buttons cannot be built; no layout can run. So BazUI comes back with whatever it could not place left where the game put it - the minimap in its own corner, the game's action bars visible, widgets wherever they were." },
+                { type = "paragraph", text = "|cffffd700Nothing is wrong and there is nothing to fix.|r Every piece of it is parked and replayed the moment the fight ends, and the interface arranges itself." },
+                { type = "note", style = "tip", text = "A small notice appears on the left of the screen saying exactly this, because a player whose interface has apparently fallen apart mid-fight is not in a position to go reading documentation about it. Click it to dismiss, or leave it - it goes when the fight does." },
+                { type = "note", text = "The pieces that cannot be caught up on are the ones the game's own Edit Mode lays out. Those wait for the next quiet reload rather than being forced into place on a stack the game is halfway through using." },
             },
         },
 
