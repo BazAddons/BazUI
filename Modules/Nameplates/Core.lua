@@ -48,6 +48,23 @@ addon = BazUI:RegisterModule("Nameplates", {
         targetScale    = 100,
         offsetY        = 0,
         combatOnly     = false,
+        -- The cast bar. On, because the question it answers - can I stop
+        -- this - is one you are always asking of a caster, and a plate
+        -- with no answer on it is a plate you have to look away from.
+        castBar       = true,
+        -- The three answers to "can I stop this", plus the one for a class
+        -- that has no interrupt at all. See Core/Interrupt.lua.
+        castColorNever = { 0.85, 0.20, 0.20 },
+        castColorNow   = { 0.25, 0.90, 0.35 },
+        castColorWait  = { 0.95, 0.70, 0.20 },
+        castColorNone  = { 0.55, 0.65, 0.80 },
+        castHeight    = 6,
+        castSpellName = true,
+        castTextSize  = 8,
+        -- Which spell counts as your interrupt. Nought means work it out
+        -- from the spellbook; see CastBar.lua.
+        interruptSpell = 0,
+
         showLevel    = true,
         -- Rare and elite said in words beside the level, the same way
         -- the unit bars say it.
@@ -75,5 +92,8 @@ addon = BazUI:RegisterModule("Nameplates", {
 })
 
 function addon:ApplySettings()
+    -- The interrupt override lives on this page but the answer is shared,
+    -- so the shared copy is kept in step from here. See Core/Interrupt.lua.
+    if self.CastBar then self.CastBar.SyncOverride() end
     if self.Plates then self.Plates:ApplyAll() end
 end

@@ -254,6 +254,10 @@ local function Build()
     plate.level = Theme.FontString(plate.health, "OVERLAY", "GameFontNormalSmall")
     plate.level:SetPoint("RIGHT", plate.health.fill, "RIGHT", -3, 0)
 
+    -- What it is casting, and whether you can stop it. Built here so a
+    -- plate always has one; whether it is ever shown is a setting.
+    if addon.CastBar then addon.CastBar.Build(plate) end
+
     -- The target's plate gets a border rather than a glow: a glow on
     -- something this size is a smudge, and every other selected thing in
     -- the suite is picked out with gold.
@@ -490,6 +494,11 @@ function Plates:Apply(ours)
         nameRoom = nameRoom + (tonumber(Setting("nameSize")) or 9)
     end
 
+    if addon.CastBar then
+        addon.CastBar.Layout(ours)
+        addon.CastBar.Update(ours)
+    end
+
     local chrome = ours.health:GetInset() * 2
     if hasBar then
         ours:SetSize(width + chrome, height + chrome + nameRoom)
@@ -546,6 +555,13 @@ end
 
 function Plates:ApplyAll()
     for _, ours in pairs(active) do self:Apply(ours) end
+end
+
+-- Every plate currently carrying a unit. The cast bar's ticker walks
+-- these rather than keeping a list of its own, so there is one answer to
+-- what is on screen.
+function Plates:Active()
+    return active
 end
 
 -- Whoever is carrying this unit right now, or nobody.
@@ -609,6 +625,31 @@ end
 function Plates:Initialize()
     addon:On("NAME_PLATE_UNIT_ADDED",   function(_, unit) self:Added(unit) end)
     addon:On("NAME_PLATE_UNIT_REMOVED", function(_, unit) self:Removed(unit) end)
+
+    -- Casting. Every one of these is a reason to look again at one
+    -- plate, and the ticker keeps the fill moving in between.
+    addon:On({
+        "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
+        "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_STOP",
+        "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
+        "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE",
+        "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
+    }, function(_, unit)
+        local ours = Find(unit)
+        if ours and addon.CastBar then
+            addon.CastBar.Update(ours)
+            addon.CastBar.Driving()
+        end
+    end)
+
+    -- Your interrupt coming off cooldown changes the colour of every bar
+    -- on screen without anything about the casts themselves changing.
+    addon:On("SPELL_UPDATE_COOLDOWN", function()
+        if not addon.CastBar then return end
+        for _, ours in pairs(active) do
+            if ours.cast and ours.cast:IsShown() then addon.CastBar.Update(ours) end
+        end
+    end)
 
     addon:On("UNIT_HEALTH", function(_, unit)
         local ours = Find(unit)

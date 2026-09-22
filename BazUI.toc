@@ -23,7 +23,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 020
+## Version: 021
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -77,6 +77,7 @@ Core\Timers.lua
 Core\ObjectPool.lua
 Core\Format.lua
 Core\Units.lua
+Core\Interrupt.lua
 Core\Compat.lua
 Core\TaintScan.lua
 Core\MinimapButton.lua
@@ -239,8 +240,17 @@ Modules\UnitFrames\Nameplate.lua
 Modules\Nameplates\Core.lua
 Modules\Nameplates\Kinds.lua
 Modules\Nameplates\Plates.lua
+Modules\Nameplates\CastBar.lua
 Modules\Nameplates\Settings.lua
 Modules\Nameplates\UserGuide.lua
+
+# Floating Text
+Modules\FloatingText\Core.lua
+Modules\FloatingText\Areas.lua
+Modules\FloatingText\Events.lua
+Modules\FloatingText\Settings.lua
+Modules\FloatingText\UserGuide.lua
+
 
 # Quality of life - small changes to how the game behaves, each one
 # a switch of its own.

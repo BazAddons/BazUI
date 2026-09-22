@@ -42,9 +42,9 @@ BazUI:RegisterSettingsSpec(MODULE_NAME, {
     },
     entries = {
         { key = "engineAuras", label = "Let the game draw the icons", type = "toggle", section = "general", order = 1,
-          desc = "During a fight this client refuses to tell an addon anything at all about auras, so a row BazUI draws freezes on whatever it was showing when the fight started and a debuff applied mid-fight never appears."
-              .. "\n\nOn, the rows are drawn by the game itself, which is under no such restriction: they keep up during combat, and the timers and stack counts keep counting with them. Right-click still cancels one of your own buffs."
-              .. "\n\nOff goes back to rows BazUI draws. They look the same, and out of combat they behave the same.",
+          desc = "On, your buff and debuff rows keep up during a fight: a debuff shows the moment you apply it, and the timers and stack counts keep counting down while you are still fighting. Right-click still cancels one of your own buffs."
+              .. "\n\nOff, the rows hold whatever they were showing when the fight started and catch up when it ends."
+              .. "\n\nThere is no reason to want that. The switch is here in case the new way ever misbehaves.",
           get = GetBool("engineAuras"), set = SetBool("engineAuras") },
 
         { key = "hideBlizzard", label = "Hide Blizzard's buff and debuff frames", type = "toggle", section = "general", order = 2,

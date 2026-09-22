@@ -718,6 +718,84 @@ end
 -- being folded into it.
 local LEVEL_WORDINGS = { level = true, nameLevel = true }
 
+-- Every wording, as a format and the names of what fills it.
+--
+-- Written this way round because of what these values are. Health and
+-- power arrive as SECRET numbers on this client: they may be handed to a
+-- widget, which prints them, but this code may not read, compare, join
+-- or divide them. So a wording cannot be built as a string here and then
+-- set - the building is the part that is refused.
+--
+-- What works is handing the format and the values separately to
+-- SetFormattedText, which is declared to take a secret and marks the
+-- string's Text aspect secret in turn. The engine does the substituting
+-- and we never see the result.
+--
+-- That is why this is a table rather than a function returning text. The
+-- old Format built a string and SetBarText caught the refusal and fell
+-- back, which worked - but the fallback knew only two shapes, so six of
+-- the eight wordings on the panel collapsed into "current / max" on a
+-- client where the numbers are always secret. The wording was being
+-- decided by the client rather than by the setting.
+--
+-- `math` marks the ones that genuinely cannot be done. A percentage is
+-- arithmetic - 100 * current / maximum - and no setter does arithmetic
+-- for us. Blizzard computes theirs in plain Lua because their code is
+-- untainted, which is not a route we have. Those fall back deliberately,
+-- to something chosen per wording rather than to one blanket answer.
+local WORDINGS = {
+    name       = { format = "%s",          args = { "name" } },
+    level      = { format = "%s",          args = { "level" } },
+    nameLevel  = { format = "%s  %s",      args = { "name", "level" } },
+    current    = { format = "%d",          args = { "current" } },
+    pair       = { format = "%d / %d",     args = { "current", "max" } },
+
+    -- Arithmetic. The fallback is named here so each one degrades to the
+    -- nearest honest thing rather than all of them landing on the pair.
+    percent     = { math = true, fallback = "pair" },
+    namePercent = { math = true, fallback = "nameLevel" },
+    detailed    = { math = true, fallback = "namePair" },
+
+    -- Only reachable as a fallback; not offered on the panel.
+    namePair   = { format = "%s  %d / %d", args = { "name", "current", "max" } },
+}
+
+-- A wording with a piece missing is not that wording.
+--
+-- "Name and level" on something with no level is just a name, and the
+-- format would otherwise print an empty gap. Whether a name is there is
+-- asked inside a guarded read, because a secret name may be printed but
+-- not compared with the empty string - and something we may not look at
+-- is certainly not blank, so the benefit of the doubt goes to showing it.
+local function Have(key, values)
+    local v = values[key]
+    if v == nil then return false end
+    if key == "name" or key == "level" then
+        return BazUI.Secret.Read(function() return v ~= "" end, true)
+    end
+    return true
+end
+
+-- The wording to actually use, having dropped anything it cannot fill.
+local function Resolve(mode, values)
+    local entry = WORDINGS[mode] or WORDINGS.pair
+    if entry.math then
+        entry = WORDINGS[entry.fallback] or WORDINGS.pair
+    end
+
+    local present = {}
+    for _, key in ipairs(entry.args) do
+        if Have(key, values) then present[#present + 1] = key end
+    end
+    if #present == #entry.args then return entry end
+    if #present == 0 then return nil end
+
+    -- Something is missing. Fall to the single-value wording for whatever
+    -- survived, which is always one of the simple ones.
+    if #present == 1 then return WORDINGS[present[1]] or WORDINGS["name"] end
+    return WORDINGS.pair
+end
+
 local function Format(mode, current, maximum, name, level)
     if mode == "name" then return name or "" end
 
@@ -863,13 +941,20 @@ local function LabelFor(unit, wording)
 
     local extra = BazUI.UnitLevelText(unit, { level = level, rank = rank })
     if not extra then return name end
-    -- A name can be a secret string, and one of those cannot be joined to
-    -- anything or even compared with the empty string. When that is
-    -- refused the name goes back on its own: which unit this is matters
-    -- more than its level, and the level is never the part worth keeping.
-    return BazUI.Secret.Read(function()
+
+    -- Joined here where that is allowed, and handed over in two pieces
+    -- where it is not.
+    --
+    -- A secret name cannot be joined to anything, so this used to give up
+    -- and return the bare name - the level was simply lost, on every unit
+    -- whose name the client had sealed. Returning both lets SetBarText
+    -- put them in a format with a slot each, which is a thing a secret is
+    -- allowed to go into.
+    local joined = BazUI.Secret.Read(function()
         return name ~= "" and (name .. "  " .. extra) or extra
-    end, name)
+    end, nil)
+    if joined then return joined end
+    return name, extra
 end
 
 -- The mark in front of the name, sized to the bar rather than to the
@@ -944,11 +1029,6 @@ local function PositiveOrUnknown(value)
     return BazUI.Secret.Read(function() return (value or 0) > 0 end, true)
 end
 
--- Which wordings put the unit's name in the line. Only these may have
--- one when the wording has to be approximated below.
-local NAMED_WORDINGS = {
-    name = true, nameLevel = true, namePercent = true, detailed = true,
-}
 
 -- The wording the user picked, or as near as can be got to it without
 -- arithmetic we are not allowed to do.
@@ -964,31 +1044,57 @@ local NAMED_WORDINGS = {
 -- the numbers happened to be secret rather than by the setting, and on a
 -- client where they always are, half the choices on the panel did the
 -- same thing.
-local function SetBarText(bar, wording, current, maximum, name, level)
+local function SetBarText(bar, wording, current, maximum, name, level, suffix)
+    -- Tried as a string first, because a string is the better answer
+    -- wherever it is allowed: it can carry a thousands separator, a
+    -- percentage and the middot the experience bar uses, none of which
+    -- survive being reduced to a format and some numbers.
+    --
+    -- On a client that does not seal its values this succeeds every time
+    -- and nothing below ever runs.
     local ok, text = pcall(Format, wording, current, maximum, name, level)
     if ok then
         bar.frame:SetText(text)
         return
     end
 
-    -- The name goes in as an argument, never baked into the format. It
-    -- can be a secret string, which may be printed but not read - and a
-    -- player's name in a format string is a per-cent sign away from
-    -- garbage anyway.
-    local named = NAMED_WORDINGS[wording] and name ~= nil
-        and BazUI.Secret.Read(function() return name ~= "" end, true)
+    -- Refused, so the wording is expressed as a format and its values
+    -- instead. Names and numbers go in as ARGUMENTS, never baked into the
+    -- format: a secret may be printed but not read, and a player's name
+    -- in a format string is one per-cent sign away from garbage.
+    local values = {
+        name    = name,
+        level   = level,
+        current = current,
+        max     = maximum,
+        -- The level and rank that belong on the end of the name, when
+        -- they could not be joined to it. See LabelFor.
+        suffix  = suffix,
+    }
 
-    -- "current" is the one wording that approximates to a single number
-    -- rather than to the pair. Everything else lands on the pair, which
-    -- says as much as can be said without reading the values.
-    if wording == "current" then
-        if named then bar.frame:SetFormattedText("%s  %d", name, current)
-        else          bar.frame:SetFormattedText("%d", current) end
-    elseif named then
-        bar.frame:SetFormattedText("%s  %d / %d", name, current, maximum)
-    else
-        bar.frame:SetFormattedText("%d / %d", current, maximum)
+    local entry = Resolve(wording, values)
+    if not entry then
+        bar.frame:SetText("")
+        return
     end
+
+    -- The name may be two pieces rather than one, so its slot becomes two
+    -- slots. Every wording that carries a name has it first, and every
+    -- one of those formats begins with %s - which is what makes this a
+    -- safe edit rather than a search through the format for the right
+    -- per-cent sign.
+    local format, args = entry.format, {}
+    for _, key in ipairs(entry.args) do
+        if key == "name" and Have("suffix", values) and format:sub(1, 2) == "%s" then
+            format = "%s  %s" .. format:sub(3)
+            args[#args + 1] = values.name
+            args[#args + 1] = values.suffix
+        else
+            args[#args + 1] = values[key]
+        end
+    end
+
+    bar.frame:SetFormattedText(format, args[1], args[2], args[3], args[4])
 end
 
 local function UpdateHealth(bar)
@@ -1008,7 +1114,7 @@ local function UpdateHealth(bar)
     bar.frame:SetFillColor(HealthColor(unit))
 
     local wording = TextFormat(bar)
-    local name = LabelFor(unit, wording)
+    local name, suffix = LabelFor(unit, wording)
     -- A word instead of numbers. The name is handed to the font string
     -- rather than joined on here, and whether there is one is decided
     -- inside a guarded read: a secret name may be printed but not
@@ -1028,7 +1134,7 @@ local function UpdateHealth(bar)
     elseif UnitIsDead(unit) then
         Status("Dead")
     else
-        SetBarText(bar, wording, current, maximum, name, LevelText(unit))
+        SetBarText(bar, wording, current, maximum, name, LevelText(unit), suffix)
     end
 end
 
@@ -1322,21 +1428,40 @@ local function CastTick(frame)
     end
 
     local now = GetTime() * 1000
-    local span = state.endMS - state.startMS
-    if span <= 0 then return end
-    local elapsed = now - state.startMS
-    if elapsed >= span then
-        frame._cast = { fade = GetTime() }
-        return
-    end
 
-    local fraction = elapsed / span
-    frame:SetValue(state.channel and (1 - fraction) or fraction)
-    -- Formatted by the font string, not here. The name of a cast can be a
-    -- secret string, and building one into a string is a read - so the
-    -- pieces are handed over separately and the widget puts them together,
-    -- which it is allowed to do.
-    frame:SetFormattedText("%s  %.1f", state.name, (span - elapsed) / 1000)
+    -- The bar is filled by the widget, from the cast's own start and end.
+    --
+    -- Not by working out a fraction here, which is what this used to do -
+    -- and why a cast bar on anything but you showed nothing at all.
+    -- UnitCastingInfo is secret for every unit except the player and
+    -- their pet, so `endMS - startMS` was refused and SyncCast treated the
+    -- whole cast as one we were not allowed to know about.
+    --
+    -- SetMinMaxValues takes those two straight, sealed or not, and the
+    -- value handed in is an ordinary clock reading of ours. The engine
+    -- works out where between them that falls. Nothing here holds a
+    -- duration, so a bar is drawn for a cast whose length we never learn.
+    frame.fill:SetMinMaxValues(state.startMS, state.endMS)
+    frame.fill:SetValue(now)
+
+    -- How long is left, where that can be worked out at all.
+    --
+    -- It is arithmetic, so it only exists for a cast whose numbers are
+    -- plain - your own, and your pet's. Everything else gets the name,
+    -- which is the half worth having anyway: on somebody else's cast you
+    -- are reading WHAT rather than how long.
+    if state.plain then
+        local span = state.endMS - state.startMS
+        local elapsed = now - state.startMS
+        if span > 0 and elapsed >= span then
+            frame._cast = { fade = GetTime() }
+            return
+        end
+        frame:SetFormattedText("%s  %.1f", state.name,
+            math.max(0, (span - elapsed) / 1000))
+    else
+        frame:SetFormattedText("%s", state.name)
+    end
 end
 
 -- What to call the cast.
@@ -1526,20 +1651,40 @@ function UnitBars:SyncCast(bar)
         channel = name ~= nil
     end
 
-    -- UnitCastingInfo is SecretWhenUnitSpellCastRestricted: for some units
-    -- these come back as values we are not allowed to read, and even the
-    -- truth test above would raise. A cast bar needs to work out how far
-    -- through the cast is, which secret values cannot be, so a cast we are
-    -- not allowed to know about counts as no cast and the bar stays down.
-    local castable = BazUI.Secret.Read(function()
-        return (name and startMS and endMS) and true or false
-    end, false)
+    -- Whether there is a cast at all, which is a question about presence
+    -- rather than about the values - and that much is always allowed, even
+    -- when every one of them is sealed.
+    --
+    -- This used to ask BazUI.Secret.Read whether all three were truthy and
+    -- take false when that was refused, so any unit but the player counted
+    -- as not casting and the bar never appeared. It appears now.
+    local castable = (name ~= nil and startMS ~= nil and endMS ~= nil)
+
+    -- And whether the numbers are ours to do sums with, which decides
+    -- whether the bar can show a countdown. Asked by trying the one sum
+    -- the countdown needs.
+    local plain = castable and BazUI.Secret.Read(function()
+        return (endMS - startMS) > 0
+    end, false) or false
 
     if castable then
         frame:SetAlpha(1)
         frame:SetFillColor(channel and CHANNEL_COLOR or CAST_COLOR)
+
+        -- Coloured by whether you can stop it, the same three colours the
+        -- nameplate cast bars use and from the same place, so the two
+        -- always agree. Only for somebody else's cast: your own is not
+        -- something you interrupt.
+        if unit ~= "player" and unit ~= "pet" then
+            local _, _, _, _, _, _, _, notInterruptible = UnitCastingInfo(unit)
+            if notInterruptible == nil then
+                notInterruptible = select(7, UnitChannelInfo(unit))
+            end
+            BazUI.Interrupt.PaintFill(frame.fill, notInterruptible)
+        end
+
         frame._cast = { name = CastName(display, name, channel),
-            startMS = startMS, endMS = endMS, channel = channel }
+            startMS = startMS, endMS = endMS, channel = channel, plain = plain }
         BazUI.Dock:SetShown(frame, true)
         CastTick(frame)
     elseif frame._cast and not frame._cast.fade then

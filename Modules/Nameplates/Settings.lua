@@ -102,6 +102,7 @@ BazUI:RegisterSettingsSpec("Nameplates-Kinds", {
 
 BazUI:RegisterSettingsSpec("Nameplates", {
     sections = {
+        cast = { label = "Cast bar", order = 25 },
         general = { label = "General", order = 1 },
         size    = { label = "Size and Text", order = 2 },
         focus   = { label = "Focus", order = 3 },
@@ -127,6 +128,49 @@ BazUI:RegisterSettingsSpec("Nameplates", {
           section = "general", order = 2,
           desc = "Friendly units get a BazUI plate too. Turn it off to leave them with the game's own. Whether a friendly unit has a plate at all is the game's setting, in Interface Options, not this one.",
           get = Bool("showFriendly", true), set = Set("showFriendly") },
+        { key = "castHeader", type = "header", section = "cast", order = 0,
+          name = "Cast bar" },
+
+        { key = "castBar", label = "Show what a unit is casting", type = "toggle",
+          section = "cast", order = 1,
+          desc = "A bar under the plate while the unit is casting, coloured by whether you can do anything about it."
+              .. "\n\n|cff44dd55Green|r - you can interrupt this, right now."
+              .. "\n|cffeebb33Amber|r - you could, but your interrupt is still on cooldown."
+              .. "\n|cffdd3333Red|r - this one cannot be interrupted by anyone."
+              .. "\n\nOn a class with no interrupt - a hunter, a paladin - green never appears, because there is nothing for it to mean. Casts show in a plain colour and only the ones nobody can stop are marked red.",
+          get = Bool("castBar", true), set = Set("castBar") },
+
+        { key = "castHeight", label = "Bar height", type = "slider",
+          section = "cast", order = 2, min = 3, max = 20, step = 1,
+          get = Get("castHeight"), set = Set("castHeight"),
+          disabled = function() return addon:GetSetting("castBar") == false end },
+
+        { key = "castSpellName", label = "Show the spell name", type = "toggle",
+          section = "cast", order = 3,
+          desc = "On a bar this small the name is a hint rather than a label, but it is usually enough to tell a heal from a nuke.",
+          get = Bool("castSpellName", true), set = Set("castSpellName"),
+          disabled = function() return addon:GetSetting("castBar") == false end },
+
+        { key = "castTextSize", label = "Spell name size", type = "slider",
+          section = "cast", order = 4, min = 6, max = 16, step = 1,
+          get = Get("castTextSize"), set = Set("castTextSize"),
+          disabled = function()
+              return addon:GetSetting("castBar") == false
+                  or addon:GetSetting("castSpellName") == false
+          end },
+
+        { key = "castNote", type = "note", section = "cast", order = 5,
+          text = "Your interrupt is worked out from your spellbook - Pummel or Shield Bash, Kick, Counterspell, Earth Shock, Feral Charge - so it follows what you actually know rather than just your class, and a druid only counts Feral Charge while in bear form." },
+
+        { key = "interruptSpell", label = "Interrupt spell ID", type = "input",
+          section = "cast", order = 6,
+          desc = "Leave at 0 to work it out from your spellbook. Set a spell ID to name one yourself - useful if your interrupt is not in the list, or you would rather it watched something else.",
+          get = function() return tostring(addon:GetSetting("interruptSpell") or 0) end,
+          set = function(_, value)
+              addon:SetSetting("interruptSpell", tonumber(value) or 0)
+              addon:ApplySettings()
+          end },
+
         { key = "targetMark", label = "Mark your target", type = "toggle",
           section = "general", order = 3,
           desc = "A gold border on the plate of whatever you have targeted.",

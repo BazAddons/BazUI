@@ -1,83 +1,75 @@
-## 020
+## 021
 
-**Your buffs and debuffs finally work during a fight.**
+**A new module, cast bars on nameplates, and several things that had quietly
+never worked.**
 
-This is the big one, and it needs a word of explanation because the fix is
-not what you would expect.
+### Floating Text — new module
 
-On WoW: Forever, the moment a fight starts the game stops telling addons
-anything at all about auras. Not "some auras" — every buff and every debuff,
-on you and on your target, becomes unreadable. Ask anyway and the game
-answers with an error.
+Numbers rising off the fight: what you hit for, what hit you, what you
+healed, and the misses and dodges in between, in BazUI's own font.
 
-So BazUI's aura rows **froze**. Whatever you happened to have when the fight
-began stayed on screen, unchanging, until it ended. A debuff you applied
-mid-fight never appeared at all — which, for a damage-over-time spell that
-expires before the fight is over, meant it was never visible once.
+- **Two areas**, Incoming on the left and Outgoing on the right, each placed
+  by dragging it in Edit Mode. Which one a number lands in is not a guess:
+  the game says who *took* the hit.
+- **Colour by direction**, which is the thing a screen full of white numbers
+  cannot tell you — your damage and damage to you are different colours, and
+  so are heals in each direction. Damage schools override where a spell has
+  one.
+- **Crits** drawn larger and optionally marked with stars, because size alone
+  only reads as a crit when there is an ordinary hit beside it.
+- **Merging**, off by default, for when the same mob is hitting you four
+  times a second. Crits are never merged — folding one into a total throws
+  away exactly the thing you wanted to see.
+- **The game's own numbers can be turned off**, both the scrolling text and
+  the ones drawn over the mob. Those are two different settings in the game
+  and turning one off leaves the other running, which is why this needs two
+  switches.
 
-There is no way to read that data. There is a way to *show* it.
+It starts **off**. It draws over the middle of the screen, and a module that
+begins doing that unannounced is one you go hunting for the switch to.
 
-The game ships an aura display system meant for addons to use. BazUI now
-hands it a unit, a filter and somewhere to draw, and the game fills it in.
-**Nothing about your auras is ever read** — which is exactly why it works
-while everything else is refused.
+### Nameplate cast bars — new
 
-What that means in practice:
+A bar under the plate while a unit is casting, coloured by whether you can
+do anything about it:
 
-- **Debuffs on your target appear the moment you apply them**, and their
-  timers count down properly.
-- **Buffs you gain mid-fight show up**, instead of after it.
-- **Stack counts keep counting.**
-- **Right-click still cancels one of your own buffs**, in combat or out —
-  and it now cancels *that specific aura* rather than a position in the row,
-  so it can no longer cancel the wrong thing when something above it drops
-  off.
-- **Weapon enchants** are a proper part of the row now instead of a
-  stand-in, with the game keeping their timers.
+- **Green** — you can interrupt this, right now.
+- **Amber** — you could, but your interrupt is still on cooldown.
+- **Red** — this one cannot be interrupted by anyone.
 
-It looks identical to before. If anything misbehaves, **Let the game draw
-the icons** at the top of Auras > General puts the old rows back, with no
-reload needed.
+Your interrupt comes from your **spellbook** rather than your class, so a
+warrior gets Pummel or Shield Bash depending on what is in their hands, and a
+druid only counts Feral Charge while in bear form. There is a spell-ID
+override if yours is not on the list.
 
-One change worth knowing: the game deliberately does not tell an addon *how
-many* auras there are, so a row can no longer shrink to fit its contents. It
-holds the size you set it to, full or empty. Floating, you will not notice.
-Docked in a drawer, an empty row now keeps its space.
+On a class with no interrupt — a hunter, a paladin — **green never appears**,
+because there is nothing for it to mean. Casts show in a plain colour and
+only the ones nobody can stop are marked red.
 
 ### Fixed
 
-- **Blizzard's action bar could come back with a taint on it.** Hiding one of
-  the game's Edit Mode frames ran a pile of their own layout bookkeeping
-  while BazUI was the one asking, and one of their fields ended up marked as
-  ours. That is what was behind the blocked `SetPointBase` errors, and
-  probably the cooldown errors on the override bar too. BazUI now hides
-  those frames the plain way and touches none of their bookkeeping.
-- **Picking an ability up off a bar made Blizzard's bar flicker.** It was
-  being hidden a frame late. Now it is hidden immediately, and suppressed
-  frames are made transparent as well as hidden — which also means a reload
-  during a fight no longer leaves the game's frames sitting visible until
-  the fight ends.
-- **Out-of-range coloring did nothing with "target where you're looking."**
-  It only ever checked your hard target, and soft targeting does not set
-  one, so icons never dimmed for anyone playing that way.
-- **The "new slot" marker appeared on slots that already existed.** Aim past
-  the end of a bar whose last slot is empty and it offered to add a slot on
-  top of one that was already there. It now only appears where a slot would
-  genuinely be created.
-- **`/baz persist` said it could not tell what an addon saves, and gave an
-  example that read like a stutter.** It now says plainly which addons it
-  covers. It looks after a few that have actually been tested, and does not
-  guess at others — restoring the wrong table over a live one would break
-  the addon it was trying to help.
-
-### New
-
-- **`/baz auras`** reports what the game will and will not let BazUI see
-  about auras right now, and what each row is holding. Run it in combat and
-  it explains, in words, why nothing is readable.
+- **The dockable target cast bar never appeared.** It asked whether the unit
+  was casting in a way the game refuses to answer for anyone but you, took
+  that refusal as "not casting", and stayed hidden forever. It works now, and
+  wears the same three interrupt colours as the nameplate bars.
+- **Raid target markers never showed.** The skull, cross and square are
+  picked from a number the game will not hand over, and BazUI gave up rather
+  than draw the wrong one. The right symbol appears now.
+- **Six of the eight unit bar wordings collapsed into "current / max".**
+  Name, Level, Name and level and Current all show properly again. The three
+  that need a percentage still cannot always have one, but each now falls
+  back to the nearest thing it can say rather than all of them landing on the
+  same answer.
+- **A unit's level vanished from its bar** whenever the game would not let
+  the name and the level be joined together. Both show.
+- **Numbers in the aura rows** could sit on top of each other — two hits in
+  the same instant rise at the same speed from the same line, so they stayed
+  exactly parallel. They are spaced apart in time now, and the rise
+  separates them.
 
 ### Changed
 
-- **A fresh install starts with an updated layout**, including the nameplate
-  Focus settings added in 018, which had never made it into the starting
-  arrangement. Existing setups are untouched.
+- **Cast bars, aura rows and floating text all follow your skin**, including
+  when you change it.
+- The **manual** and several settings descriptions were rewritten. A few had
+  drifted into explaining how things work rather than what you will see.

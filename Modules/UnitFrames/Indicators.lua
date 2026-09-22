@@ -89,36 +89,66 @@ local function AtlasBuilder(atlas)
     end
 end
 
--- Which mark is on a unit, as a plain number, or nothing when the answer
--- is one we may not read.
+-- Which mark is on a unit - as whatever the client hands over, read or
+-- not.
 --
--- GetRaidTargetIndex is SecretReturns without a predicate - it can always
--- come back secret - and the index is no use unless it can be read: it
--- picks a corner out of a sheet of eight, which is arithmetic.
+-- GetRaidTargetIndex is SecretReturns without a predicate, so the number
+-- can always come back sealed. This used to give up at that point: the
+-- index picks a corner out of a sheet of sixteen, which looked like
+-- arithmetic, so a marked unit simply showed no mark at all.
+--
+-- It is not arithmetic we have to do. SetSpriteSheetCell takes the cell
+-- number and works out the corner itself, and it is declared
+-- SecretArguments = "AllowedWhenTainted" with ConditionalSecret on that
+-- argument - built to be handed one of these. Blizzard's own target frame
+-- does exactly this and nothing more:
+--
+--   local index = GetRaidTargetIndex(unit)
+--   if index then SetRaidTargetIconTexture(icon, index); icon:Show()
+--   else icon:Hide() end
+--
+-- Whether the value is nil is a question about presence rather than about
+-- the number, and that much is always allowed. So the guard stays and the
+-- value is never looked at.
 local function MarkIndex(unit)
     if not (unit and GetRaidTargetIndex) then return nil end
-    return BazUI.Secret.Read(function()
-        local index = GetRaidTargetIndex(unit)
-        return (index and index > 0) and index or nil
-    end, nil)
+    local ok, index = pcall(GetRaidTargetIndex, unit)
+    if not ok then return nil end
+    return index
 end
 
--- The raid target symbol is one sheet of eight, indexed rather than
--- named, so it sets its texture as the mark changes rather than once.
+-- The raid target symbol is one sheet, indexed rather than named, so it
+-- sets its cell as the mark changes rather than once.
+--
+-- Four by four, which is the sheet's real shape - it holds sixteen cells
+-- of which the first eight are the marks. Blizzard's own constants say
+-- the same; they are read from the globals where the client offers them
+-- so a client that lays the sheet out differently is still right.
+local RAID_MARK_SHEET = "Interface\\TargetingFrame\\UI-RaidTargetingIcons"
+
 local function BuildRaidTarget(parent)
     local icon = CreateFrame("Frame", nil, parent)
     icon.texture = icon:CreateTexture(nil, "OVERLAY")
     icon.texture:SetAllPoints(icon)
     icon.Refresh = function(self, unit)
-        -- Which mark it is has to be read to pick the right corner of the
-        -- sheet, and GetRaidTargetIndex always may hand back a number we
-        -- are not allowed to read. Nothing to draw then, so the mark stays
-        -- off rather than showing the wrong symbol.
         local index = MarkIndex(unit)
-        if not index then return end
-        if _G.SetRaidTargetIconTexture then
-            self.texture:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
-            _G.SetRaidTargetIconTexture(self.texture, index)
+        if index == nil then
+            self.texture:SetTexture(nil)
+            return
+        end
+
+        self.texture:SetTexture(RAID_MARK_SHEET)
+
+        -- The index goes straight into the setter, read or sealed. The
+        -- engine picks the corner; we never learn which mark it was.
+        local rows = tonumber(_G.RAID_TARGET_TEXTURE_ROWS) or 4
+        local cols = tonumber(_G.RAID_TARGET_TEXTURE_COLUMNS) or 4
+        if self.texture.SetSpriteSheetCell then
+            pcall(self.texture.SetSpriteSheetCell, self.texture, index, rows, cols)
+        elseif _G.SetRaidTargetIconTexture then
+            -- Older clients, where the helper does the texcoord maths
+            -- itself and the value is not sealed anyway.
+            pcall(_G.SetRaidTargetIconTexture, self.texture, index)
         end
     end
     return icon
