@@ -17,6 +17,8 @@
 -- trade window is open; when that list exists it belongs on Today.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 
 local TAB = "professions"

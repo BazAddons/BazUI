@@ -23,6 +23,8 @@
 -- One record per line, tab-separated, parsed on first use. See Load.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Items = Codex.Items or {}
 local Items = Codex.Items

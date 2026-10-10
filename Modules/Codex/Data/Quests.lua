@@ -18,6 +18,8 @@
 -- does not take as a question.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Quests = Codex.Quests or {}
 local Quests = Codex.Quests

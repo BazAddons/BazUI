@@ -23,6 +23,8 @@
 -- quests that there was nothing in it.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 local Theme = BazUI.Skin.Theme
 

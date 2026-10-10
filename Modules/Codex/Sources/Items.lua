@@ -29,6 +29,8 @@
 -- an item nobody has pointed at.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 
 -- Declared here because Render, written above where this page is

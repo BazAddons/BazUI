@@ -28,6 +28,8 @@
 -- yet simply does not appear.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Access = Codex.Access or {}
 local Access = Codex.Access

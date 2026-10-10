@@ -43,15 +43,6 @@ BazUI:RegisterUserGuide("QoL", {
         },
 
         {
-            title = "Other addons' settings",
-            blocks = {
-                { type = "paragraph", text = "WoW: Forever writes every addon's settings at logout and never reads one back. That is the client, not the addon, and it is why so much of your interface forgets itself every time you reload." },
-                { type = "paragraph", text = "BazUI keeps its own settings somewhere the client does read, and it can carry other addons' settings the same way. One switch per addon, and only for addons you actually have installed." },
-                { type = "note", text = "|cffffd700A greyed switch|r is an addon that loads before BazUI. By the time we could put its settings back it has already read them, so there is nothing to be done for it." },
-                { type = "note", style = "tip", text = "For an addon not on the list, |cffffd700/baz persist add <AddOn> <Globals>|r does the same thing. The globals are on the |cffffd700## SavedVariables|r line of that addon's own .toc file, and |cffffd700/baz persist|r lists everything being looked after." },
-            },
-        },
-        {
             title = "Draggable windows",
             blocks = {
                 { type = "paragraph", text = "The game places its own panels where it wants them, and puts them back there every time they open. Each switch here hands one of those windows back to you: drag it by its frame, and it opens where you left it from then on - across sessions, not just until you log out." },

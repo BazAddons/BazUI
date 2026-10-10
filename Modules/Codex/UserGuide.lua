@@ -4,6 +4,7 @@
 ---------------------------------------------------------------------------
 
 if not BazUI or not BazUI.RegisterUserGuide then return end
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
 
 BazUI:RegisterUserGuide("Codex", {
     title = "Codex",

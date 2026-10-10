@@ -49,6 +49,7 @@ BazUI:RegisterUserGuide("Nameplates", {
                 { type = "paragraph", text = "|cffffd700How many plates you see, how far away they appear, and whether friendly units get one at all|r are the game's own settings, not this module's. They live in Interface Options under Names, with console variables behind them." },
                 { type = "paragraph", text = "A second set of switches here that disagreed with those would only be a way to end up with plates you cannot explain. So the module takes what the game gives it and draws that." },
                 { type = "paragraph", text = "|cffffd700Replace friendly plates|r is the one place the two meet: it decides whether a friendly unit that already has a plate gets ours or keeps the game's. It cannot make one appear that the game was not going to show." },
+                { type = "note", text = "|cffffd700Friendly pets|r on the General page is the one exception. Whether a friendly pet, minion, guardian or totem has a plate at all is the game's setting, and it starts off, which leaves their names in the game's own lettering. Those switches are that setting itself rather than a second copy, so they change the game's plates too and the game remembers them for your whole account." },
             },
         },
 

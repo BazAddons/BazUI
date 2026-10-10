@@ -18,6 +18,13 @@
 -- deliberately, not a hidden dependency.
 ---------------------------------------------------------------------------
 
+-- Forever only. The Codex is built on Forever's own systems and data - its
+-- item and quest catalogues describe Forever's tables, and pages like
+-- Legacy exist nowhere else - so on retail none of it loads. Every file in
+-- the module opens with the same line as this one, because a file that ran
+-- on would find no BazUI.Codex to register with.
+if BazUI.IsRetail then return end
+
 local MODULE_NAME = "Codex"
 
 local Codex = BazUI.Codex or {}

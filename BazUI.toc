@@ -14,16 +14,10 @@
 # differences will be. A name existing is not the same as it doing the same
 # thing.
 ## Interface: 16001, 120100
-# A readable copy of the line above. The client does not expose
-# "Interface" through GetAddOnMetadata, but it does expose any X- field,
-# so this is how /baz sv can say whether the TOC it is running was the
-# one on disk - a TOC is only re-read when the client launches, never on
-# /reload, and a test that cannot tell those apart proves nothing.
-## X-Interface-Stamp: 16001,120100
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 021
+## Version: 022
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -31,34 +25,7 @@
 ## Category: BazUI
 ## X-Category: Interface Enhancements
 ## SavedVariables: BazUIDB
-## SavedVariablesPerCharacter: BazUICharDB
 ## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
-
-# 16001 is World of Warcraft: Forever 1.60.1; 11509 is Classic Era, where
-# development started. Those are the two clients this addon runs on, and
-# nothing else belongs here.
-#
-# Tried and abandoned: leading with 120100 (retail Midnight) because one
-# addon that appeared to save its settings declared it first. It made no
-# difference - measured with the stamp below, on a cold start, with the
-# settings seed cleared so nothing could mask it - and the addon it was
-# based on turned out not to save reliably either. The saved variables bug
-# is the client's, it affects everyone, and no TOC line works around it.
-# See Core/Seed.lua. Declaring retail support we do not have would only have
-# put the addon in front of players it was never built for.
-#
-# /baz sv prints what the client asks for against this, and whether the
-# per-character file remembers more than one load.
-
-# Before everything: stands in for the saved variables the client will not
-# read. Empty in the repository; tools/bake-seed.py fills in a local copy.
-# Must stay first, because an addon file runs before its saved variables do
-# and the real ones are meant to overwrite this.
-Core\Seed.lua
-
-# Straight after it: the settings move into a table this client really does
-# read back. Seed.lua stays as the fallback for a client with neither.
-Core\Persist.lua
 
 # Core - forked from BazCore. Module registry, profiles, options window,
 # Edit Mode, popups and UI helpers.
@@ -317,6 +284,8 @@ Modules\Tooltip\Tooltips.lua
 Modules\Tooltip\Settings.lua
 Modules\Tooltip\UserGuide.lua
 
+# Forever only. On retail every Codex file returns at its first line
+# (BazUI.IsRetail, Core/Core.lua), so listing them here costs nothing.
 Modules\Codex\Core.lua
 Modules\Codex\Panel.lua
 Modules\Codex\Data\Gates.lua

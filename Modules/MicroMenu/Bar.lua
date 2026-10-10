@@ -30,9 +30,9 @@ local Theme = BazUI.Skin.Theme
 -- showing five buttons.
 --
 -- Icons are file paths rather than the buttons' own art: theirs is atlas
--- artwork cut for a rounded square, and these sit in a circle. Each one
--- was checked against the client's own icon files rather than
--- remembered.
+-- artwork cut for a rounded square, and these sit in a circle. One the
+-- client does not have is drawn as a question mark rather than left as an
+-- empty disc - see Adopt.
 local DEFS = {
     { key = "character",   frame = "CharacterMicroButton",    label = "Character",      portrait = true },
     -- Forever keeps spells and talents in two buttons; retail has one
@@ -42,7 +42,10 @@ local DEFS = {
     { key = "professions", frame = "ProfessionMicroButton",   label = "Professions",    icon = "Interface\\Icons\\Trade_BlackSmithing" },
     { key = "talents",     frame = "TalentMicroButton",       label = "Talents",        icon = "Interface\\Icons\\Ability_Marksmanship" },
     -- Forever's own, and on no other client: the legacy adventure tree.
-    { key = "legacy",      frame = "LegacyMicroButton",       label = "Legacy",         icon = "Interface\\Icons\\Achievement_Legacy_Classic_01" },
+    -- BazUI's own art, the same as the codex's Legacy tab. The icon file
+    -- named here before was written ahead of the system opening, and the
+    -- client turned out not to have it.
+    { key = "legacy",      frame = "LegacyMicroButton",       label = "Legacy",         icon = "Interface\\AddOns\\BazUI\\Textures\\Codex\\Legacy.png" },
     { key = "achievements",frame = "AchievementMicroButton",  label = "Achievements",   icon = "Interface\\Icons\\Achievement_General" },
     { key = "quests",      frame = "QuestLogMicroButton",     label = "Quest Log",      icon = "Interface\\Icons\\INV_Misc_Note_01" },
     { key = "housing",     frame = "HousingMicroButton",      label = "Housing",        icon = "Interface\\Icons\\Garrison_Building_Barracks" },
@@ -258,7 +261,9 @@ local function Adopt(def)
     if def.portrait then
         SetPortraitTexture(icon, "player")
     else
-        icon:SetTexture(def.icon)
+        local file = def.icon
+        if not BazUI.Has.Texture(file) then file = "Interface\\Icons\\INV_Misc_QuestionMark" end
+        icon:SetTexture(file)
         -- Crop before the round mask goes on: masked textures reject SetTexCoord.
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     end

@@ -11,64 +11,16 @@ local ADDON_NAME = ...
 BazUI.ADDON_NAME = ADDON_NAME
 BazUI.VERSION = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "?"
 
----------------------------------------------------------------------------
--- Did the saved variables arrive?
+-- Which client this is. BazUI runs on two: WoW: Forever, which it is built
+-- for, and retail, which is kept working beside it. No Classic flavour is
+-- supported, so "not retail" means Forever.
 --
--- Positions, bar contents and the module switches all revert on reload,
--- and two consecutive saves each held one login entry rather than the
--- second holding both - so the file is written and then not read back.
--- This writes down what BazUIDB held at each of the three moments it
--- could go missing, and says so at login.
----------------------------------------------------------------------------
-
-local function CountKeys(t)
-    if type(t) ~= "table" then return -1 end
-    local n = 0
-    for _ in pairs(t) do n = n + 1 end
-    return n
-end
-
--- The names matter more than the count: four keys at ADDON_LOADED is
--- either four of the nine the file holds, or four somebody else put there.
-local function KeyNames(t)
-    if type(t) ~= "table" then return "absent" end
-    local names = {}
-    for k in pairs(t) do names[#names + 1] = tostring(k) end
-    table.sort(names)
-    return #names > 0 and table.concat(names, ", ") or "none"
-end
-
-BazUI._svTrace = {
-    atFileLoad      = CountKeys(_G.BazUIDB),
-    namesAtFileLoad = KeyNames(_G.BazUIDB),
-    -- EventUtil.ContinueOnAddOnLoaded runs its callback immediately when the
-    -- addon already counts as loaded, and its queue is not ours to order, so
-    -- the reading taken there is not necessarily the event itself. This frame
-    -- is: a plain handler, registered before anything else in the addon runs.
-    saysLoadedAtFileLoad = C_AddOns.IsAddOnLoaded(ADDON_NAME) and "yes" or "no",
-}
-
--- Every change to the table, in order.
---
--- The readings so far are snapshots, and a snapshot cannot say whether the
--- file's eight keys ever arrived and were then replaced. This watches the
--- global every frame from here until login and writes down each distinct
--- shape it takes. If a table holding barsCharButtons or moduleSwitchLog
--- ever appears, the file is being read and something of ours is discarding
--- it; if one never does, the file is never executed.
-BazUI._svTrace.shapes = {}
-
-local sampler = CreateFrame("Frame")
-local lastShape
-sampler:SetScript("OnUpdate", function()
-    local shape = KeyNames(_G.BazUIDB)
-    if shape ~= lastShape then
-        lastShape = shape
-        local shapes = BazUI._svTrace.shapes
-        shapes[#shapes + 1] = shape
-        if #shapes > 12 then sampler:SetScript("OnUpdate", nil) end
-    end
-end)
+-- Told apart by the build's major version - Forever builds are 1.x, retail
+-- 12.x - which is what the Codex catalogues already check. WOW_PROJECT_ID
+-- would be the usual test, but what Forever reports there has not been
+-- measured, and Forever shares retail's codebase.
+local CLIENT_MAJOR = tonumber((GetBuildInfo() or ""):match("^(%d+)")) or 0
+BazUI.IsRetail = CLIENT_MAJOR >= 10
 
 ---------------------------------------------------------------------------
 -- When the saved variables are really there
@@ -76,18 +28,14 @@ end)
 -- Not EventUtil.ContinueOnAddOnLoaded. On this client C_AddOns.IsAddOnLoaded
 -- already answers true for BazUI while BazUI's own files are still running,
 -- so that helper fires its callback at once, during file load - before the
--- client has loaded the saved variables. Everything we set up in there was
--- built on a BazUIDB we had just invented, and the file on disk never got a
--- look in: positions, bar contents, ability placement and the module
--- switches all came back to their defaults on every reload.
+-- client has loaded the saved variables - and everything set up in there is
+-- built on a BazUIDB we had just invented.
 --
--- /baz sv is what settled it: "our ADDON_LOADED: absent" - BazUIDB was nil
--- when that callback ran - against "ADDON_LOADED event:" a moment later
--- holding the four keys the callback itself had just created.
---
--- A plain handler for the event is the fix, and it is the only place in the
--- addon allowed to decide that the database exists. QueueForVariables(fn)
--- runs fn then, or at once if the moment has passed.
+-- PLAYER_LOGIN is the moment, and this is the only place in the addon
+-- allowed to decide that the database exists. QueueForVariables(fn) runs fn
+-- then, or at once if the moment has passed. A healthy client has the saved
+-- variables at ADDON_LOADED already, so waiting costs nothing, and no module
+-- reads a setting before login anyway.
 ---------------------------------------------------------------------------
 
 local variablesReady = false
@@ -101,55 +49,36 @@ function BazUI:QueueForVariables(fn)
     end
 end
 
--- The saved variables are late on this client, not missing.
---
--- ADDON_LOADED is where an addon is supposed to find its database, and on
--- Forever it is empty there - which is what made it look like the file was
--- never read at all. It is read; it just arrives later. Other authors on
--- the WoW UI Discord found the same thing and put it plainly: "SV don't
--- exist until PLAYER_LOGIN, SV table nil @ ADDON_LOADED". Our own /baz sv
--- has been saying the same for a day - "ADDON_LOADED: absent, login: 7
--- keys" - and we read it as our defaults arriving rather than the file.
---
--- Reading too early is worse than reading late, because what we build on
--- the nil is then written back over the file at logout. So the queue is
--- drained the moment BazUIDB is really there: at ADDON_LOADED on a client
--- that has it by then, and at PLAYER_LOGIN on one that does not.
---
--- The TOC directive LoadSavedVariablesFirst does not help; several people
--- tried it before we did.
+-- Keys left in the saved variables by the workaround for Forever 1.60's
+-- saved variables bug, which build 70338 no longer has.
+-- Nothing reads them any more.
+local LEFTOVER_KEYS = { "loads", "_persist", "moduleSwitchLog" }
+
+-- That workaround also kept a reference to our tables, and to a few other
+-- addons', inside Blizzard_AddOnList's machine-wide saved variable. Our keys
+-- in it are ours to take back: "BazUI", "BazUI@<character>" and "BazUI#...".
+local function TidyLeftovers()
+    local db = _G.BazUIDB
+    if type(db) == "table" then
+        for _, key in ipairs(LEFTOVER_KEYS) do db[key] = nil end
+    end
+    local host = _G.g_addonCategoriesCollapsed
+    if type(host) == "table" then
+        for key in pairs(host) do
+            if type(key) == "string" and (key == "BazUI"
+                or key:sub(1, 6) == "BazUI@" or key:sub(1, 6) == "BazUI#") then
+                host[key] = nil
+            end
+        end
+    end
+end
+
 local function ReadyVariables()
     if variablesReady then return end
     variablesReady = true
 
-    -- Counted here rather than at a fixed event, so it counts loads rather
-    -- than how early we looked. If this climbs, the file is being read.
-    --
-    -- Read before Persist runs, and written after, so it goes on answering
-    -- the question it was made for - has the client started reading saved
-    -- variables - rather than quietly becoming a readout of the place we
-    -- moved them to.
-    -- Both files, because they fail independently: a character came back
-    -- with three previous loads while the account file was absent. Read
-    -- before Persist runs and written after, so each goes on answering the
-    -- question it was made for about its own file. See Core/Persist.lua.
-    local t = BazUI._svTrace
-    t.accountLoads = (type(_G.BazUIDB) == "table" and _G.BazUIDB.loads) or 0
-    _G.BazUICharDB = _G.BazUICharDB or {}
-    t.charLoads = _G.BazUICharDB.loads or 0
-
-    -- Here, and only here. This is the moment the saved variables are as
-    -- real as this client is going to make them, and the last moment
-    -- before anything reads a setting: Persist may replace both globals
-    -- outright with the copies the host table was holding, and a module
-    -- that had already taken a reference would be writing into a table
-    -- nobody is going to save. See Core/Persist.lua.
-    if BazUI.Persist then BazUI.Persist:Adopt() end
-
-    _G.BazUICharDB = _G.BazUICharDB or {}
-    _G.BazUICharDB.loads = (_G.BazUICharDB.loads or 0) + 1
     _G.BazUIDB = _G.BazUIDB or {}
-    _G.BazUIDB.loads = (_G.BazUIDB.loads or 0) + 1
+    TidyLeftovers()
 
     for _, entry in ipairs(variablesQueue) do entry() end
     wipe(variablesQueue)
@@ -157,32 +86,11 @@ end
 
 BazUI.ReadyVariables = ReadyVariables
 
-local svProbe = CreateFrame("Frame")
-svProbe:RegisterEvent("ADDON_LOADED")
-svProbe:RegisterEvent("PLAYER_LOGIN")
-svProbe:RegisterEvent("PLAYER_ENTERING_WORLD")
-svProbe:SetScript("OnEvent", function(self, event, name)
-    local t = BazUI._svTrace
-    if event == "ADDON_LOADED" then
-        if name ~= ADDON_NAME then return end
-        t.atRawEvent = CountKeys(_G.BazUIDB)
-        t.namesAtRawEvent = KeyNames(_G.BazUIDB)
-        self:UnregisterEvent("ADDON_LOADED")
-
-        -- Noted, not acted on. Whatever is in BazUIDB at this point is
-        -- either nothing or our own seed, and treating either as the file
-        -- is how the real one got thrown away. Waiting for login costs a
-        -- healthy client nothing: its saved variables are there at both
-        -- moments, and no module reads a setting before login anyway.
-    elseif event == "PLAYER_LOGIN" then
-        self:UnregisterEvent("PLAYER_LOGIN")
-        t.atLoginRaw = KeyNames(_G.BazUIDB)
-        ReadyVariables()
-    else
-        t.atEnteringWorld = CountKeys(_G.BazUIDB)
-        sampler:SetScript("OnUpdate", nil)
-        self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-    end
+local svFrame = CreateFrame("Frame")
+svFrame:RegisterEvent("PLAYER_LOGIN")
+svFrame:SetScript("OnEvent", function(self)
+    self:UnregisterEvent("PLAYER_LOGIN")
+    ReadyVariables()
 end)
 
 ---------------------------------------------------------------------------
@@ -364,48 +272,9 @@ function BazUI:IsModuleEnabled(name)
     return not (flags and flags[name] == false)
 end
 
--- What the flags looked like at login, written down once so a reload can
--- be compared against what the switch was set to.
-function BazUI:RecordModuleFlagsAtLogin()
-    local sv = _G.BazUIDB
-    if not sv then return end
-    local flags = ModuleFlags()
-    local seen = {}
-    if flags then
-        for k, v in pairs(flags) do seen[#seen + 1] = k .. "=" .. tostring(v) end
-    end
-    table.sort(seen)
-    sv.moduleSwitchLog = sv.moduleSwitchLog or {}
-    local log = sv.moduleSwitchLog
-    log[#log + 1] = ("%s LOGIN flags:[%s] profile:%s"):format(
-        date("%H:%M:%S"),
-        #seen > 0 and table.concat(seen, ",") or "empty",
-        tostring(sv.activeProfile))
-    while #log > 40 do table.remove(log, 1) end
-end
-
--- A record of every switch thrown, kept in the saved variables.
---
--- The module switches have been going back on by themselves and reading
--- the code has not explained it, so this writes down what actually
--- happened: who asked, for what, and whether the flag was there to write
--- to. Read it out of SavedVariables\BazUI.lua under moduleSwitchLog.
-local function RecordSwitch(name, enabled, wrote)
-    local sv = _G.BazUIDB
-    if not sv then return end
-    sv.moduleSwitchLog = sv.moduleSwitchLog or {}
-    local log = sv.moduleSwitchLog
-    log[#log + 1] = ("%s %s -> %s (%s)"):format(
-        date("%H:%M:%S"), name, tostring(enabled),
-        wrote and "written" or "NO FLAGS TABLE")
-    -- Keep it short; only the last few matter.
-    while #log > 40 do table.remove(log, 1) end
-end
-
 function BazUI:SetModuleEnabled(name, enabled)
     if ALWAYS_ON[name] then return end
     local flags = ModuleFlags()
-    RecordSwitch(name, enabled, flags ~= nil)
     if not flags then return end
 
     -- Written out rather than `enabled and nil or false`, which cannot
@@ -460,9 +329,8 @@ function BazUI:RegisterModule(name, config)
         if found then self.addonNamespaces[name] = found end
     end
 
-    -- Deferred init on ADDON_LOADED. Every module lives inside this one
-    -- addon, so its saved variables are ready when BazUI's own
-    -- ADDON_LOADED fires (immediately if we're already past it).
+    -- Deferred until the saved variables are ready (immediately if we are
+    -- already past that). See ReadyVariables.
     BazUI:QueueForVariables(function()
         -- Initialize saved variables (for addons that still have their own SV, e.g. BNC history)
         if config.savedVariable then
@@ -707,10 +575,8 @@ end
 -- BazUI's own settings page (registered after all modules load)
 ---------------------------------------------------------------------------
 
--- Initialize unified profile structure early (before addons load)
+-- Initialize unified profile structure, ahead of every module's own init
 BazUI:QueueForVariables(function()
-    BazUI._svTrace.atAddonLoaded = CountKeys(_G.BazUIDB)
-    BazUI._svTrace.namesAtAddonLoaded = KeyNames(_G.BazUIDB)
     BazUIDB = BazUIDB or {}
     if BazUI.InitProfiles then
         BazUI:InitProfiles()
@@ -1321,18 +1187,6 @@ BazUI:QueueForLogin(function()
                     BazUI:ExportStarterProfile()
                 end,
             },
-            sv = {
-                desc = "Report whether the saved variables were there when BazUI started",
-                handler = function()
-                    BazUI:ReportSavedVariables()
-                end,
-            },
-            persist = {
-                desc = "Keep another addon's settings too: add <AddOn> [Globals], remove <AddOn>, or nothing to list",
-                handler = function(args)
-                    BazUI:PersistCommand(args)
-                end,
-            },
             cvars = {
                 desc = "List the game console variables whose name contains a word, with what each is set to",
                 handler = function(args)
@@ -1382,70 +1236,6 @@ BazUI:QueueForLogin(function()
         },
     })
 end)
-
----------------------------------------------------------------------------
--- BazUI is standalone. Running it next to the BazCore-based suite means two
--- addons fighting over the minimap, quest tracker and chat, so say so once.
----------------------------------------------------------------------------
--- /baz persist - looking after another addon's settings.
---
--- Not a setting on a page, because this is a repair for a broken client
--- rather than a preference, and the list of addons it applies to is one
--- somebody types once and forgets. See Core/Persist.lua.
-function BazUI:PersistCommand(args)
-    local P = BazUI.Persist
-    if not P then return end
-    args = (args or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    local verb, rest = args:match("^(%S+)%s*(.*)$")
-    verb = verb and verb:lower() or nil
-
-    if verb == "add" then
-        local addOnName, globals = rest:match("^(%S+)%s*(.*)$")
-        if not addOnName then
-            BazUI:Print("Which addon? /baz persist add TomTom")
-            return
-        end
-        local list
-        if globals and globals ~= "" then
-            list = {}
-            for word in globals:gmatch("[%w_]+") do list[#list + 1] = word end
-        end
-        local ok, result = P:AddGuest(addOnName, list)
-        if ok then
-            BazUI:Print(("Now keeping %s's settings: %s. They come back from the next login on.")
-                :format(addOnName, table.concat(result, ", ")))
-        else
-            BazUI:Print("Cannot: " .. tostring(result))
-        end
-        return
-    end
-
-    if verb == "remove" or verb == "forget" then
-        local addOnName = rest:match("^(%S+)")
-        if addOnName and P:RemoveGuest(addOnName) then
-            BazUI:Print(addOnName .. " is on its own again. Its settings here are let go.")
-        else
-            BazUI:Print("Not looking after " .. tostring(addOnName) .. ".")
-        end
-        return
-    end
-
-    local guests = P:Guests()
-    if #guests == 0 then
-        BazUI:Print("Not looking after any other addon's settings. "
-            .. "|cffffd700/baz persist add TomTom|r to start.")
-    else
-        BazUI:Print("Also keeping the settings of:")
-        for _, name in ipairs(guests) do
-            local globals = P:GuestGlobals(name) or {}
-            print(("  %s - %s%s"):format(name, table.concat(globals, ", "),
-                (P.guestReport and P.guestReport[name])
-                    and ("  (" .. P.guestReport[name] .. " this login)") or ""))
-        end
-    end
-    print("  |cff888888Only for addons that load after BazUI, and only on a client "
-        .. "that does not read saved variables back.|r")
-end
 
 ---------------------------------------------------------------------------
 -- /baz auras - what the client will let us read, aura by aura
@@ -1545,74 +1335,6 @@ function BazUI:ReportAuras(args)
     local auras = BazUI.GetModule and BazUI:GetModule("Auras")
     if auras and auras.ReportRows then auras:ReportRows() end
 end
-function BazUI:ReportSavedVariables()
-    local t = BazUI._svTrace or {}
-    local function Say(n)
-        n = n or -1
-        if n < 0 then return "|cffff4444absent|r" end
-        if n == 0 then return "|cffff4444empty|r" end
-        return "|cff00ff00" .. n .. " keys|r"
-    end
-    BazUI:Print(("Saved variables - Core.lua ran: %s, ADDON_LOADED: %s, login: %s, now: %s"):format(
-        Say(t.atFileLoad), Say(t.atAddonLoaded), Say(t.atLogin), Say(CountKeys(_G.BazUIDB))))
-
-    print("  when Core.lua ran: " .. tostring(t.namesAtFileLoad)
-        .. "  (addon already counts as loaded: " .. tostring(t.saysLoadedAtFileLoad) .. ")")
-    print("  ADDON_LOADED event: " .. tostring(t.namesAtRawEvent))
-    print("  our ADDON_LOADED:   " .. tostring(t.namesAtAddonLoaded))
-    -- What the table held at PLAYER_LOGIN, before anything of ours touched
-    -- it. This is the one that matters now: if the file is read late, the
-    -- saved keys are here and something of ours is discarding them; if it
-    -- says absent, the file was never read at all.
-    print("  at PLAYER_LOGIN:    " .. tostring(t.atLoginRaw))
-    print("  entering world:     " .. tostring(t.atEnteringWorld) .. " keys")
-    print("  now:              " .. KeyNames(_G.BazUIDB))
-
-    for i, shape in ipairs(BazUI._svTrace.shapes or {}) do
-        print("  shape " .. i .. ": " .. shape)
-    end
-
-    print(("  account file remembered %s previous load%s, the per-character file %s"):format(
-        tostring(t.accountLoads), (t.accountLoads == 1) and "" or "s",
-        tostring(t.charLoads)))
-
-    -- Where the settings really are on a client that will not read its
-    -- own. See Core/Persist.lua.
-    if BazUI.Persist then
-        print("  host table (" .. BazUI.Persist.HOST .. "): " .. BazUI.Persist:Describe())
-        for _, line in ipairs(BazUI.Persist:Detail()) do
-            print("    " .. line)
-        end
-        local keys = BazUI.Persist:Keys()
-        print("  it is holding " .. #keys .. " table"
-            .. ((#keys == 1) and "" or "s") .. " of ours"
-            .. ((#keys > 0) and (": " .. table.concat(keys, ", ")) or ""))
-        -- When the host table turned up, which decides whether another
-        -- addon's settings can be restored before it reads them.
-        for _, line in ipairs(BazUI.Persist.hostTrace or {}) do
-            print("    " .. line)
-        end
-    end
-
-    -- "Interface" is not a metadata key the client hands back, which is why
-    -- this used to print a question mark and tell us nothing at all. Any X-
-    -- field is readable, so the TOC carries a copy of its own interface line
-    -- under one.
-    --
-    -- Worth having because a TOC is read when the client launches and never
-    -- again - /reload does not re-read it - so a test of a TOC change that
-    -- cannot tell those two apart proves nothing either way.
-    local _, build, _, iface = GetBuildInfo()
-    print(("  client build %s wants interface |cffffd700%s|r; our TOC declares |cffffd700%s|r")
-        :format(tostring(build), tostring(iface),
-            tostring(C_AddOns.GetAddOnMetadata(BazUI.ADDON_NAME, "X-Interface-Stamp") or "?")))
-
-    local log = _G.BazUIDB and _G.BazUIDB.moduleSwitchLog
-    if type(log) == "table" then
-        print("  logins remembered: " .. #log .. " (more than one means the file is being read back)")
-        for i = math.max(1, #log - 4), #log do print("    " .. tostring(log[i])) end
-    end
-end
 
 -- The beta client's Issue Reporter, down unless asked for. SuppressFrame
 -- keeps it down: theirs shows itself again on a good few events.
@@ -1626,10 +1348,12 @@ end
 
 BazUI:QueueForLogin(function()
     BazUI:ApplyIssueReporterVisibility()
-    BazUI._svTrace.atLogin = CountKeys(_G.BazUIDB)
-    BazUI:ReportSavedVariables()
-    BazUI:RecordModuleFlagsAtLogin()
 end)
+
+---------------------------------------------------------------------------
+-- BazUI is standalone. Running it next to the BazCore-based suite means two
+-- addons fighting over the minimap, quest tracker and chat, so say so once.
+---------------------------------------------------------------------------
 
 BazUI:QueueForLogin(function()
     local clash = {}

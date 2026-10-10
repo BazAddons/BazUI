@@ -85,6 +85,68 @@ local function KindEntries(entries)
     return entries
 end
 
+---------------------------------------------------------------------------
+-- Friendly pets and minions
+--
+-- Whether these get a plate at all is the game's own setting, and it
+-- starts off: with it off the game gives them no plate, so there is
+-- nothing for us to draw, and the name over a pet is the game's own while
+-- everything around it wears ours.
+--
+-- These switches are that setting rather than a second copy of it. They
+-- read and write the console variable and BazUI keeps nothing, so the two
+-- cannot disagree - which is the rule Kinds.lua and the defaults in
+-- Core.lua are built on. The game saves it, for the whole account.
+--
+-- Left out where the client has no such setting - and the section with
+-- them if it has none - and grayed out in combat, because the game can
+-- refuse a change to which plates exist mid-fight.
+---------------------------------------------------------------------------
+
+local FRIENDLY_PETS = {
+    { cvar = "nameplateShowFriendlyPets", label = "Pets",
+      desc = "Hunter pets and the like - anything whose name says it is somebody's pet." },
+    { cvar = "nameplateShowFriendlyMinions", label = "Minions",
+      desc = "Warlock demons and the like - anything whose name says it is somebody's minion." },
+    { cvar = "nameplateShowFriendlyGuardians", label = "Guardians",
+      desc = "Short-lived summons that fight beside whoever called them." },
+    { cvar = "nameplateShowFriendlyTotems", label = "Totems",
+      desc = "A shaman's totems. A group of shamans makes for a lot of these." },
+}
+
+local function FriendlyPetEntries(entries)
+    local present = {}
+    for _, def in ipairs(FRIENDLY_PETS) do
+        if BazUI.Has.CVar(def.cvar) then present[#present + 1] = def end
+    end
+    if #present == 0 then return entries end
+
+    entries[#entries + 1] = {
+        key = "petsNote", type = "note", style = "info",
+        section = "pets", order = 0,
+        text = "Whether a friendly pet has a nameplate at all is the game's "
+            .. "own setting, and it starts off - which is why their names "
+            .. "look different from everything else's. These switches are "
+            .. "that setting, not a copy of it: they change the game's "
+            .. "plates too, and the game remembers them for your whole "
+            .. "account.",
+    }
+    for index, def in ipairs(present) do
+        local cvar = def.cvar
+        entries[#entries + 1] = {
+            key = cvar, label = def.label, desc = def.desc, type = "toggle",
+            section = "pets", order = index,
+            disabled = function() return InCombatLockdown() end,
+            get = function() return GetCVarBool(cvar) end,
+            set = function(_, value)
+                if InCombatLockdown() then return end
+                pcall(SetCVar, cvar, value and "1" or "0")
+            end,
+        }
+    end
+    return entries
+end
+
 -- A page of its own rather than six more groups under General. Six kinds
 -- times five switches is thirty rows, and thirty rows below the ones that
 -- were already there is a page you scroll rather than a page you read.
@@ -106,8 +168,9 @@ BazUI:RegisterSettingsSpec("Nameplates", {
         general = { label = "General", order = 1 },
         size    = { label = "Size and Text", order = 2 },
         focus   = { label = "Focus", order = 3 },
+        pets    = { label = "Friendly pets", order = 1.5 },
     },
-    entries = {
+    entries = FriendlyPetEntries({
         { key = "showPlate", label = "Nameplates", type = "toggle",
           section = "general", order = 0.4,
           desc = "Whether BazUI draws plates at all. Each kind of unit below can answer this for itself. Which units the game offers a plate for in the first place is its own setting, in Interface Options under Nameplates.",
@@ -280,7 +343,7 @@ BazUI:RegisterSettingsSpec("Nameplates", {
               .. "so you can have a health bar on other players and "
               .. "nothing but a name on the city guards. Level and the "
               .. "rare and elite mark are on that page too." },
-    },
+    }),
 })
 
 BazUI:QueueForModule("Nameplates", function()

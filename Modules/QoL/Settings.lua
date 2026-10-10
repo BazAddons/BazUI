@@ -14,7 +14,6 @@ local SECTIONS = {
     vendors     = { label = "Vendors",     order = 2 },
     convenience = { label = "Convenience", order = 3 },
     windows     = { label = "Draggable windows", order = 4 },
-    addons      = { label = "Other addons' settings", order = 5 },
     other       = { label = "Other",       order = 9 },
 }
 
@@ -92,57 +91,6 @@ local function BuildSpec()
         alignRight = true,
         func = function() addon:ClearWindowPositions() end,
     }
-
-    ---------------------------------------------------------------------
-    -- Carrying somebody else's settings
-    --
-    -- One switch per addon we know the recipe for and the player has
-    -- installed. See Core/Persist.lua: this is the same call the slash
-    -- command makes, which stays for anything not on the list.
-    ---------------------------------------------------------------------
-    local P = BazUI.Persist
-    if P then
-        entries[#entries + 1] = {
-            key = "addonsNote", type = "note", section = "addons",
-            order = 0.5, style = "info",
-            text = "This client writes every addon's settings at logout and "
-                .. "never reads one back, which is why so much of your "
-                .. "interface forgets itself. BazUI keeps its own somewhere "
-                .. "that does come back, and can carry these too.",
-        }
-
-        for index, addOnName in ipairs(P:Known()) do
-            entries[#entries + 1] = {
-                key     = "persist_" .. addOnName,
-                label   = addOnName,
-                type    = "toggle",
-                section = "addons",
-                order   = index,
-                desc    = "Keep " .. addOnName .. "'s settings through a reload and a logout.",
-                -- Greyed rather than missing when it cannot be done, so
-                -- the answer to "why not this one" is on the page.
-                disabled = function()
-                    return not P:CanHelp(addOnName) or P:ClientReadsVariables()
-                end,
-                disabledLabel = "loads before BazUI",
-                get = function() return P:IsGuest(addOnName) end,
-                set = function(_, value)
-                    if value then P:AddGuest(addOnName) else P:RemoveGuest(addOnName) end
-                end,
-            }
-        end
-
-        entries[#entries + 1] = {
-            key = "addonsHow", type = "note", section = "addons",
-            order = 90, style = "tip",
-            text = "A greyed switch is an addon that loads before BazUI. Its "
-                .. "settings are already read by the time we could put them "
-                .. "back, so there is nothing to be done for it. For an addon "
-                .. "not listed here, |cffffd700/baz persist add <AddOn> "
-                .. "<Globals>|r - the globals are on the ## SavedVariables "
-                .. "line of its own .toc file.",
-        }
-    end
 
     entries[#entries + 1] = {
         key = "note", type = "note", section = "other", order = 99, style = "info",

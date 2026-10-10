@@ -160,12 +160,11 @@ function QT.QuestTimerAnchor()
 
     -- Placed once the settings are real, not now.
     --
-    -- This widget is set up from the tracker's own init, which runs before
-    -- Persist has adopted the saved tables - on this client BazUIDB at that
-    -- moment is Seed.lua's copy and is about to be replaced wholesale. A
-    -- position read here comes back nil every time, the fallback is used,
-    -- and the frame appears to "move on reload" while in fact it has never
-    -- once been restored. See Core/Core.lua's ReadyVariables.
+    -- This widget is set up from the tracker's own init, which can run
+    -- before the saved variables are ready. A position read then comes back
+    -- nil, the fallback is used, and the frame appears to "move on reload"
+    -- while in fact it has never once been restored. See Core/Core.lua's
+    -- ReadyVariables.
     --
     -- QueueForVariables runs straight away if they are already ready, so
     -- this is not a delay, it is an ordering.

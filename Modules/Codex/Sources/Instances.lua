@@ -16,6 +16,8 @@
 -- never missing from the page just because the data has not caught up.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 local Theme = BazUI.Skin.Theme
 

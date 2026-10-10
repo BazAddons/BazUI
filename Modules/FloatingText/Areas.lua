@@ -229,7 +229,7 @@ function Areas:Initialize()
         Build(def)
     end
     -- Placed once the saved variables are real. Reading a position before
-    -- Persist has adopted them gets the default every time, and the area
+    -- they are ready gets the default every time, and the area
     -- appears to move on every reload while in fact never having been
     -- restored once.
     BazUI:QueueForVariables(function() Areas:ApplyAll() end)

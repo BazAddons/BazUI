@@ -6,7 +6,7 @@ BazUI is a single addon that absorbs the Baz Suite for World of Warcraft: Foreve
 
 ```
 BazUI/
-  BazUI.toc            load order; Interface is Era until the Forever client ships
+  BazUI.toc            load order; Interface lists Forever (16001) and retail (120100)
   Core/                forked from BazCore (BazUI namespace)
     Core.lua           module registry, lifecycle, login queue
     Profiles.lua       BazUIDB.profiles[name][module] = { ... }
@@ -51,7 +51,7 @@ Other files in the module fetch the object with `BazUI:GetModule("Drawers")`. Se
 Differences from the old suite:
 
 - One saved variable, `BazUIDB`. No per-module saved variables and no migration from the old addons; BazUI starts fresh.
-- Module init runs on BazUI's own `ADDON_LOADED`, not a per-addon one.
+- Module init runs once BazUI's saved variables are ready (`PLAYER_LOGIN`, see `ReadyVariables` in `Core/Core.lua`), not on a per-addon `ADDON_LOADED`.
 - The options window is Blizzard's Settings panel: BazUI is a category, each module a subcategory, and a module's pages are tabs across its canvas. A module registers a page with `BazUI:RegisterOptionsTable(key, fn)` and `BazUI:AddToSettings(key, label, parentKey, order)`. Tabs run General, then the module's own pages (by `order`, else alphabetical), then the User Manual from `BazUI:RegisterUserGuide`. Register a stub `{ name, type = "group", args = {} }` for the module key itself; it never renders once the module has pages. There are no landing pages and no Global Settings tabs: a value that applies to every item lives in a section on General.
 - There are no per-module versions.
 
@@ -89,9 +89,9 @@ The drawer's tab rail is deliberately not this. It is a vertical column of icon 
 
 ## Flavour and compatibility
 
-Development happens on Classic Era 1.15 because Forever is built by the Classic team on the same client family. Keep every API touchpoint that might differ (quest log, containers, minimap frames, chat) behind small helpers so the Forever delta is a short edit. `Modules/Drawers/Compat.lua` holds third-party shims; a top-level `Compat.lua` is the place for client-version shims once the beta shows what differs.
+BazUI supports two clients: **WoW: Forever**, the focus, and **retail**, kept working on the side. No Classic flavour is supported (Era, and the rest); the Era compatibility left in the code is not maintained or shipped. Both supported clients are on the 12.0 codebase, so they share secret values, restricted aspects and the taint rules.
 
-Not universal: Retail is served by the existing Baz Suite addons. Do not add Retail branches here.
+Test for features rather than for clients wherever you can - a helper that checks whether an API or frame exists covers both. Where something genuinely belongs to one client, `BazUI.IsRetail` (Core/Core.lua) is the one switch: Forever builds are 1.x, retail 12.x. The Codex is Forever only, and every one of its files opens with `if BazUI.IsRetail then return end`; a new Codex file needs that line too. `Modules/Drawers/Compat.lua` holds third-party shims and `Core/Compat.lua` the client ones.
 
 ### Templates: check the TOC, not the source tree
 
@@ -105,13 +105,13 @@ Recipe used for Drawers, apply the same to Chat, Bags and Bars:
 2. Rename the namespace: `BazCore` becomes `BazUI`; `BazCore:GetAddon("<Old>")` becomes `BazUI:GetModule("<Name>")`; the `RegisterAddon` call becomes `RegisterModule` and loses `savedVariable`.
 3. Rename global frame names to a `BazUI<Name>` prefix so nothing collides with the old addons on a dev machine that still has them installed.
 4. Move textures into `Skin/Assets` and reference them through `BazUI.Skin`.
-5. Strip Midnight-only machinery (secret values, forbidden-table guards) where the Classic client makes it unnecessary; keep secure-template rules for anything that clicks spells or items.
-6. Add the files to `BazUI.toc`, run luacheck from the suite root, deploy to the Era AddOns folder and test with BazCore-based addons disabled.
+5. Keep the secret-value handling and the secure-template rules: Forever has both, the same as retail.
+6. Add the files to `BazUI.toc`, deploy with `tools/deploy.sh` and test with BazCore-based addons disabled.
 
 ## Testing
 
-Copy the working tree (minus .git, .github, .pkgmeta, CHANGELOG.md, DEVELOPERS.md) to `_classic_era_\Interface\AddOns\BazUI`. Disable BazCore, BazWidgetDrawers, LibBazWidget, BazWidgets, BazChat and BazBags on that character; BazUI prints a warning at login if any of them is loaded. New texture files need a full client restart, not a reload.
+Run `tools/deploy.sh`. It copies the working tree into the Forever client's `_classic_beta_/Interface/AddOns/BazUI`, leaving out everything `.pkgmeta` ignores so the test copy is what CurseForge ships, and removes files the repository no longer has. Pass another `.../Interface/AddOns/BazUI` path to deploy somewhere else, such as a retail install. Saved variables are never touched. Disable BazCore, BazWidgetDrawers, LibBazWidget, BazWidgets, BazChat and BazBags on that character; BazUI prints a warning at login if any of them is loaded. New texture files need a full client restart, not a reload.
 
 ## Release
 
-Tag-triggered BigWigs packager, same as the suite. The workflow currently builds `-g classic` (Era). CurseForge has no Forever game version yet; expect the first Forever upload to be manual. `CHANGELOG.md` holds only the newest entry, written for players.
+Pushing a tag runs the BigWigs packager (`.github/workflows/release.yml`), which packages and uploads to CurseForge project 1698481 using the `CF_API_KEY` repository secret. The packager reads the game versions from the TOC's Interface line, so one upload is listed for both Forever and retail. Pushing commits to `main` publishes nothing. `CHANGELOG.md` holds only the newest entry, written for players, and is uploaded as that file's changelog.

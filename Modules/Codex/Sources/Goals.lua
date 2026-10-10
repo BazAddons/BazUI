@@ -11,6 +11,8 @@
 -- belong to or a level it does not matter at yet.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 local Theme = BazUI.Skin.Theme
 

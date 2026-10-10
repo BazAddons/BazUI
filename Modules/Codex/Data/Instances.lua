@@ -17,6 +17,8 @@
 -- on its own.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Instances = Codex.Instances or {}
 local Instances = Codex.Instances

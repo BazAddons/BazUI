@@ -20,6 +20,8 @@
 -- what is theirs to chase. The table is meant to grow.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Goals = Codex.Goals or {}
 local Goals = Codex.Goals

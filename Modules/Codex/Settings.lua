@@ -1,4 +1,6 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 local addon = BazUI:GetModule("Codex")
 

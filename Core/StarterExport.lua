@@ -4,8 +4,7 @@
 --
 -- Core/StarterProfile.lua is the layout a fresh install begins with. It has
 -- been written by hand, which is fine for three bars and tedious for a real
--- arrangement - and on a client that will not read saved variables back, the
--- starter profile is the only thing anyone actually gets.
+-- arrangement.
 --
 -- /baz export prints the active profile as Lua, shaped to paste straight
 -- into StarterProfile.lua. Two things happen on the way out:

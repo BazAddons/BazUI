@@ -21,6 +21,8 @@
 -- are only the fallback when nothing in the group has been met yet.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 Codex.Factions = Codex.Factions or {}
 local Factions = Codex.Factions

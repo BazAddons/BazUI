@@ -15,6 +15,8 @@
 -- would redraw the codex, which would expand them again.
 ---------------------------------------------------------------------------
 
+if BazUI.IsRetail then return end -- Forever only; see Modules/Codex/Core.lua
+
 local Codex = BazUI.Codex
 local Theme = BazUI.Skin.Theme
 
