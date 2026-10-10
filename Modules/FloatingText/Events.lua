@@ -147,13 +147,38 @@ local WORDS = {
     REFLECT = REFLECT, INTERRUPT = INTERRUPT, ABSORB = ABSORB,
 }
 
+-- Which way it went - and whether it is any of ours at all.
+--
+-- The event fires on whoever TOOK the hit, and once for every name the
+-- game has for that unit: one mob is "target" and "nameplate3" at the same
+-- time, and a party member's fight fires on their party frame and on every
+-- nameplate involved, wherever you are standing. What it never says is who
+-- dealt the hit, and this client gives an addon nothing else that would.
+--
+-- Taking everything that was not you as yours put a party member's fight
+-- on screen as your damage, and showed a hit on your target once per name.
+-- So: what lands on you is incoming, what lands on your target while you
+-- are fighting is outgoing, and anything else is somebody else's fight. In
+-- a group a number on your target can still be a party member's hit on it
+-- - the game will not say which - but a fight you are not in shows nothing.
+local function AreaFor(unitTarget)
+    if unitTarget == "player" then return "incoming" end
+    if not InCombatLockdown() then return nil end
+    if unitTarget == "target" then return "outgoing" end
+    -- Soft targeting, for whoever plays without a hard target - unless it
+    -- is the same unit, which would show every hit twice.
+    if unitTarget == "softenemy"
+        and not BazUI.Secret.IsUnit("softenemy", "target") then
+        return "outgoing"
+    end
+    return nil
+end
+
 local function Handle(unitTarget, event, flagText, amount, schoolMask)
     if addon:GetSetting("enabled") ~= true then return end
 
-    -- Which way it went. The event fires on whoever TOOK it, so anything
-    -- that is not you is something you did - or at least something
-    -- happening to somebody else, which is the same area either way.
-    local area = (unitTarget == "player") and "incoming" or "outgoing"
+    local area = AreaFor(unitTarget)
+    if not area then return end
     local mine = (area == "outgoing")
 
     local size = tonumber(addon:GetSetting("fontSize")) or 22

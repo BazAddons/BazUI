@@ -412,10 +412,14 @@ local function SwapOrders(keyA, keyB)
     local cats = addon:GetSetting("categories") or {}
     if not cats[keyA] or not cats[keyB] then return end
     local oa, ob = cats[keyA].order or 0, cats[keyB].order or 0
-    -- Defensive: if both share the same order (which the GetAll
-    -- tie-break tolerates) bump one off by 1 so they actually swap
-    -- positions instead of staying coincident.
-    if oa == ob then ob = oa + 1 end
+    -- Two that share an order are told apart by key, which GetAll uses as
+    -- its tie-break. Give them distinct orders in the sequence they are
+    -- shown in now, and the swap below flips that. Bumping one blindly
+    -- only worked in one direction: moving the later of the two up left
+    -- both exactly where they were.
+    if oa == ob then
+        if keyA < keyB then ob = oa + 1 else oa = ob + 1 end
+    end
     cats[keyA].order, cats[keyB].order = ob, oa
     addon:SetSetting("categories", cats)
 end
@@ -439,6 +443,39 @@ function Categories.MoveDown(key)
             SwapOrders(key, list[i+1].key)
             return
         end
+    end
+end
+
+-- MoveBefore / MoveAfter
+--
+-- Moves a category one neighbour at a time, the way the arrows on the
+-- settings page do, until it has passed another one. The bag's Categorize
+-- mode asks for this rather than for a single step: the next category in
+-- the full list may be one the bag is not showing - an empty-slots heading
+-- with no free space under it - and a step that swapped with that would
+-- look like a click that did nothing.
+--
+-- Bounded, because a step that fails to move anything must not become a
+-- loop that never ends.
+local function Position(key)
+    for i, c in ipairs(Categories.GetAll()) do
+        if c.key == key then return i end
+    end
+end
+
+function Categories.MoveBefore(key, otherKey)
+    for _ = 1, 100 do
+        local a, b = Position(key), Position(otherKey)
+        if not (a and b) or a < b then return end
+        Categories.MoveUp(key)
+    end
+end
+
+function Categories.MoveAfter(key, otherKey)
+    for _ = 1, 100 do
+        local a, b = Position(key), Position(otherKey)
+        if not (a and b) or a > b then return end
+        Categories.MoveDown(key)
     end
 end
 

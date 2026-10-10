@@ -359,11 +359,88 @@ end
 -- Whether a page is being drawn right now. See RefreshOptions.
 local rendering = false
 
+---------------------------------------------------------------------------
+-- What a page looks like, as opposed to what it is set to
+--
+-- Which rows it has, in what order, under what words and with what to
+-- choose from. Two renders of the same shape differ only in values and in
+-- what is grayed out, and every row can bring those up to date by itself.
+--
+-- That matters because a full render builds every row again, and WoW
+-- never frees a frame: ticking one box on a page of forty rows made forty
+-- rows' worth of new frames, stalled the whole interface for a moment
+-- while it did, and left the old ones behind. Anything here that differs
+-- - a row appearing, a label that reads differently - and the page is
+-- built again exactly as before, so the cheap path can only ever be taken
+-- when it gives the same page.
+---------------------------------------------------------------------------
+
+local function Resolved(value)
+    if type(value) == "function" then
+        local ok, result = pcall(value)
+        return ok and result or "?"
+    end
+    return value
+end
+
+local function AddShape(args, out)
+    for _, opt in ipairs(O.SortedArgs(args)) do
+        if not O.IsHidden(opt) then
+            out[#out + 1] = table.concat({
+                tostring(opt._key), tostring(opt.type),
+                tostring(Resolved(opt.name)), tostring(Resolved(opt.desc)),
+                tostring(Resolved(opt.text)), tostring(opt.inline),
+            }, "\031")
+            local values = Resolved(opt.values)
+            if type(values) == "table" then
+                local keys = {}
+                for k, v in pairs(values) do keys[#keys + 1] = tostring(k) .. "=" .. tostring(v) end
+                table.sort(keys)
+                out[#out + 1] = table.concat(keys, ",")
+            end
+            if type(opt.args) == "table" then AddShape(opt.args, out) end
+        end
+    end
+end
+
+local function PageShape(tbl)
+    local out = {}
+    AddShape(tbl.args, out)
+    if type(tbl.pinned) == "table" then
+        out[#out + 1] = "|pinned|"
+        AddShape(tbl.pinned, out)
+    end
+    return table.concat(out, "\030")
+end
+
+-- Every row under a frame, run again where it knows how.
+local function SyncRows(frame, depth)
+    if depth > 12 then return end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child._bazSync then child._bazSync(child) end
+        SyncRows(child, depth + 1)
+    end
+end
+
+-- The page on screen, brought up to date in place if its shape has not
+-- changed. False when it has, or when it cannot be told - a page drawn by
+-- its own customRender, say - and the caller renders it in full.
+local function SyncPage(canvas, key)
+    local entry = key and optionsTables[key]
+    if not entry or entry.customRender or not canvas._bazShape then return false end
+    local tbl = entry.func
+    if type(tbl) == "function" then tbl = tbl() end
+    if not tbl or PageShape(tbl) ~= canvas._bazShape then return false end
+    SyncRows(canvas.content, 0)
+    return true
+end
+
 local function RenderPage(canvas, key)
     if not key then return end
     local entry = optionsTables[key]
     if not entry then return end
     canvas.activeKey = key
+    canvas._bazShape = nil
     rendering = true
 
     local tabID = canvas.tabIDs and canvas.tabIDs[key]
@@ -386,6 +463,7 @@ local function RenderPage(canvas, key)
     if type(tbl) == "function" then tbl = tbl() end
     if tbl then
         RenderIntoCanvas(canvas.content, tbl)
+        canvas._bazShape = PageShape(tbl)
     end
     rendering = false
 end
@@ -607,7 +685,8 @@ function BazUI:RefreshVisibleOptions()
     C_Timer.After(0, function()
         repaintQueued = false
         for _, canvas in pairs(canvases) do
-            if canvas:IsShown() and canvas.activeKey then
+            if canvas:IsShown() and canvas.activeKey
+                and not SyncPage(canvas, canvas.activeKey) then
                 RenderPage(canvas, canvas.activeKey)
             end
         end

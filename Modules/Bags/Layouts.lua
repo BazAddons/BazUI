@@ -28,6 +28,23 @@ local DIVIDER_GAP_BELOW    = 4   -- gap between divider and first item row
 local CATEGORY_GAP         = 6   -- gap between one category's items and the next divider
 local TITLE_COLOR          = { 1.00, 0.82, 0.00 }    -- suite gold, matches headers
 local DIVIDER_LINE_COLOR   = { 0.55, 0.42, 0.18, 0.85 }
+-- The reorder arrows on a divider in Categorize mode: the same art, size
+-- and brightness as the arrows on a drawer widget's title bar, so moving
+-- something up or down looks the same wherever it is done.
+local ARROW_SIZE           = 16
+local ARROW_ALPHA_IDLE     = 0.75
+local ARROW_ALPHA_OFF      = 0.25
+-- The Hide / Show word beside them: quiet until pointed at, and fainter
+-- still where it does nothing.
+local CONTROL_COLOR        = { 0.65, 0.65, 0.65 }
+local CONTROL_OFF_COLOR    = { 0.35, 0.35, 0.35 }
+
+-- After any change to the category list, both views of it: the bag, and
+-- the Categories settings page if it is open.
+local function Changed()
+    if addon.Bag and addon.Bag.Refresh then addon.Bag:Refresh() end
+    if BazUI.RefreshOptions then BazUI:RefreshOptions(MODULE_NAME .. "-Categories") end
+end
 
 ---------------------------------------------------------------------------
 -- Divider-row pool - one per category. A divider is a thin (~18 px)
@@ -37,6 +54,7 @@ local DIVIDER_LINE_COLOR   = { 0.55, 0.42, 0.18, 0.85 }
 ---------------------------------------------------------------------------
 
 local dividerRows = {}
+local newRow          -- the "New category" row, Categorize mode only
 
 local function GetOrCreateDividerRow(parent, key)
     local row = dividerRows[key]
@@ -77,7 +95,187 @@ local function GetOrCreateDividerRow(parent, key)
     row:SetScript("OnEnter", function(self) self.hover:Show() end)
     row:SetScript("OnLeave", function(self) self.hover:Hide() end)
 
+    -- Up and down, at the right-hand end of the rule. Buttons of their
+    -- own, so a click on one moves the category rather than folding it.
+    local function Arrow(direction, tip)
+        local btn = CreateFrame("Button", nil, row)
+        btn:SetSize(ARROW_SIZE, ARROW_SIZE)
+        btn.icon = btn:CreateTexture(nil, "OVERLAY")
+        btn.icon:SetPoint("CENTER")
+        BazUI.SetArrowTexture(btn.icon, direction, ARROW_SIZE)
+        btn:SetScript("OnEnter", function(self)
+            row.hover:Show()
+            if not self:IsEnabled() then return end
+            self.icon:SetAlpha(1)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(tip, 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        btn:SetScript("OnLeave", function(self)
+            row.hover:Hide()
+            if self:IsEnabled() then self.icon:SetAlpha(ARROW_ALPHA_IDLE) end
+            GameTooltip:Hide()
+        end)
+        btn:Hide()
+        return btn
+    end
+    row.down = Arrow("DOWN", "Move down")
+    row.down:SetPoint("RIGHT", row, "RIGHT", -2, 0)
+    row.up = Arrow("UP", "Move up")
+    row.up:SetPoint("RIGHT", row.down, "LEFT", -2, 0)
+
+    -- Hide or Show, left of the arrows: whether the category is drawn
+    -- outside Categorize mode. A word rather than an icon, because there is
+    -- no eye in the game's art that every client is sure to have.
+    local vis = CreateFrame("Button", nil, row)
+    vis:SetHeight(ARROW_SIZE)
+    vis:SetPoint("RIGHT", row.up, "LEFT", -8, 0)
+    vis.label = BazUI.Skin.Theme.FontString(vis, "OVERLAY", "GameFontNormalSmall")
+    vis.label:SetPoint("CENTER")
+    vis:SetScript("OnEnter", function(self)
+        row.hover:Show()
+        if self:IsEnabled() then self.label:SetTextColor(unpack(TITLE_COLOR)) end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.tipTitle or "", 1, 0.82, 0)
+        if self.tipBody then GameTooltip:AddLine(self.tipBody, 1, 1, 1, true) end
+        GameTooltip:Show()
+    end)
+    vis:SetScript("OnLeave", function(self)
+        row.hover:Hide()
+        if self:IsEnabled() then self.label:SetTextColor(unpack(CONTROL_COLOR)) end
+        GameTooltip:Hide()
+    end)
+    vis:Hide()
+    row.visibility = vis
+
     dividerRows[key] = row
+    return row
+end
+
+-- The rule runs up to the controls when they are showing and to the edge
+-- of the bag when they are not.
+local function ShowControls(row, shown)
+    row.up:SetShown(shown)
+    row.down:SetShown(shown)
+    row.visibility:SetShown(shown)
+    row.line:ClearAllPoints()
+    row.line:SetPoint("LEFT", row.text, "RIGHT", 8, 0)
+    if shown then
+        row.line:SetPoint("RIGHT", row.visibility, "LEFT", -6, 0)
+    else
+        row.line:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+    end
+end
+
+-- The Hide / Show word for this render. The catch-all cannot be hidden -
+-- Categories.SetHidden refuses it - so its word is there and grayed, with
+-- the reason on hover, rather than missing from one row in the column.
+local function SetVisibilityToggle(btn, key, hidden, protected)
+    btn.label:SetText(hidden and "Show" or "Hide")
+    btn:SetWidth(btn.label:GetStringWidth() + 8)
+    btn:SetEnabled(not protected)
+    btn.label:SetTextColor(unpack(protected and CONTROL_OFF_COLOR or CONTROL_COLOR))
+    if protected then
+        btn.tipTitle = "This one cannot be hidden"
+        btn.tipBody  = "It catches everything no other category takes, so "
+            .. "hiding it could hide anything at all."
+    elseif hidden then
+        btn.tipTitle = "Show this category"
+        btn.tipBody  = "Draw it, and what is in it, in the bag again."
+    else
+        btn.tipTitle = "Hide this category"
+        btn.tipBody  = "Its items stay in your bags, but neither it nor they "
+            .. "are drawn outside Categorize mode."
+    end
+    btn:SetScript("OnClick", function()
+        addon.Categories.SetHidden(key, not hidden)
+        Changed()
+    end)
+end
+
+-- One arrow's job for this render: the shown category it would move past,
+-- or none, which leaves it faint and doing nothing - the way the drawer's
+-- arrows sit at the ends of a stack.
+local function SetArrow(btn, target, move)
+    btn:SetEnabled(target ~= nil)
+    btn.icon:SetAlpha(target and ARROW_ALPHA_IDLE or ARROW_ALPHA_OFF)
+    btn:SetScript("OnClick", function()
+        move()
+        Changed()
+    end)
+end
+
+---------------------------------------------------------------------------
+-- The "New category" row - last in the bag in Categorize mode, so sorting
+-- things into a category of your own does not mean a trip to the settings
+-- page. It asks for a name and the category lands at the end of the list,
+-- just above this row, with a drop slot of its own to pin things into.
+-- Its rules, if it wants any, are on the Categories settings page.
+---------------------------------------------------------------------------
+
+local function PromptNewCategory()
+    BazUI:OpenPopup({
+        title  = "New category",
+        width  = 360,
+        fields = {
+            { type = "input", key = "name", label = "Name", default = "" },
+        },
+        buttons = {
+            { label = "Cancel", style = "default" },
+            { label = "Create", style = "primary",
+              onClick = function(values)
+                  local name = values and values.name
+                  name = name and name:match("^%s*(.-)%s*$")
+                  if not name or name == "" then return end
+                  addon.Categories.Create(name)
+                  Changed()
+              end },
+        },
+    })
+end
+
+local function GetOrCreateNewRow(parent)
+    if newRow then
+        newRow:SetParent(parent)
+        return newRow
+    end
+
+    local row = CreateFrame("Button", nil, parent)
+    row:SetHeight(DIVIDER_HEIGHT)
+
+    local hover = row:CreateTexture(nil, "BACKGROUND")
+    hover:SetAllPoints()
+    hover:SetColorTexture(1, 1, 1, 0.04)
+    hover:Hide()
+
+    -- A plus where a divider has its fold mark, and no rule: it should
+    -- read as somewhere to add a category, not as one more category.
+    local plus = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontNormal")
+    plus:SetPoint("LEFT", 4, 0)
+    plus:SetText("+")
+    plus:SetTextColor(unpack(TITLE_COLOR))
+
+    local text = BazUI.Skin.Theme.FontString(row, "OVERLAY", "GameFontNormalSmall")
+    text:SetPoint("LEFT", plus, "RIGHT", 6, 0)
+    text:SetText("New category")
+    text:SetTextColor(unpack(TITLE_COLOR))
+
+    row:RegisterForClicks("LeftButtonUp")
+    row:SetScript("OnClick", PromptNewCategory)
+    row:SetScript("OnEnter", function(self)
+        hover:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("New category", 1, 0.82, 0)
+        GameTooltip:AddLine("Makes an empty category at the end of the bag. "
+            .. "Drop items on its + slot to pin them there.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function()
+        hover:Hide()
+        GameTooltip:Hide()
+    end)
+
+    newRow = row
     return row
 end
 
@@ -183,6 +381,7 @@ local function HideAllDividerRows()
     for _, row in pairs(dividerRows) do
         row:Hide()
     end
+    if newRow then newRow:Hide() end
 end
 
 -- Public hide-all so Bag.lua can clear our chrome when it switches
@@ -339,23 +538,32 @@ function Layouts.Render(ctx)
     local byCategory = Categories.GetPairsByCategory(not ctx.hideEmpty)
     local catList    = Categories.GetOrdered()
 
-    -- Categorize mode (toggled via left-click on the bag's portrait)
+    -- Categorize mode (toggled by middle-clicking the bag's portrait)
     -- reveals every category - including hidden ones and ones with
     -- zero items - and shows a gold "+" drop slot at the end of each
-    -- grid for click-to-pin / drag-to-pin. Outside of categorize
-    -- mode the bag stays clean: no drop slots, no empty categories,
-    -- no hidden ones.
-    local categorizeMode = (addon.Bag and addon.Bag.IsCategorizeMode
-                            and addon.Bag.IsCategorizeMode()) and true or false
+    -- grid for click-to-pin / drag-to-pin, Hide / Show and up and down
+    -- arrows on each divider, and a row at the bottom for making a new
+    -- category. Outside of categorize mode the bag stays clean: none of
+    -- that, no empty categories, no hidden ones.
+    --
+    -- ctx.categorize, when it is given, stands in for the live mode. The bag
+    -- sizes itself from the everyday view and keeps that size in Categorize
+    -- mode - see Bag:Refresh - so it asks for that view by name.
+    local categorizeMode = ctx.categorize
+    if categorizeMode == nil then
+        categorizeMode = (addon.Bag and addon.Bag.IsCategorizeMode
+                          and addon.Bag.IsCategorizeMode()) and true or false
+    end
 
     -- A `hidden = true` flag on a category suppresses it from the bag
     -- panel during normal use - no divider, no items, no drop slot.
     -- During categorize mode hidden categories DO render (so the user
     -- can pin items into them by drop slot) but get a gray "(hidden)"
     -- tag on the divider so they're visually distinguishable.
-    local hiddenByKey = {}
+    local hiddenByKey, protectedByKey = {}, {}
     for _, info in ipairs(Categories.GetAll()) do
         if info.hidden then hiddenByKey[info.key] = true end
+        if info.isProtected then protectedByKey[info.key] = true end
     end
 
     -- Hide bag-mode section chrome in case the user just switched modes.
@@ -366,38 +574,49 @@ function Layouts.Render(ctx)
     HideAllDividerRows()
     HideAllDropSlots()
 
-    local y = -TOP_PAD
-
-    for _, cat in ipairs(catList) do
-        local items     = byCategory[cat.key] or {}
-        local hasItems  = #items > 0
-        local isHidden  = hiddenByKey[cat.key] == true
-
-        -- Visibility rules:
-        --   * Normal mode:   show only categories with items, skip hidden ones
-        --   * Categorize:    show every category (incl. empty + hidden) so
-        --                    the user can manage pins everywhere
-        -- Free space is only ever worth showing when there is some:
-        -- an "Empty Slots" heading over nothing is the one category
-        -- that should not appear in categorize mode either.
-        local visible
+    -- Visibility rules:
+    --   * Normal mode:   show only categories with items, skip hidden ones
+    --   * Categorize:    show every category (incl. empty + hidden) so
+    --                    the user can manage pins everywhere
+    -- Free space is only ever worth showing when there is some:
+    -- an "Empty Slots" heading over nothing is the one category
+    -- that should not appear in categorize mode either.
+    local function Visible(cat)
+        local hasItems = #(byCategory[cat.key] or {}) > 0
         -- A category describing something this character has not got
         -- never appears, not even in categorize mode: there is nothing to
         -- pin into a reagent bag that is not being carried.
         if Categories.Available and not Categories.Available(cat.key) then
-            visible = false
+            return false
         elseif Categories.EMPTY_KEYS and Categories.EMPTY_KEYS[cat.key] then
             -- A heading over no free space is the one thing that should
             -- not appear even in categorize mode: there is nothing to
             -- pin into an empty slot.
-            visible = hasItems
+            return hasItems
         elseif categorizeMode then
-            visible = true
-        else
-            visible = hasItems and not isHidden
+            return true
         end
+        return hasItems and not hiddenByKey[cat.key]
+    end
 
-        if visible then
+    -- Which categories are drawn, settled before any of them is: a
+    -- divider's arrows move it past the shown category above or below,
+    -- so each one has to know what those are.
+    local shown, position = {}, {}
+    for _, cat in ipairs(catList) do
+        if Visible(cat) then
+            shown[#shown + 1] = cat.key
+            position[cat.key] = #shown
+        end
+    end
+
+    local y = -TOP_PAD
+
+    for _, cat in ipairs(catList) do
+        local items     = byCategory[cat.key] or {}
+        local isHidden  = hiddenByKey[cat.key] == true
+
+        if position[cat.key] then
             local collapsed = IsCollapsed(cat.key)
 
             -- Divider row spans the full width. Hidden categories get
@@ -443,6 +662,20 @@ function Layouts.Render(ctx)
             end)
             divider:Show()
 
+            ShowControls(divider, categorizeMode)
+            if categorizeMode then
+                local above = shown[position[key] - 1]
+                local below = shown[position[key] + 1]
+                SetArrow(divider.up, above, function()
+                    Categories.MoveBefore(key, above)
+                end)
+                SetArrow(divider.down, below, function()
+                    Categories.MoveAfter(key, below)
+                end)
+                SetVisibilityToggle(divider.visibility, key, isHidden,
+                    protectedByKey[key] == true)
+            end
+
             y = y - DIVIDER_HEIGHT - DIVIDER_GAP_BELOW
 
             if not collapsed then
@@ -486,6 +719,15 @@ function Layouts.Render(ctx)
                 y = y - CATEGORY_GAP
             end
         end
+    end
+
+    if categorizeMode then
+        local add = GetOrCreateNewRow(frame)
+        add:ClearAllPoints()
+        add:SetPoint("TOPLEFT",  frame, "TOPLEFT",  SIDE_PAD,  y)
+        add:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -SIDE_PAD, y)
+        add:Show()
+        y = y - DIVIDER_HEIGHT - CATEGORY_GAP
     end
 
     return y

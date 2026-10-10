@@ -148,6 +148,7 @@ BazUI:RegisterUserGuide("Bags", {
                 { type = "note", text = "This gesture is the game's own split-stack shortcut, so the menu carries |cffffd700Split stack...|r as well - the shortcut is not lost, just moved onto the menu that took its place. Use, link and every other click are untouched." },
                 { type = "h3", text = "Categorize mode" },
                 { type = "paragraph", text = "The way to do a lot at once. Middle-click the portrait, or type /bbg categorize. Every category appears - empty ones and hidden ones included - each with a gold |cffffd700+|r at the end of its row. Pick up an item, drop it on the + of the category you want, repeat. Middle-click the portrait again to leave." },
+                { type = "paragraph", text = "The categories themselves can be arranged there too. Each heading has |cffffd700Hide|r or |cffffd700Show|r and a pair of arrows at its right-hand end: the arrows move it up or down past the next category the bag is showing, and a hidden category keeps its items but is only drawn in Categorize mode. |cffffd700+ New category|r at the bottom makes one at the end, ready for its + slot. Renaming, deleting and rules are on the Categories settings page." },
                 { type = "paragraph", text = "It is a mode you turn on rather than something that happens whenever the cursor has an item in it, because the latter fights with simply moving things between slots." },
                 { type = "h3", text = "From the settings page" },
                 { type = "paragraph", text = "A category's detail panel lists what is pinned to it, each with a Remove button. Pinning is done in the bag itself, which is where the item is - either of the two ways above." },
@@ -159,8 +160,7 @@ BazUI:RegisterUserGuide("Bags", {
             blocks = {
                 { type = "paragraph", text = "On the |cffffd700General|r page, under Layout. Changes apply while you watch - leave the panel open while you set them." },
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
-                    { "Columns", "The |cffffd700narrowest|r the bag goes, 4 to 20. It takes more columns on its own when the contents would otherwise run past the row limit below." },
-                    { "Rows before widening", "How tall the bag may get before it takes another column instead. Bags do not scroll: a higher number gives a taller, narrower bag and a lower one gives a shorter, wider bag." },
+                    { "Columns", "The |cffffd700widest|r the bag goes, 4 to 20. It is narrower whenever fewer columns would show everything in the same number of rows, so it never carries empty space down its right-hand side. A bag too full for the screen at that width scrolls." },
                     { "Background", "Marble, Rock or Flat. Flat is the skin's panel color with no grain in it at all." },
                     { "Darkness", "How far the background is taken toward black. All the way leaves no grain, which is the same as picking Flat. Hidden when Flat is chosen, because it would do nothing." },
                     { "Background opacity", "How much of the world shows through. Items and text stay solid." },

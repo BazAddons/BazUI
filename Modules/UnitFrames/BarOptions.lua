@@ -35,6 +35,7 @@ local FORMATS = {
     name            = "Name",
     namePercent     = "Name and percent",
 }
+local NAME_STYLES = { full = "Full name", first = "First name", last = "Last name" }
 local EDGES = { BOTTOM = "Below", TOP = "Above" }
 local TAKES = {
     full = "The whole width",
@@ -232,6 +233,16 @@ local function BarArgs(def)
                 get = Field(def, "textFormat", "namePercent"),
                 set = SetField(def, "textFormat"),
             },
+            nameStyle = {
+                order = 24.5, type = "select", name = "Name",
+                desc = "Full name, first name or last name. A unit with no last name - every NPC, and any player who has not taken one - shows its first name instead.",
+                -- Retail has no surnames, so there is nothing to choose.
+                hidden = function() return def.kind == "cast" or BazUI.IsRetail end,
+                values = NAME_STYLES,
+                sorting = { "full", "first", "last" },
+                get = Field(def, "nameStyle", "full"),
+                set = SetField(def, "nameStyle"),
+            },
             hideAtMax = {
                 order = 26, type = "toggle", name = "Hide at maximum level",
                 desc = "An experience bar has nothing to show once you stop earning any.",
@@ -287,7 +298,8 @@ function Options:Build()
             bars = {
                 order = 10, type = "group", name = "",
                 pickerLabel = "Bar",
-                pickerSelect = TakePendingBar,
+                pickerSelect = TakePendingBar,
+
                 pickerSelectTaken = TakePendingBarTaken,
                 emptyText = "No bars yet. Click New bar to make one.",
                 args = bars,

@@ -211,11 +211,43 @@ end
 -- and the cross-realm shape, so the joining and splitting is theirs. Ours
 -- is one place to ask, so a fix lands everywhere at once.
 --
---   opts.surname = false   the first name on its own
+--   opts.part = "first"    the first name on its own
+--   opts.part = "last"     the surname on its own, or the first name where
+--                          there is none - every NPC, and any player who
+--                          has not taken one
+--   opts.surname = false   the same as part = "first", for older callers
+
+-- The surname by itself: the second thing UnitName returns, on Forever.
+-- Retail has no surnames and returns the realm there instead, so it is
+-- never asked. Nil when there is none.
+--
+-- Whether it is there is a question about presence, which may be asked of
+-- anything. Whether it is empty may not be asked of a secret - and a
+-- secret surname is certainly not empty, so it is handed back to be
+-- written rather than looked at.
+local function Surname(unit)
+    if BazUI.IsRetail then return nil end
+    local ok, _, surname = pcall(UnitName, unit)
+    if not ok or surname == nil then return nil end
+    if BazUI.Secret.Read(function() return surname ~= "" end, true) then
+        return surname
+    end
+    return nil
+end
+
 function BazUI.UnitDisplayName(unit, opts)
     if not unit then return "" end
+    local part = opts and opts.part
+    if opts and opts.surname == false then part = "first" end
+
+    if part == "last" then
+        local surname = Surname(unit)
+        if surname ~= nil then return surname end
+        part = "first"
+    end
+
     local NameUtil = _G.NameUtil
-    local want = not (opts and opts.surname == false)
+    local want = part ~= "first"
 
     if NameUtil then
         local fn = want and NameUtil.FormatUnitNameForDisplay

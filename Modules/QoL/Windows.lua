@@ -50,10 +50,14 @@ local WINDOWS = {
       frame = { "PlayerSpellsFrame", "SpellBookFrame" },
       loadedBy = "Blizzard_PlayerSpells",
       desc = "Drag the spellbook where you want it. Your talents share that window, so they move with it." },
-    -- Two names, because two clients. Classic has a quest log window of
-    -- its own; on Forever the quest log lives in the map. First one the
-    -- client actually has wins - see Resolve below.
-    { key = "dragQuestLog",   label = "Quest log",     frame = { "QuestMapFrame", "QuestLogFrame" } },
+    -- Only where the quest log is a window of its own. On Forever and on
+    -- retail it is QuestMapFrame, a panel inside the world map rather than
+    -- a window, and it moves with the map under the World map switch.
+    -- Offered as a window of its own, it could be dragged off the map, and
+    -- the next login put it back by a single point - but the panel takes
+    -- its size from being pinned to the map's edges, so held by one point
+    -- it had no size at all and simply disappeared.
+    { key = "dragQuestLog",   label = "Quest log",     frame = "QuestLogFrame" },
     { key = "dragSocial",     label = "Social",        frame = "FriendsFrame"      },
     { key = "dragGuild",      label = "Guild",         frame = "CommunitiesFrame",
       loadedBy = "Blizzard_Communities",
@@ -241,7 +245,7 @@ end
 
 -- A window may be known by more than one name, because the same panel is
 -- not called the same thing on every client: Classic's TradeSkillFrame is
--- Forever's ProfessionsFrame, its QuestLogFrame is the map. Naming both and
+-- Forever's ProfessionsFrame. Naming both and
 -- taking whichever exists keeps one list serving both, instead of a branch
 -- on the flavour that goes stale the next time Blizzard renames something.
 local function Each(value)

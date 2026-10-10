@@ -113,7 +113,12 @@ end
 --
 -- So the sync runs once at creation too. It is the same function either
 -- way, and running it twice only reads the same values twice.
+--
+-- Kept on the frame as well, so a page whose rows are all still the right
+-- rows can be brought up to date by running them again rather than by
+-- being built over from nothing. See SyncPage in Registration.lua.
 function O.SyncRow(frame, fn)
+    frame._bazSync = fn
     frame:SetScript("OnShow", fn)
     fn(frame)
 end

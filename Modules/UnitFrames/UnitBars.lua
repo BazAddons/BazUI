@@ -760,6 +760,18 @@ local WORDINGS = {
     namePair   = { format = "%s  %d / %d", args = { "name", "current", "max" } },
 }
 
+-- Whether a wording puts the unit's name on the bar: its own pieces, or
+-- for one that does arithmetic, those of the wording it falls back to -
+-- which is what it shows whenever the sum cannot be done.
+local function SaysName(key)
+    local wording = key and WORDINGS[key]
+    if wording and wording.fallback then wording = WORDINGS[wording.fallback] end
+    for _, arg in ipairs(wording and wording.args or {}) do
+        if arg == "name" then return true end
+    end
+    return false
+end
+
 -- A wording with a piece missing is not that wording.
 --
 -- "Name and level" on something with no level is just a name, and the
@@ -929,10 +941,11 @@ end
 -- A wording that asks for the level itself gets a bare name, and the
 -- level handed over separately - otherwise "Name and level" with the
 -- level setting on would say it twice.
-local function LabelFor(unit, wording)
+local function LabelFor(unit, wording, nameStyle)
     -- Through the shared helper: UnitName drops the surname on this
     -- client, because it returns it separately. See BazUI.UnitDisplayName.
-    local name = BazUI.UnitDisplayName(unit)
+    -- nameStyle is the bar's choice of full, first or last name.
+    local name = BazUI.UnitDisplayName(unit, { part = nameStyle })
     if LEVEL_WORDINGS[wording] then return name end
 
     local rank = addon:GetSetting("rankWord") == true
@@ -1114,7 +1127,7 @@ local function UpdateHealth(bar)
     bar.frame:SetFillColor(HealthColor(unit))
 
     local wording = TextFormat(bar)
-    local name, suffix = LabelFor(unit, wording)
+    local name, suffix = LabelFor(unit, wording, bar.def.nameStyle)
     -- A word instead of numbers. The name is handed to the font string
     -- rather than joined on here, and whether there is one is decided
     -- inside a guarded read: a secret name may be printed but not
@@ -1185,7 +1198,7 @@ local function UpdatePower(bar)
     -- bar asked outright for the level still gets it.
     local wording = TextFormat(bar)
     SetBarText(bar, wording, current, maximum,
-        BazUI.UnitDisplayName(unit), LevelText(unit))
+        BazUI.UnitDisplayName(unit, { part = bar.def.nameStyle }), LevelText(unit))
 end
 
 -- A portrait, which is the one bar kind whose content is a picture.
@@ -2471,6 +2484,33 @@ function UnitBars:EditSettings(bar)
                 Refresh()
             end,
         })
+
+        -- Which part of a name, for a client with surnames to choose
+        -- between. Retail has none, so it is never offered there. Grayed
+        -- while neither wording above has a name in it, rather than
+        -- coming and going as they change.
+        if not BazUI.IsRetail then
+            table.insert(widgets, at + 2, {
+                type = "dropdown", section = "Text", label = "Name",
+                desc = "Full name, first name or last name. A unit with no "
+                    .. "last name - every NPC, and any player who has not "
+                    .. "taken one - shows its first name instead.",
+                options = {
+                    { label = "Full name",  value = "full" },
+                    { label = "First name", value = "first" },
+                    { label = "Last name",  value = "last" },
+                },
+                disabled = function()
+                    return not (SaysName(def.textFormat or "namePercent")
+                        or SaysName(def.hoverFormat))
+                end,
+                get = function() return def.nameStyle or "full" end,
+                set = function(value)
+                    def.nameStyle = (value ~= "full") and value or nil
+                    Refresh()
+                end,
+            })
+        end
     end
 
     -- One switch per mark, from the registry rather than written out

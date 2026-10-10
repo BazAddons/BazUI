@@ -15,12 +15,9 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
     profiles      = true,
     defaults = {
         -- Layout
-        cols          = 12,    -- the narrowest the panel goes; it widens on its own when content
-                                -- would otherwise run past maxRows. 4..20 via the slider.
+        cols          = 12,    -- the widest the panel goes; it is narrower whenever fewer columns
+                                -- fit everything in the same number of rows. 4..20 via the slider.
         hideEmpty     = true,  -- skip empty slots by default - most first-time users prefer the compact view
-        maxRows       = 15,    -- how tall the content may get before the panel takes another column
-                                -- instead. Bags do not scroll; a higher number means a taller,
-                                -- narrower bag and a lower one means a shorter, wider bag.
         -- Which qualities get a colored edge on their slot. Classic
         -- colors nothing on its own, so this is entirely ours.
         rarityRims    = "uncommon",
@@ -322,20 +319,12 @@ local function GetSettingsPage()
             layoutHeader = { order = 10, type = "header", name = "Layout" },
             cols = {
                 order = 11, type = "range", name = "Columns",
-                desc = "The narrowest the bag goes. It takes more columns on its own "
-                    .. "when the contents would otherwise run past the row limit below.",
+                desc = "The widest the bag goes. It is narrower whenever fewer columns "
+                    .. "would show everything in the same number of rows, so it never "
+                    .. "carries empty space down its right-hand side.",
                 min = 4, max = 20, step = 1,
                 get = function() return addon:GetSetting("cols") or 8 end,
                 set = function(_, val) addon:SetSetting("cols", val); Refresh() end,
-            },
-            maxRows = {
-                order = 12, type = "range", name = "Rows before widening",
-                desc = "How tall the bag may get before it takes another column instead. "
-                    .. "Bags never scroll: a higher number gives a taller, narrower bag "
-                    .. "and a lower one gives a shorter, wider bag.",
-                min = 3, max = 30, step = 1,
-                get = function() return addon:GetSetting("maxRows") or 15 end,
-                set = function(_, val) addon:SetSetting("maxRows", val); Refresh() end,
             },
             bgAlpha = {
                 order = 13, type = "range", name = "Background opacity",

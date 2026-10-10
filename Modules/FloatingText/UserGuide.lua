@@ -18,9 +18,10 @@ BazUI:RegisterUserGuide("FloatingText", {
                 { type = "h2", text = "Two areas" },
                 { type = "table", columns = { "Area", "What lands in it" }, rows = {
                     { "|cffffd700Incoming|r", "What is happening to you: damage you take, heals you receive." },
-                    { "|cffffd700Outgoing|r", "What you are doing: your damage, your healing." },
+                    { "|cffffd700Outgoing|r", "What is happening to your target while you are fighting: your damage, your healing." },
                 } },
-                { type = "paragraph", text = "Which one a number goes to is not a guess. The game tells us who |cffffd700took|r the hit, so anything landing on you is incoming and anything landing on anybody else is outgoing." },
+                { type = "paragraph", text = "The game tells an addon who |cffffd700took|r a hit, never who dealt it. So anything landing on you is incoming, and anything landing on your target while you are in combat is outgoing. Everything else - a party member's fight across the field, a mob you are not targeting - is somebody else's, and does not show." },
+                { type = "note", text = "In a group, a number over your target can be a party member's hit on it rather than yours. The game does not say whose it was, so there is no way to leave theirs out." },
                 { type = "note", style = "tip", text = "Open |cffffd700BazUI Edit Mode|r and each area shows its bounds and its name, so you can drag it where you want. The rest of the time an area is only a space - there is nothing to see but the numbers." },
                 { type = "note", text = "|cffffd700How far they travel|r is also the height of the area. The two are the same thing on purpose: what you drag in Edit Mode is the space the numbers actually use, so nothing ever rises out of the box you put it in." },
             },

@@ -28,6 +28,7 @@ addon.Bag = Bag
 ---------------------------------------------------------------------------
 
 local DEFAULT_COLS      = 8       -- starting column count when no setting saved
+local MIN_FIT_COLS      = 7       -- the narrowest the search box and money still sit side by side in
 local SLOT_SIZE         = 37      -- ContainerFrameItemButtonTemplate native size
 local SLOT_SPACING_X    = 5       -- Blizzard's ITEM_SPACING_X
 local SLOT_SPACING_Y    = 4
@@ -1672,14 +1673,6 @@ function Bag:Refresh()
         end
     end
 
-    -- Width the inner content gets - match scrollChild to scrollFrame.
-    -- ScrollFrame's width comes from its TOPLEFT/TOPRIGHT anchors
-    -- (= frame width minus the two SIDE_PADs), so we read it back
-    -- rather than recomputing.
-    if frame.scrollChild and frame.scrollFrame then
-        frame.scrollChild:SetWidth(frame.scrollFrame:GetWidth() or 1)
-    end
-
     -- Laying the content out, for a given width and with or without the
     -- expensive half.
     --
@@ -1690,7 +1683,7 @@ function Bag:Refresh()
     -- where each grid wraps, not on a slot count that could be worked out
     -- in advance. A second, simpler estimate would be two answers to one
     -- question, and they would drift.
-    local function LayoutContent(useCols, updateSlot)
+    local function LayoutContent(useCols, updateSlot, categorize)
         -- The y-cursor starts at 0, the top of scrollChild, rather than
         -- at -TOP_PAD: the chrome lives outside the scroll area.
         local y = 0
@@ -1714,6 +1707,7 @@ function Bag:Refresh()
                 -- content scrolls cleanly when content > maxHeight.
                 frame                 = frame.scrollChild or frame,
                 cols                  = useCols,
+                categorize            = categorize,
                 SLOT_SIZE             = SLOT_SIZE,
                 SLOT_SPACING_X        = SLOT_SPACING_X,
                 SLOT_SPACING_Y        = SLOT_SPACING_Y,
@@ -1848,51 +1842,62 @@ function Bag:Refresh()
         return y
     end
 
-    -- Bags never scroll. Content that will not fit grows the panel a
-    -- column and lays out again, trading height for width until it does:
-    -- a wider bag read at a glance beats a taller one wheeled through.
-    -- The row cap is what that is measured against - it used to be where
-    -- scrolling began, and is now where a column is added.
+    -- How wide. The Columns setting is the most the bag will take, not
+    -- what it always takes: it is as narrow as it can be without anything
+    -- costing an extra row. A bag whose longest category is twelve items
+    -- is twelve wide under a setting of sixteen, rather than carrying
+    -- empty columns down its right-hand side.
     --
-    -- Bounded by what the screen will take, because a bag wider than the
-    -- monitor is worse than one that scrolls. If even the widest panel
-    -- cannot hold it - a great many categories, all open - the scroll is
-    -- still underneath as the last resort.
+    -- Found by laying the content out and measuring, because the height
+    -- depends on where each category wraps, not on a count that could be
+    -- worked out in advance. Height only ever falls as columns are added,
+    -- so the narrowest width that is as short as the widest allowed is a
+    -- binary search between the two. The trial passes are handed a
+    -- do-nothing slot updater: none of the arithmetic that decides the
+    -- height reads an item, so the answer is exact while the per-slot
+    -- work is skipped, and only the pass that counts draws.
     --
-    -- The trial passes are handed a do-nothing slot updater. None of the
-    -- arithmetic that decides the height reads an item, so the answer is
-    -- exact while the per-slot work is skipped; only the pass that counts
-    -- draws.
+    -- Always measured on the everyday view, Categorize mode or not.
+    -- Categorize is the same bag with every heading open and a drop slot
+    -- on each; fitted on its own terms the bag changed shape under the
+    -- items being sorted. Sized from the everyday view it keeps its width,
+    -- and the extra headings and slots simply make it longer.
+    --
+    -- Never narrower than the search box and money need, unless the
+    -- setting itself asks for less.
     local function NoSlotWork() end
-    local maxRows = addon:GetSetting("maxRows") or 15
-    local maxH    = maxRows * (SLOT_SIZE + SLOT_SPACING_Y)
+    local function HeightFor(c) return math.abs(LayoutContent(c, NoSlotWork, false)) end
 
-    local room    = (UIParent:GetWidth() or 1024) - 40
-    local ceiling = cols
-    while ceiling < 40 and PanelWidthFor(ceiling + 1) <= room do
-        ceiling = ceiling + 1
+    local target = HeightFor(cols)
+    local lo, hi = math.min(cols, MIN_FIT_COLS), cols
+    while lo < hi do
+        local mid = math.floor((lo + hi) / 2)
+        if HeightFor(mid) <= target then hi = mid else lo = mid + 1 end
     end
-
-    while cols < ceiling do
-        if math.abs(LayoutContent(cols, NoSlotWork)) <= maxH then break end
-        cols = cols + 1
-    end
+    cols = lo
 
     -- The width is only known now, once the fitting above has settled it.
     frame:SetWidth(PanelWidthFor(cols))
+    -- And the content area with it: the panel less its side padding, which
+    -- is what the scroll frame's anchors make it. Set from the same number
+    -- rather than read back off the scroll frame - that used to happen
+    -- before the panel had its new width, so whenever the width changed
+    -- the category dividers kept the old one.
+    if frame.scrollChild then
+        frame.scrollChild:SetWidth(PanelWidthFor(cols) - SIDE_PAD * 2)
+    end
     local y = LayoutContent(cols, UpdateSlot)
     -- Bottom padding below the scroll area. The money frame lives in the
     -- top-right chrome, so this is just breathing room.
     local bottomPad  = 12
 
-    -- The panel is as tall as its content. The fitting above has already
-    -- spent every column the screen allows trying to make that true, so
-    -- the clamp below only bites when it could not - and then scrolling
-    -- is the lesser evil. Measured against the screen rather than the row
-    -- cap, since the cap has already had its say.
+    -- The panel is as tall as its content, up to what the screen will
+    -- take; past that the content scrolls. A bag no wider than Columns
+    -- has nowhere else to put a very full load - and Categorize mode, with
+    -- every heading open, is the usual way to get there.
     local contentH   = math.abs(y)
     local screenRoom = (UIParent:GetHeight() or 768) - TOP_PAD - 60
-    local scrollH    = math.min(contentH, math.max(maxH, screenRoom))
+    local scrollH    = math.min(contentH, screenRoom)
 
     if frame.scrollChild then
         frame.scrollChild:SetHeight(math.max(contentH, 1))

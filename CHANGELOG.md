@@ -1,33 +1,41 @@
-## 022
+## 023
 
-**Settings save the ordinary way again.**
+**Bags that fit what is in them, and sorting you can do from the bag.**
 
-WoW: Forever used to forget every addon's settings when you logged out, so
-BazUI kept its own somewhere the game did remember. Blizzard has fixed that,
-and BazUI now saves just like any other addon.
+### Bags
 
-Nothing for you to do: your layout, bars, profiles and positions all carry
-over.
+- **Columns is now the most the bag uses, not what it always uses.** The bag
+  is as narrow as it can be without anything taking an extra row, so it no
+  longer carries empty space down its right-hand side.
+- **Rows before widening is gone.** The bag no longer grows past your Columns
+  setting; one too full for the screen scrolls instead.
+- **Categorize mode keeps the bag's shape.** It used to widen until every
+  category sat on one line. Now it stays the width it always is and simply
+  gets longer.
+- **Arrange your categories from the bag.** In Categorize mode (middle-click
+  the bag's portrait) every heading has **Hide** / **Show** and a pair of
+  arrows, and **+ New category** at the bottom makes a new one. A hidden
+  category keeps its items but only appears in Categorize mode.
+- Fixed: moving a category up sometimes did nothing.
+- Fixed: the heading lines stopped short after the bag changed width.
 
-### Changed
+### Unit frames
 
-- **Nameplates for friendly pets.** Pets, minions, guardians and totems on
-  your side can have nameplates like everything else. Whether they get one
-  is the game's own setting, and it starts off, so the switches for it are
-  now on the Nameplates page under **Friendly pets**.
-- **The Codex is Forever only.** It is built around Forever's own content,
-  so it no longer appears on retail.
+- **Choose how names read** on each bar: full name, first name or last name.
+  It is under Text when you select a bar in BazUI Edit Mode, and on the Bars
+  page. Anything without a last name shows its first name. Forever only -
+  retail has no surnames.
 
-### Fixed
+### Floating Text
 
-- **The Legacy button on the micro menu had no icon.** It now wears the
-  same art as the Codex's Legacy tab.
+- **Fixed: other people's fights showed up as yours.** Outgoing numbers are
+  now only what happens to your target while you are fighting, and each hit
+  shows once. In a group, a number on your target can still be a party
+  member's - the game does not say who dealt a hit.
 
-### Removed
+### Also fixed
 
-- **The settings report in chat at every login.**
-- **`/baz sv` and `/baz persist`.** Both were only there for the old saving
-  problem.
-- **"Other addons' settings"** on the Quality of Life page. Those switches
-  kept other addons' settings through the same problem, and those addons
-  remember their own now.
+- **Ticking a box in BazUI's settings no longer makes the whole interface
+  stutter.**
+- **The quest log could be dragged off the map, and then vanished after a
+  reload.** It is part of the map again and moves with it.
