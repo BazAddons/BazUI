@@ -14,7 +14,7 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "Overview",
             blocks = {
-                { type = "lead", text = "The codex gathers what the game scatters across a dozen windows and puts it on one page. Eleven pages, a tab each down the right edge, each one a set of blocks you can fold away." },
+                { type = "lead", text = "The codex gathers what the game scatters across a dozen windows and puts it on one page. Ten pages, a tab each down the right edge, each one a set of blocks you can fold away." },
                 { type = "h2", text = "Opening it" },
                 { type = "list", items = {
                     "Type |cffffd700/codex|r or |cffffd700/bazcodex|r",
@@ -36,11 +36,10 @@ BazUI:RegisterUserGuide("Codex", {
         {
             title = "The pages",
             blocks = {
-                { type = "paragraph", text = "The rail runs top to bottom as the questions get less urgent: what to do now, then what you are part-way through, then what you have, then the two pages about the game rather than about you." },
+                { type = "paragraph", text = "The rail runs top to bottom as the questions get less urgent: what to do now, then what you are part-way through, then what you have, then the pages about the game itself." },
                 { type = "table", columns = { "Page", "What it answers" }, rows = {
                     { "|cffffd700Today|r",       "What is still open to you: quests, lockouts, what you can walk into, what resets when." },
                     { "|cffffd700Progress|r",    "What you have already put your name to." },
-                    { "|cffffd700Quests|r",      "Every quest in the game - where it lives, who gives it, and whether you have done it." },
                     { "|cffffd700Instances|r",   "Every dungeon, raid and world boss, and whether you can go." },
                     { "|cffffd700Professions|r", "Your trades and every other skill you have." },
                     { "|cffffd700Reputation|r",  "Everyone you have standing with." },
@@ -128,45 +127,6 @@ BazUI:RegisterUserGuide("Codex", {
                     { "Durability",  "The worst piece you are wearing." },
                 } },
                 { type = "note", text = "The ranged slot is asked for by name, because this client has one and retail does not." },
-            },
-        },
-
-        {
-            title = "Quests",
-            blocks = {
-                { type = "paragraph", text = "Every quest in the game, where it lives, who gives it, and whether you have done it." },
-                { type = "paragraph", text = "Five thousand and fourteen of them, with 124 zones and 3,956 named quest givers. Open one you have never met and it still tells you the zone, the giver, the minimum level and which side it belongs to - which is the point of the page. It is for deciding where to go." },
-
-                { type = "h2", text = "Finding one" },
-                { type = "table", columns = { "Control", "What it does" }, rows = {
-                    { "The search box", "Filters by name, or by what a quest asks of you - so |cffffd700murloc|r finds the quests whose objectives mention murlocs, not only the ones with it in the title." },
-                    { "The level bands", "Any level, then 1-9 through 60+. The band is the quest's minimum level, not your own." },
-                    { "Incomplete / In progress / Complete", "Along the bottom of the header, touching the list, because they are the list's own tabs rather than a third filter." },
-                } },
-                { type = "note", style = "tip", text = "Quests that share a title - every race's copy of the same starting quest, every class's version of the same trainer chain - are told apart by zone, by who gives them, or failing both by their number. |cffffd700521 titles in this catalog belong to more than one quest|r, so a duplicate on screen is usually seven real quests rather than one shown seven times." },
-
-                { type = "h2", text = "The columns" },
-                { type = "table", columns = { "Column", "What it is" }, rows = {
-                    { "Side", "Alliance, Horde or both. A glance says whether a quest is yours before you read anything else." },
-                    { "Lvl", "The lowest level that can pick it up." },
-                    { "XP", "What it pays, at the level it is meant for." },
-                } },
-
-                { type = "h2", text = "Where the words come from" },
-                { type = "paragraph", text = "None of this pretends to be first-hand. A quest's own words never reach your client until somebody is offered it, so for a quest nobody has met the addon is repeating what a public database says - and it tells you so, on the quest's own facts line, next to the level and the tag." },
-                { type = "table", columns = { "It says", "Which means" }, rows = {
-                    { "|cff55cc66Seen in game|r", "Somebody was offered this quest and the game laid the whole record out. A blank means the quest genuinely has none - no coin reward means no coin reward." },
-                    { "|cff998866Unconfirmed|r", "Borrowed. Good enough to walk towards, not good enough to plan around, and replaced outright the first time the quest is offered to you." },
-                } },
-                { type = "note", text = "The rewards block is marked separately from the words, because the two can come from different places and the figures are the half you act on. A quest can have been read properly and still be guessing about what it pays." },
-                { type = "note", style = "info", text = "This is the one rule the whole catalog is built on: |cffffd700only witnessing licenses a negative.|r Asked about a quest by number, the server decides how much to say and mostly says little, so a blank from it means it declined - never that there is nothing there." },
-
-                { type = "h2", text = "What a row does" },
-                { type = "table", columns = { "You do this", "It does this" }, rows = {
-                    { "Left-click", "Opens the quest: its description, what it asks of you, and what it pays." },
-                    { "Right-click", "Track it, stop tracking it, share it with your group, link it in chat, or abandon it - whichever of those the quest is actually in a state for." },
-                } },
-                { type = "note", text = "A quest you are on shows its progress and its completion text as well. Those only exist once the game has told your client about them, so they are absent on a quest you have never picked up rather than empty." },
             },
         },
 

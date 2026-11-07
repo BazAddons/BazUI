@@ -28,7 +28,7 @@ jobs:
           fetch-tags: true
 
       # No -g. The flavour used to be forced to classic while development
-      # happened on Classic Era; the TOC now declares Interface 16001, which
+      # happened on Classic Era; the released Forever client still uses Interface 16001, which
       # is World of Warcraft: Forever, and -g classic expects 11xxx. Left to
       # itself the packager reads the TOC and decides, which is one fewer
       # place for the two of them to disagree.

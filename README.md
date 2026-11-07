@@ -4,7 +4,7 @@ The Baz Suite as one addon, built for **World of Warcraft: Forever**.
 
 BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, BazBags and parts of BazBars) with a single install: one options window, one profile system, one skin.
 
-**Status: in development.** Two clients are supported: **WoW: Forever**, which BazUI is built for, and **retail**, which is kept working alongside it. No Classic flavour is supported. The Codex is Forever only.
+**Updated for the WoW: Forever launch.** Two clients are supported: **WoW: Forever**, which BazUI is built for, and **retail**, which is kept working alongside it. No Classic flavour is supported. The Codex is Forever only.
 
 ## Modules
 

@@ -152,11 +152,10 @@ Skin.RegisterFill({ id = "hudparty", name = "HUD Party",
     atlas   = "UI-HUD-UnitFrame-Party-PortraitOn-Bar-Health-Status",
     texture = PLAIN, boost = HUD_BOOST, sheen = false })
 
--- The one a fresh profile wears. The game's own bar art, colored by us:
--- it is what the player frame looks like, so the suite looks like part
--- of the game rather than something bolted to it. A client without
--- that atlas falls back to PLAIN, which is what this used to be.
-Skin.DEFAULT_FILL = "hud"
+-- A rectangular fill leaves the spacing around a bar to Theme.border.
+-- The HUD artwork has its own empty edges, which expose the dark track
+-- as a thick inner border. Keep that artwork available as a choice.
+Skin.DEFAULT_FILL = "flat"
 
 ---------------------------------------------------------------------------
 -- Whatever else is installed
@@ -255,7 +254,7 @@ function Skin.ApplyFill(id)
     -- system. An atlas fill has no path of its own, so that consumer
     -- gets the ordinary bar texture rather than a blank square - and it
     -- is named here rather than read off the default fill, because the
-    -- default is an atlas fill itself now.
+    -- selected fill may be an atlas.
     local def = Skin.FillDef()
     Skin.XP_FILL = (not def.atlas and def.texture) or PLAIN
     if Skin.Theme and Skin.Theme.RefreshFills then Skin.Theme.RefreshFills() end

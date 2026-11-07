@@ -560,8 +560,6 @@ BazUI.StarterProfile = {
             x = -46.5,
             y = 83.7,
         },
-        questSeen = {
-        },
         scale = 1,
     },
     Core = {

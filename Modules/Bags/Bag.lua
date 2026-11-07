@@ -114,11 +114,8 @@ end
 -- Bag context frames + item slot construction
 --
 -- Each slot needs to be parented to a frame whose GetID() returns the
--- bag ID. The slot template's mixin reads `parent:IsCombinedBagContainer()`
--- in Initialize() - when that returns true, it adds the proper
--- ItemSlotBackgroundCombinedBagsTemplate texture (leather/brown art),
--- which is what makes empty slots look like Blizzard's combined bag
--- instead of the default ItemButton "blue square" appearance.
+-- bag ID. The slot template also keeps this frame as its container and
+-- asks it IsCombinedBagContainer() when choosing empty-slot artwork.
 ---------------------------------------------------------------------------
 
 local SLOT_TEMPLATE = "ContainerFrameItemButtonTemplate"
@@ -152,7 +149,7 @@ local function GetOrCreateBagContext(bagID)
     local f = CreateFrame("Frame", nil, parent)
     f:SetID(bagID)
     f:SetSize(1, 1)
-    -- Blizzard's slot Initialize checks this to add the combined-bag bg.
+    -- Blizzard's slot mixin checks this to choose the combined-bag art.
     f.IsCombinedBagContainer = function() return true end
     bagContexts[bagID] = f
     return f
@@ -430,12 +427,10 @@ local function GetOrCreateSlotButton(bagID, slotID)
     local name = "BazUIBagSlot_" .. bagID .. "_" .. slotID
     local btn = CreateFrame(SlotFrameType(), name, parent, SLOT_TEMPLATE)
 
-    -- Initialize handles SetID, SetBagID attribute, ItemSlotBackground
-    -- (the combined-bag leather background), and Show. Without this we
-    -- get the default empty-slot appearance, which is the source of the
-    -- blue tint on empty slots reported earlier.
+    -- Initialize takes the container frame before the bag and slot IDs.
+    -- It stores the container, sets both IDs and shows the button.
     if btn.Initialize then
-        btn:Initialize(bagID, slotID)
+        btn:Initialize(parent, bagID, slotID)
     else
         btn:SetID(slotID)
     end

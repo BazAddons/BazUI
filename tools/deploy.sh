@@ -16,7 +16,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DEST="${1:-/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/BazUI}"
+DEST="${1:-/Applications/World of Warcraft/_forever_/Interface/AddOns/BazUI}"
 DEST="${DEST%/}"
 
 # Refuse anything that is not an AddOns/BazUI folder, because --delete

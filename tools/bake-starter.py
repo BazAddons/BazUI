@@ -25,7 +25,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGET = os.path.join(ROOT, "Core", "StarterProfile.lua")
-DEFAULT_GLOB = ("/Applications/World of Warcraft/_classic_beta_/WTF/Account/"
+DEFAULT_GLOB = ("/Applications/World of Warcraft/_forever_/WTF/Account/"
                 "*/SavedVariables/BazUI.lua")
 ARRANGED = "-- Arranged on a "
 

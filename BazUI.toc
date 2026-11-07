@@ -13,11 +13,11 @@
 # What that audit cannot see is behaviour, and that is where the real
 # differences will be. A name existing is not the same as it doing the same
 # thing.
-## Interface: 16001, 120100
+## Interface: 16001, 120105
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 023
+## Version: 024
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -294,14 +294,12 @@ Modules\Codex\Data\Goals.lua
 Modules\Codex\Data\Factions.lua
 Modules\Codex\Data\Instances.lua
 Modules\Codex\Data\Items.lua
-Modules\Codex\Data\Quests.lua
 Modules\Codex\Sources\Today.lua
 Modules\Codex\Sources\Quests.lua
 Modules\Codex\Sources\Access.lua
 Modules\Codex\Sources\Goals.lua
 Modules\Codex\Sources\Progress.lua
 Modules\Codex\Sources\Items.lua
-Modules\Codex\Sources\QuestCatalog.lua
 Modules\Codex\Sources\Wishlist.lua
 Modules\Codex\Sources\Equipment.lua
 Modules\Codex\Sources\Reputation.lua

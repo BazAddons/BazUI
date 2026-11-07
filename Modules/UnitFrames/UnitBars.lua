@@ -1425,7 +1425,7 @@ end
 -- Casting
 ---------------------------------------------------------------------------
 
-local function CastTick(frame)
+local function CastTick(frame, elapsed)
     local state = frame._cast
     if not state then return end
 
@@ -1440,22 +1440,11 @@ local function CastTick(frame)
         return
     end
 
-    local now = GetTime() * 1000
-
-    -- The bar is filled by the widget, from the cast's own start and end.
-    --
-    -- Not by working out a fraction here, which is what this used to do -
-    -- and why a cast bar on anything but you showed nothing at all.
-    -- UnitCastingInfo is secret for every unit except the player and
-    -- their pet, so `endMS - startMS` was refused and SyncCast treated the
-    -- whole cast as one we were not allowed to know about.
-    --
-    -- SetMinMaxValues takes those two straight, sealed or not, and the
-    -- value handed in is an ordinary clock reading of ours. The engine
-    -- works out where between them that falls. Nothing here holds a
-    -- duration, so a bar is drawn for a cast whose length we never learn.
-    frame.fill:SetMinMaxValues(state.startMS, state.endMS)
-    frame.fill:SetValue(now)
+    -- Seeded from the game clock when the cast is read, then advanced
+    -- by each rendered frame. Re-reading GetTime can repeat the same
+    -- clock value across frames and make the fill move in steps.
+    state.nowMS = state.nowMS + (elapsed or 0) * 1000
+    local now = state.nowMS
 
     -- How long is left, where that can be worked out at all.
     --
@@ -1465,15 +1454,28 @@ local function CastTick(frame)
     -- are reading WHAT rather than how long.
     if state.plain then
         local span = state.endMS - state.startMS
-        local elapsed = now - state.startMS
-        if span > 0 and elapsed >= span then
+        local castElapsed = now - state.startMS
+        -- Keep uptime-sized millisecond values out of the StatusBar.
+        -- Its numeric precision can turn those into visible steps after
+        -- a long uptime; the relative fraction retains sub-frame detail.
+        frame.fill:SetValue(math.max(0, math.min(1, castElapsed / span)))
+        if span > 0 and castElapsed >= span then
             frame._cast = { fade = GetTime() }
             return
         end
-        frame:SetFormattedText("%s  %.1f", state.name,
-            math.max(0, (span - elapsed) / 1000))
+        local tenths = math.floor(math.max(0, (span - castElapsed) / 100) + 0.5)
+        if state.remainingTenths ~= tenths then
+            state.remainingTenths = tenths
+            frame:SetFormattedText("%s  %.1f", state.name, tenths / 10)
+        end
     else
-        frame:SetFormattedText("%s", state.name)
+        -- Restricted timings cannot be subtracted in addon code. Let
+        -- the widget read those directly, as before.
+        frame.fill:SetValue(now)
+        if not state.nameShown then
+            state.nameShown = true
+            frame:SetFormattedText("%s", state.name)
+        end
     end
 end
 
@@ -1697,7 +1699,13 @@ function UnitBars:SyncCast(bar)
         end
 
         frame._cast = { name = CastName(display, name, channel),
-            startMS = startMS, endMS = endMS, channel = channel, plain = plain }
+            startMS = startMS, endMS = endMS, channel = channel, plain = plain,
+            nowMS = GetTime() * 1000 }
+        if plain then
+            frame.fill:SetMinMaxValues(0, 1)
+        else
+            frame.fill:SetMinMaxValues(startMS, endMS)
+        end
         BazUI.Dock:SetShown(frame, true)
         CastTick(frame)
     elseif frame._cast and not frame._cast.fade then
@@ -1943,7 +1951,7 @@ function UnitBars:Build(def)
     ApplyBarMouse(bar)
 
     if def.kind == "cast" then
-        frame:SetScript("OnUpdate", function(self) CastTick(self) end)
+        frame:SetScript("OnUpdate", CastTick)
         BazUI.Dock:SetShown(frame, false)
     elseif def.kind == "mirror" then
         frame:SetScript("OnUpdate", function(self) MirrorTick(self) end)

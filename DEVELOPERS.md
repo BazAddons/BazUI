@@ -6,7 +6,7 @@ BazUI is a single addon that absorbs the Baz Suite for World of Warcraft: Foreve
 
 ```
 BazUI/
-  BazUI.toc            load order; Interface lists Forever (16001) and retail (120100)
+  BazUI.toc            load order; Interface lists Forever (16001) and retail (120105)
   Core/                forked from BazCore (BazUI namespace)
     Core.lua           module registry, lifecycle, login queue
     Profiles.lua       BazUIDB.profiles[name][module] = { ... }
@@ -110,7 +110,7 @@ Recipe used for Drawers, apply the same to Chat, Bags and Bars:
 
 ## Testing
 
-Run `tools/deploy.sh`. It copies the working tree into the Forever client's `_classic_beta_/Interface/AddOns/BazUI`, leaving out everything `.pkgmeta` ignores so the test copy is what CurseForge ships, and removes files the repository no longer has. Pass another `.../Interface/AddOns/BazUI` path to deploy somewhere else, such as a retail install. Saved variables are never touched. Disable BazCore, BazWidgetDrawers, LibBazWidget, BazWidgets, BazChat and BazBags on that character; BazUI prints a warning at login if any of them is loaded. New texture files need a full client restart, not a reload.
+Run `tools/deploy.sh`. It copies the working tree into the Forever client's `_forever_/Interface/AddOns/BazUI`, leaving out everything `.pkgmeta` ignores so the test copy is what CurseForge ships, and removes files the repository no longer has. Pass another `.../Interface/AddOns/BazUI` path to deploy somewhere else, such as a retail install. Saved variables are never touched. Disable BazCore, BazWidgetDrawers, LibBazWidget, BazWidgets, BazChat and BazBags on that character; BazUI prints a warning at login if any of them is loaded. New texture files need a full client restart, not a reload.
 
 ## Release
 

@@ -11,15 +11,13 @@
 -- instead of a rewrite. That matters most for Forever, whose systems
 -- are still arriving.
 --
--- Nothing here ships a database. Every section answers from what the
--- client already knows: lockouts, completed quests, known spells, item
--- counts. Where an answer would need outside knowledge (where a thing
--- drops, which step of a chain comes next) that is a data pack we write
--- deliberately, not a hidden dependency.
+-- Sections read live character data: lockouts, completed quests, known
+-- spells and item counts. The item and instance catalogues and the
+-- attunement lists supply the information the client cannot enumerate.
 ---------------------------------------------------------------------------
 
 -- Forever only. The Codex is built on Forever's own systems and data - its
--- item and quest catalogues describe Forever's tables, and pages like
+-- item and instance catalogues describe Forever's tables, and pages like
 -- Legacy exist nowhere else - so on retail none of it loads. Every file in
 -- the module opens with the same line as this one, because a file that ran
 -- on would find no BazUI.Codex to register with.
@@ -29,6 +27,26 @@ local MODULE_NAME = "Codex"
 
 local Codex = BazUI.Codex or {}
 BazUI.Codex = Codex
+
+-- Retire the removed quest catalogue's cache in every saved profile.
+-- Run once the saved variables exist, before the window is built.
+local function RemoveQuestCatalogSettings()
+    for _, profile in pairs(BazUIDB.profiles or {}) do
+        local settings = profile.Codex
+        if settings then
+            settings.questSeen = nil
+            settings.indexQuests = nil
+            if settings.activeTab == "quests" then settings.activeTab = "today" end
+            if type(settings.tabOrder) == "table" then
+                for index = #settings.tabOrder, 1, -1 do
+                    if settings.tabOrder[index] == "quests" then
+                        table.remove(settings.tabOrder, index)
+                    end
+                end
+            end
+        end
+    end
+end
 
 local addon
 addon = BazUI:RegisterModule(MODULE_NAME, {
@@ -132,6 +150,7 @@ addon = BazUI:RegisterModule(MODULE_NAME, {
             end,
         },
     },
+    onLoad = RemoveQuestCatalogSettings,
     onReady = function(self) Codex:Initialize() end,
 })
 
