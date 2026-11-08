@@ -272,7 +272,7 @@ function QT.GetOptionsArgs()
             order = 31,
             type = "toggle",
             name = "TomTom fallback waypoint",
-            desc = "When AGN is disabled, send quest destinations to TomTom. With AGN enabled, quest circles use AGN directly without either navigation addon.",
+            desc = "When APS is disabled, send quest destinations to TomTom. With APS enabled, quest circles use APS directly without either navigation addon.",
             get = function()
                 return addon:GetWidgetSetting(C.WIDGET_ID, "tomtomEnabled", true) ~= false
             end,
@@ -307,7 +307,7 @@ function QT.GetOptionsArgs()
             order = 32,
             type = "toggle",
             name = "Zygor fallback waypoint",
-            desc = "When AGN is disabled, send quest destinations to Zygor. With AGN enabled, quest circles use AGN directly.",
+            desc = "When APS is disabled, send quest destinations to Zygor. With APS enabled, quest circles use APS directly.",
             get = function()
                 return addon:GetWidgetSetting(C.WIDGET_ID, "zygorEnabled", true) ~= false
             end,

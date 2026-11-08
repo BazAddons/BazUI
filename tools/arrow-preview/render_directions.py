@@ -10,7 +10,7 @@ import bpy
 ROOT = Path(__file__).resolve().parent
 POINTER = '--forever-pointer' in sys.argv
 MAP_GOLD = '--map-gold' in sys.argv
-STEM = 'BazUI-AGN-Forever-Pointer-MapGold' if MAP_GOLD else ('BazUI-AGN-Forever-Pointer' if POINTER else 'BazUI-Alliance-Arrow-Rich')
+STEM = 'BazUI-APS-Forever-Pointer-MapGold' if MAP_GOLD else ('BazUI-APS-Forever-Pointer' if POINTER else 'BazUI-Alliance-Arrow-Rich')
 OUTPUT = ROOT / ('export-forever-pointer-map-gold' if MAP_GOLD else ('export-forever-pointer' if POINTER else 'export-rich'))
 FRAMES = OUTPUT / "directions"
 FRAMES.mkdir(parents=True, exist_ok=True)

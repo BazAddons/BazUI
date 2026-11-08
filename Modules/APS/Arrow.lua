@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
-local addon = BazUI:GetModule("AGN")
-local ATLAS = "Interface\\AddOns\\BazUI\\Modules\\AGN\\Assets\\ForeverPointerMapGold.tga"
+local addon = BazUI:GetModule("APS")
+local ATLAS = "Interface\\AddOns\\BazUI\\Modules\\APS\\Assets\\ForeverPointerMapGold.tga"
 local COUNT, COLS, ROWS = 108, 9, 12
 local TAU = math.pi * 2
 
@@ -20,15 +20,15 @@ function addon:PaintDirection(texture, angle)
     angle = self:ReadableNumber(angle)
     if not angle then return end
     local cell = math.floor(angle / TAU * COUNT + 0.5) % COUNT
-    if texture._agnCell == cell then return end
-    texture._agnCell = cell
+    if texture._apsCell == cell then return end
+    texture._apsCell = cell
     local column, row = cell % COLS, math.floor(cell / COLS)
     texture:SetTexCoord(column / COLS, (column + 1) / COLS, row / ROWS, (row + 1) / ROWS)
 end
 
 function addon:CreateNavigationFrame()
     if self.frame then return self.frame end
-    local frame = CreateFrame("Frame", "BazUIAGNArrow", UIParent)
+    local frame = CreateFrame("Frame", "BazUIAPSArrow", UIParent)
     self.frame = frame
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
@@ -40,12 +40,12 @@ function addon:CreateNavigationFrame()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function(f)
         if not IsShiftKeyDown() then return end
-        f._agnDragging = true
+        f._apsDragging = true
         f:StartMoving()
     end)
     local function StopDragging(f)
-        if not f._agnDragging then return end
-        f._agnDragging = nil
+        if not f._apsDragging then return end
+        f._apsDragging = nil
         f:StopMovingOrSizing()
         local point, _, _, x, y = f:GetPoint()
         addon:SetSetting("position", { point = point, x = x, y = y })
@@ -102,8 +102,8 @@ function addon:UpdateArrow(elapsed)
     if self.previewing then
         self.previewAngle = (self.previewAngle or 0) + elapsed * .8
         self:PaintDirection(self.frame.arrow, self.previewAngle)
-        self.frame.title:SetText("AGN preview")
-        self.frame.detail:SetText("Shift-drag to move | /agn preview to close")
+        self.frame.title:SetText("APS preview")
+        self.frame.detail:SetText("Shift-drag to move | /aps preview to close")
         return
     end
     if self.updateElapsed >= .05 then

@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
-local addon = BazUI:GetModule("AGN")
+local addon = BazUI:GetModule("APS")
 local function ValidNumber(n) return addon:ReadableNumber(n) ~= nil end
 
 function addon:WaypointStore()

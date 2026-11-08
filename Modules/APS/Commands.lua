@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Independently implemented compatibility syntax; no TomTom dependency.
-local addon = BazUI:GetModule("AGN")
+local addon = BazUI:GetModule("APS")
 local function Trim(s) return (s or ""):match("^%s*(.-)%s*$") end
 local function NameKey(s) return s:lower():gsub("%s+", "") end
 
@@ -48,7 +48,7 @@ function addon:ResolveMap(name)
 end
 
 function addon:CommandHelp()
-    self:Print("/way [zone or #mapID] x y [name] | /agn way uses the same syntax.")
+    self:Print("/way [zone or #mapID] x y [name] | /aps way uses the same syntax.")
     self:Print("/wayb [name] saves your position; /cway selects the closest waypoint.")
     self:Print("/way list | /way local | /way reset all/away/[not] zone")
     self:Print("/way arrow clear/remove | /ttpaste pastes multiple commands.")
@@ -133,7 +133,7 @@ function addon:PasteWaypoints(text)
         command = command and command:lower()
         if not command or command == "way" or command == "tway" or command == "tomtomway" then
             self:WayCommand(rest or line)
-        elseif command == "agn" and rest:lower():match("^way%s") then self:WayCommand(rest:sub(5))
+        elseif command == "aps" and rest:lower():match("^way%s") then self:WayCommand(rest:sub(5))
         elseif command == "wayb" or command == "wayback" then self:SaveCurrentPosition(rest)
         elseif command == "cway" or command == "closestway" then self:SelectClosest()
         else self:Print("Skipped unsupported command: /" .. command) end
@@ -141,7 +141,7 @@ function addon:PasteWaypoints(text)
 end
 
 function addon:OpenWaypointPaste()
-    BazUI:OpenCopyDialog({ title = "AGN waypoints", subtitle = "Paste /way commands, one per line.",
+    BazUI:OpenCopyDialog({ title = "APS waypoints", subtitle = "Paste /way commands, one per line.",
         editable = true, acceptText = "Add waypoints", onAccept = function(text) self:PasteWaypoints(text) end })
 end
 
@@ -154,7 +154,7 @@ function addon:RegisterWaypointCommands()
             TOMTOM_PASTE = function() self:OpenWaypointPaste() end,
             TOMTOM = function(msg)
                 if Trim(msg):lower() == "help" then self:CommandHelp()
-                else BazUI:OpenOptionsPanel("AGN") end
+                else BazUI:OpenOptionsPanel("APS") end
             end,
         }
     end

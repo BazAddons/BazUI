@@ -5,7 +5,7 @@ import bpy
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'renders' / 'forever-pointer-map-gold'
 OUT.mkdir(parents=True, exist_ok=True)
-bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'BazUI-AGN-Forever-Pointer.blend'))
+bpy.ops.wm.open_mainfile(filepath=str(ROOT / 'BazUI-APS-Forever-Pointer.blend'))
 
 palette = {
     'Antique brass | raised border and scrolls': (.58, .255, .055),
@@ -25,5 +25,5 @@ for name, color in palette.items():
 scene = bpy.context.scene
 scene.render.filepath = str(OUT / 'game-angle-30.png')
 bpy.ops.render.render(write_still=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / 'BazUI-AGN-Forever-Pointer-MapGold.blend'))
+bpy.ops.wm.save_as_mainfile(filepath=str(ROOT / 'BazUI-APS-Forever-Pointer-MapGold.blend'))
 print('MAP_GOLD_COMPLETE', OUT, flush=True)

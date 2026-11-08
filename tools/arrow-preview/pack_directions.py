@@ -44,7 +44,7 @@ for image in images:
 preview[0].save(OUTPUT / "rotation-preview.gif", save_all=True,
                 append_images=preview[1:], duration=40, loop=0)
 
-stem = 'BazUI-AGN-Forever-Pointer-MapGold-108' if MAP_GOLD else ('BazUI-AGN-Forever-Pointer-108' if POINTER else 'BazUI-Alliance-Arrow-Rich-108')
+stem = 'BazUI-APS-Forever-Pointer-MapGold-108' if MAP_GOLD else ('BazUI-APS-Forever-Pointer-108' if POINTER else 'BazUI-Alliance-Arrow-Rich-108')
 archive = OUTPUT / (stem + '.zip')
 with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
     for path in paths:

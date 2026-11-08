@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
-local addon = BazUI:GetModule("AGN")
+local addon = BazUI:GetModule("APS")
 local suppressed = setmetatable({}, { __mode = "k" })
 local zygorFrames = setmetatable({}, { __mode = "k" })
 local function Wants(key) return addon:GetSetting(key) ~= false end
@@ -76,19 +76,19 @@ function addon:ConnectZygor()
             -- Zygor supplies direction first and formatted text later in the
             -- same update. Publish both together instead of flashing its raw
             -- waypoint title (often just zone/coordinates) on every frame.
-            f._agnPendingTarget = { source = "zygor", angle = angle, distance = distance,
+            f._apsPendingTarget = { source = "zygor", angle = angle, distance = distance,
                 title = waypoint and waypoint.title or "Zygor destination", updated = GetTime() }
-            if not f.ShowText then CommitZygorTarget(f, f._agnPendingTarget) end
+            if not f.ShowText then CommitZygorTarget(f, f._apsPendingTarget) end
         end)
         if frame.ShowText then
             hooksecurefunc(frame, "ShowText", function(f, title, distance, _, status)
                 if not Wants("zygor") or f ~= addon.zygorFrame then return end
-                local target = f._agnPendingTarget
+                local target = f._apsPendingTarget
                 if target then
                     target.title = title or target.title
                     target.distance = type(distance) == "number" and distance or target.distance
                     target.status = status or target.status
-                    f._agnPendingTarget = nil
+                    f._apsPendingTarget = nil
                     CommitZygorTarget(f, target)
                 end
             end)
@@ -99,10 +99,10 @@ function addon:ConnectZygor()
                 instancehide = "Enter the instance", ship = "Take the ship", taxi = "Take the flight path" }
             hooksecurefunc(frame, "ShowSpecial", function(f, state)
                 if not Wants("zygor") or f ~= addon.zygorFrame then return end
-                if not state then addon.zygorTarget = nil; f._agnPendingTarget = nil; return end
-                f._agnPendingTarget = { source = "zygor", title = f.waypoint and f.waypoint.title or "Zygor destination",
+                if not state then addon.zygorTarget = nil; f._apsPendingTarget = nil; return end
+                f._apsPendingTarget = { source = "zygor", title = f.waypoint and f.waypoint.title or "Zygor destination",
                     status = labels[state] or state, angle = 0, updated = GetTime() }
-                if not f.ShowText then CommitZygorTarget(f, f._agnPendingTarget) end
+                if not f.ShowText then CommitZygorTarget(f, f._apsPendingTarget) end
             end)
         end
     end

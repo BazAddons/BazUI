@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
--- QuestTracker: AGN navigation, with optional legacy provider fallbacks.
+-- QuestTracker: APS navigation, with optional legacy provider fallbacks.
 -- Sets a waypoint arrow to the super-tracked quest's next objective
 -- via TomTom and/or Zygor when installed. Each integration is
 -- independently toggleable via the Quest Tracker's Integrations
@@ -150,12 +150,12 @@ end
 function QT.OnSuperTrackChanged()
     local qid = C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID
         and C_SuperTrack.GetSuperTrackedQuestID() or 0
-    local agn = BazUI:GetModule("AGN")
-    if agn and not agn.disabled and BazUI:IsModuleEnabled("AGN") then
+    local aps = BazUI:GetModule("APS")
+    if aps and not aps.disabled and BazUI:IsModuleEnabled("APS") then
         QT.RemoveActiveWaypoint()
-        if agn.navigationReady then agn:FollowSuperTrackedQuest(qid)
+        if aps.navigationReady then aps:FollowSuperTrackedQuest(qid)
         else C_Timer.After(0, function()
-            if agn.navigationReady then agn:FollowSuperTrackedQuest(qid) end
+            if aps.navigationReady then aps:FollowSuperTrackedQuest(qid) end
         end) end
         return
     end

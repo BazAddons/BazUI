@@ -1,4 +1,4 @@
-"""Editable AGN scroll arrow, built from the approved Forever color study.
+"""Editable APS scroll arrow, built from the approved Forever color study.
 
 Run with Blender --background --python build_forever_scroll.py.
 All parts remain separate meshes with named materials and bevel modifiers.
@@ -13,7 +13,7 @@ from mathutils.geometry import tessellate_polygon
 ROOT = Path(__file__).resolve().parent
 SIMPLE = '--simple-pointer' in sys.argv
 STYLE = 'forever-pointer' if SIMPLE else 'forever-scroll'
-BLEND_NAME = 'BazUI-AGN-Forever-Pointer.blend' if SIMPLE else 'BazUI-AGN-Forever-Scroll.blend'
+BLEND_NAME = 'BazUI-APS-Forever-Pointer.blend' if SIMPLE else 'BazUI-APS-Forever-Scroll.blend'
 OUT = ROOT / 'renders' / STYLE
 OUT.mkdir(parents=True, exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
