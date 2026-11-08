@@ -436,7 +436,7 @@ end
 --
 -- Reasons collect: flip three such settings and you are asked once, with
 -- all three listed, because being asked three times is worse than not
--- being asked at all. The prompt is not modal and Later simply closes
+-- being asked at all. The prompt is not modal and Wait simply closes
 -- it; the setting is already saved either way, and will apply on the
 -- next reload whenever that happens.
 ---------------------------------------------------------------------------
@@ -444,21 +444,96 @@ end
 local reloadReasons = {}
 local reloadPending = false
 
--- Ask for a reload, and say so if the game will not have it.
---
--- ReloadUI is a protected call. On clients that enforce that - Forever
--- does - an addon asking for it is refused, the screen prints "Interface
--- action failed because of an AddOn", and our button appears to do
--- nothing. There is no unprotected way to reload from an addon, so the
--- honest thing is to ask and then own up.
---
--- If the reload happens we are gone long before the timer; if we are
--- still here half a second later, it was refused.
+-- A separate dialog keeps secure buttons out of the generic popup. A
+-- protected child also protects its parent, so sharing that frame would
+-- stop unrelated popups from opening or closing during combat.
+local reloadDialog
+local reloadWaiter
+
+local function CreateReloadDialog()
+    local Theme = BazUI.Skin.Theme
+    local f = CreateFrame("Frame", "BazUIReloadPrompt", UIParent, "BackdropTemplate")
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    f:SetFrameLevel(200)
+    f:SetSize(430, 160)
+    f:SetPoint("CENTER")
+    f:EnableMouse(true)
+    Theme.ApplyDialog(f, O.DIALOG_BG)
+    f:Hide()
+
+    local title = Theme.FontString(f, "OVERLAY", O.HEADER_FONT)
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetTextColor(unpack(O.GOLD))
+    title:SetText("Reload needed")
+
+    f.body = Theme.FontString(f, "OVERLAY", O.LABEL_FONT)
+    f.body:SetPoint("TOPLEFT", 16, -48)
+    f.body:SetWidth(398)
+    f.body:SetJustifyH("LEFT")
+    f.body:SetWordWrap(true)
+    f.body:SetTextColor(unpack(O.TEXT_NORMAL))
+
+    -- The click must reach Blizzard's macro handler directly. Calling
+    -- ReloadUI from an addon OnClick is blocked on Forever.
+    local reload = Theme.CreateButton(f, {
+        text = "Reload now", width = 120, height = BUTTON_HEIGHT,
+        template = "UIPanelButtonTemplate,SecureActionButtonTemplate",
+    })
+    reload:SetPoint("BOTTOMRIGHT", -16, 16)
+    reload:RegisterForClicks("LeftButtonUp")
+    reload:SetAttribute("useOnKeyDown", false)
+    reload:SetAttribute("type1", "macro")
+    reload:SetAttribute("macrotext1", "/reload")
+    ApplyButtonStyle(reload, "primary")
+    f.reload = reload
+
+    -- A secure hide also works if combat starts with the prompt open.
+    local wait = Theme.CreateButton(f, {
+        text = "Wait", width = 90, height = BUTTON_HEIGHT,
+        template = "UIPanelButtonTemplate,SecureHandlerClickTemplate",
+    })
+    wait:SetPoint("RIGHT", reload, "LEFT", -BUTTON_GAP, 0)
+    wait:RegisterForClicks("LeftButtonUp")
+    wait:SetAttribute("_onclick", [[ self:GetParent():Hide() ]])
+    f.wait = wait
+    return f
+end
+
+local function ShowReloadPrompt()
+    if InCombatLockdown() then
+        if not reloadWaiter then
+            reloadWaiter = CreateFrame("Frame")
+            reloadWaiter:SetScript("OnEvent", function(self)
+                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+                ShowReloadPrompt()
+            end)
+        end
+        reloadWaiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    reloadPending = false
+
+    local body = "These changes take effect after the interface reloads:"
+    for _, reason in ipairs(reloadReasons) do
+        body = body .. "|n|cffd9c7a0" .. reason .. "|r"
+    end
+    if #reloadReasons == 0 then
+        body = "This change takes effect after the interface reloads."
+    end
+    body = body .. "|n|nReload now, or wait until your next reload."
+    wipe(reloadReasons)
+
+    if not reloadDialog then reloadDialog = CreateReloadDialog() end
+    reloadDialog.body:SetText(body)
+    reloadDialog:SetHeight(48 + reloadDialog.body:GetStringHeight() + 16 + BUTTON_HEIGHT + 16)
+    reloadDialog:Show()
+    reloadDialog:Raise()
+end
+
+-- Retained for callers that used to request an immediate Lua reload.
+-- The player now confirms through the secure button instead.
 function BazUI:RequestReload()
-    ReloadUI()
-    C_Timer.After(0.5, function()
-        BazUI:Print("The game would not let an addon reload for you. Type |cff00ff00/reload|r.")
-    end)
+    self:PromptReload()
 end
 
 function BazUI:PromptReload(reason)
@@ -471,27 +546,6 @@ function BazUI:PromptReload(reason)
     if reloadPending then return end
     reloadPending = true
 
-    -- One frame's grace, so a change that writes several settings at
-    -- once gathers them into a single question.
-    C_Timer.After(0, function()
-        reloadPending = false
-        local body = "These need the interface reloaded before they take effect:"
-        for _, r in ipairs(reloadReasons) do
-            body = body .. "|n|cffd9c7a0" .. r .. "|r"
-        end
-        if #reloadReasons == 0 then
-            body = "This needs the interface reloaded before it takes effect."
-        end
-        wipe(reloadReasons)
-
-        BazUI:OpenPopup({
-            title = "Reload needed",
-            body  = body,
-            buttons = {
-                { label = "Later", style = "default" },
-                { label = "Reload now", style = "primary",
-                  onClick = function() BazUI:RequestReload() end },
-            },
-        })
-    end)
+    -- Collect changes made together into one prompt.
+    C_Timer.After(0, ShowReloadPrompt)
 end

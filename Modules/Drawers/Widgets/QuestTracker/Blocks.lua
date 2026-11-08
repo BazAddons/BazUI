@@ -59,6 +59,13 @@ function QT.CreateBlock()
     if ok and poi then
         poi:SetPoint("RIGHT", title, "LEFT", -C.POI_GAP, 0)
         poi:SetSize(C.POI_SIZE, C.POI_SIZE)
+        poi:HookScript("OnClick", function(_, button)
+            if button ~= "LeftButton" or (block._kind or "quest") ~= "quest" then return end
+            local agn = BazUI:GetModule("AGN")
+            if agn and agn.navigationReady and not agn.disabled and BazUI:IsModuleEnabled("AGN") then
+                agn:TrackQuest(block._questID)
+            end
+        end)
         block.poi = poi
     end
 
@@ -166,6 +173,10 @@ function QT.CreateBlock()
             end
             if C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID then
                 C_SuperTrack.SetSuperTrackedQuestID(block._questID)
+            end
+            local agn = BazUI:GetModule("AGN")
+            if agn and agn.navigationReady and not agn.disabled and BazUI:IsModuleEnabled("AGN") then
+                agn:TrackQuest(block._questID)
             end
             -- Toggle behavior: clicking the quest that's currently
             -- showing in the detail panel closes the whole map. Any

@@ -19,6 +19,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Auras | new | Built (four rows of buffs and debuffs that float or dock to any bar, left/center/right aligned, secure right-click cancel) |
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |
 | Micro Menu | new | Built (Blizzard's micro buttons on a movable bar as round ring-framed icons) |
+| AGN | new | Azeroth Navigation System: standalone waypoints and quest navigation, a brass-and-brown arrow, compatible /way commands, and optional TomTom/Zygor targets in one display. |
 
 ## First run
 
@@ -27,6 +28,10 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 ## Commands
 
 - `/baz` (or `/bazui`, `/bui`) opens the options window.
+- `/agn` opens Azeroth Navigation System settings; `/agn preview` toggles the arrow preview; `/agn status` reports connected navigation addons.
+- `/way [zone or #mapID] x y [name]` (also `/agn way`, `/tway`, `/tomtomway`) accepts pasted Wowhead coordinates without TomTom. For example: `/way Elwynn Forest 42.1 65.9 Meet here`.
+- `/wayb [name]` saves your position; `/cway` selects the closest saved waypoint; `/way list` and `/way local` list them; `/way reset all`, `/way reset away`, or `/way reset [not] zone` remove them.
+- `/agn clear` or `/way arrow clear` clears navigation; `/way arrow remove` also removes the active saved waypoint. `/ttpaste` (or `/agn paste`) imports multiple coordinate commands, one per line. The arrow is click-through; hold Shift to drag it. Quest tracker circles select a quest's next available location.
 - `/baz profile <name>`, `/baz profiles`, `/baz default <name>` manage profiles.
 - `/bwd toggle|show|hide|open <name>|list` drives the drawer.
 - `/bbg` (or `/bazbags`) toggles the bag panel; `/bbg sort`, `/bbg categorize`.

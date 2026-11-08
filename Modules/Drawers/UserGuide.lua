@@ -192,9 +192,10 @@ BazUI:RegisterUserGuide("Drawers", {
                 { type = "table", columns = { "Setting", "What it does" }, rows = {
                     { "Max Height", "Caps the widget's height. Quests past that scroll on the mouse wheel." },
                     { "Hide Default Tracker", "Hides the game's own objective tracker. Off, you get both." },
-                    { "TomTom Waypoint", "With TomTom installed, points its arrow at the tracked quest's next objective." },
+                    { "AGN quest navigation", "Click a quest's circle to point AGN at its next available location. AGN works without TomTom or Zygor. Use /way x y [name] or /way zone x y [name] to navigate to coordinates." },
+                    { "TomTom fallback waypoint", "When AGN is disabled, sends tracked quest destinations to TomTom if installed." },
                     { "Hide TomTom's coordinates", "Puts away the little block showing where you are standing. TomTom's own setting is left alone - this only holds the frame down, so turning it off gives you the block back exactly as TomTom had it." },
-                    { "Zygor Waypoint", "The same for Zygor's arrow." },
+                    { "Zygor fallback waypoint", "When AGN is disabled, sends tracked quest destinations to Zygor if installed." },
                 } },
 
                 { type = "h3", text = "The quest timer" },

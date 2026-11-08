@@ -193,6 +193,11 @@ end
 
 function BNC:SetWaypoint(waypointData)
     if not waypointData then return false end
+    local agn = BazUI:GetModule("AGN")
+    if agn and agn.navigationReady and not agn.disabled and BazUI:IsModuleEnabled("AGN") then
+        return agn:AddWaypoint(waypointData.mapID, waypointData.x, waypointData.y,
+            waypointData.title or "Notification") ~= nil
+    end
     if addon.db and not addon.db.tomtomEnabled then return false end
     if not self:HasTomTom() then
         print("|cff00aaff[BNC]|r TomTom is not installed. Install TomTom to use waypoint features.")

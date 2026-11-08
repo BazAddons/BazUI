@@ -2,3 +2,8 @@
 Thumbs.db
 *.bak
 *.swp
+
+# Keep Blender previews and bulk exports local; track their source scripts.
+tools/arrow-preview/*
+!tools/arrow-preview/*.py
+!tools/arrow-preview/*.lua

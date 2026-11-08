@@ -25,6 +25,29 @@ local MODIFIER_KEYS = {
     LALT = true, RALT = true,
 }
 
+-- Blizzard's binding names use ALT-CTRL-SHIFT order. Normalize saved
+-- chords too, so combinations recorded by older versions work again.
+local function NormalizeKey(key)
+    if not key then return nil end
+    key = key:upper()
+    local modifiers = {}
+    while true do
+        local prefix, rest = key:match("^([A-Z]+)%-(.*)$")
+        if prefix ~= "ALT" and prefix ~= "CTRL" and prefix ~= "SHIFT" then break end
+        modifiers[prefix] = true
+        key = rest
+    end
+    return (modifiers.ALT and "ALT-" or "")
+        .. (modifiers.CTRL and "CTRL-" or "")
+        .. (modifiers.SHIFT and "SHIFT-" or "") .. key
+end
+
+local function CurrentChord(key)
+    return (IsAltKeyDown() and "ALT-" or "")
+        .. (IsControlKeyDown() and "CTRL-" or "")
+        .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
+end
+
 ---------------------------------------------------------------------------
 -- Key text formatting (matches Blizzard style)
 ---------------------------------------------------------------------------
@@ -107,6 +130,7 @@ end
 ---------------------------------------------------------------------------
 
 function Keybinds:SetBinding(buttonName, key)
+    key = NormalizeKey(key)
     if not keybindOwner then
         keybindOwner = CreateFrame("Frame", "BazUIBarsKeybindOwner", UIParent, "SecureHandlerBaseTemplate")
     end
@@ -116,7 +140,7 @@ function Keybinds:SetBinding(buttonName, key)
     -- accept nil for buttonName in Midnight - it errors out. The generic
     -- SetOverrideBinding with command=nil clears the override for that
     -- specific key, and works for click-overrides too.
-    local oldKey = addon.db.profile.keybinds and addon.db.profile.keybinds[buttonName]
+    local oldKey = NormalizeKey(addon.db.profile.keybinds and addon.db.profile.keybinds[buttonName])
     if oldKey then
         SetOverrideBinding(keybindOwner, true, oldKey, nil)
     end
@@ -124,7 +148,7 @@ function Keybinds:SetBinding(buttonName, key)
     -- Clear any existing action on this key
     if key then
         for name, boundKey in pairs(addon.db.profile.keybinds or {}) do
-            if boundKey == key and name ~= buttonName then
+            if NormalizeKey(boundKey) == key and name ~= buttonName then
                 addon.db.profile.keybinds[name] = nil
                 -- Update hotkey text on the old button
                 local btn = _G[name]
@@ -204,6 +228,8 @@ function Keybinds:RestoreAll()
     ClearOverrideBindings(keybindOwner)
 
     for buttonName, key in pairs(addon.db.profile.keybinds) do
+        key = NormalizeKey(key)
+        addon.db.profile.keybinds[buttonName] = key
         if key and _G[buttonName] then
             SetOverrideBindingClick(keybindOwner, true, key, buttonName, "LeftButton")
             local btn = _G[buttonName]
@@ -333,19 +359,13 @@ local function CreateKeybindFrame()
             return
         end
 
-        -- Build chord with modifiers
-        local chord = ""
-        if IsShiftKeyDown() then chord = chord .. "SHIFT-" end
-        if IsControlKeyDown() then chord = chord .. "CTRL-" end
-        if IsAltKeyDown() then chord = chord .. "ALT-" end
-
         -- ESC unbinds
         if key == "ESCAPE" then
             Keybinds:ClearBinding(hoveredButton:GetName())
             return
         end
 
-        chord = chord .. key
+        local chord = CurrentChord(key)
         Keybinds:SetBinding(hoveredButton:GetName(), chord)
     end)
 
@@ -423,11 +443,7 @@ function Keybinds:EnterMode()
                         if not hoveredButton then return end
 
                         local bindingKey = MOUSE_TO_BINDING[mouseButton] or mouseButton
-                        local chord = ""
-                        if IsShiftKeyDown() then chord = chord .. "SHIFT-" end
-                        if IsControlKeyDown() then chord = chord .. "CTRL-" end
-                        if IsAltKeyDown() then chord = chord .. "ALT-" end
-                        chord = chord .. bindingKey
+                        local chord = CurrentChord(bindingKey)
 
                         Keybinds:SetBinding(hoveredButton:GetName(), chord)
                     end)

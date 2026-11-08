@@ -742,14 +742,8 @@ BazUI:QueueForLogin(function()
                         if frames and frames.UnitBars then frames.UnitBars:ApplyAll() end
                         local chat = BazUI.Chat and BazUI.Chat.Window
                         if chat and chat.ApplyAll then chat:ApplyAll() end
-                        if BazUI.Confirm then
-                            BazUI:Confirm({
-                                title       = "Reload now?",
-                                body        = "Text already on screen keeps the old face until the interface reloads.",
-                                acceptLabel = "Reload",
-                                cancelLabel = "Later",
-                                onAccept    = function() BazUI:RequestReload() end,
-                            })
+                        if BazUI.PromptReload then
+                            BazUI:PromptReload("Text already on screen keeps the old face until the interface reloads.")
                         end
                     end,
                 },
@@ -799,9 +793,9 @@ BazUI:QueueForLogin(function()
                 get   = function() return BazUI:IsModuleEnabled(moduleName) end,
                 set   = function(_, value)
                     BazUI:SetModuleEnabled(moduleName, value)
-                    BazUI:PromptReload(value
-                        and "Turning a module on needs a reload before it can build anything."
-                        or "It stops loading at the next reload.")
+                    BazUI:PromptReload(("%s will be %s after a reload."):format(
+                        config and config.title or moduleName,
+                        value and "enabled" or "disabled"))
                 end,
             }
         end

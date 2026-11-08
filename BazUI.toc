@@ -17,7 +17,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 024
+## Version: 025
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -310,3 +310,11 @@ Modules\Codex\Sources\Legacy.lua
 Modules\Codex\Sources\Events.lua
 Modules\Codex\Settings.lua
 Modules\Codex\UserGuide.lua
+
+# Azeroth Navigation System
+Modules\AGN\Core.lua
+Modules\AGN\Arrow.lua
+Modules\AGN\Navigation.lua
+Modules\AGN\Commands.lua
+Modules\AGN\Integrations.lua
+Modules\AGN\Settings.lua

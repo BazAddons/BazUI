@@ -271,8 +271,8 @@ function QT.GetOptionsArgs()
         tomtomEnabled = {
             order = 31,
             type = "toggle",
-            name = "TomTom Waypoint",
-            desc = "When TomTom is installed, set the TomTom arrow to the super-tracked quest's next objective. Turn off to leave TomTom alone.",
+            name = "TomTom fallback waypoint",
+            desc = "When AGN is disabled, send quest destinations to TomTom. With AGN enabled, quest circles use AGN directly without either navigation addon.",
             get = function()
                 return addon:GetWidgetSetting(C.WIDGET_ID, "tomtomEnabled", true) ~= false
             end,
@@ -306,8 +306,8 @@ function QT.GetOptionsArgs()
         zygorEnabled = {
             order = 32,
             type = "toggle",
-            name = "Zygor Waypoint",
-            desc = "When Zygor Guides is installed, set Zygor's navigation arrow to the super-tracked quest's next objective. Turn off to leave Zygor alone.",
+            name = "Zygor fallback waypoint",
+            desc = "When AGN is disabled, send quest destinations to Zygor. With AGN enabled, quest circles use AGN directly.",
             get = function()
                 return addon:GetWidgetSetting(C.WIDGET_ID, "zygorEnabled", true) ~= false
             end,
