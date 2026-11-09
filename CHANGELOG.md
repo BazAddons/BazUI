@@ -1,4 +1,6 @@
-## 028
+## 029
 
-- Fixed floating Micro Menu widgets not appearing after login until Floating was toggled off and on.
-- Floating widgets now restore their saved placement even when they are not assigned to the active drawer. This also covers widgets registered later during startup; placement waits until combat ends when necessary.
+- Added a Map module for WoW Forever with continuous cursor-anchored zoom and terrain detail fading into the default world map. Keeps Blizzard's window and quest log. Disable OpenMap to let BazUI handle the map.
+- Added profile settings for terrain opacity, terrain transition start, maximum zoom, and hidden, dimmed or revealed unexplored areas. Revealing artwork does not change exploration progress.
+- Alphabetized BazUI's settings sidebar and module toggle list by display name, keeping User Manual at the bottom of the sidebar.
+- Includes the adapted OpenMap rendering core's MIT license, copyright notice and texture provenance information. Retail retains its default map.

@@ -7,3 +7,4 @@ Thumbs.db
 tools/arrow-preview/*
 !tools/arrow-preview/*.py
 !tools/arrow-preview/*.lua
+tools/map-excluded-assets/

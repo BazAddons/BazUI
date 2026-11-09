@@ -787,7 +787,12 @@ BazUI:QueueForLogin(function()
                 names[#names + 1] = moduleName
             end
         end
-        table.sort(names)
+        table.sort(names, function(a, b)
+            local aTitle = string.lower(BazUI.addons[a].title or a)
+            local bTitle = string.lower(BazUI.addons[b].title or b)
+            if aTitle == bTitle then return a < b end
+            return aTitle < bTitle
+        end)
 
         for index, moduleName in ipairs(names) do
             local config = BazUI.addons[moduleName]

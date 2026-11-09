@@ -17,7 +17,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 028
+## Version: 029
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -84,6 +84,23 @@ Core\IconPicker.lua
 Core\FontTest.lua
 
 # Modules
+# Default world map: continuous zoom and terrain fade (Forever).
+Modules\Map\Core.lua
+Modules\Map\Runtime.lua
+Modules\Map\Data\Forever\Reveal.lua
+Modules\Map\Data\Forever\Grade.lua
+Modules\Map\Data\Forever\Tones.lua
+Modules\Map\Data\Forever\Minimap.lua
+Modules\Map\Data\Forever\MinimapLOD.lua
+Modules\Map\Data\Forever\Banners.lua
+Modules\Map\Data\Forever\Labels.lua
+Modules\Map\Data\Forever\ArtEdits.lua
+Modules\Map\Vendor\OpenMap\Stitch.lua
+Modules\Map\Vendor\OpenMap\WorldMap.lua
+Modules\Map\Vendor\OpenMap\Close.lua
+Modules\Map\Vendor\OpenMap\Combat.lua
+Modules\Map\Settings.lua
+
 Modules\Drawers\Core.lua
 Modules\Drawers\Compat.lua
 Modules\Drawers\Drawer.lua

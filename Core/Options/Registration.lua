@@ -566,6 +566,20 @@ local function CreateCanvas(moduleKey)
     return canvas
 end
 
+local function SortModuleCategories()
+    if not rootCategory then return end
+    -- Blizzard otherwise preserves registration order for subcategories.
+    -- Keep our own order so the manual stays below the alphabetical modules.
+    table.sort(rootCategory:GetSubcategories(), function(a, b)
+        local manual = categories.UserManual
+        if a == manual then return false end
+        if b == manual then return true end
+        local aName, bName = string.lower(a:GetName()), string.lower(b:GetName())
+        if aName == bName then return a:GetID() < b:GetID() end
+        return aName < bName
+    end)
+end
+
 local function EnsureRoot()
     if rootCategory then return rootCategory end
     if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then
@@ -574,6 +588,7 @@ local function EnsureRoot()
     local canvas = CreateCanvas(ROOT_KEY)
     canvases[ROOT_KEY] = canvas
     rootCategory = Settings.RegisterCanvasLayoutCategory(canvas, "BazUI")
+    rootCategory:SetShouldSortAlphabetically(false)
     categories[ROOT_KEY] = rootCategory
     Settings.RegisterAddOnCategory(rootCategory)
     return rootCategory
@@ -595,6 +610,7 @@ local function EnsureModule(moduleKey)
     canvases[moduleKey] = canvas
     local sub = Settings.RegisterCanvasLayoutSubcategory(root, canvas, label)
     categories[moduleKey] = sub
+    SortModuleCategories()
     return sub
 end
 
@@ -632,6 +648,11 @@ function BazUI:AddToSettings(key, displayName, parentKey, order)
     end
 
     EnsureModule(moduleKey)
+
+    if not parentKey and categories[moduleKey] then
+        categories[moduleKey]:SetName(entry.displayName)
+        SortModuleCategories()
+    end
 
     local canvas = canvases[moduleKey]
     if canvas and canvas:IsShown() then

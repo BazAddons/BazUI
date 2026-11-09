@@ -20,6 +20,7 @@ BazUI replaces a stack of separate addons (BazCore, BazWidgetDrawers, BazChat, B
 | Notifications | BazNotificationCenter | Ported (toasts, history panel, bell; 15 sources, no Mythic+, Vault, rares, collections or talking head) |
 | Micro Menu | new | Built (Blizzard's micro buttons on a movable bar as round ring-framed icons) |
 | APS | new | Azeroth Positioning System: standalone waypoints and quest navigation, a brass-and-brown arrow, compatible /way commands, and optional TomTom/Zygor targets in one display. |
+| Map | OpenMap rendering core (MIT) | Forever's default world map with continuous cursor-anchored zoom and terrain detail fading in up close. Keeps the native window and quest log; no additional map tools. Disable OpenMap before using it. |
 
 ## First run
 
@@ -28,6 +29,7 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 ## Commands
 
 - `/baz` (or `/bazui`, `/bui`) opens the options window.
+- `/bazmap` opens Map settings. Adjust terrain opacity, when terrain begins fading in, and maximum zoom. Set **Terrain opacity at full zoom** to 100% to fully cover the painted map at the deepest terrain blend. **Unexplored areas** can be hidden, dimmed, or revealed; exploration progress is unchanged. Settings apply immediately and are saved per profile.
 - `/baz errors` opens the core developer error browser: Previous/Next, Select All and Ctrl+C, Copy all, or Clear. `/baz errors all`, `/baz errors <number>`, `/baz errors clear`, and `/baz errors status` are also available. Lua errors, startup failures and blocked actions are grouped locally, with the newest 50 reports saved across reloads in `BazUIDevDB`. No extra error addon is required.
 - `/aps` opens Azeroth Positioning System settings; `/aps preview` toggles the arrow preview; `/aps status` reports connected navigation addons.
 - `/way [zone or #mapID] x y [name]` (also `/aps way`, `/tway`, `/tomtomway`) accepts pasted Wowhead coordinates without TomTom. For example: `/way Elwynn Forest 42.1 65.9 Meet here`.
