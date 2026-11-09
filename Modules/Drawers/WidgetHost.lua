@@ -1203,13 +1203,16 @@ function WidgetHost:DoReflow()
     local member = {}
     for _, w in ipairs(allWidgets) do member[w.id] = true end
     for _, w in ipairs(BazUI.GetDockableWidgets and BazUI:GetDockableWidgets() or {}) do
-        if not member[w.id]
-            and addon:IsWidgetEnabled(w.id)
-            and not addon:IsWidgetFloating(w.id)
-        then
-            -- Switched on, not floating, and nowhere to be. There is no
-            -- honest place to draw it.
-            self:DisableWidget(w)
+        if not member[w.id] then
+            -- Floating widgets are global, not members of the active
+            -- drawer. Restore them at login and on late registration too,
+            -- just as the Floating toggle does. A position-only retry
+            -- cannot repair a widget that was never floated in the first place.
+            if addon:IsWidgetEnabled(w.id) and addon:IsWidgetFloating(w.id) then
+                self:FloatWidget(w)
+            else
+                self:DisableWidget(w)
+            end
         end
     end
 
