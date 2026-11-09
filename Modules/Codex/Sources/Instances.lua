@@ -9,8 +9,8 @@
 -- Today shows the slice of this that matters now; this is the map it
 -- is cut from.
 --
--- A row reads one of five ways, worst first: saved (bosses down, time
--- to reset), too low for it, not yet attuned, outgrown, or open - with
+-- A row reads: saved (bosses down, time to reset), too low for it,
+-- not yet attuned, requirements unknown, outgrown, or open - with
 -- "for your level" on the ones tuned for where you are. Any lockout
 -- the catalog does not know is listed on its own, so a lockout is
 -- never missing from the page just because the data has not caught up.
@@ -151,14 +151,14 @@ end
 ---------------------------------------------------------------------------
 
 -- What to say about a place: the row, and a word for what it is
--- ("saved", "low", "gated", "outgrown", "open", "yours").
+-- ("saved", "low", "gated", "unknown", "outgrown", "open", "yours").
 local function Read(entry, locks)
     local level = UnitLevel("player") or 1
     local lock = LockoutFor(locks, entry)
     local access = AccessFor(entry)
     local state = access and Codex.Access.Evaluate(access) or nil
     local steps = access and #(access.steps or {}) or 0
-    local tuned = entry.level
+    local tuned = entry.level or (access and access.level)
 
     -- Title, then the facts as pairs, then a section per thing worth
     -- saying. Tabs make a pair; an empty line makes a gap.
@@ -182,7 +182,7 @@ local function Read(entry, locks)
         end
         Pair("Resets in", Duration(lock.reset))
         verdict = "|cffffd700You are saved to this one.|r"
-    elseif tuned and level < tuned - BAND_BELOW then
+    elseif (tuned and level < tuned - BAND_BELOW) or (state and state.underLevelled) then
         word = "low"
         row.muted = true
         row.detail = ("level %d"):format(tuned)
@@ -192,6 +192,11 @@ local function Read(entry, locks)
         row.state = "open"
         row.detail = ("%d of %d step%s"):format(state.done or 0, steps, steps == 1 and "" or "s")
         verdict = "|cffffd700Not yet attuned.|r"
+    elseif not tuned then
+        word = "unknown"
+        row.muted = true
+        row.detail = "level unknown"
+        verdict = "|cff888888Level requirements are not known; access cannot be confirmed.|r"
     elseif tuned and entry.kind == "dungeon" and level > tuned + BAND_ABOVE then
         word = "outgrown"
         row.muted = true
@@ -228,6 +233,16 @@ local function Read(entry, locks)
 
     row.tip = table.concat(lines, "|n")
     return row, word
+end
+
+-- Both Today and Instances use the same catalog and eligibility verdicts.
+function Codex.Instances.OpenRows()
+    local rows, locks = {}, Lockouts()
+    for _, entry in ipairs(Catalog()) do
+        local row, word = Read(entry, locks)
+        if word == "open" or word == "yours" then rows[#rows + 1] = row end
+    end
+    return rows
 end
 
 ---------------------------------------------------------------------------
@@ -284,14 +299,7 @@ local function Blocks()
                 return { text = table.concat(parts, "  |  ") }
             end,
             GetHighlight = index == 1 and function()
-                local locks = Lockouts()
-                local open = 0
-                for _, k in ipairs(kinds) do
-                    for _, entry in ipairs(byKind[k]) do
-                        local _, word = Read(entry, locks)
-                        if word == "open" or word == "yours" then open = open + 1 end
-                    end
-                end
+                local open = #Codex.Instances.OpenRows()
                 return {
                     value = open,
                     label = open == 1 and "instance open to you" or "instances open to you",

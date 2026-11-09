@@ -14,6 +14,7 @@ local function CreateToggleButton()
     button:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     button:SetFrameStrata("HIGH")
     button:SetFrameLevel(100)
+    addon.RegisterNotificationLayer(button)
     button:SetClampedToScreen(true)
     button:SetMovable(true)  -- BazUI Edit Mode handles drag wiring
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")

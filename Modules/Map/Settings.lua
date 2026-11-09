@@ -5,6 +5,11 @@ local function Set(key, value) addon:SetSetting(key, value); addon:ApplySettings
 BazUI:RegisterSettingsSpec("Map", {
     sections = { appearance = { label = "World map", order = 1 } },
     entries = {
+        { key = "widescreen", label = "Widescreen fullscreen map", type = "toggle",
+          section = "appearance", order = 0,
+          get = function() return addon:GetSetting("widescreen") ~= false end,
+          set = function(_, value) Set("widescreen", value) end,
+          desc = "Use the screen's available width when the map is maximized. Keeps the normal map window unchanged. Size changes wait until combat ends." },
         { key = "terrainOpacity", label = "Terrain opacity at full zoom", type = "slider",
           section = "appearance", order = 1, min = 0, max = 100, step = 5,
           get = function() return addon:GetSetting("terrainOpacity") end,

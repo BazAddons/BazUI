@@ -5,7 +5,7 @@ addon = BazUI:RegisterModule("Map", {
     title = "Map",
     icon = "Interface\\Icons\\INV_Misc_Map_01",
     profiles = true,
-    defaults = { terrainOpacity = 85, terrainStart = 20, maxZoom = 48, fogOfWar = true },
+    defaults = { terrainOpacity = 85, terrainStart = 20, maxZoom = 48, fogOfWar = true, widescreen = true },
     slash = { "/bazmap" },
     defaultHandler = function() BazUI:OpenOptionsPanel("Map") end,
     onReady = function(self)
@@ -34,6 +34,7 @@ function addon:Initialize()
     self:ApplySettings()
     renderer.enabled = true
     renderer:OnEnable()
+    self:InitializeWindow()
 end
 
 function addon:GetUnexploredStyle()
@@ -58,4 +59,5 @@ function addon:ApplySettings()
     -- The native exploration mask and the close-up overlay must agree.
     -- Before the map is built these calls simply retain the settings.
     renderer:Refresh()
+    self:ApplyWindowSettings()
 end

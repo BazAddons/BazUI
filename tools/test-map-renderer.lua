@@ -26,7 +26,11 @@ BazUI={IsRetail=false,VERSION='028',GetModule=function() return module end,
     RegisterSettingsSpec=function(_,_,value) spec=value end,QueueForModule=Noop,
     Print=function(_,text) notices[#notices+1]=text end}
 C_AddOns={IsAddOnLoaded=function() return loaded end}
-EventUtil={ContinueOnAddOnLoaded=function(name,fn) deferredName,deferredSetup=name,fn end}
+EventUtil={ContinueOnAddOnLoaded=function(name,fn)
+    local previous=deferredSetup
+    deferredName=name
+    deferredSetup=function() if previous then previous() end;fn() end
+end}
 C_Map={GetMapRectOnMap=function(id) if id==1415 then return .2,.5,.1,.9 end end,
     GetMapInfoAtPosition=function() return nil end}
 GetTime=function() return 100 end
@@ -36,6 +40,8 @@ issecretvalue=function(value) return value==protected end
 for line in io.lines('BazUI.toc') do
     if line:match('^Modules\\Map\\.*%.lua') then dofile(line:gsub('\\','/')) end
 end
+local controls={}
+for _,entry in ipairs(spec.entries) do controls[entry.key]=entry end
 local r=BazUI.MapRuntime
 local renderer=r:GetModule('worldmap')
 check(ready.Map.title=='Map' and renderer~=nil,'Map is a BazUI module with its own renderer')
@@ -60,7 +66,7 @@ local manager={InsertFrameLevelAbove=function() return true end,GetValidFrameLev
 end}
 local canvas={CreateZoomLevels=Noop,ResetZoom=Noop,CalculateScrollExtentsAtScale=Noop,
     HookScript=function(_,event,fn) hooks[event]=fn end}
-local native={ScrollContainer=canvas,GetPinFrameLevelsManager=function() return manager end,
+local native={IsMaximized=function() return false end,HookScript=Noop,ScrollContainer=canvas,GetPinFrameLevelsManager=function() return manager end,
     AddCanvasClickHandler=function() end,EnumeratePinsByTemplate=function() return function() end end,
     IsShown=function() return false end,AddDataProvider=function(_,dp) providers[#providers+1]=dp end}
 WorldMapFrame=native
@@ -97,7 +103,7 @@ renderer.db.minimap=false
 s.SetView(.35,.5,.01,.01,48)
 check(s.closeView.mix==0,'disabling terrain leaves the painted map intact')
 renderer.db.minimap=true
-spec.entries[1].set(nil,100)
+controls.terrainOpacity.set(nil,100)
 s.SetView(.35,.5,.01,.01,48)
 check(renderer.db.minimapDeep==1 and s.closeView.mix==1,'100 percent fully covers the painted map at deepest zoom')
 local oldCity=s.SurfaceCityCover
@@ -105,14 +111,12 @@ s.SurfaceCityCover=function() return 1 end
 s.SetView(.35,.5,.01,.01,48)
 check(s.closeView.mix==1,'surface cities honor the selected maximum opacity')
 s.SurfaceCityCover=oldCity
-spec.entries[1].set(nil,0)
+controls.terrainOpacity.set(nil,0)
 s.SetView(.35,.5,.01,.01,48)
 check(s.closeView.mix==0,'zero percent disables the terrain overlay')
-spec.entries[1].set(nil,60)
+controls.terrainOpacity.set(nil,60)
 s.SetView(.35,.5,.01,.01,48)
 check(math.abs(s.closeView.mix-.6)<.00001,'intermediate opacity remains adjustable')
-local controls={}
-for _,entry in ipairs(spec.entries) do controls[entry.key]=entry end
 check(renderer.db.minimapFrom==20 and renderer.db.maxZoom==48,'new zoom controls preserve the original defaults')
 settings.fogOfWar=false;module:ApplySettings()
 check(renderer.db.unexplored=='show' and controls.unexplored.get()=='show','existing fog-off preference stays revealed')

@@ -39,10 +39,6 @@ local function Split()
     return open, working
 end
 
-local function Duration(seconds)
-    return BazUI:FormatSpan(seconds)
-end
-
 ---------------------------------------------------------------------------
 -- Open to you
 ---------------------------------------------------------------------------
@@ -51,22 +47,11 @@ Codex:RegisterSection({
     id     = "open",
     tab    = "today",
     title  = "Ready to run",
-    about  = "Raids and dungeons you are attuned for, old enough for, and not"
-        .. " already saved to. If it is here, you can walk in today.",
+    about  = "Instances confirmed open by the Instances page's level, attunement"
+        .. " and lockout checks. Outgrown dungeons are omitted.",
     order  = 8,
     empty  = function()
-        local A = Access()
-        local best
-        for _, state in ipairs((A and A.All and A.All()) or {}) do
-            if not state.ready and (not best or (state.fraction or 0) > (best.fraction or 0)) then
-                best = state
-            end
-        end
-        if not best then
-            return "Nothing open to you yet. Attunements start in your fifties; this fills in as you reach them."
-        end
-        return ("Nothing open to you yet. Closest is %s: %d of %d steps done."):format(
-            best.entry.name, best.done or 0, best.total or 0)
+        return "No instances are currently confirmed open to you. Check Instances for level requirements and attunements."
     end,
     events = {
         "PLAYER_ENTERING_WORLD", "UPDATE_INSTANCE_INFO", "BAG_UPDATE_DELAYED",
@@ -74,11 +59,7 @@ Codex:RegisterSection({
     },
 
     GetHighlight = function()
-        local open = Split()
-        local ready = 0
-        for _, state in ipairs(open) do
-            if state.open then ready = ready + 1 end
-        end
+        local ready = #Codex.Instances.OpenRows()
         return {
             value = ready,
             label = ready == 1 and "instance open to you" or "instances open to you",
@@ -87,34 +68,7 @@ Codex:RegisterSection({
     end,
 
     GetRows = function()
-        local open = Split()
-        local rows = {}
-        for _, state in ipairs(open) do
-            local entry = state.entry
-
-            local detail, rowState, tip
-            if state.saved then
-                detail   = "saved, " .. Duration(state.reset or 0)
-                rowState = "locked"
-                tip      = entry.name .. "|nYou are already saved to this one."
-            elseif state.underLevelled then
-                detail   = "level " .. entry.level
-                rowState = "locked"
-                tip      = entry.name .. "|nAttuned, but not yet the level for it."
-            else
-                detail   = "go"
-                rowState = "done"
-                tip      = entry.name .. "|nAttuned, at level, and not saved."
-            end
-
-            rows[#rows + 1] = {
-                label  = entry.name,
-                detail = detail,
-                state  = rowState,
-                tip    = tip,
-            }
-        end
-        return rows
+        return Codex.Instances.OpenRows()
     end,
 })
 

@@ -17,7 +17,7 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 029
+## Version: 030
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
@@ -99,6 +99,7 @@ Modules\Map\Vendor\OpenMap\Stitch.lua
 Modules\Map\Vendor\OpenMap\WorldMap.lua
 Modules\Map\Vendor\OpenMap\Close.lua
 Modules\Map\Vendor\OpenMap\Combat.lua
+Modules\Map\Window.lua
 Modules\Map\Settings.lua
 
 Modules\Drawers\Core.lua
@@ -268,6 +269,7 @@ Modules\Notifications\API\ModuleRegistry.lua
 Modules\Notifications\API\Notifications.lua
 Modules\Notifications\API\ModuleHelpers.lua
 Modules\Notifications\UI\Colors.lua
+Modules\Notifications\UI\Layers.lua
 Modules\Notifications\UI\Animations.lua
 Modules\Notifications\UI\NotificationCard.lua
 Modules\Notifications\UI\GroupHeader.lua

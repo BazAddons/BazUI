@@ -29,7 +29,7 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 ## Commands
 
 - `/baz` (or `/bazui`, `/bui`) opens the options window.
-- `/bazmap` opens Map settings. Adjust terrain opacity, when terrain begins fading in, and maximum zoom. Set **Terrain opacity at full zoom** to 100% to fully cover the painted map at the deepest terrain blend. **Unexplored areas** can be hidden, dimmed, or revealed; exploration progress is unchanged. Settings apply immediately and are saved per profile.
+- `/bazmap` opens Map settings. **Widescreen fullscreen map** fills the available screen width when maximized; switch it off for Blizzard's original aspect ratio. Adjust terrain opacity, when terrain begins fading in, and maximum zoom. Set **Terrain opacity at full zoom** to 100% to fully cover the painted map at the deepest terrain blend. **Unexplored areas** can be hidden, dimmed, or revealed; exploration progress is unchanged. Settings apply immediately and are saved per profile; map resizing waits until combat ends.
 - `/baz errors` opens the core developer error browser: Previous/Next, Select All and Ctrl+C, Copy all, or Clear. `/baz errors all`, `/baz errors <number>`, `/baz errors clear`, and `/baz errors status` are also available. Lua errors, startup failures and blocked actions are grouped locally, with the newest 50 reports saved across reloads in `BazUIDevDB`. No extra error addon is required.
 - `/aps` opens Azeroth Positioning System settings; `/aps preview` toggles the arrow preview; `/aps status` reports connected navigation addons.
 - `/way [zone or #mapID] x y [name]` (also `/aps way`, `/tway`, `/tomtomway`) accepts pasted Wowhead coordinates without TomTom. For example: `/way Elwynn Forest 42.1 65.9 Meet here`.
