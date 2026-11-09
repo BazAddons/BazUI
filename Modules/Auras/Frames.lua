@@ -273,6 +273,23 @@ function Auras.ApplyButtonShape(btn, shape)
     end
 end
 
+-- Set this before an engine-owned aura frame becomes forbidden. Never
+-- measure timer contents: the engine may write protected duration values.
+function Auras.ApplyDurationStyle(btn, iconSize, wantedSize, fontFile)
+    local text = btn.Duration
+    if not text then return end
+    local width = math.max(1, iconSize - 4)
+    local fontSize = math.max(6, math.min(wantedSize or math.floor(iconSize * 0.42), math.floor(width / 2.5)))
+    text:SetFont(fontFile or BazUI.Skin.Theme.FontFile(), fontSize, "OUTLINE")
+    text:ClearAllPoints()
+    text:SetPoint("LEFT", btn, "LEFT", 2, 0)
+    text:SetPoint("RIGHT", btn, "RIGHT", -2, 0)
+    text:SetJustifyH("CENTER")
+    text:SetWordWrap(false)
+    text:SetNonSpaceWrap(false)
+    text:SetMaxLines(1)
+end
+
 function Auras.ApplyButtonSize(btn)
     local size = addon:RowValue(addon:RowOfButton(btn), "iconSize")
     if InCombatLockdown() then
@@ -288,8 +305,7 @@ function Auras.ApplyButtonSize(btn)
         btn:SetSize(size, size)
     end
     local row = addon:RowOfButton(btn)
-    btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
-        addon:DurationSize(row, size), "OUTLINE")
+    Auras.ApplyDurationStyle(btn, size, addon:DurationSize(row, size))
     btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(size * 0.40)), "OUTLINE")
     Auras.ApplyButtonShape(btn)
 end
@@ -580,7 +596,9 @@ local function ConfigureHeader(def, below)
         -- hand-rolled path reads the same settings for itself later and
         -- is unaffected by their being here.
         shape         = addon:RowValue(def, "iconShape"),
-        showDuration  = addon:GetSetting("showDuration") ~= false,
+        showDuration  = addon:RowValue(def, "showDuration") ~= false,
+        durationSize  = addon:DurationSize(def, size),
+        fontFile      = BazUI.Skin.Theme.FontFile(),
         showCount     = addon:GetSetting("showCount") ~= false,
         -- Only a debuff row has dispel types to color by.
         dispelRims    = (def.filter == "HARMFUL")
@@ -1885,8 +1903,7 @@ function LayoutDemo()
                 -- The preview is there to show what the row will look
                 -- like, and the shape is half of that.
                 Auras.ApplyButtonShape(btn, addon:RowValue(def, "iconShape"))
-                btn.Duration:SetFont(BazUI.Skin.Theme.FontFile(),
-                    addon:DurationSize(def, px), "OUTLINE")
+                Auras.ApplyDurationStyle(btn, px, addon:DurationSize(def, px))
                 btn.Count:SetFont(BazUI.Skin.Theme.FontFile(), math.max(8, math.floor(px * 0.40)), "OUTLINE")
                 btn.Icon:SetTexture("Interface\\Icons\\" .. icon)
                 btn.Count:SetText((i % 3 == 1 and addon:GetSetting("showCount") ~= false) and tostring((i % 5) + 2) or "")

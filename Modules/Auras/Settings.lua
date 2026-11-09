@@ -341,7 +341,7 @@ local function RowArgs(def, index)
             },
             durationSize = {
                 order = 29, type = "range", name = "Timer size",
-                desc = "Nought sizes the timer from the icon, which is what it did before this existed. That has a floor of eight points, and on a row of small icons eight points is most of the icon - so set a number here, or turn the timers off.",
+                desc = "Zero chooses a size from the icon. Timers stay on one line inside the icon; larger font choices are capped to fit.",
                 disabled = function() return addon:RowValue(def, "showDuration") == false end,
                 min = 0, max = 24, step = 1,
                 get = function() return addon:RowValue(def, "durationSize") end,

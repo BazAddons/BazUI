@@ -159,7 +159,12 @@ local function DrainLogin()
 
         -- One module failing is not allowed to strand the rest of them.
         local entry = table.remove(loginQueue, 1)
-        local ok, err = pcall(entry)
+        local ok, err = xpcall(entry, function(failure)
+            if BazUI.DevErrors then
+                BazUI.DevErrors:Capture(failure, debugstack(2, 40, 10), "Startup")
+            end
+            return failure
+        end)
         if not ok then
             BazUI._loginErrors = BazUI._loginErrors or {}
             BazUI._loginErrors[#BazUI._loginErrors + 1] = tostring(err)
@@ -1059,19 +1064,8 @@ BazUI:QueueForLogin(function()
                 end,
             },
             errors = {
-                desc = "Anything that failed while the interface was being built. Empty is the normal answer.",
-                handler = function()
-                    local errors = BazUI._loginErrors
-                    if not errors or #errors == 0 then
-                        BazUI:Print("Everything started cleanly.")
-                        return
-                    end
-                    BazUI:Print(("%d part%s of the interface did not start:"):format(
-                        #errors, #errors == 1 and "" or "s"))
-                    for index, err in ipairs(errors) do
-                        print(("  |cffff6666%d.|r %s"):format(index, err))
-                    end
-                end,
+                desc = "View and copy developer error reports. Add all, a report number, clear or status.",
+                handler = function(args) BazUI.DevErrors:Command(args) end,
             },
             atlas = {
                 desc = "Show what one of the game's atlas images actually looks like. A name, or nothing for the ones the bar fills use.",

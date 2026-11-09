@@ -17,19 +17,20 @@
 ## Title: BazUI
 ## Notes: One addon for your whole interface: bags, action bars, unit frames, nameplates, chat, minimap and a notification center, sharing one look and one settings panel.
 ## Author: Baz4k
-## Version: 026
+## Version: 027
 ## X-License: GPL-2.0-or-later
 ## X-Copyright: Copyright (C) 2026 Baz Studios LLC
 ## X-Website: https://github.com/BazAddons/BazUI
 ## X-Curse-Project-ID: 1698481
 ## Category: BazUI
 ## X-Category: Interface Enhancements
-## SavedVariables: BazUIDB
+## SavedVariables: BazUIDB, BazUIDevDB
 ## IconTexture: Interface\Icons\INV_Gizmo_GoblingTonkController
 
 # Core - forked from BazCore. Module registry, profiles, options window,
 # Edit Mode, popups and UI helpers.
 Core\Core.lua
+Core\DevErrors.lua
 Core\Events.lua
 Core\Profiles.lua
 Core\ProfilesPage.lua

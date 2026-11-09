@@ -112,6 +112,10 @@ Recipe used for Drawers, apply the same to Chat, Bags and Bars:
 
 Run `tools/deploy.sh`. It copies the working tree into the Forever client's `_forever_/Interface/AddOns/BazUI`, leaving out everything `.pkgmeta` ignores so the test copy is what CurseForge ships, and removes files the repository no longer has. Pass another `.../Interface/AddOns/BazUI` path to deploy somewhere else, such as a retail install. Saved variables are never touched. Disable BazCore, BazWidgetDrawers, LibBazWidget, BazWidgets, BazChat and BazBags on that character; BazUI prints a warning at login if any of them is loaded. New texture files need a full client restart, not a reload.
 
+## Developer diagnostics
+
+Core developer diagnostics live in `Core/DevErrors.lua`, loaded immediately after `Core.lua`, independently of module toggles and profiles. `/baz errors` opens the shared copy dialog with a report browser; the separate `BazUIDevDB` stores at most 50 bounded, deduplicated reports. Runtime errors retain the existing handler chain; when BugGrabber is present, its modern and legacy callbacks are supported and occurrence counters are reconciled. Startup errors are captured inside the lifecycle's xpcall error callback to retain their stack. Blocked-action and Lua-warning events are collected separately. A five-second unique-error limit and throttled chat notices contain floods. Reports never dump locals or send data anywhere; copying is a user action. `tools/test-dev-errors.lua` verifies capture, persistence, grouping, callback coexistence and bounded history under Lua 5.1.
+
 ## Release
 
 Pushing a tag runs the BigWigs packager (`.github/workflows/release.yml`), which packages and uploads to CurseForge project 1698481 using the `CF_API_KEY` repository secret. The packager reads the game versions from the TOC's Interface line, so one upload is listed for both Forever and retail. Pushing commits to `main` publishes nothing. `CHANGELOG.md` holds only the newest entry, written for players, and is uploaded as that file's changelog.

@@ -350,7 +350,7 @@ BazUI:RegisterUserGuide("BazUI", {
                       { "/baz default <name>",  "Sets the profile new characters start on." },
                       { "/baz edit",            "Opens Edit Mode, which is where nearly everything is moved and sized." },
                       { "/baz fonts",           "Writes sample text in eight alphabets, in BazUI's face and in the one it would borrow, naming the file each came from. The answer to text coming out as empty boxes." },
-                      { "/baz errors",          "Shows what BazUI has caught going wrong." },
+                      { "/baz errors",          "Opens the core developer error browser. Browse reports, use Select All and Ctrl+C to copy one, or Copy all. Runtime Lua errors, startup failures and blocked actions are grouped and saved across reloads. Add all, a report number, clear or status. No extra error addon is required." },
                       { "/baz taint",           "Names the game's own values BazUI has taken over. |cffffd700/baz taint all|r widens it. The thing to run when the game says an action was blocked." },
                       { "/baz audit [module]",  "Checks a module's settings against what it actually registered." },
                       { "/baz dock [snap]",     "Reports on the docking system, and on snapping." },

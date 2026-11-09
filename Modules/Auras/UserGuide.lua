@@ -75,7 +75,7 @@ BazUI:RegisterUserGuide("Auras", {
                 { type = "h3", text = "Two ways to cap a row" },
                 { type = "paragraph", text = "|cffffd700Show at most|r spreads what it keeps evenly rather than filling rows and overshooting - ten icons at eight across comes out as two rows of five, not a row of eight and a row of two. |cffffd700Rows at most|r caps the number of rows instead; one row is the usual choice for somebody else's debuffs, since sixteen of them is a legal state of affairs and a tower of icons is not what showing them meant. Set both and whichever bites first wins." },
                 { type = "h3", text = "Timers" },
-                { type = "paragraph", text = "|cffffd700Show timers|r is per row. |cffffd700Timer size|r at nought sizes the text from the icon, which has a floor of eight points - and on a row of small icons eight points is most of the icon. That is the reason the setting exists: give it a number, or turn the timers off for that row." },
+                { type = "paragraph", text = "|cffffd700Show timers|r is per row. |cffffd700Timer size|r at zero chooses a size from the icon. Timers stay on one line inside their own icon, and larger font choices are capped to fit. This also applies to the live aura containers used during combat." },
             },
         },
 

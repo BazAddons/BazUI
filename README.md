@@ -28,6 +28,7 @@ A fresh install starts with the BazUI layout: player frame centered above the ba
 ## Commands
 
 - `/baz` (or `/bazui`, `/bui`) opens the options window.
+- `/baz errors` opens the core developer error browser: Previous/Next, Select All and Ctrl+C, Copy all, or Clear. `/baz errors all`, `/baz errors <number>`, `/baz errors clear`, and `/baz errors status` are also available. Lua errors, startup failures and blocked actions are grouped locally, with the newest 50 reports saved across reloads in `BazUIDevDB`. No extra error addon is required.
 - `/aps` opens Azeroth Positioning System settings; `/aps preview` toggles the arrow preview; `/aps status` reports connected navigation addons.
 - `/way [zone or #mapID] x y [name]` (also `/aps way`, `/tway`, `/tomtomway`) accepts pasted Wowhead coordinates without TomTom. For example: `/way Elwynn Forest 42.1 65.9 Meet here`.
 - `/wayb [name]` saves your position; `/cway` selects the closest saved waypoint; `/way list` and `/way local` list them; `/way reset all`, `/way reset away`, or `/way reset [not] zone` remove them.

@@ -150,6 +150,7 @@ local function Signature(cfg)
         tostring(cfg.size), tostring(cfg.across), tostring(cfg.rows),
         tostring(cfg.xOffset), tostring(cfg.cancel),
         tostring(cfg.shape), tostring(cfg.showDuration),
+        tostring(cfg.durationSize), tostring(cfg.fontFile),
         tostring(cfg.showCount), tostring(cfg.dispelRims),
         tostring(cfg.weapons),
     }, "|")
@@ -207,6 +208,8 @@ function Container.Ensure(def, cfg, parent)
     local function Initialize(frame)
         pcall(function()
             frame:SetSize(size, size)
+
+            Auras.ApplyDurationStyle(frame, size, cfg.durationSize, cfg.fontFile)
 
             if frame.Icon then frame:SetIcon(frame.Icon) end
 

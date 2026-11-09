@@ -37,6 +37,7 @@
 --   acceptText  = "Import",       -- default "Accept"; ignored without onAccept
 --
 --   onClose     = function() end, -- optional; fired when the dialog hides
+--   actions     = { {text, func, enabled} }, -- optional compact header buttons
 -- }
 --
 -- Returns the dialog frame. The same frame is reused across every call
@@ -269,6 +270,25 @@ function BazUI:OpenCopyDialog(opts)
     -- Title / subtitle
     dialog.title:SetText(opts.title or "Copy / Paste")
     dialog.subtitle:SetText(opts.subtitle or "")
+
+    -- Optional browser actions. Always reset them when the shared dialog is
+    -- reused, so developer controls never leak into unrelated copy windows.
+    dialog.actionButtons = dialog.actionButtons or {}
+    for _, button in ipairs(dialog.actionButtons) do button:Hide() end
+    for i, action in ipairs(opts.actions or {}) do
+        local button = dialog.actionButtons[i]
+        if not button then
+            button = BazUI.Skin.Theme.CreateButton(dialog)
+            button:SetSize(72, 22)
+            dialog.actionButtons[i] = button
+        end
+        button:ClearAllPoints()
+        button:SetPoint("TOPRIGHT", -42 - (#opts.actions - i) * 78, -10)
+        button:SetText(action.text)
+        button:SetEnabled(action.enabled ~= false)
+        button:SetScript("OnClick", action.func)
+        button:Show()
+    end
 
     -- Always enabled, so it can be focused and copied from; read-only is
     -- enforced by the OnTextChanged handler putting the content back.
